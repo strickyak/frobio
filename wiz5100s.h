@@ -1,14 +1,14 @@
-#ifndef _FROBIO_W5100S_H
-#define _FROBIO_W5100S_H
+#ifndef _FROBIO_WIZ5100S_H
+#define _FROBIO_WIZ5100S_H
 
 #include "frobio/nytypes.h"
 #include "frobio/frobio.h"
 
-// Short names for hardware ports depend on `hwport`.
-#define P0 hwport[0]  // control reg
-#define P1 hwport[1] // addr hi
-#define P2 hwport[2] // addr lo
-#define P3 hwport[3] // data
+// Short names for hardware ports depend on `wiz_hwport`.
+#define P0 wiz_hwport[0]  // control reg
+#define P1 wiz_hwport[1] // addr hi
+#define P2 wiz_hwport[2] // addr lo
+#define P3 wiz_hwport[3] // data
 
 // Keep this at the default of 2K for each.
 #define TX_SIZE 2048
@@ -40,4 +40,4 @@ struct UdpRecvHeader {
     word port;
     word len;
 };
-#endif // _FROBIO_W5100S_H
+#endif // _FROBIO_WIZ5100S_H

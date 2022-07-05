@@ -1,9 +1,9 @@
 #include <cmoc.h>
-#include "frobio/w5100s.h"
+#include "frobio/wiz5100s.h"
 
 // Global storage.
 bool wiz_verbose;
-byte* hwport;
+byte* wiz_hwport;
 
 // Debugging Verbosity.
 #define Say    if (wiz_verbose) printf
@@ -56,7 +56,7 @@ static void poke_n(word reg, void* data, word size) {
 
 void wiz_reset(word wiz_ioport) {
   // Set the global variable used by P0, P1, P2, P3.
-  hwport = (byte*) wiz_ioport;
+  wiz_hwport = (byte*) wiz_ioport;
 
   wiz_delay(42);
   P0 = 128; // Reset
@@ -117,7 +117,7 @@ error wiz_arp(quad dest_ip) {
     poke(0x005f, 0); // clear interrupt reg
     poke(0x004c/*=SLCR*/, 2/*=ARP*/); // command
 
-    delay(42);
+    wiz_delay(42);
     x = peek(0x005f/*=SLIR socketless interrupt reg*/);
     byte m1 = peek(0x0054);
     byte m2 = peek(0x0055);
@@ -147,7 +147,7 @@ error wiz_ping(quad dest_ip) {
     poke(0x005f, 0); // clear interrupt reg
     poke(0x004c/*=SLCR*/, 1/*=PING*/); // command
 
-    delay(42);
+    wiz_delay(42);
     x = peek(0x005f/*=SLIR socketless interrupt reg*/);
     byte m1 = peek(0x0054);
     byte m2 = peek(0x0055);
@@ -157,7 +157,7 @@ error wiz_ping(quad dest_ip) {
     byte m6 = peek(0x0059);
     Say("(ping->(%x) %x:%x:%x:%x:%x:%x) ",
       x, m1, m2, m3, m4, m5, m6);
-    delay(42);
+    wiz_delay(42);
   } while (!x);
   return (x&1) ? OKAY : 251; // look for PING ack.
 }
