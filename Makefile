@@ -2,27 +2,21 @@ all: f.config f.ticks f.ping f.arp f.tget
 
 f.config: FORCE
 	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c
-	sync
 
 f.ticks: FORCE
 	cmoc -i --os9 -I.. f.ticks.c wiz5100s.c nylib.c os9call.c
-	sync
 
 f.ping: FORCE
 	cmoc -i --os9 -I.. f.ping.c wiz5100s.c nylib.c os9call.c
-	sync
 
 f.arp: FORCE
 	cmoc -i --os9 -I.. f.arp.c wiz5100s.c nylib.c os9call.c
-	sync
 
 f.tget: FORCE
 	cmoc -i --os9 -I.. f.tget.c wiz5100s.c nylib.c os9call.c
-	sync
 
 test.nylib: FORCE
 	cmoc -i --os9 -I.. test.nylib.c nylib.c
-	sync
 launch.test.nylib: test.nylib
 	sh  ../doing_os9/gomar/launch.sh  ./test.nylib /dev/null
 
@@ -45,11 +39,12 @@ my: all
 	sync
 
 FORCE:
-	: _force_
 
 clean:
-	rm -f frobio tftp test.nylib *.o *.s *.list *.lst *.map *.link
+	rm -f f.config f.ticks f.ping f.arp f.tget
+	rm -f test.nylib *.o *.s *.list *.lst *.map *.link
 
 ci:
 	mkdir -p RCS
 	ci -l -m/dev/null -t/dev/null -q *.c *.h Makefile
+	sync
