@@ -70,6 +70,12 @@ byte NyDeHex(byte ch) {
   NyFatalD("bad hex char: %d(decimal)", ch);
 }
 
+// TODO: sprintf is broken?
+void NyFormatDottedDecimalQuad(char* buffer, quad addr) {
+    byte* p = (byte*)&addr;
+    sprintf(buffer, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
+}
+
 // Hereafter, pp will point to a pointer to const char,
 // and will be an argument to all functions.
 // In the body, P will act like a normal pointer, using (*pp).
@@ -151,5 +157,3 @@ quad NyParseDottedDecimalQuadAndPort(const char** pp, word* port) {
   }
   return addy;
 }
-
-

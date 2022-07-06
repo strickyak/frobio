@@ -5,6 +5,18 @@
 #include "frobio/os9call.h"
 #include "frobio/os9defs.h"
 
+asm void DisableIrqs() {
+  asm {
+    orcc #$50   ; disable interrupts
+  }
+}
+
+asm void EnableIrqs() {
+  asm {
+    andcc  #^$50   ; enable interrupts
+  }
+}
+
 asm void Os9Exit(byte status) {
 	asm {
 		ldd 2,s      ; status code in b.

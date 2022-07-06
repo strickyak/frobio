@@ -1,16 +1,17 @@
 #include <cmoc.h>
 #include "frobio/wiz5100s.h"
+#include "frobio/os9call.h"
 
 // Global storage.
 bool wiz_verbose;
-byte* wiz_hwport;
+byte* wiz_hwport = 0xFF68;  // default hardware port.
 
 // Debugging Verbosity.
 #define Say    if (wiz_verbose) printf
 
-static int bogus_int_for_delay;
-void wiz_delay(int n) {
-  for (int i=0; i<n; i++) bogus_int_for_delay += i;
+static word bogus_word_for_delay;
+void wiz_delay(word n) {
+  for (word i=0; i<n; i++) bogus_word_for_delay += i;
 }
 
 static byte peek(word reg) {
@@ -54,32 +55,27 @@ static void poke_n(word reg, void* data, word size) {
   Say("] ");
 }
 
-void wiz_reset(word wiz_ioport) {
-  // Set the global variable used by P0, P1, P2, P3.
-  wiz_hwport = (byte*) wiz_ioport;
-
-  wiz_delay(42);
+void wiz_reset() {
+  DisableIrqs();
   P0 = 128; // Reset
   wiz_delay(42);
   P0 = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
   wiz_delay(42);
+  EnableIrqs();
 }
 
-void wiz_configure(struct FrobioConfig* cf) {
-  Say("CONFIGURE ");
+void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
+  DisableIrqs();
 
   P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
-  Say("gate ");
-  poke_n(0x0001/*gateway*/, &cf->ip_gateway, sizeof cf->ip_gateway);
+  poke_n(0x0001/*gateway*/, &ip_gateway, 4);
+  poke_n(0x0005/*mask*/, &ip_mask, 4);
+  poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
 
-  Say("mask ");
-  poke_n(0x0005/*mask*/, &cf->ip_mask, sizeof cf->ip_mask);
-
-  Say("mac ");
-  poke_n(0x0009/*ether_mac*/, cf->ether_mac, sizeof cf->ether_mac);
-
-  Say("addr ");
-  poke_n(0x000f/*ip_addr*/, &cf->ip_addr, sizeof cf->ip_addr);
+  // Create locally assigned mac_addr from ip_addr.
+  byte mac_addr[6] = {2, 0, 0, 0, 0, 0};  // local prefix.
+  *(quad*)(mac_addr+2) = ip_addr;
+  poke_n(0x0009/*ether_mac*/, mac_addr, 6);
 
   poke(0x001a/*=Rx Memory Size*/, 0x55); // 2k per sock
   poke(0x001b/*=Tx Memory Size*/, 0x55); // 2k per sock
@@ -92,6 +88,7 @@ void wiz_configure(struct FrobioConfig* cf) {
       poke(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
       poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
   }
+  EnableIrqs();
 }
 
 error udp_close(byte socknum) {
@@ -104,18 +101,32 @@ error udp_close(byte socknum) {
   return OKAY;
 }
 
-error wiz_arp(quad dest_ip) {
+word wiz_ticks() {
+  word t;
+  DisableIrqs();
+  t = peek_word(0x0082/*TCNTR Tick Counter*/);
+  EnableIrqs();
+  return t; 
+}
+
+error wiz_arp(quad dest_ip, byte* mac_out) {
   byte* d = (byte*)&dest_ip;
-  Say("\nARP: dest_ip=%d.%d.%d.%d ", d[0], d[1], d[2], d[3]);
-  Say("SLPIPR ");
-  // Socket-less Peer IP Address Register
-  poke_n(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
 
   // Socketless ARP command.
+  DisableIrqs();
+  // Socket-less Peer IP Address Register
+  poke(0x004c/*=SLCR*/, 0/*=Clear*/); // command
+  poke(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
+  poke(0x005f/*=SL Irq Mask Reg*/, 7/*=clear all*/);
+  poke_n(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
+
+  // Socketless PING command.
+  Say(" Arp ");
+  poke(0x004c/*=SLCR*/, 2/*=ARP*/); // command
+
   byte x = 0;
   do {
     poke(0x005f, 0); // clear interrupt reg
-    poke(0x004c/*=SLCR*/, 2/*=ARP*/); // command
 
     wiz_delay(42);
     x = peek(0x005f/*=SLIR socketless interrupt reg*/);
@@ -127,8 +138,15 @@ error wiz_arp(quad dest_ip) {
     byte m6 = peek(0x0059);
     Say("(arp->(%x) %x:%x:%x:%x:%x:%x) ",
       x, m1, m2, m3, m4, m5, m6);
+    mac_out[0] = m1;
+    mac_out[1] = m2;
+    mac_out[2] = m3;
+    mac_out[3] = m4;
+    mac_out[4] = m5;
+    mac_out[5] = m6;
   } while (!x);
-  return (x&2) ? OKAY : 252; // look for ARP ack.
+  EnableIrqs();
+  return (x&2) ? OKAY : 255; // look for ARP ack.
 }
 
 word ping_sequence = 100;
@@ -136,18 +154,21 @@ error wiz_ping(quad dest_ip) {
   byte* d = (byte*)&dest_ip;
   Say("\nPING: dest_ip=%d.%d.%d.%d ", d[0], d[1], d[2], d[3]);
   Say("SLPIPR ");
+
+  DisableIrqs();
   // Socket-less Peer IP Address Register
+  poke(0x004c/*=SLCR*/, 0/*=Clear*/); // command
+  poke(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
+  poke(0x005f/*=SL Irq Mask Reg*/, 7/*=clear all*/);
   poke_n(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
 
   // Socketless PING command.
+  Say(" Ping(%x) ", ping_sequence);
+  poke_word(0x005A, ping_sequence++);
+  poke(0x004c/*=SLCR*/, 1/*=PING*/); // command
+
   byte x = 0;
   do {
-    Say(" Ping(%x) ", ping_sequence);
-    poke_word(0x005A, ping_sequence++);
-    poke(0x005f, 0); // clear interrupt reg
-    poke(0x004c/*=SLCR*/, 1/*=PING*/); // command
-
-    wiz_delay(42);
     x = peek(0x005f/*=SLIR socketless interrupt reg*/);
     byte m1 = peek(0x0054);
     byte m2 = peek(0x0055);
@@ -157,39 +178,60 @@ error wiz_ping(quad dest_ip) {
     byte m6 = peek(0x0059);
     Say("(ping->(%x) %x:%x:%x:%x:%x:%x) ",
       x, m1, m2, m3, m4, m5, m6);
-    wiz_delay(42);
   } while (!x);
-  return (x&1) ? OKAY : 251; // look for PING ack.
+  EnableIrqs();
+  return (x&1) ? OKAY : 255; // look for PING ack.
 }
 
-error udp_open(byte socknum, word src_port) {
-  Say("OPEN: sock=%x src_p=%x ", socknum, src_port);
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+word suggest_client_port() {
+  // Pick a client port in range 0x4000 to 0xbfff.
+  // That should avoid degenerate ports and well-known ports.
+  word ticks = 0x7fff & wiz_ticks();
+  return ticks + 0x4000;
+}
 
-  word base = ((word)socknum + 4) << 8;
-  word buf = TX_BUF(socknum);
-  Say("udp base=%x buf=%x", base, buf);
+byte find_available_socket(word* base_out) {
+  byte socknum;
+  word base = 0x0400;
+  for (socknum = 0; socknum < 4; socknum++) {
+    word base = ((word)socknum + 4) << 8;
+    if (peek(base+SockStatus) == 0/*=SOCK_CLOSED*/) break;
+    base += 0x0100;
+  }
+  *base_out = base;
+  return socknum;
+}
 
-  byte status = peek(base+SockStatus);
-  if (status != 0x00/*SOCK_CLOSED*/) return 0xf6 /*E_NOTRDY*/;
+error udp_open(word src_port, byte* socknum_out) {
+  DisableIrqs();
+  error err = OKAY;
+  word base;
+  byte socknum = find_available_socket(&base);
+  if (socknum > 3) {
+    err = 0xf0/*E_UNIT*/;
+    goto Enable;
+  }
 
   poke(base+SockMode, 2); // Set UDP Protocol mode.
-
-  Say("src_p ");
   poke_word(base+SockSourcePort, src_port);
+  poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
   poke(base+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
   poke_word(base+0x002d/*_FRAGR*/, 0); // don't fragment.
-  poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
 
-  Say("status->%x ", peek(base+SockStatus));
-  Say("cmd:OPEN ");
+  // TODO: this is not enough to fix the socket for more use.
+  poke_word(base+0x0028/*_RX_RD*/, peek_word(base+0x002a)); // Start RX read pointer at RX write pointer (?)
+
+  poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
-  Say("status->%x ", peek(base+SockStatus));
   for(word i = 0; i < 60000; i++) {
     byte status = peek(base+SockStatus);
-    if (status == 0x22/*SOCK_UDP*/) return OKAY;
+    if (status == 0x22/*SOCK_UDP*/) goto Enable;
   }
-  return 0xfa/*E_DEVBSY*/;
+  err = 0xfa/*E_DEVBSY*/;
+
+Enable:
+  EnableIrqs();
+  return err;
 }
 
 error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_port) {
@@ -253,12 +295,10 @@ error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
 }
 
 error udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
-  Say("RECV: sock=%x payload=%x size=%x ", socknum, payload, *size_in_out);
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
   word base = ((word)socknum + 4) << 8;
   word buf = RX_BUF(socknum);
-  Say("RECV: base=%x buf=%x ", base, buf);
 
   byte status = peek(base+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
@@ -286,62 +326,42 @@ error udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
     }
   }
 
-// TODO -- if more than one packet was received,
-// then recv_size might count for 2 or more packets.
-// Must use the size inside the header?
   word recv_size = peek_word(base+0x0026/*_RX_RSR*/);
   word rx_rd = peek_word(base+0x0028/*_RX_RD*/);
   word rx_wr = peek_word(base+0x002A/*_RX_WR*/);
 
   word ptr = rx_rd;
-  printf("\n+ ");
-  while (1) {
-      ptr &= RX_MASK;
-      struct UdpRecvHeader hdr;
-      printf("[=%x %04x:%04x #%x@%x= %x %x] ", recv_size, rx_rd, rx_wr,
-            peek_word(buf+ptr+6),
-            ptr,
-            peek_word(buf+ptr+8),
-            peek_word(buf+ptr+10)
-            ); 
+  ptr &= RX_MASK;
 
-      if (peek_word(buf+ptr+6) > 519) {
-        printf(" BAD ");
-        poke_word(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
-        return 13;
-      }
-
+  struct UdpRecvHeader hdr;
+  for (word i = 0; i < sizeof hdr; i++) {
+      ((byte*)&hdr)[i] = peek(buf+ptr);
+      ptr++;
       ptr &= RX_MASK;
-      for (word i = 0; i < sizeof hdr; i++) {
-          ((byte*)&hdr)[i] = peek(buf+ptr);
-          ptr++;
-          ptr &= RX_MASK;
-      }
-      
-      if (hdr.len > *size_in_out) {
-        printf(" *** [rs=%d. sio=%d.] ", hdr.len, *size_in_out);
-        return 0xed/*E_NORAM*/;
-      }
-      ptr &= RX_MASK;
-      for (word i = 0; i < hdr.len; i++) {
-          payload[i] = peek(buf+ptr);
-          ptr++;
-          ptr &= RX_MASK;
-      }
-      *size_in_out = hdr.len;
-      *from_addr_out = hdr.addr;
-      *from_port_out = hdr.port;
-
-      break; // if (ptr >= rx_wr) break; else printf(" more ");
+  }
+  
+  if (hdr.len > *size_in_out) {
+    printf(" *** Packet Too Big [rs=%d. sio=%d.]\n", hdr.len, *size_in_out);
+    return 0xed/*E_NORAM*/;
   }
 
-  // Ignore extra packets -- TODO -- use them.
+  for (word i = 0; i < hdr.len; i++) {
+      payload[i] = peek(buf+ptr);
+      ptr++;
+      ptr &= RX_MASK;
+  }
+  *size_in_out = hdr.len;
+  *from_addr_out = hdr.addr;
+  *from_port_out = hdr.port;
+
   poke_word(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
 
   return OKAY;
 }
 
 #if 0
+Hints of how to do this correctly?
+
 /home/strick/go/src/github.com/Wiznet/W5100S-EVB/Loopback/Eclipse/W5100S_loopback/W5100S_Loopback/src/ioLibrary_Driver/Ethernet/W5100/w5100.c
 
 /*

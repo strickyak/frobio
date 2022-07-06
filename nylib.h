@@ -1,7 +1,7 @@
 // ny: NitroYak: Yak Libs for NitrOS9
 
-#ifndef _NYLIB_H_
-#define _NYLIB_H_
+#ifndef _FROBIO_NYLIB_H_
+#define _FROBIO_NYLIB_H_
 
 #include "frobio/nytypes.h"
 
@@ -23,6 +23,9 @@ bool NyStrEqIgnoreCase(const char* a, const char* b);
 // TODO: print on stderr instead of stdout.
 void NyFatalD(const char* fmt, int d);
 
+// TODO: broken?
+void NyFormatDottedDecimalQuad(char* buffer, quad addr);
+
 byte NyDeHex(byte ch);
 void NySkipSpaces(const char** pp);
 byte NyParseChar(const char** pp);
@@ -34,4 +37,4 @@ quad NyFormQuadFromBytes(byte a, byte b, byte c, byte d);
 quad NyParseDottedDecimalQuad(const char** pp);
 quad NyParseDottedDecimalQuadAndPort(const char** pp, word* port);
 
-#endif // _NYLIB_H_
+#endif // _FROBIO_NYLIB_H_

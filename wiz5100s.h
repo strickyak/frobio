@@ -4,8 +4,11 @@
 #include "frobio/nytypes.h"
 #include "frobio/frobio.h"
 
+extern bool wiz_verbose;
+extern byte* wiz_hwport;
+
 // Short names for hardware ports depend on `wiz_hwport`.
-#define P0 wiz_hwport[0]  // control reg
+#define P0 wiz_hwport[0] // control reg
 #define P1 wiz_hwport[1] // addr hi
 #define P2 wiz_hwport[2] // addr lo
 #define P3 wiz_hwport[3] // data

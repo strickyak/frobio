@@ -12,6 +12,9 @@
 
 #include "frobio/nytypes.h"
 
+asm void DisableIrqs();
+asm void EnableIrqs();
+
 asm void Os9Exit(byte status);
 
 asm byte Os9Create(const char* path, int mode, int attrs, int* fd);

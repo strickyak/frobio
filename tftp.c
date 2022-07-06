@@ -1,10 +1,8 @@
-#define MY_COCOIO_PORT  0xFF68
-#define MY_ADDR         IP4ADDR(10, 2, 2, 7)
-#define MY_MASK         IP4ADDR(255, 255, 255, 0)
-#define MY_GATEWAY      IP4ADDR(10, 2, 2, 1)
-#define MY_MAC          "wiznet"
+#define MY_ADDR         NyFormQuadFromBytes(10, 2, 2, 7)
+#define MY_MASK         NyFormQuadFromBytes(255, 255, 255, 0)
+#define MY_GATEWAY      NyFormQuadFromBytes(10, 2, 2, 1)
 
-#define SERVER_ADDR      IP4ADDR(10, 2, 2, 2)
+#define SERVER_ADDR      NyFormQuadFromBytes(10, 2, 2, 2)
 #define SERVER_PORT      69
 
 #include <cmoc.h>
@@ -27,16 +25,9 @@ byte packet[2000];
 void Reset() {
   wiz_verbose = 1;
 
-  struct FrobioConfig config;
-  config.ip_addr = MY_ADDR;
-  config.ip_mask = MY_MASK;
-  config.ip_gateway = MY_GATEWAY;
-  for (byte i = 0; i < 6; i++ )
-    config.ether_mac[i] = MY_MAC[i];
-
   // Reset and configure.  Test ping.
-  wiz_reset(MY_COCOIO_PORT);
-  wiz_configure(&config);
+  wiz_reset();
+  wiz_configure(MY_ADDR, MY_MASK, MY_GATEWAY);
   wiz_ping(SERVER_ADDR);
   error err = udp_open(SOCK, 0x6789);
   if (err) NyFatalD("cannot udp_open: %d\n", err);
