@@ -97,6 +97,7 @@ error udp_close(byte socknum) {
 
   word base = ((word)socknum + 4) << 8;
   poke(base+SockCommand, 0x10/*CLOSE*/);
+  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
   poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
@@ -201,6 +202,77 @@ byte find_available_socket(word* base_out) {
   *base_out = base;
   return socknum;
 }
+
+error macraw_open(byte* socknum_out) {
+  word base = 0;
+  byte socknum = find_available_socket(&base);
+  if (socknum > 3) return 0xf0/*E_UNIT*/;
+  *socknum_out = socknum;
+    
+  poke(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
+  poke(base+0x002F/*Sx_MR2*/, 0x70/*Broadcast Block, Multicast block, IPv6 block*/);
+  poke(base+0x0001/*Sx_CR command reg*/, 1/*=OPEN*/);
+  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+}
+
+error macraw_close(byte socknum) {
+  Say("CLOSE: sock=%x ", socknum);
+  if (socknum > 3) return 0xf0/*E_UNIT*/;
+
+  word base = ((word)socknum + 4) << 8;
+  poke(base+SockCommand, 0x10/*CLOSE*/);
+  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
+  return OKAY;
+}
+
+error macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
+  if (socknum > 3) return 0xf0/*E_UNIT*/;
+  word base = ((word)socknum + 4) << 8;
+  word buf = RX_BUF(socknum);
+
+  byte status = peek(base+SockStatus);
+  if (status != 0x42/*SOCK_MACRAW*/) return 0xf6 /*E_NOTRDY*/;
+
+  poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
+  poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
+  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  Say("status->%x ", peek(base+SockStatus));
+
+  Say(" ====== WAIT ====== ");
+  while(1) {
+    bool v = wiz_verbose;
+    wiz_verbose = 0;
+    byte irq = peek(base+SockInterrupt);
+    wiz_verbose = v;
+    if (irq) {
+      poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
+      if (irq != 0x04 /*=RECEIVED*/) {
+        return 0xf4/*=E_READ*/;
+      }
+      break;
+    }
+  }
+
+  word recv_size = peek_word(base+0x0026/*_RX_RSR*/);
+  word rx_rd = peek_word(base+0x0028/*_RX_RD*/);
+  word rx_wr = peek_word(base+0x002A/*_RX_WR*/);
+
+  word ptr = rx_rd;
+  ptr &= RX_MASK;
+
+  word buffer_size = *size_in_out;
+  word i;
+  for (i = 0; i < recv_size && i < buffer_size; i++) {
+      buffer[i] = peek(buf+ptr);
+      ptr++;
+      ptr &= RX_MASK;
+  }
+  poke_word(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
+  *size_in_out = i; 
+  return OKAY;
+}
+
 
 error udp_open(word src_port, byte* socknum_out) {
   DisableIrqs();
@@ -316,8 +388,8 @@ error udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
     bool v = wiz_verbose;
     wiz_verbose = 0;
     byte irq = peek(base+SockInterrupt);
+    wiz_verbose = v;
     if (irq) {
-      wiz_verbose = v;
       poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
         return 0xf4/*=E_READ*/;

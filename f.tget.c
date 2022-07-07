@@ -1,4 +1,4 @@
-// f.arp ipaddr
+// f.tget server_addr:69 remote-file local-file
 
 #include <cmoc.h>
 #include <assert.h>
@@ -112,7 +112,7 @@ END_LOOP:
 }
 
 static void UsageAndExit() {
-    printf("Usage:  f.arp -wWiznetPortHex ipaddr\n");
+    printf("Usage:  f.tget -wWiznetPortHex server:69 remote-file local-file\n");
     exit(1);
 }
 

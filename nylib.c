@@ -3,6 +3,13 @@
 #include <cmoc.h>
 #include "frobio/nylib.h"
 
+void NyZero(void* p, word len) {
+    byte* bp = (byte*)p;
+    for (word i = 0; i < len; i++) {
+        bp[0] = 0;
+    }
+}
+
 bool NyWhite(char c) {
   return (byte)c <= ' ';
 }

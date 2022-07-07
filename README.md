@@ -26,12 +26,23 @@ $ f.arp 10.2.2.2
 F0:DE:F1:81:EC:94
     -- use Address Resolution Protocol to get the MAC address for host 10.2.2.2
 
+$ f.dump
+    -- like TCPDUMP.  Does not show broadcast, multicast, or ipv6.
+
 $ f.tget 10.2.2.2:69 remote-filename local-filename
     -- Fetch 'remote-filename' from TFTP server 10.2.2.2:69 and save it locally
     -- with local-filename.
     -- BUG: You may have to re-initialize the Wiznet chip (with f.config)
     -- before you can run f.tget again.  Something to do with the Ring Buffer
     -- is left in a bad state by f.tget.
+
+$ date | f.send 10.2.2.2:7777
+
+$ f.recv -p6666 | cat -nev
+    -- does not work yet?
+
+$ f.ntp 10.2.2.2
+    -- does not work yet.
 ```
 
 All of the above programs will take a "-wXXXX" flag to change the Wiznet Port Address

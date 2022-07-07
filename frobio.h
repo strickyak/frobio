@@ -23,6 +23,10 @@ error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
 error udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out);
 error udp_close(byte socknum);
 
+error macraw_open(byte* socknum_out);
+error macraw_recv(byte socknum, byte* buffer, word* size_in_out);
+error macraw_close(byte socknum);
+
 // Extra utilities.
 void wiz_delay(word n);
 void sock_show(byte socknum);
