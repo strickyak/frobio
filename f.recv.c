@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
       show_from = true;
       break;
     case 'p':
-      localport = NyParseHexWord(&p);
+      localport = NyParseDecimalWord(&p);
       break;
     case 'v':
       wiz_verbose = true;
