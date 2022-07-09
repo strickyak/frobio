@@ -37,12 +37,15 @@ $ f.tget 10.2.2.2:69 remote-filename local-filename
     -- is left in a bad state by f.tget.
 
 $ date | f.send 10.2.2.2:7777
+    -- Known to work if input is ASCII.
 
-$ f.recv -p6666 | cat -nev
-    -- does not work yet?
+$ f.recv -p6666 | ...
+    -- Receives UDP packets on given port.
+    -- Known to work if packet is ASCII and the string is NL or CR terminated.
 
-$ f.ntp 10.2.2.2
-    -- does not work yet.
+$ f.ntp [-s] 10.2.2.2
+    -- Displays the time (UTC) from given NTP daemon.
+    -- If "-s", then also sets the system time (UTC).
 ```
 
 All of the above programs will take a "-wXXXX" flag to change the Wiznet Port Address
