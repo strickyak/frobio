@@ -226,6 +226,8 @@ byte find_available_socket(word* base_out) {
 
 error macraw_open(byte* socknum_out) {
   word base = 0;
+  error err = OKAY;
+  DisableIrqs();
   byte socknum = find_available_socket(&base);
   if (socknum > 3) return 0xf0/*E_UNIT*/;
   *socknum_out = socknum;
@@ -233,7 +235,20 @@ error macraw_open(byte* socknum_out) {
   poke(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
   poke(base+0x002F/*Sx_MR2*/, 0x70/*Broadcast Block, Multicast block, IPv6 block*/);
   poke(base+SockCommand/*Sx_CR command reg*/, 1/*=OPEN*/);
-  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+
+  err = wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  if (err) goto Enable;
+
+  err = wait(base+SockStatus, 0x42/*SOCK_MACRAW*/, 500);
+  if (err) goto Enable;
+
+  word tx_r = peek_word(base+TxReadPtr);
+  poke_word(base+TxWritePtr, tx_r);
+  word rx_w = peek_word(base+0x002A/*_RX_WR*/);
+  poke_word(base+0x0028/*_RX_RD*/, rx_w);
+Enable:
+  EnableIrqs();
+  return err;
 }
 
 error macraw_close(byte socknum) {
@@ -310,11 +325,6 @@ error udp_open(word src_port, byte* socknum_out) {
   poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
   poke(base+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
   poke_word(base+0x002d/*_FRAGR*/, 0); // don't fragment.
-
-  // TODO: this is not enough to fix the socket for more use.
-#if 0
-  poke_word(base+0x0028/*_RX_RD*/, peek_word(base+0x002a)); // Start RX read pointer at RX write pointer (?)
-#endif
 
   poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
