@@ -51,4 +51,9 @@ asm byte Os9Chain(const char* program, const char* params, int paramlen, int lan
 
 asm byte Os9Send(int process_id, int signal_code);
 
+error Os9AllRam(byte num_blocks, word* start_block_out);
+error Os9DelRam(byte num_blocks, word start_block);
+error Os9MapBlk(word starting_block, byte num_blocks, word* first_address_out);
+error Os9ClrBlk(byte num_blocks, word first_address);
+
 #endif // _OS9CALL_H_
