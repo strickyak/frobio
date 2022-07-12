@@ -53,10 +53,17 @@ bool NyStrEqIgnoreCase(const char* a, const char* b) {
 }
 
 // TODO: use fprintf(stderr, ...) for Fatal.
+// TODO: use varargs and "v" forms correctly.
 typedef void (*avoid_warning_for_printf_with_int)(const char* fmt, int d);
 void NyFatalD(const char* fmt, int d) {
   printf("\n*** FATAL: ");
   ((avoid_warning_for_printf_with_int)printf)(fmt, d);
+  exit(255);
+}
+typedef void (*avoid_warning_for_printf_with_str)(const char* fmt, const char* s);
+void NyFatalS(const char* fmt, const char* s) {
+  printf("\n*** FATAL: ");
+  ((avoid_warning_for_printf_with_str)printf)(fmt, s);
   exit(255);
 }
 

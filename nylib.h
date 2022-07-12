@@ -25,6 +25,7 @@ bool NyStrEqIgnoreCase(const char* a, const char* b);
 // Print a fatal message with one `%d` in it, and exit 255.
 // TODO: print on stderr instead of stdout.
 void NyFatalD(const char* fmt, int d);
+void NyFatalS(const char* fmt, const char* s);
 
 // TODO: broken?
 void NyFormatDottedDecimalQuad(char* buffer, quad addr);
