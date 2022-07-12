@@ -57,10 +57,10 @@ void MainLoop(byte socknum) {
   while (true) {
       word size = sizeof packet;
       error err = macraw_recv(socknum, packet, &size);
-      if (err) NyFatalD("cannot udp_recv data: %d\n", err);
+      if (err) NyFatalD("cannot macraw_recv data: %d\n", err);
 
       MacRawDump(packet, size);
-  }  // while(true)
+  }
 }
 
 static void UsageAndExit() {
