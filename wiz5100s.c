@@ -55,6 +55,25 @@ static void poke_n(word reg, void* data, word size) {
   Say("] ");
 }
 
+// Is current time before the limit?  Using Wiz Ticks.
+static byte before(word limit) {
+    word t = peek_word(0x0082/*TCNTR Tick Counter*/);
+    // After t crosses limit, (limit-t) "goes negative" so high bit is set.
+    return 0 == ((limit-t) & 0x8000);
+}
+static byte wait(word reg, byte value, word millisecs_max) {
+    word start = peek_word(0x0082/*TCNTR Tick Counter*/);
+    word limit = 10*millisecs_max + start;
+    while (before(limit)) {
+        if (peek(reg) == value) {
+            //// printf(" wait(%d,%d)OK ", reg, value);
+            return OKAY;
+        }
+    }
+    //// printf(" wait(%d,%d)TIMEOUT=%d ", reg, value, millisecs_max);
+    return 5; // TIMEOUT
+}
+
 void wiz_reset() {
   DisableIrqs();
   P0 = 128; // Reset
@@ -84,6 +103,7 @@ void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   for (byte socknum=0; socknum<4; socknum++) {
       word base = ((word)socknum + 4) << 8;
       poke(base+SockCommand, 0x10/*CLOSE*/);
+      wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
       poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
       poke(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
       poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
@@ -96,8 +116,9 @@ error udp_close(byte socknum) {
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
   word base = ((word)socknum + 4) << 8;
+  poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
   poke(base+SockCommand, 0x10/*CLOSE*/);
-  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
   poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
@@ -211,8 +232,8 @@ error macraw_open(byte* socknum_out) {
     
   poke(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
   poke(base+0x002F/*Sx_MR2*/, 0x70/*Broadcast Block, Multicast block, IPv6 block*/);
-  poke(base+0x0001/*Sx_CR command reg*/, 1/*=OPEN*/);
-  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  poke(base+SockCommand/*Sx_CR command reg*/, 1/*=OPEN*/);
+  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
 }
 
 error macraw_close(byte socknum) {
@@ -221,7 +242,7 @@ error macraw_close(byte socknum) {
 
   word base = ((word)socknum + 4) << 8;
   poke(base+SockCommand, 0x10/*CLOSE*/);
-  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
   poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
@@ -236,7 +257,7 @@ error macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
   poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500); // while (peek(base+0x0001)) continue;  // wait for command bit to clear.
   Say("status->%x ", peek(base+SockStatus));
 
   Say(" ====== WAIT ====== ");
@@ -291,16 +312,22 @@ error udp_open(word src_port, byte* socknum_out) {
   poke_word(base+0x002d/*_FRAGR*/, 0); // don't fragment.
 
   // TODO: this is not enough to fix the socket for more use.
+#if 0
   poke_word(base+0x0028/*_RX_RD*/, peek_word(base+0x002a)); // Start RX read pointer at RX write pointer (?)
+#endif
 
   poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
-  for(word i = 0; i < 60000; i++) {
-    byte status = peek(base+SockStatus);
-    if (status == 0x22/*SOCK_UDP*/) goto Enable;
-  }
-  err = 0xfa/*E_DEVBSY*/;
+  err = wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  if (err) goto Enable;
 
+  err = wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
+  if (err) goto Enable;
+
+  word tx_r = peek_word(base+TxReadPtr);
+  poke_word(base+TxWritePtr, tx_r);
+  word rx_w = peek_word(base+0x002A/*_RX_WR*/);
+  poke_word(base+0x0028/*_RX_RD*/, rx_w);
 Enable:
   EnableIrqs();
   return err;
@@ -356,6 +383,7 @@ error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
   poke(base+SockCommand, 0x20/*=SEND*/);  // SEND IT!
+  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
   Say("status->%x ", peek(base+SockStatus));
 
   while(1) {
@@ -381,6 +409,7 @@ error udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
   poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
+  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
   Say("status->%x ", peek(base+SockStatus));
 
   Say(" ====== WAIT ====== ");
