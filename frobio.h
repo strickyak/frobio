@@ -29,6 +29,7 @@ error macraw_close(byte socknum);
 
 // Extra utilities.
 void wiz_delay(word n);
+word wiz_ticks();  // 0.1ms but may have readbyte,readbyte error?
 void sock_show(byte socknum);
 
 #endif // _FROBIO_FROBIO_H_
