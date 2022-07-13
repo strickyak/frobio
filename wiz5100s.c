@@ -55,6 +55,15 @@ static void poke_n(word reg, void* data, word size) {
   Say("] ");
 }
 
+// wiz_ticks: 0.1ms but may have readbyte,readbyte error?
+word wiz_ticks() {
+    // TODO: save CC in a temp, and repair it.
+    DisableIrqs();
+    word t = peek_word(0x0082/*TCNTR Tick Counter*/);
+    EnableIrqs();
+    return t;
+}
+
 // Is current time before the limit?  Using Wiz Ticks.
 static byte before(word limit) {
     word t = peek_word(0x0082/*TCNTR Tick Counter*/);
@@ -121,14 +130,6 @@ error udp_close(byte socknum) {
   wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
   poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
-}
-
-word wiz_ticks() {
-  word t;
-  DisableIrqs();
-  t = peek_word(0x0082/*TCNTR Tick Counter*/);
-  EnableIrqs();
-  return t; 
 }
 
 error wiz_arp(quad dest_ip, byte* mac_out) {
