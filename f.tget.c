@@ -1,7 +1,5 @@
 // f.tget server_addr:69 remote-file local-file
 
-#include <cmoc.h>
-#include <assert.h>
 #include "frobio/frobio.h"
 #include "frobio/nylib.h"
 #include "frobio/os9call.h"

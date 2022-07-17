@@ -1,7 +1,5 @@
 // f.ticks [-x]
 
-#include <cmoc.h>
-#include <assert.h>
 #include "frobio/frobio.h"
 #include "frobio/nylib.h"
 #include "frobio/os9call.h"

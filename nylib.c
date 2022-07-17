@@ -1,6 +1,5 @@
 // ny: NitroYak: Yak Libs for NitrOS9
 
-#include <cmoc.h>
 #include "frobio/nylib.h"
 
 void NyZero(void* p, word len) {

@@ -1,4 +1,4 @@
-all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump
+all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.resolv
 
 f.config: FORCE
 	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c
@@ -27,13 +27,19 @@ f.recv: FORCE
 f.dump: FORCE
 	cmoc -i --os9 -I.. f.dump.c wiz5100s.c nylib.c os9call.c
 
+f.resolv: FORCE
+	cmoc -i --os9 -I.. f.resolv.c wiz5100s.c nylib.c os9call.c
+
+shmem: FORCE
+	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
+
 test.nylib: FORCE
 	cmoc -i --os9 -I.. test.nylib.c nylib.c
 launch.test.nylib: test.nylib
 	sh  ../doing_os9/gomar/launch.sh  ./test.nylib /dev/null
 
 
-my: all
+my: all ci
 	os9 copy -r ./f.config /media/strick/APRIL3/MY.DSK,CMDS/f.config
 	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.config
 	os9 copy -r ./f.ticks /media/strick/APRIL3/MY.DSK,CMDS/f.ticks
@@ -52,8 +58,14 @@ my: all
 	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.recv
 	os9 copy -r ./f.dump /media/strick/APRIL3/MY.DSK,CMDS/f.dump
 	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.dump
+	os9 copy -r ./f.resolv /media/strick/APRIL3/MY.DSK,CMDS/f.resolv
+	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.resolv
+	-os9 copy -r ./shmem /media/strick/APRIL3/MY.DSK,CMDS/shmem
+	-os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/shmem
 	sync
 	(echo "echo f.config 10.1.2.3 255.0.0.0 6.6.6.6" ; echo "f.config 10.1.2.3 255.0.0.0 6.6.6.6"; echo "echo f.arp 10.2.2.2"; echo "f.arp 10.2.2.2";  echo "echo f.ping 10.2.2.2"; echo "f.ping 10.2.2.2"; echo "echo f.ntp -s 10.2.2.2"; echo "f.ntp -s 10.2.2.2") > _zz_
+	(echo "echo f.config 10.1.2.3 255.0.0.0 6.6.6.6" ; echo "f.config 10.1.2.3 255.0.0.0 6.6.6.6"; echo "echo f.arp 10.2.2.2"; echo "f.arp 10.2.2.2";  echo "echo f.ping 10.2.2.2"; echo "f.ping 10.2.2.2"; echo "echo f.resolv 10.2.2.2 www.yak.net"; echo "f.resolv 10.2.2.2 www.yak.net") > _zz_
+	(echo "echo f.config 10.1.2.3 255.0.0.0 6.6.6.6" ; echo "f.config 10.1.2.3 255.0.0.0 6.6.6.6"; echo "echo f.arp 10.2.2.2"; echo "f.arp 10.2.2.2";  echo "echo f.ping 10.2.2.2"; echo "f.ping 10.2.2.2") > _zz_
 	os9 copy -l -r _zz_ /media/strick/APRIL3/MY.DSK,CMDS/zz
 	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/zz
 	sync
@@ -61,8 +73,8 @@ my: all
 FORCE:
 
 clean:
-	rm -f f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump
-	rm -f test.nylib *.o *.s *.list *.lst *.map *.link
+	rm -f f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.resolv shmem
+	rm -f _zz* test.nylib *.o *.s *.list *.lst *.map *.link
 
 ci:
 	mkdir -p RCS

@@ -5,7 +5,6 @@
 #define SERVER_ADDR      NyFormQuadFromBytes(10, 2, 2, 2)
 #define SERVER_PORT      69
 
-#include <cmoc.h>
 #include "frobio/frobio.h"
 #include "frobio/os9call.h"
 #include "frobio/os9defs.h"

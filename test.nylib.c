@@ -1,6 +1,3 @@
-#include <cmoc.h>
-#include <assert.h>
-
 #include "frobio/nylib.h"
 
 main() {

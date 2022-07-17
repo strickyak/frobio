@@ -1,4 +1,3 @@
-#include <cmoc.h>
 #include "frobio/wiz5100s.h"
 #include "frobio/os9call.h"
 
