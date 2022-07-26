@@ -1,6 +1,6 @@
 // f.dig server-addr:123 query
 
-// HOW TO SERVE DNS RESPONSES on an interface (e.g. on Ubuntu 20.04)
+// HINT: HOW TO SERVE DNS RESPONSES on an interface (e.g. on Ubuntu 20.04)
 // when systemd-resolved is bound to localhost:
 //
 // $ sudo socat UDP-LISTEN:53,fork,reuseaddr,bind=10.2.2.2 UDP:127.0.0.53:53
@@ -52,35 +52,29 @@ byte* encode_name(byte* buf, char* s) {
     byte* sizep = buf;
     byte* p = (byte*) buf+1;
     while(true) {
-// printf("%d{%c} %d/%d ", *s, (32<=*s && *s<=126) ? *s : '~', sizep, p);
         switch (*s) {
             case '.':
-            case '\0':
+            case '\0': {
+                if (p[0]=='.' && p[1]=='\0') s++;  // Allow trailing dot, but skip it.
+
                 word len = p - sizep - 1;
-                // printf(" (sizep=%d p=%d len=%d) ", sizep, p, len);
-                assert(len>0);
                 assert(len<64);
                 *sizep = (byte)len;
                 sizep = p++;
                 if (*s) s++;  // consume dot but not EOS.
-                // printf(" ... (sizep=%d p=%d s=%d) ", sizep, p, s);
                 if (!*s) goto END_WHILE;
-// TODO: handle trailing dot?
-            break;
+            } break;
             default:
                 *p++ = (byte)(*s++);
-                // printf("newp=%d news='%s' ", p, s);
         }
     }
 END_WHILE:
-    // printf(" END (sizep=%d p=%d) ", sizep, p);
     *sizep = '\0';  // Size 0 means End Of Name.
     return sizep+1;  // Where next field will follow.
 }
 
-void SendRequest(byte socknum, quad host, word port, char* query) {
+void SendRequest(byte socknum, quad host, word port, char* query, word type) {
   word n = strlen(query);
-  // printf("query <%s> len <%d>\n", query, n);
   assert(n>0);
   assert(n<256);
 
@@ -90,21 +84,12 @@ void SendRequest(byte socknum, quad host, word port, char* query) {
   h->qr_opcode = QR_OPCODE_QUERY;
   h->qd_count = 1;
   byte* p = (byte*)(h+1);
-  // printf("packet <%d> p <%d>; ", packet, p);
   p = encode_name(p, query);
   word* wp = (word*)p;
-  // printf("p <%d> wp <%d>; ", p, wp);
-  wp[0] = 1 /* = A records */;
+  wp[0] = type;
   wp[1] = 1 /* = IN, the internet */;
   p = (byte*)(wp+2);  // End of used part.
   word packet_size = p - packet;
-  // printf("p <%d> packet_size <%d>; ", p, packet_size);
-
-/*
-  for (word i=0; i<packet_size; i++) {
-    printf("%2x ", packet[i]);
-  }
-*/
 
   error err = udp_send(socknum, packet, packet_size, host, port);
   if (err) NyFatalD("cannot udp_send request: %d\n", err);
@@ -120,7 +105,8 @@ byte* print_name(byte* base, byte* p) {
             return override_result ? override_result : p;  // Name is done.
         } else if (first < 64) {
             for (byte i = 0; i < first; i++) {
-                putchar(*p++);
+                byte c = *p++;
+                if (c=='-' || '/'<=c && c<='z') putchar(c); else printf("\\x%02x", c);
             }
             putchar('.');
         } else if (first >= 192) {
@@ -135,54 +121,109 @@ byte* print_name(byte* base, byte* p) {
     NyFatalD("decode_name: caught in a loop? %d", (word)base);
 }
 
-static char cls_buf[20];
-const char* dns_cls_name(int cls) {
+void print_dns_cls_name(int cls) {
     switch (cls) {
     case 1:
-        return "IN";
+        printf(" IN ");
+        break;
     default:
-        sprintf(cls_buf, "%d", cls);
-        return cls_buf;
+        printf(" %d ", cls);
     }
 }
 
-static char type_buf[20];
-const char* dns_type_name(int cls) {
+void print_dns_type_name(int cls) {
     switch (cls) {
     case 1:
-        return "A";
+        printf(" A ");
+        break;
     case 2:
-        return "NS";
+        printf(" NS ");
+        break;
     case 5:
-        return "CNAME";
+        printf(" CNAME ");
+        break;
     case 6:
-        return "SOA";
+        printf(" SOA ");
+        break;
+    case 12:
+        printf(" PTR ");
+        break;
+    case 15:
+        printf(" MX ");
+        break;
+    case 16:
+        printf(" TXT ");
+        break;
+    case 28:
+        printf(" AAAA ");
+        break;
     default:
-        sprintf(type_buf, "%d", cls);
-        return type_buf;
+        printf(" %d ", cls);
     }
 }
 
-byte* print_record(const char* section, byte* base, byte* p) {
-    printf("%4s:  ", section);
+byte* print_record(byte* base, byte* p, bool is_question) {
+    if (64 <= *p && *p < 192) {
+        printf("... dns extensions?\n");
+        exit(0);
+    }
     p = print_name(base, p);
     word type = *(word*)(p);
     word cls = *(word*)(p+2);
-    if (section[0]=='q') {
+    if (is_question) {
       // question record is stunted.
-      printf("  %s %s\n",  dns_cls_name(cls), dns_type_name(type));
+      print_dns_cls_name(cls);
+      print_dns_type_name(type);
+      printf("\n");
       return p+4;
     } else {
       // non-question records have ttl and payload.
       quad ttl = *(quad*)(p+4);
       word len = *(word*)(p+8);
       p += 10;
-      printf("    %ld   %s %s   ", ttl, dns_cls_name(cls), dns_type_name(type));
+      printf(" %8ld ", ttl);
+      print_dns_cls_name(cls);
+      print_dns_type_name(type);
 
-      if (cls==1 && type==1) {
+      if (false) {
+          printf("{ len=%d ", len);
+          for (word i = 0; i < len && i < 40; i++) {
+            printf("%02x ", p[i]);
+            if ((i&3)==3) printf(" ");
+          }
+          printf("}\n");
+      }
+
+      if (cls==1 && type==1) { // A
         for (word i = 0; i < len; i++) { if (i) putchar('.'); printf("%d", p[i]); }
+      } else if (cls==1 && type==28) { // AAAA
+        for (word i = 0; i < len; i++) { if (i) putchar(':'); printf("%02x", p[i]); }
+      } else if (cls==1 && type==2) { // NS
+        print_name(base, p);
+      } else if (cls==1 && type==5) { // CNAME
+        print_name(base, p);
+      } else if (cls==1 && type==12) { // PTR
+        print_name(base, p);
+      } else if (cls==1 && type==15) { // MX
+        printf(" %u ", *(word*)p);
+        print_name(base, p+2);
+      } else if (cls==1 && type==6) { // SOA
+        byte* s = print_name(base, p);
+        printf("  ");
+        s = print_name(base, s);
+        quad* q = (quad*) s;
+        printf("  %ld  %ld  %ld  %ld", q[0], q[1], q[2], q[3]);
+      } else if (cls==1 && (type==16 || type == 10)) { // TXT or NULL
+        putchar('"');
+        for (word i = 1; i < len && i < p[0] && i < 100; i++) {
+          byte c = p[i];
+          if (32<=c && c<127 && c!='"') putchar(c); else printf("\\x%02x", c);
+        }
+        putchar('"');
       } else {
-        for (word i = 0; i < len; i++) { if (i) printf("%02x ", p[i]); }
+        printf(" (len=%d) ", len);
+        for (word i = 0; i < len && i<40; i++) { printf("%02x ", p[i]); }
+        for (word i = 0; i < len && i<40; i++) { byte c = p[i]; printf("%c", (32<=c && c<127) ? c : '~'); }
       }
       printf("\n");
 
@@ -190,8 +231,8 @@ byte* print_record(const char* section, byte* base, byte* p) {
     }
 }
 
-void Resolv(byte socknum, quad server_host, word server_port, char* query) {
-  SendRequest(socknum, server_host, server_port, query);
+void Resolv(byte socknum, quad server_host, word server_port, char* query, word type) {
+  SendRequest(socknum, server_host, server_port, query, type);
 
   word size = sizeof packet;
   quad from_addr = 0;
@@ -201,23 +242,22 @@ void Resolv(byte socknum, quad server_host, word server_port, char* query) {
 
   struct header *h = (struct header*)packet;
   printf(";; id %x qr_opcode %x rcode %x\n", h->id, h->qr_opcode, h->rcode);
-  printf(";; %x questions, %x answers, %x authorities, %x additionals\n",
+  if (!h->qd_count) printf(";; %x questions, %x answers, %x authorities, %x additionals\n",
                 h->qd_count, h->an_count, h->ns_count,  h->ar_count);
-/*
-  for (int i = sizeof *h; i < size; i++) {
-    byte c = packet[i];
-    printf("%02x/%c ", c, (32<=c&&c<=127) ? c : '~');
-  }
-  printf("\n");
-*/
-  // dump_with_decimal_offset(packet, size);
 
   byte* p = (byte*)(h+1);
-  int i;
-  for (i=0; i<h->qd_count; i++) { p = print_record("que", packet, p); }
-  for (i=0; i<h->an_count; i++) { p = print_record("ans", packet, p); }
-  for (i=0; i<h->ns_count; i++) { p = print_record("ns", packet, p); }
-  for (i=0; i<h->ar_count; i++) { p = print_record("add", packet, p); }
+
+  if (h->qd_count>0) printf(";; QUESTION:\n");
+  for (word i=0; i<h->qd_count; i++) { p = print_record(packet, p, /*is_question=*/true); }
+
+  if (h->an_count>0) printf(";; ANSWER:\n");
+  for (word i=0; i<h->an_count; i++) { p = print_record(packet, p, /*is_question=*/false); }
+
+  if (h->ns_count>0) printf(";; AUTHORITY:\n");
+  for (word i=0; i<h->ns_count; i++) { p = print_record(packet, p, /*is_question=*/false); }
+
+  if (h->ar_count>0) printf(";; ADDITIONAL:\n");
+  for (word i=0; i<h->ar_count; i++) { p = print_record(packet, p, /*is_question=*/false); }
 
   err = udp_close(socknum);
   if (err) {
@@ -226,7 +266,8 @@ void Resolv(byte socknum, quad server_host, word server_port, char* query) {
 }
 
 static void UsageAndExit() {
-    printf("Usage:  f.dig -wWiznetPortHex server_addr:53 www.example.com\n");
+    printf("Usage:  f.dig -wWiznetPortHex -a -tN server_addr:53 www.example.com\n");
+    printf("  (-a for all types)  (-tN for only type N, decimal integer)\n");
     exit(1);
 }
 
@@ -234,9 +275,16 @@ int main(int argc, char* argv[]) {
   const char* p;   // for parsing.
   argc--, argv++;  // Discard argv[0], unused on OS-9.
 
+  word type = 1 /*=A*/;
   while (argc && argv[0][0]=='-') {
     p = argv[0]+2;  // In case needed for parsing.
     switch (argv[0][1]) {
+    case 'a':
+      type = 0x00ff; /* = all types */
+      break;
+    case 't':
+      type = atoi(argv[0]+2);
+      break;
     case 'v':
       wiz_verbose = true;
       break;
@@ -252,12 +300,12 @@ int main(int argc, char* argv[]) {
   if (argc != 2) {
     UsageAndExit();
   }
-  // printf("argv: <%s> <%s>\n", argv[0], argv[1]);
   p = argv[0];
   word server_port = DEFAULT_SERVER_PORT;
   quad server_addy = NyParseDottedDecimalQuadAndPort(&p, &server_port); 
   byte socknum = OpenLocalSocket();
-  Resolv(socknum, server_addy, server_port, /*query=*/argv[1]);
+  Resolv(socknum, server_addy, server_port, /*query=*/argv[1], type);
+  // BUG: Resolv(socknum, server_addy, server_port, /*query=*/argv[1], type_any? 255/*=star*/ : 1 /*=type A*/);
 
   return OKAY;
 }
