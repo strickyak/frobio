@@ -37,6 +37,8 @@ asm error Os9MakDir(char* path, int mode);
 
 asm error Os9GetStt(int path, int func, int* dOut, int* xOut, int* uOut);
 
+asm byte Os9SetStt(int path, int func, int* dOut, int* x_inout, int* u_inout);
+
 asm error Os9Read(int path, char* buf, int buflen, int* bytes_read);
 
 asm error Os9ReadLn(int path, char* buf, int buflen, int* bytes_read);
