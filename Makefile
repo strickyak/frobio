@@ -33,6 +33,9 @@ f.dig: FORCE
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
 
+queue-test: FORCE
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o queue-test  queue_test.c queue.c
+
 test.nylib: FORCE
 	cmoc -i --os9 -I.. test.nylib.c nylib.c
 launch.test.nylib: test.nylib
@@ -74,10 +77,11 @@ my: all ci
 FORCE:
 
 clean:
-	rm -f f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig shmem
-	rm -f _zz* test.nylib *.o *.s *.list *.lst *.map *.link
+	rm -f f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig
+	rm -f shmem queue-test
+	rm -f _zz* test.nylib *.o *.s *.s-orig *.list *.lst *.map *.link
 
 ci:
 	mkdir -p RCS
-	ci -l -m/dev/null -t/dev/null -q *.[ch] Makefile */*.[ch]
+	ci -l -m/dev/null -t/dev/null -q *.[ch] Makefile */*.[ch] */Makefile
 	sync
