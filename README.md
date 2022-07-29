@@ -46,6 +46,13 @@ $ f.recv -p6666 | ...
 $ f.ntp [-s] 10.2.2.2
     -- Displays the time (UTC) from given NTP daemon.
     -- If "-s", then also sets the system time (UTC).
+
+$ f.dig [-a] [-tN] 10.2.2.2 www.mit.edu
+    -- Domain Internet Groper, like "dig" in Linux.
+    -- "-a" means query all records (or as many as server want to give).
+    -- "-tN" (for integer N) queries type N (see RFCs).
+    -- first arg "10.2.2.2" is recursive nameserver to use.
+    -- second arg "www.mit.edu" is the domain to grope.
 ```
 
 All of the above programs will take a "-wXXXX" flag to change the Wiznet Port Address
