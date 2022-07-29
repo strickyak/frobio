@@ -17,6 +17,41 @@ asm void EnableIrqs() {
   }
 }
 
+byte disable_irq_count;
+
+// Untested.
+asm void DisableIrqsCounting() {
+  // Disable interrupts and increment the counter.
+  // if counter overflows ($7f to $80), then exit(13).
+  asm {
+    orcc #$50   ; disable interrupts
+    inc disable_irq_count
+    bvc DisableIrqsEND
+
+IrqCounterOverflow ; if overflow, re-enable and exit(13).
+    andcc  #^$50   ; enable interrupts
+    ldd #13
+    lbsr Os9Exit
+
+DisableIrqsEND
+  }
+}
+
+// Untested.
+asm void EnableIrqsCounting() {
+  // Decrement counter, and enable if it reaches zero.
+  // if counter overflows ($80 to $7f), then exit(13).
+  asm {
+    dec disable_irq_count
+    bne EnableIrqsEND
+    bvs IrqCounterOverflow
+
+EnableIrqsENABLE
+    andcc  #^$50   ; enable interrupts
+EnableIrqsEND
+  }
+}
+
 asm void Os9Exit(byte status) {
     asm {
     	ldd 2,s      ; status code in b.
@@ -361,6 +396,23 @@ error Os9ClrBlk(byte num_blocks, word first_address) {
 ClrBlkOK
     }
     return err;
+}
+
+asm error Os9_puts(const char* str) {
+	asm {
+		pshs y,u
+		ldx 6,s      ; arg1: string to write, for strlen.
+		pshs x       ; push arg1 for strlen
+		lbsr _strlen  ; see how much to puts.
+		leas 2,s      ; drop 1 arg after strlen
+		tfr d,y       ; size (strlen) in y
+		ldx 6,s      ; arg1: string to write.
+		clra         ; a = path ...
+		inca         ; a = path 1
+		os9 I_WRITE
+		puls y,u,pc
+	}
+	// Returns D from "os9 I_WRITE"
 }
 
 // *INDENT-ON*

@@ -93,7 +93,7 @@ void SendRequest(byte socknum, quad host, word port, char* query, word type) {
 
   error err = udp_send(socknum, packet, packet_size, host, port);
   if (err) NyFatalD("cannot udp_send request: %d\n", err);
-  NyZero(packet, packet_size);  // paranoidly prepare to receive.
+  memset(packet, 0, packet_size);  // paranoidly prepare to receive.
 }
 
 byte* print_name(byte* base, byte* p) {

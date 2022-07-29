@@ -79,5 +79,5 @@ clean:
 
 ci:
 	mkdir -p RCS
-	ci -l -m/dev/null -t/dev/null -q *.[ch] Makefile unix/*.[ch]
+	ci -l -m/dev/null -t/dev/null -q *.[ch] Makefile */*.[ch]
 	sync

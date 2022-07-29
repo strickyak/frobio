@@ -5,9 +5,6 @@
 
 #include "frobio/nytypes.h"
 
-// Set len bytes to 0, starting at p.
-void NyZero(void* p, word len);
-
 // NyWhite returns true if input is white:
 // Spaces and all control chars <32 are white.
 bool NyWhite(char c);

@@ -60,11 +60,11 @@ typedef unsigned char error; // use a byte for an error (0 == OKAY).
 #error "what platform? unix? os9cmoc?"
 #endif
 
-#endif // _FROBIO_NYTYPES_H_
-
 /*
  *  Notes
  *  See "Programming for CMOC" http://perso.b2b2c.ca/~sarrazip/dev/cmoc-manual.html#t30
  *      _CMOC_VERSION_
  *      OS9
  */
+
+#endif // _FROBIO_NYTYPES_H_

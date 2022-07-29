@@ -44,7 +44,7 @@ byte OpenLocalSocket() {
 
 void SendRequest(byte socknum, quad host, word port) {
   struct ntp_packet x;
-  NyZero(&x, sizeof x);
+  memset(&x, 0, sizeof x);
   x.li_vn_mode = CLIENT_LI_VN_MODE;
 
   error err = udp_send(socknum, (byte*)&x, sizeof x, host, port);
