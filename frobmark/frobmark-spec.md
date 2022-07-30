@@ -1,0 +1,51 @@
+# FrobMark
+
+What's the simplest Markup language that can possibly work?
+
+0. A comment line starts with `#` like a comment in Python.
+It is not normally displayed in the page.
+
+1. We want text to flow on whatever size screen we have,
+so we need a paragraph-separator mark.  We'll use an empty line,
+just like Markdown does.  Multiple empty lines are the same
+as one empty line.
+
+2. We want to be able to show quoted exact multiline code,
+so we use delimiting lines with just three backquotes,
+like Markdown does.
+No markups will be recognized in the contained code.
+
+3. An indented item in a bulleted list will start with `*`
+almost like markdown does.
+
+The rest are different from Markdown.
+They all start with a slash at the beginning of the line,
+followed by one letter
+(upper or lower case doesn't matter),
+and they are defined on exactly one line.
+
+4. For links, start with `/L` at the beginning of the line,
+followed by the URL, then optionally a space and the link text.
+If you don't provide link text, the URL will be its own text.
+
+5. For hilite or emphasis or quoting a word or symbol or phrase,
+start with `/Q` at the beginning of the line,
+followed by a space and what you want
+to hilite or emphasize or quote.
+
+6. For a Topic Heading, start with `/H` followed by
+a space and the heading.
+This is like # and ## and ### in Markdown, or H1, H2, H3, etc.
+tags in HTML.
+
+To be clear, if a line starts with a space,
+any special mark following it
+will lose its special meaning,
+since it is not at the beginning of the line.
+Also no new markup may follow an initial markup.
+This makes viewers simpler if they do not
+have to handle markup combinations.
+
+That's it!
+
+The filename extension for FrobMark is `.fm`.
