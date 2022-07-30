@@ -118,14 +118,17 @@ void BufAppElemS(struct Buf *p, const char *s) {
   }
 }
 
+
 void BufAppDope(struct Buf *p, const char *s) {
-  int n = p->n / sizeof(const char *);
-  BufAppS(p, "  ", 2);
+  // (word) cast: Div optimizes to shift, if unsigned.
+  int n = (word)p->n / sizeof(const char *);
+  BufAppS(p, "        ", sizeof(const char *));
   ((const char **) p->s)[n] = s;
 }
 
 const char **BufTakeDope(struct Buf *p, int *lenP) {
-  *lenP = p->n / sizeof(const char *);
+  // (word) cast: Div optimizes to shift, if unsigned.
+  *lenP = (word)p->n / sizeof(const char *);
   return (const char **) BufTake(p);
 }
 
@@ -163,7 +166,7 @@ int ElemLen(const char *s, const char **endP) {
   return n;
 }
 
-// Return decoded element. 
+// Return decoded element.
 const char *ElemDecode(const char *s) {
   struct Buf buf;
   BufInit(&buf);

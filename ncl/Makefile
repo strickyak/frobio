@@ -10,4 +10,4 @@ it:
 
 
 clean:
-	-rm ncl *.o *.s *.s-orig *.list *.map *.link 
+	rm -f ncl *.o *.s *.s-orig *.list *.map *.link
