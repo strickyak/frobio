@@ -13,6 +13,8 @@ char Down(char c);
 // prefixed_atoi() understands initial "0" for octal and "0x" for hex, and '-' before any of that.
 int prefixed_atoi(const char *s);
 
+#ifndef unix  // Use ordinary stdlib for unix.
+
 void snprintf_s(char *buf, int max, const char *fmt, const char *s);
 void snprintf_d(char *buf, int max, const char *fmt, int x);
 void printf_d(const char *fmt, int x);
@@ -40,5 +42,7 @@ size_t strlen(const char *p);
 char* strcat(char *d, const char *s);
 void bzero(char *p, int n);
 #endif
+
+#endif // !unix
 
 #endif // _FROBIO_NCL_STD_H_

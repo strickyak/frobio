@@ -98,6 +98,7 @@ void Rend(Rendering* r) {
 
   error e;
   while (true) {
+    // TODO -- get_src_line should RETURN a str.
     e = r->get_src_line(buf1, FM_BUFSIZE-1);
     if (e == E_EOF) break;
     if (e) {

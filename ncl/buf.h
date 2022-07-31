@@ -3,25 +3,27 @@
 
 #define BUF_INITIAL_CAP 16
 
-struct Buf {
+typedef struct Buf {
   char *s;
   int n;
-};
+} Buf;
 
-void BufCheck(struct Buf *p);
-void BufInit(struct Buf *p);
-void BufInitWith(struct Buf *p, const char *s);
-void BufInitTake(struct Buf *p, char *s);
-void BufDel(struct Buf *p);
-char *BufFinish(struct Buf *p);
-const char *BufTake(struct Buf *p);
-const char *BufPeek(struct Buf *p);
-void BufAppC(struct Buf *p, char c);
-void BufAppS(struct Buf *p, const char *s, int n);
-void BufAppElemC(struct Buf *p, char c);
-void BufAppElemS(struct Buf *p, const char *s);
-void BufAppDope(struct Buf *p, const char *s);
-const char **BufTakeDope(struct Buf *p, int *lenP);
+void BufCheck(Buf *buf);
+void BufInit(Buf *buf);
+void BufInitWith(Buf *buf, const char *s);
+void BufInitTake(Buf *buf, char *s);
+void BufDel(Buf *buf);
+char *BufFinish(Buf *buf);
+const char *BufTake(Buf *buf);
+const char *BufPeek(Buf *buf);
+void BufAppC(Buf *buf, char c);
+void BufAppS(Buf *buf, const char *s, int n);
+void BufAppElemC(Buf *buf, char c);
+void BufAppElemS(Buf *buf, const char *s);
+void BufAppDope(Buf *buf, const char *s);
+const char **BufTakeDope(Buf *buf, int *lenP);
+
+// For NCL list elements.
 int ElemLen(const char *s, const char **endP);
 const char *ElemDecode(const char *s);
 

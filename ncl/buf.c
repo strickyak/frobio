@@ -8,42 +8,48 @@
 #include "frobio/ncl/puthex.h"
 #include "frobio/ncl/malloc.h"
 
-void BufCheck(struct Buf *p) {
+void BufCheck(Buf *p) {
+#ifdef unix
+  if (p->n < 0 || p->s == NULL) {
+    panic("BufCheck fails");
+  }
+#else
   if (p->n < 0 || p->s == NULL || p->s > 0xC000) {
     panic("BufCheck fails");
   }
+#endif
 };
 
-void BufInit(struct Buf *p) {
+void BufInit(Buf *p) {
   p->s = (char*) malloc(BUF_INITIAL_CAP);
   p->n = 0;
 }
 
-void BufInitWith(struct Buf *p, const char *s) {
+void BufInitWith(Buf *p, const char *s) {
   p->s = strdup(s);
   p->n = strlen(s);
 }
 
-void BufInitTake(struct Buf *p, char *s) {
+void BufInitTake(Buf *p, char *s) {
   p->s = s;
   p->n = strlen(s);
 }
 
-void BufDel(struct Buf *p) {
+void BufDel(Buf *p) {
   // OK to delete more than once, or after BufTake().
   free(p->s);
   p->s = NULL;
   p->n = -1;
 }
 
-char *BufFinish(struct Buf *p) {
+char *BufFinish(Buf *p) {
   BufCheck(p);
   p->s = (char*) realloc(p->s, p->n + 1);
   p->s[p->n] = '\0';
   return p->s;
 }
 
-const char *BufTake(struct Buf *p) {
+const char *BufTake(Buf *p) {
   BufCheck(p);
   const char *z = p->s;
   p->s = NULL;
@@ -51,18 +57,18 @@ const char *BufTake(struct Buf *p) {
   return z;
 }
 
-const char *BufPeek(struct Buf *p) {
+const char *BufPeek(Buf *p) {
   return p->s;
 }
 
-void BufAppC(struct Buf *p, char c) {
+void BufAppC(Buf *p, char c) {
   BufCheck(p);
   ++p->n;
   p->s = (char*) realloc(p->s, p->n);
   p->s[p->n - 1] = c;
 }
 
-void BufAppS(struct Buf *p, const char *s, int n) {
+void BufAppS(Buf *p, const char *s, int n) {
   BufCheck(p);
   if (n < 0)
     n = strlen(s);
@@ -76,7 +82,7 @@ void BufAppS(struct Buf *p, const char *s, int n) {
 
 // Appending Elements.
 
-void BufAppElemC(struct Buf *p, char c) {
+void BufAppElemC(Buf *p, char c) {
   BufCheck(p);
   if (c <= ' ' || c > 'z' || c == '\\') {
     p->n += 2;
@@ -90,7 +96,7 @@ void BufAppElemC(struct Buf *p, char c) {
   }
 }
 
-void BufAppElemS(struct Buf *p, const char *s) {
+void BufAppElemS(Buf *p, const char *s) {
   BufCheck(p);
 
   // Add space before next element, unless buf is empty.
@@ -119,14 +125,14 @@ void BufAppElemS(struct Buf *p, const char *s) {
 }
 
 
-void BufAppDope(struct Buf *p, const char *s) {
+void BufAppDope(Buf *p, const char *s) {
   // (word) cast: Div optimizes to shift, if unsigned.
   int n = (word)p->n / sizeof(const char *);
   BufAppS(p, "        ", sizeof(const char *));
   ((const char **) p->s)[n] = s;
 }
 
-const char **BufTakeDope(struct Buf *p, int *lenP) {
+const char **BufTakeDope(Buf *p, int *lenP) {
   // (word) cast: Div optimizes to shift, if unsigned.
   *lenP = (word)p->n / sizeof(const char *);
   return (const char **) BufTake(p);
@@ -168,7 +174,7 @@ int ElemLen(const char *s, const char **endP) {
 
 // Return decoded element.
 const char *ElemDecode(const char *s) {
-  struct Buf buf;
+  Buf buf;
   BufInit(&buf);
   if (*s == '{') {
     // brace-wrapped element.

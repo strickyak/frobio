@@ -3,6 +3,8 @@
 
 #include "frobio/nytypes.h"
 
+#ifndef unix // Use ordinary malloc for unix.
+
 // Main public functions.
 char *malloc(int n);
 void free(void *p);
@@ -30,4 +32,5 @@ extern int buck_num_alloc[NBUCKETS];
 extern int buck_num_free[NBUCKETS];
 extern int buck_num_brk[NBUCKETS];
 
+#endif // !unix
 #endif // _FROBIO_NCL_MALLOC_H_

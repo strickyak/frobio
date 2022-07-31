@@ -34,10 +34,14 @@ typedef unsigned long quad;  // quad is 4 bytes, unsigned.
 
 // already // typedef unsigned char bool;  // use a byte for a bool.
 typedef unsigned char error; // use a byte for an error (0 == OKAY).
-
-// already // #define true 1
-// already // #define false 0
 #define OKAY (error)0
+
+#ifndef true
+#ifndef __cplusplus
+#define true 1
+#define false 0
+#endif
+#endif
 
 #elif os9cmoc
 // ********************************************************************
