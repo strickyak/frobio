@@ -1,4 +1,4 @@
-all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig
+all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig f.fgets f.fputs
 
 f.config: FORCE
 	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c
@@ -29,6 +29,15 @@ f.dump: FORCE
 
 f.dig: FORCE
 	cmoc -i --os9 -I.. f.dig.c wiz5100s.c nylib.c os9call.c
+
+f.fgets: FORCE
+	cmoc -i --os9 -I.. f.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+
+f.fputs: FORCE
+	cmoc -i --os9 -I.. f.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+
+x.sprint: FORCE
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c
 
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c

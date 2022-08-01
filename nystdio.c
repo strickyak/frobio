@@ -1,20 +1,14 @@
-#define DONT_RENAME_FOPEN 1 // Use ny_ names in this source file.
+#define DONT_RENAME_NY_STDIO 1 // Use ny_ names in this source file.
 #include "frobio/nystdio.h"
+#include "frobio/os9call.h"
+#include "frobio/ncl/malloc.h"
 
 #ifndef unix
 
-typedef struct file { int fd; } NY_FILE;
-
 int ny_errno;
-NY_FILE ny_stdin = {0};
-NY_FILE ny_stdout = {1};
-NY_FILE ny_stderr = {2};
-
-byte Guard0[8];  // unchecked, delete me later.
-byte StaticBuffer[256];
-byte Guard1[8];  // unchecked, delete me later.
-byte* BufferP;
-byte* BufferEnd;
+NY_FILE ny_stdin_file = {0};
+NY_FILE ny_stdout_file = {1};
+NY_FILE ny_stderr_file = {2};
 
 NY_FILE* ny_fopen(const char* pathname, const char* mode) {
     assert(pathname);
@@ -23,13 +17,14 @@ NY_FILE* ny_fopen(const char* pathname, const char* mode) {
     assert(mode[1]=='\0' && (mode[0]=='r'||mode[0]=='w'));
 
     if (mode[0] == 'r') {
-      ny_errno = Os9Open(pathname, 1, &fd);
+      ny_errno = Os9Open(pathname, 1/*=READ*/, &fd);
     } else if (mode[0] == 'w') {
-      ny_errno = Os9Create(pathname, 2, &fd);
+      Os9Delete(pathname);
+      ny_errno = Os9Create(pathname, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
     }
+    if (fd<0) return NULL;
 
-    if (ny_errno) return NULL;
-    NY_FILE* f = malloc(sizeof NY_FILE);
+    NY_FILE* f = (NY_FILE*) malloc(sizeof *f);
     f->fd = fd;
     return f;
 }
@@ -45,12 +40,12 @@ char *ny_fgets(char *buf, int size, NY_FILE *f) {
     return buf;
 }
 
-int ny_fputs(const char *s, NY_FILE *f) {
-    assert(s);
+int ny_fputs(const char *str, NY_FILE *f) {
+    assert(str);
     assert(f);
     int bytes_written = 0;
-    int n = strlen(s);
-    ny_errno = Os9Write(f->fd, buf, n, &bytes_written);
+    int n = strlen(str);
+    ny_errno = Os9Write(f->fd, str, n, &bytes_written);
     if (ny_errno) return EOF;
     return bytes_written;
 }
@@ -63,11 +58,11 @@ int ny_fclose(NY_FILE *f) {
     return 0;
 }
 
-int ny_perror(const char* s) {
-    assert(s);
-    ny_fputs(" ", stderr);
-    ny_fputs(s, stderr);
-    ny_fputs(": ERROR TODO\n", stderr);
+void ny_perror(const char* str) {
+    assert(str);
+    ny_fputs(" ", ny_stderr);
+    ny_fputs(str, ny_stderr);
+    ny_fputs(": ERROR TODO\n", ny_stderr);
 }
 
 #endif

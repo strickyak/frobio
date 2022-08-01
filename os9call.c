@@ -97,7 +97,7 @@ asm byte Os9Open(const char* path, int mode, int* fd) {
     }
 }
 
-asm byte Os9Delete(char* path) {
+asm byte Os9Delete(const char* path) {
     asm {
         pshs y,u
         ldx 6,s      ; path
@@ -107,7 +107,7 @@ asm byte Os9Delete(char* path) {
     }
 }
 
-asm byte Os9ChgDir(char* path, int mode) {
+asm byte Os9ChgDir(const char* path, int mode) {
     asm {
         pshs y,u
         ldx 6,s      ; path
@@ -118,7 +118,7 @@ asm byte Os9ChgDir(char* path, int mode) {
     }
 }
 
-asm byte Os9MakDir(char* path, int mode) {
+asm byte Os9MakDir(const char* path, int mode) {
     asm {
         pshs y,u
         ldx 6,s      ; path

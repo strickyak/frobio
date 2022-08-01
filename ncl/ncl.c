@@ -1696,7 +1696,7 @@ int picolCommand9MakOrChgDir(int argc, char **argv, void *pd) {
   char final = SetHiBitOfLastChar(path);
   int mode = atoi(argv[2]);
 
-  error (*f)(char *, int);  // defines `f`.
+  error (*f)(const char *, int);  // defines `f`.
   f = (Up(argv[0][1]) == 'M') ? Os9MakDir : Os9ChgDir;
   int e = f(path, mode);
   RestoreLastChar(path, final);

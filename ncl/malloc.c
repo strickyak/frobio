@@ -17,6 +17,9 @@ word heap_min;          // Set by start code to bss_end.
 word heap_brk;          // Set by start code to bss_end.
 word heap_max;          // Set by every stkcheck().
 
+// Beginer Heap
+byte beginner[4096];
+
 struct MallocHead *buck_freelist[NBUCKETS];
 int buck_num_alloc[NBUCKETS];
 int buck_num_free[NBUCKETS];
@@ -25,7 +28,7 @@ int buck_num_brk[NBUCKETS];
 void heap_check_block(struct MallocHead *h, int cap) {
   // pc_trace('?', (char*)h);
   if (h->barrierA != 'A' || h->barrierZ != 'Z' || (cap && h->cap != cap)) {
-    puthex('h', h);
+    puthex('h', (int)h);
     puthex('A', h->barrierA);
     puthex('Z', h->barrierZ);
     puthex('c', h->cap);
@@ -65,8 +68,16 @@ void ShowChains() {
 #endif
 
 char *malloc(int n) {
+  if (!heap_brk) {
+  printf("m:first:%d\n", __LINE__);
+       heap_min = beginner;
+       heap_brk = beginner;
+       heap_max = beginner + sizeof beginner;
+  }
+  printf("m:%d:%x,%x,%x\n", __LINE__, heap_min, heap_brk, heap_max);
   int cap;
   byte b = which_bucket(n, &cap);
+  printf("m:%d:n=%d,b=%d\n", __LINE__, n, b);
   buck_num_alloc[b]++;
 
   // Try an existing unused block.

@@ -29,11 +29,11 @@ asm error Os9Create(const char* path, int mode, int attrs, int* fd);
 
 asm error Os9Open(const char* path, int mode, int* fd);
 
-asm error Os9Delete(char* path);
+asm error Os9Delete(const char* path);
 
-asm error Os9ChgDir(char* path, int mode);
+asm error Os9ChgDir(const char* path, int mode);
 
-asm error Os9MakDir(char* path, int mode);
+asm error Os9MakDir(const char* path, int mode);
 
 asm error Os9GetStt(int path, int func, int* dOut, int* xOut, int* uOut);
 
