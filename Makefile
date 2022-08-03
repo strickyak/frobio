@@ -33,11 +33,11 @@ f.dig: FORCE
 CMOCLY:
 	cd ../doing_os9/gomar/cmocly && GO111MODULE=off go build cmocly.go && GO111MODULE=off go install cmocly.go
 
-f.fgets: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o f.fgets f.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+x.fgets: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fgets x.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
-f.fputs: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o f.fputs f.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+x.fputs: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fputs x.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
 x.sprint: CMOCLY FORCE
 	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c

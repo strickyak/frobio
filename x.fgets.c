@@ -15,22 +15,27 @@ int main(int argc, char *argv[]) {
 printf("stack=%x\n", stack);
 
 
+printf("argc=%x\n", argc);
 printf("argv=%x\n", argv);
     argc--, argv++;  // Consume unused argv[0]
 
     if (argc) {
         for (int i = 0; i < argc; i++) {
 printf("arg=%x\n", argv[i]);
-            #if 0
+
             FILE* f = fopen(argv[i], "r");
+printf("fopen=%x\n", f);
             if (!f) { perror(argv[i]); exit(errno); }
 
             while (fgets(buf, sizeof buf, f)) {
+printf("fgets....\n");
                 int cc = fputs(buf, stdout);
+printf("....fputs=%d\n", cc);
                 if (cc<0) { perror(argv[i]); exit(errno); }
             }
             fclose(f);
-            #endif
+printf("fclosed.\n");
+
         }
     } else {
             while (fgets(buf, sizeof buf, stdin)) {
