@@ -1,4 +1,4 @@
-all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig f.fgets f.fputs
+all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig
 
 f.config: FORCE
 	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c
@@ -41,6 +41,9 @@ x.fputs: CMOCLY FORCE
 
 x.sprint: CMOCLY FORCE
 	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c
+
+x.inkey: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.inkey x.inkey.c os9call.c
 
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
@@ -90,7 +93,7 @@ FORCE:
 
 clean:
 	rm -f f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig
-	rm -f shmem queue-test
+	rm -f shmem queue-test x.fgets x.fputs x.sprint x.inkey
 	rm -f _zz* test.nylib *.o *.s *.s-orig *.list *.lst *.map *.link *.asmap *.sym
 
 ci:
