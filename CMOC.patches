@@ -1,0 +1,25 @@
+/opt/build/cmoc/src/stdlib$ diff -u crt.asm.ORIG  crt.asm 
+--- crt.asm.ORIG	2022-08-02 20:47:53.001351892 -0700
++++ crt.asm	2022-08-02 20:48:03.749365694 -0700
+@@ -337,7 +337,7 @@
+ fixserr fcc     /**** STACK OVERFLOW ****/
+         fcb     13
+ 
+-fsterr  leax    <fixserr,pcr        ; address of error string
++fsterr  leax    <fixserr,PCR        ; address of error string
+ E$MemFul equ    $CF
+         ldb     #E$MemFul           ; MEMORY FULL error number
+ 
+/opt/build/cmoc/src/stdlib$ diff -u sprintf.asm.ORIG sprintf.asm 
+--- sprintf.asm.ORIG	2022-08-02 22:47:55.842695727 -0700
++++ sprintf.asm	2022-08-02 22:47:58.934709835 -0700
+@@ -13,7 +13,7 @@
+ _sprintf
+ 	ldx	CHROUT,pcr
+ 	stx	sprintf_oldCHROUT,pcr	preserve initial output routine address
+-	leax	chrtomem,pcr		install chrtomem as destination of printf()
++	leax	chrtomem,PCR		install chrtomem as destination of printf()
+ 	stx	CHROUT,pcr
+ 
+ 	ldx	,s++			remove return address in caller of sprintf()
+/opt/build/cmoc/src/stdlib$ 
