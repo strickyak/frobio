@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
       sts stack
     }
     printf("main %04x argc %04x argv1 %04x stack %04x\n", main, argc, argv[1], stack);
-    sprintf(buf, "one %d three %x five %s seven\n", 2, 4, "SIX");
+    sprintf(buf, "one %d three %x five %s seven", 2, 4, "SIX");
+    printf("< %s >\n", buf);
     return 0;
 }
