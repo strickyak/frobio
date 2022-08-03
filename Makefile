@@ -30,14 +30,17 @@ f.dump: FORCE
 f.dig: FORCE
 	cmoc -i --os9 -I.. f.dig.c wiz5100s.c nylib.c os9call.c
 
-f.fgets: FORCE
-	cmoc -i --os9 -I.. f.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+CMOCLY:
+	cd ../doing_os9/gomar/cmocly && GO111MODULE=off go build cmocly.go && GO111MODULE=off go install cmocly.go
 
-f.fputs: FORCE
-	cmoc -i --os9 -I.. f.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+f.fgets: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o f.fgets f.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
-x.sprint: FORCE
-	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c
+f.fputs: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o f.fputs f.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+
+x.sprint: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c
 
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
@@ -88,7 +91,7 @@ FORCE:
 clean:
 	rm -f f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig
 	rm -f shmem queue-test
-	rm -f _zz* test.nylib *.o *.s *.s-orig *.list *.lst *.map *.link
+	rm -f _zz* test.nylib *.o *.s *.s-orig *.list *.lst *.map *.link *.asmap *.sym
 
 ci:
 	mkdir -p RCS
