@@ -7,23 +7,31 @@
 
 #include "frobio/ncl/malloc.h"
 #include "frobio/ncl/puthex.h"
+#include "frobio/os9call.h"
 
 #define ZERO_MALLOC             // catch bugs faster.
 #define ZERO_FREE               // catch bugs faster.
 // #define AUDIT_MALLOC_FREE  // for leak and unmatched malloc/free detection.
 
 // Heap boundaries.
-word heap_min;          // Set by start code to bss_end.
-word heap_brk;          // Set by start code to bss_end.
-word heap_max;          // Set by every stkcheck().
-
-// Beginer Heap
-byte beginner[4096];
+word heap_min;
+word heap_brk;
+word heap_max;
+bool heap_retry;  // Not thread-safe.
 
 struct MallocHead *buck_freelist[NBUCKETS];
 int buck_num_alloc[NBUCKETS];
 int buck_num_free[NBUCKETS];
 int buck_num_brk[NBUCKETS];
+
+void MallocOOM(error e, word n, word cap) {
+    puthex('e', e);
+    puthex('n', n);
+    puthex('c', cap);
+    puthex('u', heap_brk);
+    puthex('m', heap_max);
+    panic(" *oom* ");
+}
 
 void heap_check_block(struct MallocHead *h, int cap) {
   // pc_trace('?', (char*)h);
@@ -68,11 +76,24 @@ void ShowChains() {
 #endif
 
 char *malloc(int n) {
-  if (!heap_brk) {
+  if (!heap_max) {
   printf("m:first:%d\n", __LINE__);
-       heap_min = beginner;
-       heap_brk = beginner;
-       heap_max = beginner + sizeof beginner;
+       word new_memory_size = 0;
+       word end_of_new_mem = 0;
+       error err = Os9Mem(&new_memory_size, &end_of_new_mem);
+       if (err) MallocOOM(err, n, 0);
+       printf("1st Os9Mem e=%x => %x %x\n", err, new_memory_size, end_of_new_mem);
+       heap_min = end_of_new_mem;
+       heap_brk = end_of_new_mem;
+
+       // round up to multiple of 0x2000, and get approval for that.
+       // HARDWIRED CONSTANTS FOR COCO3/MOOH 8K MEMORY PAGES.
+       new_memory_size = (end_of_new_mem + 0x2000) & 0xE000;
+       err = Os9Mem(&new_memory_size, &end_of_new_mem);
+       printf("2nd Os9Mem e=%x => %x %x\n", err, new_memory_size, end_of_new_mem);
+       if (err) MallocOOM(err, n, 0);
+       heap_max = end_of_new_mem;
+       assert(heap_max >= heap_min);
   }
   printf("m:%d:%x,%x,%x\n", __LINE__, heap_min, heap_brk, heap_max);
   int cap;
@@ -98,14 +119,26 @@ char *malloc(int n) {
 
   // Break fresh memory.
   char *p = (char *) heap_brk;
-  heap_brk += (word) (cap + sizeof(struct MallocHead));
-  if (heap_brk > heap_max - STACK_MARGIN) {
-    puthex('n', n);
-    puthex('c', cap);
-    puthex('u', heap_brk);
-    puthex('m', heap_max);
-    panic(" *oom* ");
+  word new_brk = heap_brk + (word) (cap + sizeof(struct MallocHead));
+  if (new_brk > heap_max) {
+    if (heap_retry) {
+        MallocOOM(255, n, cap); // Double fault.
+    }
+
+    // Add another 0x2000 page.
+    word new_memory_size = heap_max + 0x2000;
+    word end_of_new_mem = 0;
+    error err = Os9Mem(&new_memory_size, &end_of_new_mem);
+    if (err) MallocOOM(err, n, cap);
+    heap_max = new_memory_size;
+
+    heap_retry = true;
+    p = malloc(n);
+    heap_retry = false;
+    return p;
   }
+
+  heap_brk = new_brk;
   buck_num_brk[b]++;
 
   h = ((struct MallocHead *) p);

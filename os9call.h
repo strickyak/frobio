@@ -61,6 +61,7 @@ asm error Os9Chain(const char* program, const char* params, int paramlen, int la
 
 asm error Os9Send(int process_id, int signal_code);
 
+error Os9Mem(word* new_memory_size_inout, word* end_of_new_mem_out);
 error Os9AllRam(byte num_blocks, word* start_block_out);
 error Os9DelRam(byte num_blocks, word start_block);
 error Os9MapBlk(word starting_block, byte num_blocks, word* first_address_out);

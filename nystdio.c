@@ -54,6 +54,7 @@ int ny_fclose(NY_FILE *f) {
     assert(f);
     ny_errno = Os9Close(f->fd);
     f->fd = -1;
+    free(f);
     if (ny_errno) return EOF;
     return 0;
 }

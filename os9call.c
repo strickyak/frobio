@@ -343,6 +343,24 @@ asm byte Os9Send(int process_id, int signal_code) {
     }
 }
 
+error Os9Mem(word* new_memory_size_inout, word* end_of_new_mem_out) {
+  error err = OKAY;
+  asm {
+    ldd [new_memory_size_inout]
+    pshs y
+    os9 F_MEM
+    bcc Os9MemOK
+    stb err
+    bra Os9MemEND
+Os9MemOK
+    std [new_memory_size_inout]
+    sty [end_of_new_mem_out]
+Os9MemEND
+    puls y
+  }
+  return err;
+}
+
 error Os9AllRam(byte num_blocks, word* start_block_out) {
   error err = OKAY;
     asm {
