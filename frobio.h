@@ -10,6 +10,11 @@ extern byte* wiz_hwport;
 void wiz_reset();
 void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway);
 
+// For DHCP, use these instead of wiz_configure().
+// They require a 4-letter name, unique to this DHCP client.
+void wiz_configure_for_DHCP(const char* name4, byte* hw6_out);
+void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway);
+
 // Non-Socket commands return OKAY or error.
 error wiz_arp(quad dest_ip, byte* mac_out);
 error wiz_ping(quad dest_ip);

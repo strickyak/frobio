@@ -91,6 +91,23 @@ void wiz_reset() {
   EnableIrqs();
 }
 
+void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
+  wiz_configure(0L, 0xFFFFFF00, 0L);
+
+  // Create locally assigned mac_addr from name4.
+  byte mac_addr[6] = {2, 32, 0, 0, 0, 0};  // local prefix.
+  strncpy(mac_addr+2, name4, 4);
+  poke_n(0x0009/*ether_mac*/, mac_addr, 6);
+  memcpy(hw6_out, mac_addr, 6);
+}
+
+void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
+  P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
+  poke_n(0x0001/*gateway*/, &ip_gateway, 4);
+  poke_n(0x0005/*mask*/, &ip_mask, 4);
+  poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
+  // Keep the same mac_addr.
+}
 void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   DisableIrqs();
 
@@ -360,6 +377,15 @@ error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
   Say("dest_p ");
   poke_word(base+SockDestPort, dest_port);
 
+  bool broadcast = false;
+  byte send_command = 0x20;
+  if (dest_ip == 0xFFFFFFFFL) {
+    // Broadcast to 255.255.255.255
+    broadcast = true;
+    send_command = 0x21;
+    poke_n(base+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
+  }
+
   word free = peek_word(base + TxFreeSize);
   Say("SEND: base=%x buf=%x free=%x ", base, buf, free);
   if (free < size) return 255; // no buffer room.
@@ -382,17 +408,15 @@ error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
   }
 
   Say("size ");
-  // ?
   word tx_w = peek_word(base+TxWritePtr);
   poke_word(base+TxWritePtr, tx_w + size);
-  //? poke_word(base+TxWritePtr, TX_MASK&(tx_r+size));
 
   Say("status->%x ", peek(base+SockStatus));
   //sock_show(socknum);
   Say("cmd:SEND ");
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  poke(base+SockCommand, 0x20/*=SEND*/);  // SEND IT!
+  poke(base+SockCommand, send_command);  // SEND IT!
   wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
   Say("status->%x ", peek(base+SockStatus));
 

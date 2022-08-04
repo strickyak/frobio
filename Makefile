@@ -1,4 +1,4 @@
-all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig
+all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig f.dhcp
 
 f.config: FORCE
 	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c
@@ -30,8 +30,14 @@ f.dump: FORCE
 f.dig: FORCE
 	cmoc -i --os9 -I.. f.dig.c wiz5100s.c nylib.c os9call.c
 
+f.dhcp: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o f.dhcp f.dhcp.c wiz5100s.c nylib.c os9call.c
+
 CMOCLY:
 	cd ../doing_os9/gomar/cmocly && GO111MODULE=off go build cmocly.go && GO111MODULE=off go install cmocly.go
+
+x.mallox: CMOCLY FORCE
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.mallox x.mallox.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
 x.fgets: CMOCLY FORCE
 	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fgets x.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
@@ -78,6 +84,8 @@ my: all ci
 	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.dump
 	os9 copy -r ./f.dig /media/strick/APRIL3/MY.DSK,CMDS/f.dig
 	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.dig
+	os9 copy -r ./f.dhcp /media/strick/APRIL3/MY.DSK,CMDS/f.dhcp
+	os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/f.dhcp
 	: os9 copy -r ./shmem /media/strick/APRIL3/MY.DSK,CMDS/shmem
 	: os9 attr -per /media/strick/APRIL3/MY.DSK,CMDS/shmem
 	sync
