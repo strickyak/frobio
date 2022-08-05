@@ -258,7 +258,26 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-/*
+/* NOTES
+
+How I ran dhcpd :
+    $ sudo dhcpd -f -d -user dhcpd -group dhcpd  enp0s25
+
+What was in /etc/dhcp/dhcpd.conf :
+    $ sed -e '/^#/d' -e '/^ *$/d' /etc/dhcp/dhcpd.conf
+    option domain-name "example.org";
+    option domain-name-servers ns1.example.org, ns2.example.org;
+    default-lease-time 600;
+    max-lease-time 7200;
+    ddns-update-style none;
+    subnet 10.8.15.64 netmask 255.255.255.192 {
+        option routers 10.8.15.65;
+        option domain-name-servers 10.8.0.1;
+        range 10.8.15.66 10.8.15.99;
+        range dynamic-bootp 10.8.15.100 10.8.15.125;
+    }
+
+Some packet examples:
 
 01:45:16.746400 IP (tos 0x0, ttl 128, id 1, offset 0, flags [none], proto UDP (17), length 364)
     0.0.0.0.68 > 255.255.255.255.67: BOOTP/DHCP, Request from 02:20:71:77:65:72, length 336, xid 0x71776572, Flags [none]
