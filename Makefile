@@ -37,19 +37,19 @@ CMOCLY:
 	cd ../doing_os9/gomar/cmocly && GO111MODULE=off go build cmocly.go && GO111MODULE=off go install cmocly.go
 
 x.mallox: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.mallox x.mallox.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c stack300.asm
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.mallox x.mallox.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
 x.fgets: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fgets x.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c stack300.asm
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fgets x.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
 x.fputs: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fputs x.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c stack300.asm
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fputs x.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
 
 x.sprint: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c stack300.asm
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c
 
 x.inkey: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.inkey x.inkey.c os9call.c stack300.asm
+	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.inkey x.inkey.c os9call.c
 
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
