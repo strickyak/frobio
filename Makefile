@@ -1,55 +1,55 @@
 all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig f.dhcp
 
 f.config: FORCE
-	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.ticks: FORCE
-	cmoc -i --os9 -I.. f.ticks.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.ticks.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.ping: FORCE
-	cmoc -i --os9 -I.. f.ping.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.ping.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.arp: FORCE
-	cmoc -i --os9 -I.. f.arp.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.arp.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.tget: FORCE
-	cmoc -i --os9 -I.. f.tget.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.tget.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.ntp: FORCE
-	cmoc -i --os9 -I.. f.ntp.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.ntp.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.send: FORCE
-	cmoc -i --os9 -I.. f.send.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.send.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.recv: FORCE
-	cmoc -i --os9 -I.. f.recv.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.recv.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.dump: FORCE
-	cmoc -i --os9 -I.. f.dump.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.dump.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.dig: FORCE
-	cmoc -i --os9 -I.. f.dig.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.dig.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 f.dhcp: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o f.dhcp f.dhcp.c wiz5100s.c nylib.c os9call.c
+	cmoc -i --os9 -I.. f.dhcp.c wiz5100s.c nylib.c os9call.c stack300.asm
 
 CMOCLY:
 	cd ../doing_os9/gomar/cmocly && GO111MODULE=off go build cmocly.go && GO111MODULE=off go install cmocly.go
 
 x.mallox: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.mallox x.mallox.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.mallox x.mallox.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c stack300.asm
 
 x.fgets: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fgets x.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fgets x.fgets.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c stack300.asm
 
 x.fputs: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fputs x.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.fputs x.fputs.c nystdio.c os9call.c ncl/malloc.c ncl/puthex.c stack300.asm
 
 x.sprint: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.sprint x.sprint.c stack300.asm
 
 x.inkey: CMOCLY FORCE
-	/home/strick/go/bin/cmocly -incr 300 -cmoc `which cmoc` -cmoc_pre='-I..' -o x.inkey x.inkey.c os9call.c
+	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o x.inkey x.inkey.c os9call.c stack300.asm
 
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
