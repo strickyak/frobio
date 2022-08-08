@@ -14,52 +14,56 @@ void wiz_delay(word n) {
 }
 
 static byte peek(word reg) {
+    DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
   byte z = P3;
+    EnableIrqsCounting();
   Say("[%x->%2x] ", reg, z);
   return z;
 }
 static word peek_word(word reg) {
+    DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
   byte hi = P3;
   byte lo = P3;
+    EnableIrqsCounting();
   word z = ((word)(hi) << 8) + lo;
   Say("[%x->%4x] ", reg, z);
   return z;
 }
 static void poke(word reg, byte value) {
+    DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
   P3 = value;
+    EnableIrqsCounting();
   Say("[%x<=%2x] ", reg, value);
 }
 static void poke_word(word reg, word value) {
+    DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
   P3 = (byte)(value >> 8);
   P3 = (byte)(value);
+    EnableIrqsCounting();
   Say("[%x<=%4x] ", reg, value);
 }
 static void poke_n(word reg, void* data, word size) {
   byte* from = (byte*) data;
+    DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
-  Say("[%x<=== ", reg);
   for (word i=0; i<size; i++) {
-    Say("%2x ", *from);
     P3 = *from++;
   }
-  Say("] ");
+  EnableIrqsCounting();
 }
 
 // wiz_ticks: 0.1ms but may have readbyte,readbyte error?
 word wiz_ticks() {
-    // TODO: save CC in a temp, and repair it.
-    DisableIrqs();
     word t = peek_word(0x0082/*TCNTR Tick Counter*/);
-    EnableIrqs();
     return t;
 }
 
@@ -74,21 +78,19 @@ static byte wait(word reg, byte value, word millisecs_max) {
     word limit = 10*millisecs_max + start;
     while (before(limit)) {
         if (peek(reg) == value) {
-            //// printf(" wait(%d,%d)OK ", reg, value);
             return OKAY;
         }
     }
-    //// printf(" wait(%d,%d)TIMEOUT=%d ", reg, value, millisecs_max);
     return 5; // TIMEOUT
 }
 
 void wiz_reset() {
-  DisableIrqs();
+  DisableIrqsCounting();
   P0 = 128; // Reset
   wiz_delay(42);
   P0 = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
   wiz_delay(42);
-  EnableIrqs();
+  EnableIrqsCounting();
 }
 
 void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
@@ -109,7 +111,7 @@ void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
   // Keep the same mac_addr.
 }
 void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
-  DisableIrqs();
+  DisableIrqsCounting();
 
   P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
   poke_n(0x0001/*gateway*/, &ip_gateway, 4);
@@ -128,12 +130,12 @@ void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   for (byte socknum=0; socknum<4; socknum++) {
       word base = ((word)socknum + 4) << 8;
       poke(base+SockCommand, 0x10/*CLOSE*/);
-      wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+      wait(base+SockCommand, 0, 500);
       poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
       poke(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
       poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
   }
-  EnableIrqs();
+  EnableIrqsCounting();
 }
 
 error udp_close(byte socknum) {
@@ -143,7 +145,7 @@ error udp_close(byte socknum) {
   word base = ((word)socknum + 4) << 8;
   poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
   poke(base+SockCommand, 0x10/*CLOSE*/);
-  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500);
   poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
@@ -152,7 +154,7 @@ error wiz_arp(quad dest_ip, byte* mac_out) {
   byte* d = (byte*)&dest_ip;
 
   // Socketless ARP command.
-  DisableIrqs();
+  DisableIrqsCounting();
   // Socket-less Peer IP Address Register
   poke(0x004c/*=SLCR*/, 0/*=Clear*/); // command
   poke(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
@@ -184,7 +186,7 @@ error wiz_arp(quad dest_ip, byte* mac_out) {
     mac_out[4] = m5;
     mac_out[5] = m6;
   } while (!x);
-  EnableIrqs();
+  EnableIrqsCounting();
   return (x&2) ? OKAY : 255; // look for ARP ack.
 }
 
@@ -194,7 +196,7 @@ error wiz_ping(quad dest_ip) {
   Say("\nPING: dest_ip=%d.%d.%d.%d ", d[0], d[1], d[2], d[3]);
   Say("SLPIPR ");
 
-  DisableIrqs();
+  DisableIrqsCounting();
   // Socket-less Peer IP Address Register
   poke(0x004c/*=SLCR*/, 0/*=Clear*/); // command
   poke(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
@@ -218,7 +220,7 @@ error wiz_ping(quad dest_ip) {
     Say("(ping->(%x) %x:%x:%x:%x:%x:%x) ",
       x, m1, m2, m3, m4, m5, m6);
   } while (!x);
-  EnableIrqs();
+  EnableIrqsCounting();
   return (x&1) ? OKAY : 255; // look for PING ack.
 }
 
@@ -244,16 +246,17 @@ byte find_available_socket(word* base_out) {
 error macraw_open(byte* socknum_out) {
   word base = 0;
   error err = OKAY;
-  DisableIrqs();
+  DisableIrqsCounting();
   byte socknum = find_available_socket(&base);
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+  // Only socket 0 can be macraw!
+  if (socknum > 0) return 0xf0/*E_UNIT*/;
   *socknum_out = socknum;
     
   poke(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
   poke(base+0x002F/*Sx_MR2*/, 0x70/*Broadcast Block, Multicast block, IPv6 block*/);
   poke(base+SockCommand/*Sx_CR command reg*/, 1/*=OPEN*/);
 
-  err = wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  err = wait(base+SockCommand, 0, 500);
   if (err) goto Enable;
 
   err = wait(base+SockStatus, 0x42/*SOCK_MACRAW*/, 500);
@@ -264,7 +267,7 @@ error macraw_open(byte* socknum_out) {
   word rx_w = peek_word(base+0x002A/*_RX_WR*/);
   poke_word(base+0x0028/*_RX_RD*/, rx_w);
 Enable:
-  EnableIrqs();
+  EnableIrqsCounting();
   return err;
 }
 
@@ -274,7 +277,7 @@ error macraw_close(byte socknum) {
 
   word base = ((word)socknum + 4) << 8;
   poke(base+SockCommand, 0x10/*CLOSE*/);
-  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500);
   poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
@@ -289,7 +292,7 @@ error macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
   poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  wait(base+SockCommand, 0, 500); // while (peek(base+0x0001)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500);
   Say("status->%x ", peek(base+SockStatus));
 
   Say(" ====== WAIT ====== ");
@@ -328,7 +331,7 @@ error macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
 
 
 error udp_open(word src_port, byte* socknum_out) {
-  DisableIrqs();
+  DisableIrqsCounting();
   error err = OKAY;
   word base;
   byte socknum = find_available_socket(&base);
@@ -345,7 +348,7 @@ error udp_open(word src_port, byte* socknum_out) {
 
   poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
-  err = wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  err = wait(base+SockCommand, 0, 500);
   if (err) goto Enable;
 
   err = wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
@@ -356,7 +359,7 @@ error udp_open(word src_port, byte* socknum_out) {
   word rx_w = peek_word(base+0x002A/*_RX_WR*/);
   poke_word(base+0x0028/*_RX_RD*/, rx_w);
 Enable:
-  EnableIrqs();
+  EnableIrqsCounting();
   return err;
 }
 
@@ -417,7 +420,7 @@ error udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
   poke(base+SockCommand, send_command);  // SEND IT!
-  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500);
   Say("status->%x ", peek(base+SockStatus));
 
   while(1) {
@@ -443,7 +446,7 @@ error udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
 
   poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
   poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  wait(base+SockCommand, 0, 500); // while (peek(base+SockCommand)) continue;  // wait for command bit to clear.
+  wait(base+SockCommand, 0, 500);
   Say("status->%x ", peek(base+SockStatus));
 
   Say(" ====== WAIT ====== ");
