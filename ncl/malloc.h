@@ -24,7 +24,7 @@ struct MallocHead {
 
 // Heap boundaries.
 extern word heap_min;          // Set by start code to bss_end.
-extern word heap_brk;          // Set by start code to bss_end.
+extern word heap_here;          // Set by start code to bss_end.
 extern word heap_max;          // Set by every stkcheck().
 
 extern struct MallocHead *buck_freelist[NBUCKETS];

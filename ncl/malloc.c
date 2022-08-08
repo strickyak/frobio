@@ -15,7 +15,7 @@
 
 // Heap boundaries.
 word heap_min;
-word heap_brk;
+word heap_here;
 word heap_max;
 bool heap_retry;  // Not thread-safe.
 
@@ -28,7 +28,7 @@ void MallocOOM(error e, word n, word cap) {
     puthex('e', e);
     puthex('n', n);
     puthex('c', cap);
-    puthex('u', heap_brk);
+    puthex('u', heap_here);
     puthex('m', heap_max);
     panic(" *oom* ");
 }
@@ -84,7 +84,7 @@ char *malloc(int n) {
        if (err) MallocOOM(err, n, 0);
        printf("1st Os9Mem e=%x => %x %x\n", err, new_memory_size, end_of_new_mem);
        heap_min = end_of_new_mem;
-       heap_brk = end_of_new_mem;
+       heap_here = end_of_new_mem;
 
        // round up to multiple of 0x2000, and get approval for that.
        // HARDWIRED CONSTANTS FOR COCO3/MOOH 8K MEMORY PAGES.
@@ -95,7 +95,7 @@ char *malloc(int n) {
        heap_max = end_of_new_mem;
        assert(heap_max >= heap_min);
   }
-  printf("m:%d:%x,%x,%x\n", __LINE__, heap_min, heap_brk, heap_max);
+  printf("m:%d:%x,%x,%x\n", __LINE__, heap_min, heap_here, heap_max);
   int cap;
   byte b = which_bucket(n, &cap);
   printf("m:%d:n=%d,b=%d\n", __LINE__, n, b);
@@ -118,8 +118,8 @@ char *malloc(int n) {
   }
 
   // Break fresh memory.
-  char *p = (char *) heap_brk;
-  word new_brk = heap_brk + (word) (cap + sizeof(struct MallocHead));
+  char *p = (char *) heap_here;
+  word new_brk = heap_here + (word) (cap + sizeof(struct MallocHead));
   if (new_brk > heap_max) {
     if (heap_retry) {
         MallocOOM(255, n, cap); // Double fault.
@@ -138,7 +138,7 @@ char *malloc(int n) {
     return p;
   }
 
-  heap_brk = new_brk;
+  heap_here = new_brk;
   buck_num_brk[b]++;
 
   h = ((struct MallocHead *) p);

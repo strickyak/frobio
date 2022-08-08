@@ -1253,9 +1253,9 @@ int picolCommandInfo(int argc, char **argv, void *pd) {
   }
 
 #if 1
-  printf_d(" mem: heap=%d", heap_brk - heap_min);
-  // printf_d(" stack=%d", param_min - heap_max);
-  printf_d(" avail=%d", heap_max - heap_brk - STACK_MARGIN);
+  printf_d(" heap: used=%d", heap_here - heap_min);
+  printf_d(" avail=%d", heap_max - heap_here);
+
   int cap = SMALLEST_BUCKET;
   for (byte b = 0; b < NBUCKETS; b++) {
     int num_in_bucket = 0;
@@ -1829,11 +1829,6 @@ void picolRegisterCoreCommands() {
 }
 
 int main(int argc, char* argv[]) {
-  // TODO -- guarantee this space.
-  heap_min = 0x1000;
-  heap_brk = 0x1000;
-  heap_max = 0x7000;
-
   picolInitInterp();
 #ifdef HEAP_CHECKS
   HeapCheck();
