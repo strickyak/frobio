@@ -37,4 +37,21 @@ void wiz_delay(word n);
 word wiz_ticks();  // 0.1ms but may have readbyte,readbyte error?
 void sock_show(byte socknum);
 
+/* On packet sizes:
+Proposing 600 bytes for buffers.  Rationale:
+
+MAX IPv4 Datagram Size = 576 bytes.
+For TCP, - 20(tcp) - 20(ip) = 536 MSS (maximum TCP segment size).
+For UDP, -  8(udp) - 20(ip) = 556 max UDP payload.
+
+576(ip) + 6(src) + 6(dest) + 2(len) = 590 max ethernet (without crc).
+590(ethernet) + 2(len) = 592 (macraw buffer).
+
+So that leaves 8 bytes spare, in a macraw buffer.
+
+BTW, TFTP uses UDP payload of 2(opcode) + 2(block) + 512(data) = 516 bytes.
+
+How many 600 byte buffers in an 8K page?  13.65 buffers.
+*/
+
 #endif // _FROBIO_FROBIO_H_
