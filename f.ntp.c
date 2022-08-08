@@ -133,8 +133,10 @@ void SNTP(byte socknum, quad server_host, word server_port) {
       time_pack[5] = sec;
       asm {
         leax time_pack
+        pshs y,u
         swi2     ; OS9 ...
         fcb $16  ; ... F$STime
+        puls y,u
       }
   }
 }
