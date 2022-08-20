@@ -1,59 +1,16 @@
+#include "frobio/nytypes.h"
 #include "frobio/frobmark/markup.h"
 #include "frobio/os9defs.h"
 
-#ifndef true
-#define true 1
-#define false 0
-#endif
-
-static byte buf1[FM_BUFSIZE];
-
-#define RBUF_SIZE 201 // Screens up to 200 wide.
-typedef struct rendering {
-    word x, y, ybegin, yend;
-    word width;
-    word height;
-    word page;
-    getline_fn get_src_line;
-    putline_fn print_line;
-    prompt_and_input_fn prompt_and_input;
-
-    byte* token;
-    word len;
-    byte rbuf[RBUF_SIZE];
-} Rendering;
-
-// rend could be allocated in FMRender to make it re-entrant.
-Rendering rend;
-
-static byte* NextToken(byte* s, byte** token_out, word *len_out) {
+static byte* NextToken(Rendering* r, byte* s) {
     // Skip white.
-    while (*s) {
-        if (*s>' ') break;
-        s++;
-    }
+    while (*s && *s < ' ') s++;  // Skip white.
     if (!*s) return NULL;  // Line ended.
 
-    byte* begin = s;  // Start of string.
-    while (*s) {
-        if (*s<=' ') {
-            break;  // found white.
-        }
-        s++;
-    }
-    *len_out = s - begin;
-    *token_out = begin;
+    r->token = s;  // Start of token.
+    while (*s > ' ') s++;  // Skip nonwhite.
+    r->len = s - r->token;
     return s; // Where to start next time.
-}
-
-static void DumpToken(byte* s, word len) {
-    printf(" Tok<");
-    for (word i = 0; i < len; i++) {
-        byte ch = s[i];
-        if (ch < ' ' || ch > '~') ch = '~';
-        putchar(ch);
-    }
-    printf(">%d ", len);
 }
 
 static void printIfNeededAndStartNewLine(Rendering* r) {
@@ -93,24 +50,26 @@ static void rspace(Rendering* r) {
   if (r->x) rPut(r, ' ');
 }
 
-void Rend(Rendering* r) {
-  printf("page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
+void FmRender(Rendering* r) {
+  r->x = r->y = 0;
+  r->ybegin = r->page * r->height;
+  r->yend = r->ybegin + r->height;
+  printf("# page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
 
   error e;
   while (true) {
     // TODO -- get_src_line should RETURN a str.
-    e = r->get_src_line(buf1, FM_BUFSIZE-1);
+    e = r->get_src_line(r->inbuf, sizeof r->inbuf - 1);
     if (e == E_EOF) break;
     if (e) {
       printf("\n*** get_src_line: ERROR %d\n", e);
       exit(e);
     }
 
-    byte* s = buf1;
+    byte* s = r->inbuf;
     while (true) {
-        s = NextToken(s, &r->token, &r->len);
+        s = NextToken(r, s);
         if (!s) break;
-        //# DumpToken(r->token, r->len);
 
         if (r->x + r->len  < r->width) {
             printf("(fits x=%d y=%d) ", r->x, r->y);
@@ -130,25 +89,4 @@ void Rend(Rendering* r) {
     }  // next token
   }  // next source line
   printIfNeededAndStartNewLine(r);
-}
-
-void FmRender(
-    word width, word height, word page,
-    getline_fn get_src_line,
-    putline_fn print_line,
-    prompt_and_input_fn prompt_and_input) {
-  // r could be malloc'd in FMRender to make it re-entrant.
-  Rendering* r = &rend;
-
-  r->x = r->y = 0;
-  r->ybegin = page * height;
-  r->yend = r->ybegin + height;
-  r->width = width;
-  r->height = height;
-  r->page = page;
-  r->get_src_line = get_src_line;
-  r->print_line = print_line;
-  r->prompt_and_input = prompt_and_input;
-
-  Rend(r);
 }
