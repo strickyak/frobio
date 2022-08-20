@@ -45,7 +45,7 @@ int main() {
         FmRender(&render_me);
         printf("\n####---------------------------------------------\n");
     }
-    printf("\nFIN");
+    printf("\nDone (markup_test)\n");
     
     return 0;
 }
