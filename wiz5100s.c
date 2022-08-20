@@ -50,8 +50,8 @@ static void poke_word(word reg, word value) {
     EnableIrqsCounting();
   Say("[%x<=%4x] ", reg, value);
 }
-static void poke_n(word reg, void* data, word size) {
-  byte* from = (byte*) data;
+static void poke_n(word reg, const void* data, word size) {
+  const byte* from = (const byte*) data;
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
@@ -98,7 +98,7 @@ void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
 
   // Create locally assigned mac_addr from name4.
   byte mac_addr[6] = {2, 32, 0, 0, 0, 0};  // local prefix.
-  strncpy(mac_addr+2, name4, 4);
+  strncpy((char*)mac_addr+2, name4, 4);
   poke_n(0x0009/*ether_mac*/, mac_addr, 6);
   memcpy(hw6_out, mac_addr, 6);
 }
