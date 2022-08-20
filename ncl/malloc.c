@@ -77,7 +77,7 @@ void ShowChains() {
 
 char *malloc(int n) {
   if (!heap_max) {
-  printf("m:first:%d\n", __LINE__);
+  //printf("m:first:%d\n", __LINE__);
        word new_memory_size = 0;
        word end_of_new_mem = 0;
        error err = Os9Mem(&new_memory_size, &end_of_new_mem);
@@ -95,10 +95,10 @@ char *malloc(int n) {
        heap_max = end_of_new_mem;
        assert(heap_max >= heap_min);
   }
-  printf("m:%d:%x,%x,%x\n", __LINE__, heap_min, heap_here, heap_max);
+  //printf("m:%d:%x,%x,%x\n", __LINE__, heap_min, heap_here, heap_max);
   int cap;
   byte b = which_bucket(n, &cap);
-  printf("m:%d:n=%d,b=%d\n", __LINE__, n, b);
+  //printf("m:%d:n=%d,b=%d\n", __LINE__, n, b);
   buck_num_alloc[b]++;
 
   // Try an existing unused block.

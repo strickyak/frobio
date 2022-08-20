@@ -1206,19 +1206,22 @@ int picolCommandReturn(int argc, char **argv, void *pd) {
 
 //- info   (prints lots of info about interpreter state)
 int picolCommandInfo(int argc, char **argv, void *pd) {
-  puts(" procs:\r");
+  puts(" procs: ");
   struct picolCmd *c;
   for (c = Commands; c; c = c->next) {
     if (c->func != picolCommandCallProc)
       continue;
-    puts("   proc ");
     puts(c->name);
-    puts(" {");
-    puts(((const char **) c->privdata)[0]);
-    puts("} {");
-    puts(((const char **) c->privdata)[1]);
-    puts("}\r");
+    puts(" ");
+    // puts("   proc ");
+    // puts(c->name);
+    // puts(" {");
+    // puts(((const char **) c->privdata)[0]);
+    // puts("} {");
+    // puts(((const char **) c->privdata)[1]);
+    // puts("}\r");
   }
+  puts("\r");
 
   puts(" commands: ");
   for (c = Commands; c; c = c->next) {
@@ -1233,8 +1236,8 @@ int picolCommandInfo(int argc, char **argv, void *pd) {
     puts(f->parent ? " frame: " : " globals: ");
     for (struct picolVar * v = f->vars; v; v = v->next) {
       puts(v->name);
-      puts("=");
-      puts(v->val);
+      // puts("=");
+      // puts(v->val);
       puts(" ");
     }
     puts("\r");
@@ -1245,8 +1248,8 @@ int picolCommandInfo(int argc, char **argv, void *pd) {
     printf_s("   %s: ", array->name);
     for (struct picolVar * v = array->vars; v; v = v->next) {
       puts(v->name);
-      puts("=");
-      puts(v->val);
+      // puts("=");
+      // puts(v->val);
       puts(" ");
     }
     puts("\r");

@@ -5,10 +5,13 @@ all:
 
 
 it:
-	(cd /home/strick/go/src/github.com/strickyak/doing_os9/gomar/cmocly && go install -x cmocly.go)
+	(cd /home/strick/go/src/github.com/strickyak/doing_os9/gomar/cmocly && GO111MODULE=off go install -x cmocly.go)
 	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I../..' -o ncl  ncl.c buf.c std.c util.c puthex.c re.c ../os9call.c malloc.c
 	os9 ident ncl
 	sync
+
+launch: it
+	TTL=600s DONT=1 sh ../../doing_os9/gomar/launchx.sh ncl /dev/null
 
 sd: it
 	os9 copy -r ./ncl /media/strick/APRIL3/MY.DSK,CMDS/ncl
