@@ -54,6 +54,9 @@ x.inkey: CMOCLY FORCE
 shmem: FORCE
 	cmoc -i --os9 -I.. shmem.c wiz5100s.c nylib.c os9call.c
 
+shmem2: FORCE
+	cmoc -i --os9 -I.. shmem2.c wiz5100s.c nylib.c os9call.c
+
 queue-test: FORCE
 	/home/strick/go/bin/cmocly -cmoc `which cmoc` -cmoc_pre='-I..' -o queue-test  queue_test.c queue.c
 
