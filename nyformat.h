@@ -6,6 +6,7 @@
 
 // These all append to the Buf:
 
+#if 0
 // Put one char.
 void BPutChar(Buf* buf, byte x);
 // Put one str.
@@ -26,5 +27,9 @@ void BPutX(Buf* buf, word x);
 void BPutCurly(Buf* buf, byte c);
 // Put a str with n, curly encoded.
 void BEncodeCurly(Buf* buf, byte* str, int n);
+#endif
+
+void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/);
+
 
 #endif // FROBIO_NYFORMAT_h_

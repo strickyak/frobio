@@ -1,5 +1,7 @@
 #include "frobio/nyformat.h"
+#include <stdarg.h>
 
+#if 0
 void BPutChar(Buf* buf, byte x) {
   assert(buf);
   BufAppC(buf, x);
@@ -14,7 +16,9 @@ void BPutStr(Buf* buf, const char* s) {
 void BPutStrN(Buf* buf, const char* s, byte n) {
   BufAppS(buf, s, n);
 }
+#endif
 
+#if 0
 void BPutDec(Buf* buf, byte x) {
   assert(x < 10);
   BPutChar(buf, '0' + x);
@@ -54,12 +58,15 @@ void BPutX(Buf* buf, word x) {
     BPutHex(buf, (byte)x);
   }
 }
+#endif
 
-void BPutCurly(Buf* buf, byte c) {
+#if 0  // FOR CURLY
+void BPutNumCurly(Buf* buf, byte c) {
           BPutChar(buf, '{');
           BPutU(buf, (word)c);
           BPutChar(buf, '}');
 }
+
 
 void BEncodeCurly(Buf* buf, byte* str, int n) {
   BPutChar(buf, '"');
@@ -72,33 +79,174 @@ void BEncodeCurly(Buf* buf, byte* str, int n) {
         case '\\':
         case '{':
         case '}':
-          BPutCurly(buf, c);
+          BPutNumCurly(buf, c);
             break;
         default:
           BPutChar(buf, c);
       }
     } else {
-          BPutCurly(buf, c);
+          BPutNumCurly(buf, c);
     }
   }
   BPutChar(buf, '"');
 }
+#endif
 
-#include <stdarg.h>
+
+#if 1
+byte* QFormatUnsignedInt(byte* p, unsigned long x) {
+  if (x > 9) {
+    p = QFormatUnsignedInt(p, x / 10);
+    *p++ = '0' + (byte)(x % 10);
+  } else {
+    *p++ = '0' + (byte)x;
+  }
+  return (*p = 0), p;
+}
+byte* QFormatSignedInt(byte* p, signed long x) {
+  //Debug("signed! ");
+  if (x<0) {
+    *p++ = '-';
+    p = QFormatUnsignedInt(p, (unsigned long)-x);
+  } else {
+    p = QFormatUnsignedInt(p, (unsigned long)x);
+  }
+  return p;
+}
+
+byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
+  //Debug("(LongHex in %lx < %lx) ", (unsigned long)p, x);
+  if (x > 15) {
+    p = QFormatLongHex(p, alphabet, x >> 4);
+    *p++ = alphabet[ (byte)x & (byte)15 ];
+  } else {
+    *p++ = alphabet[ (byte)x ];
+  }
+  //Debug("(LongHex out %lx >) ", (unsigned long)p);
+  return (*p = 0), p;
+}
+
+
+// Hex Alphabets
+const byte* LowerHexAlphabet = "0123456789abcdef";
+const byte* UpperHexAlphabet = "0123456789ABCDEF";
+
+void BufFillGap(Buf* buf, byte width, byte n, bool fill0) {
+    if (width > n) {
+        byte gap = width - n;
+        for (byte i = 0; i < gap; i++) {
+            BufAppC(buf, fill0? '0' : ' ');
+        }
+    }
+}
+
+void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
+    // Quick Buffer for integer formatting.
+    byte qbuf[20];
+
+    va_list ap;
+    va_start(ap, format);
+    for (const char* s = format; *s; s++) {
+        if (*s != '%') {
+            BufAppC(buf, *s);
+            continue;
+        }
+
+        s++;
+        bool fill0 = false, longingly = false;
+        byte width = 0;
+        if (*s == '0') {
+            fill0 = true;
+            s++;
+        }
+        while ('0'<=*s && *s<='9') {
+            width = 10*width + (*s - '0');
+            s++;
+        }
+        if (*s == 'l') {
+            longingly = true;
+            s++;
+        }
+        switch (*s) {
+        case 'X':
+        case 'x': {
+            unsigned long x;
+            if (longingly) {
+                x = va_arg(ap, unsigned long);
+                //Debug("arg(ul)%lx ", x);
+            } else {
+                x = va_arg(ap, unsigned);
+                //Debug("arg(unsigned)%lx ", x);
+            }
+            
+            byte n = (byte)(QFormatLongHex(qbuf, ((*s=='X')? UpperHexAlphabet: LowerHexAlphabet), x) - qbuf);
+            BufAppS(buf, qbuf, n);
+            BufFillGap(buf, width, n, fill0);
+        }
+        break;
+        case 'u': {
+            unsigned long x;
+            if (longingly) {
+                x = va_arg(ap, unsigned long);
+                //Debug("arg(ul)%lx ", x);
+            } else {
+                x = va_arg(ap, unsigned);
+                //Debug("arg(unsigned)%lx ", x);
+            }
+            // unsigned x = va_arg(ap, unsigned);
+            //Debug("arg(u)%lu ", x);
+            byte n = (byte)(QFormatUnsignedInt(qbuf, x) - qbuf);
+            BufAppS(buf, qbuf, n);
+            BufFillGap(buf, width, n, fill0);
+        }
+        break;
+        case 'd': {
+            long x;
+            if (longingly) {
+                x = va_arg(ap, long);
+                //Debug("arg(ul)%lx ", x);
+            } else {
+                x = va_arg(ap, int);
+                //Debug("arg(unsigned)%lx ", x);
+            }
+            //Debug("arg(d)%ld ", x);
+            byte n = (byte)(QFormatSignedInt(qbuf, x) - qbuf);
+            BufAppS(buf, qbuf, n);
+            BufFillGap(buf, width, n, fill0);
+        }
+        break;
+        case 's': {
+            const char* x = va_arg(ap, const char*);
+            //Debug("arg(s)%s ", x);
+            word n = (word) strlen(x);
+            BufAppS(buf, x, n);
+            BufFillGap(buf, width, n, fill0);
+        }
+        break;
+        default:
+            BufAppC(buf, *s);
+        }
+    }
+
+    va_end(ap);
+}
+#endif
 
 // int vsprintf(char* s, const char* format, va_list arg);
 
+#if 0
 int ny_printf(const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
     for () {
-        type x = va_arg(ap, type);
+        // type x = va_arg(ap, type);
         int x = va_arg(ap, int);
     }
 
     va_end(ap, fmt);
 }
+#endif
 
 #if 0
 int low__FormatToStaticBuffer(Buf* buf, String s, Slice args) {
