@@ -108,6 +108,11 @@ my: all ci
 #	(echo "echo f.config 10.1.2.3 255.0.0.0 10.2.2.2" ; echo "f.config 10.1.2.3 255.0.0.0 10.2.2.2"; echo "echo f.arp 10.2.2.2"; echo "f.arp 10.2.2.2";  echo "echo f.ping 10.2.2.2"; echo "f.ping 10.2.2.2"; echo "echo f.ntp -s 10.2.2.2"; echo "f.ntp -s 10.2.2.2") > _zz_
 #	(echo "echo f.config 10.1.2.3 255.0.0.0 10.2.2.2" ; echo "f.config 10.1.2.3 255.0.0.0 10.2.2.2"; echo "echo f.arp 10.2.2.2"; echo "f.arp 10.2.2.2";  echo "echo f.ping 10.2.2.2"; echo "f.ping 10.2.2.2") > _zz_
 
+markup_demo:
+	gcc -g -I.. frobmark/f.browser.c frobmark/fetch.c frobmark/markup.c frobmark/parseurl.c nyformat.c   ncl/buf.c
+	./a.out /etc/fstab 2>&1 | egrep 'PAGE|PRINT'
+	./a.out /etc/sensors3.conf 2>&1 | egrep 'PAGE|PRINT'
+
 FORCE:
 
 clean:

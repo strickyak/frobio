@@ -51,9 +51,9 @@ char *BufFinish(Buf *p) {
   return p->s;
 }
 
-const char *BufTake(Buf *p) {
+char *BufTake(Buf *p) {
   BufCheck(p);
-  const char *z = p->s;
+  char *z = p->s;
   p->s = NULL;
   p->n = -1;
   return z;

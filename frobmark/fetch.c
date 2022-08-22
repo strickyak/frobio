@@ -1,78 +1,81 @@
-#include "frobio/nytypes.h"
-
+#include "frobio/frobmark/fetch.h"
+#include "frobio/frobmark/parseurl.h"
+#include "frobio/nystdio.h"
+#include "frobio/nyformat.h"
 #include "frobio/ncl/buf.h"
+#include "frobio/ncl/malloc.h"
+#include "frobio/ncl/std.h"
 
-static char buf[200];
+struct t_fetcher {
+    Fetcher fetcher;
+    //
+};
 
-char** FetchSourceAsLines(const char* url) {
-    // For now, URL must be a local filepath.
+struct file_fetcher {
+    Fetcher fetcher;
+    //
+    Url url;
+    FILE* fd;
+};
 
-#if unix
-    FILE* r = fopen(url, "r");
-    if (!r) {
-        perror("cannot open src file");
-        exit(2);
+static char buf[300];
+
+byte* FileFetcher_Readline(struct fetcher* handle) {
+    struct file_fetcher* ff = (struct file_fetcher*)handle;
+    char* ee = fgets(buf, sizeof(buf)-1, ff->fd);
+    if (ee) return (byte*) strdup(buf);
+    return NULL;
+}
+void FileFetcher_Close(Fetcher* handle) {
+    struct file_fetcher* ff = (struct file_fetcher*)handle;
+    error e = fclose(ff->fd);
+    assert(!e);
+}
+
+error FileFetcher_Open(const Url* url, struct file_fetcher* ff) {
+    ff->fd = fopen(url->path, "r");    
+    ny_eprintf("---- %s %lx ----\n", url->path, (long)ff->fd);
+    if (!ff->fd) {
+        return 252; // ERR(CANNOT_OPEN_FILE);
     }
+    ff->fetcher.readline = FileFetcher_Readline;
+    ff->fetcher.close = FileFetcher_Close;
+    return OKAY;
+}
 
-    Buf b;
-    BufInit(&b);
-    while (true) {
-        char* s = fgets(buf, sizeof buf, r);
-        if (!s) break;
-        BufAppDope(buf);
+Fetcher* FetcherFactory(const Url* url) {
+    Fetcher* z = NULL;
+    const char* sch = url->scheme;
+    if (!sch) sch="file:";
+    if (!strlen(sch)) sch="file:";
+
+    #if 0
+    if (!strcmp(sch "t:")) {
+        struct t_fetcher* tf =
+            (struct t_fetcher*)malloc(sizeof *tf);
+        assert(false); // TODO
+        z = (Fetcher*) tf;
+    } else
+    #endif
+
+    if (!strcmp(sch, "file:") || !strcmp(sch, "")) {
+        struct file_fetcher* ff =
+            (struct file_fetcher*)malloc(sizeof *ff);
+        error e = FileFetcher_Open(url, ff);
+        if (e) {
+            ny_eprintf("Cannot open %q: error %d\n",
+                url->path, e);
+            free(ff);
+            return NULL;
+        }
+        z = (Fetcher*) ff;
+
+    } else {
+        return NULL;
     }
-    fclose(r);
-    return BufTakedope(&b);
-#else
-    int r = -1;
-    error e = Os9Open(url, 1/*=read*/, &r);
-    if (e) panic("cannot open src file");
-
-    Buf b;
-    BufInit(&b);
-    while (true) {
-        Os9ReadLn(buf);
-        BufAppDope(line);
-    }
-    return BufTakedope(&b);
-#endif
-
+    // Take the URL.
+    assert(z);
+    z->url = *url;
+    memset((void*)url, 0, sizeof(*url));
+    return z;
 }
-
-#ifndef unix
-
-typedef struct file { int fd; } FILE;
-
-FILE* fopen(const char* pathname, const char* mode) {
-    assert(pathname);
-    assert(mode);
-    int m = 1;
-    if (mode[0] == 'w') m = 2;
-    int fd = -1;
-    error e = Os9Open(pathname, m, &fd);
-    if (e) return NULL;
-    FILE* f = malloc(sizeof FILE);
-    f->fd = fd;
-    return f;
-}
-
-char *fgets(char *buf, int size, FILE *f) {
-    assert(buf);
-    assert(size);
-    assert(f);
-    int bytes_read;
-    error e = Os9ReadLn(f->fd, buf, size-1, &bytes_read);
-    if (e) return NULL;
-    buf[bytes_read] = '\0';
-    return buf;
-}
-
-int fclose(FILE *f) {
-    assert(f);
-    error e = Os9Close(f->fd);
-    if (e) return EOF;
-    return 0;
-}
-
-
-#endif

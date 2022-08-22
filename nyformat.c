@@ -225,6 +225,7 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
         break;
         case 's': {
             const char* x = va_arg(ap, const char*);
+            if (!x) x = "<NULL>";
             //Debug("arg(s)%s ", x);
             byte n = (byte) strlen(x);
             BufFillGap(buf, width, n, fill0);
@@ -233,6 +234,7 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
         break;
         case 'q': {
             const char* x = va_arg(ap, const char*);
+            if (!x) x = "<NULL>";
             //Debug("arg(s)%s ", x);
             word n = (word) strlen(x);
             BufAppC(buf, '\"');
@@ -335,4 +337,17 @@ int ny_sprintf(char* dest, const char* fmt, ...) {
     memcpy(dest, buf.s, buf.n);
     BufDel(&buf);
     return buf.n;
+}
+
+char* StrFormat(const char* fmt, ...) {
+    Buf buf;
+    BufInit(&buf);
+
+    va_list ap;
+    va_start(ap, fmt);
+    BufFormatVA(&buf, fmt, ap);
+    va_end(ap);
+
+    BufFinish(&buf);
+    return BufTake(&buf);
 }

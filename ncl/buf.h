@@ -14,7 +14,7 @@ void BufInitWith(Buf *buf, const char *s);
 void BufInitTake(Buf *buf, char *s);
 void BufDel(Buf *buf);
 char *BufFinish(Buf *buf);
-const char *BufTake(Buf *buf);
+char *BufTake(Buf *buf);
 const char *BufPeek(Buf *buf);
 void BufAppC(Buf *buf, char c);
 void BufAppS(Buf *buf, const char *s, int n);

@@ -1,4 +1,5 @@
 #include "frobio/frobmark/parseurl.h"
+#include "frobio/nyformat.h"
 #include "frobio/ncl/buf.h"
 #include "frobio/ncl/malloc.h"
 #include "frobio/ncl/std.h"
@@ -57,6 +58,7 @@ error ParseUrl(const char* ascii, Url* url_out) {
         BufAppC(&path, *s);
         s++;
     }
+    BufFinish(&path);
     url_out->path = BufTake(&path);
     return OKAY;
 }
@@ -104,4 +106,20 @@ error JoinUrls(const Url* a, const Url* b, Url* out) {
         out->path = s;
     }
     return OKAY;
+}
+
+char* UrlToStr(Url* a) {
+    if (!a->valid) return strdup("URL(INVALID)");
+    return StrFormat(
+        "URL(%q,%q,%q)",
+        a->scheme ? a->scheme : "-null-",
+        a->hostport ? a->hostport : "-null-",
+        a->path ? a->path : "-");
+}
+
+void DeleteUrl(Url* a) {
+    if (a->scheme) free((void*)a->scheme);
+    if (a->hostport) free((void*)a->hostport);
+    if (a->path) free((void*)a->path);
+    memset(a, 0, sizeof *a);
 }

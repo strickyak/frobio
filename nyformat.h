@@ -11,5 +11,6 @@ int ny_printf(const char* fmt, ...);
 int ny_eprintf(const char* fmt, ...);
 int ny_fprintf(FILE* f, const char* fmt, ...);
 int ny_sprintf(char* dest, const char* fmt, ...);
+char* StrFormat(const char* fmt, ...);
 
 #endif // FROBIO_NYFORMAT_h_

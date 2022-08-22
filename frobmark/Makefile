@@ -17,6 +17,6 @@ parseurl_test: _FORCE_
 	os9 ident parseurl_test
 
 clean:
-	rm -f a.out *_test *.link *.map *.s
+	rm -f a.out *_test *.link *.map *.s *.sym *.list *.asmap
 
 _FORCE_:

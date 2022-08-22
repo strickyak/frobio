@@ -2,8 +2,10 @@
 #define _FROBIO_FROBMARK_MARKUP_H_
 
 #include "frobio/nytypes.h"
+#include "frobio/frobmark/parseurl.h"
+#include "frobio/frobmark/fetch.h"
 
-typedef error (*getline_fn)(byte* buf, word max);
+//< typedef error (*getline_fn)(byte* buf, word max);
 typedef error (*putline_fn)(byte* buf);
 typedef error (*prompt_and_input_fn)(byte* buf, word max);
 
@@ -15,7 +17,7 @@ typedef struct rendering {
     // Caller fills in these once, for configuration:
     word width;
     word height;
-    getline_fn get_src_line;
+    Fetcher* fetcher;
     putline_fn print_line;
     prompt_and_input_fn prompt_and_input;
 
@@ -23,7 +25,7 @@ typedef struct rendering {
     word x, y, ybegin, yend;
     byte* token;
     word len;
-    byte inbuf[FM_INBUF_SIZE];
+    //< byte inbuf[FM_INBUF_SIZE];
     byte rbuf[FM_RBUF_SIZE];
 } Rendering;
 

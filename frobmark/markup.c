@@ -1,10 +1,11 @@
 #include "frobio/nytypes.h"
 #include "frobio/frobmark/markup.h"
 #include "frobio/os9defs.h"
+#include "frobio/nyformat.h"
 
 static byte* NextToken(Rendering* r, byte* s) {
     // Skip white.
-    while (*s && *s < ' ') s++;  // Skip white.
+    while (*s && *s <= ' ') s++;  // Skip white.
     if (!*s) return NULL;  // Line ended.
 
     r->token = s;  // Start of token.
@@ -21,7 +22,7 @@ static void printIfNeededAndStartNewLine(Rendering* r) {
 
     error e = r->print_line(r->rbuf);
     if (e) {
-      printf("\n*** r->print_line: ERROR %d\n", e);
+      ny_eprintf("\n*** r->print_line: ERROR %d\n", e);
       exit(e);
     }
   }
@@ -54,31 +55,34 @@ void FmRender(Rendering* r) {
   r->x = r->y = 0;
   r->ybegin = r->page * r->height;
   r->yend = r->ybegin + r->height;
-  printf("# page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
+  ny_eprintf("# page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
 
   error e;
   while (true) {
-    // TODO -- get_src_line should RETURN a str.
-    e = r->get_src_line(r->inbuf, sizeof r->inbuf - 1);
-    if (e == E_EOF) break;
-    if (e) {
-      printf("\n*** get_src_line: ERROR %d\n", e);
-      exit(e);
-    }
-
-    byte* s = r->inbuf;
+ny_eprintf(" .%d. ", __LINE__);
+    byte* bp = r->fetcher->readline(r->fetcher);
+ny_eprintf(" .%d. ", __LINE__);
+    ny_eprintf(" --r->fetcher->readline: %q\n", bp);
+    //< e = r->get_src_line(r->inbuf, sizeof r->inbuf - 1);
+    if (!bp) break;
+    byte* s = bp;
     while (true) {
         s = NextToken(r, s);
+        ny_eprintf("NextToken->%x %d %q\n", (long)s, r->len, r->token);
+ny_eprintf(" .%d. ", __LINE__);
         if (!s) break;
+ny_eprintf(" .%d. ", __LINE__);
 
         if (r->x + r->len  < r->width) {
-            printf("(fits x=%d y=%d) ", r->x, r->y);
+ny_eprintf(" .%d. ", __LINE__);
+            ny_eprintf("(fits x=%d y=%d) ", r->x, r->y);
             // It fits in the current rbuf.
             rspace(r);
             memcpy(r->rbuf+r->x, r->token, r->len);
             r->x += r->len;
         } else {
-            printf("(didnt x=%d y=%d) ", r->x, r->y);
+ny_eprintf(" .%d. ", __LINE__);
+            ny_eprintf("(didnt x=%d y=%d) ", r->x, r->y);
             printIfNeededAndStartNewLine(r);
             // Now we will force the token to print,
             // even if we have to chop it up.
@@ -88,5 +92,7 @@ void FmRender(Rendering* r) {
         }  // endif it fits.
     }  // next token
   }  // next source line
+ny_eprintf(" .%d. ", __LINE__);
   printIfNeededAndStartNewLine(r);
+ny_eprintf(" .%d. ", __LINE__);
 }
