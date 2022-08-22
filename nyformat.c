@@ -1,64 +1,7 @@
 #include "frobio/nyformat.h"
 #include <stdarg.h>
 
-#if 0
-void BPutChar(Buf* buf, byte x) {
-  assert(buf);
-  BufAppC(buf, x);
-}
-
-void BPutStr(Buf* buf, const char* s) {
-  assert(buf);
-  assert(s);
-  BufAppS(buf, s, strlen(s));
-}
-
-void BPutStrN(Buf* buf, const char* s, byte n) {
-  BufAppS(buf, s, n);
-}
-#endif
-
-#if 0
-void BPutDec(Buf* buf, byte x) {
-  assert(x < 10);
-  BPutChar(buf, '0' + x);
-}
-
-void BPutU(Buf* buf, word x) {
-  if (x > 9) {
-    BPutU(buf, x / 10);
-    BPutDec(buf, (byte)(x % 10));
-  } else {
-    BPutDec(buf, (byte)x);
-  }
-}
-void BPutI(Buf* buf, int x) {
-  if (x<0) {
-    BPutChar(buf, '-');
-    BPutU(buf, -x);
-  } else {
-    BPutU(buf, x);
-  }
-}
-
-void BPutHex(Buf* buf, byte x) {
-  assert(x < 16);
-  if (x < 10) {
-    BPutDec(buf, x);
-  } else {
-    BPutChar(buf, 'a' + x - 10);
-  }
-}
-
-void BPutX(Buf* buf, word x) {
-  if (x > 15) {
-    BPutX(buf, x >> 4);
-    BPutHex(buf, (byte)(x & 15));
-  } else {
-    BPutHex(buf, (byte)x);
-  }
-}
-#endif
+#define Debug printf
 
 #if 0  // FOR CURLY
 void BPutNumCurly(Buf* buf, byte c) {
@@ -92,41 +35,6 @@ void BEncodeCurly(Buf* buf, byte* str, int n) {
 }
 #endif
 
-
-#if 1
-byte* QFormatUnsignedInt(byte* p, unsigned long x) {
-  if (x > 9) {
-    p = QFormatUnsignedInt(p, x / 10);
-    *p++ = '0' + (byte)(x % 10);
-  } else {
-    *p++ = '0' + (byte)x;
-  }
-  return (*p = 0), p;
-}
-byte* QFormatSignedInt(byte* p, signed long x) {
-  //Debug("signed! ");
-  if (x<0) {
-    *p++ = '-';
-    p = QFormatUnsignedInt(p, (unsigned long)-x);
-  } else {
-    p = QFormatUnsignedInt(p, (unsigned long)x);
-  }
-  return p;
-}
-
-byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
-  //Debug("(LongHex in %lx < %lx) ", (unsigned long)p, x);
-  if (x > 15) {
-    p = QFormatLongHex(p, alphabet, x >> 4);
-    *p++ = alphabet[ (byte)x & (byte)15 ];
-  } else {
-    *p++ = alphabet[ (byte)x ];
-  }
-  //Debug("(LongHex out %lx >) ", (unsigned long)p);
-  return (*p = 0), p;
-}
-
-
 // Hex Alphabets
 const byte* LowerHexAlphabet = "0123456789abcdef";
 const byte* UpperHexAlphabet = "0123456789ABCDEF";
@@ -139,6 +47,89 @@ void BufFillGap(Buf* buf, byte width, byte n, bool fill0) {
         }
     }
 }
+
+void BufAppStringQuoting(Buf* buf, const char* s) {
+  for (; *s; s++) {
+      switch (*s) {
+         case 9:
+            BufAppC(buf, '\\');
+            BufAppC(buf, 't');
+         break;
+         case 10:
+            BufAppC(buf, '\\');
+            BufAppC(buf, 'n');
+         break;
+         case 13:
+            BufAppC(buf, '\\');
+            BufAppC(buf, 'r');
+         break;
+         case '\"':
+            BufAppC(buf, '\\');
+            BufAppC(buf, '\"');
+         break;
+         case '\'':
+            BufAppC(buf, '\\');
+            BufAppC(buf, '\'');
+         break;
+         default:
+              if (' ' <= *s && *s <= '~') {
+                // "Printable" ASCII
+                BufAppC(buf, *s);
+              } else {
+                // Needs hex escape
+                BufAppC(buf, '\\');
+                BufAppC(buf, 'x');
+                BufAppC(buf, LowerHexAlphabet[*s>>4]);
+                BufAppC(buf, LowerHexAlphabet[*s&15]);
+              }
+      }  // switch
+  }  // next s
+}
+
+#if 1
+
+// Define or Undef:
+#undef LONG_DECIMAL
+
+#ifdef LONG_DECIMAL
+#define DECIMAL_TYPE long
+#else
+#define DECIMAL_TYPE int
+#endif
+
+byte* QFormatUnsignedInt(byte* p, unsigned DECIMAL_TYPE x) {
+  if (x > 9) {
+    p = QFormatUnsignedInt(p, x / 10);
+    *p++ = '0' + (byte)(x % 10);
+  } else {
+    *p++ = '0' + (byte)x;
+  }
+  return (*p = 0), p;
+}
+byte* QFormatSignedInt(byte* p, signed DECIMAL_TYPE x) {
+  //Debug("signed! ");
+  if (x<0) {
+    *p++ = '-';
+    p = QFormatUnsignedInt(p, (unsigned DECIMAL_TYPE)-x);
+  } else {
+    p = QFormatUnsignedInt(p, (unsigned DECIMAL_TYPE)x);
+  }
+  return p;
+}
+
+byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
+  Debug("(LongHex in %x < %lx) ", (unsigned)(word)p, x);
+  if (x > 15) {
+    p = QFormatLongHex(p, alphabet, x >> 4);
+    // TODO: report bug that (byte)x did not work.
+    *p++ = alphabet[ (byte)(word)x & (byte)15 ];
+  } else {
+    *p++ = alphabet[ (byte)x ];
+  }
+  Debug("(LongHex out %x >) ", (unsigned)(word)p);
+  return (*p = 0), p;
+}
+
 
 void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
     // Quick Buffer for integer formatting.
@@ -180,47 +171,64 @@ void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
             }
             
             byte n = (byte)(QFormatLongHex(qbuf, ((*s=='X')? UpperHexAlphabet: LowerHexAlphabet), x) - qbuf);
-            BufAppS(buf, qbuf, n);
             BufFillGap(buf, width, n, fill0);
+            BufAppS(buf, (const char*)qbuf, n);
         }
         break;
         case 'u': {
-            unsigned long x;
+            unsigned DECIMAL_TYPE x;
+#ifdef LONG_DECIMAL
             if (longingly) {
-                x = va_arg(ap, unsigned long);
+                x = va_arg(ap, unsigned DECIMAL_TYPE);
                 //Debug("arg(ul)%lx ", x);
             } else {
                 x = va_arg(ap, unsigned);
                 //Debug("arg(unsigned)%lx ", x);
             }
+#else
+            x = va_arg(ap, unsigned DECIMAL_TYPE);
+#endif
             // unsigned x = va_arg(ap, unsigned);
             //Debug("arg(u)%lu ", x);
             byte n = (byte)(QFormatUnsignedInt(qbuf, x) - qbuf);
-            BufAppS(buf, qbuf, n);
             BufFillGap(buf, width, n, fill0);
+            BufAppS(buf, (const char*)qbuf, n);
         }
         break;
         case 'd': {
-            long x;
+            signed DECIMAL_TYPE x;
+#ifdef LONG_DECIMAL
             if (longingly) {
-                x = va_arg(ap, long);
+                x = va_arg(ap, signed DECIMAL_TYPE);
                 //Debug("arg(ul)%lx ", x);
             } else {
-                x = va_arg(ap, int);
+                x = va_arg(ap, signed int);
                 //Debug("arg(unsigned)%lx ", x);
             }
+#else
+            x = va_arg(ap, unsigned DECIMAL_TYPE);
+#endif
             //Debug("arg(d)%ld ", x);
             byte n = (byte)(QFormatSignedInt(qbuf, x) - qbuf);
-            BufAppS(buf, qbuf, n);
             BufFillGap(buf, width, n, fill0);
+            BufAppS(buf, (const char*)qbuf, n);
         }
         break;
         case 's': {
             const char* x = va_arg(ap, const char*);
             //Debug("arg(s)%s ", x);
-            word n = (word) strlen(x);
-            BufAppS(buf, x, n);
+            byte n = (byte) strlen(x);
             BufFillGap(buf, width, n, fill0);
+            BufAppS(buf, x, n);
+        }
+        break;
+        case 'q': {
+            const char* x = va_arg(ap, const char*);
+            //Debug("arg(s)%s ", x);
+            word n = (word) strlen(x);
+            BufAppC(buf, '\"');
+            BufAppStringQuoting(buf, x);
+            BufAppC(buf, '\"');
         }
         break;
         default:

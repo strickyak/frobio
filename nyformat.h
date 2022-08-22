@@ -29,6 +29,7 @@ void BPutCurly(Buf* buf, byte c);
 void BEncodeCurly(Buf* buf, byte* str, int n);
 #endif
 
+void BufAppStringQuoting(Buf* buf, const char* s);
 void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/);
 
 

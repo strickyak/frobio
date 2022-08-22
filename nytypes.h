@@ -32,7 +32,7 @@ typedef unsigned char byte;  // byte is 1 byte, unsigned.
 typedef unsigned int word;   // word is 2 bytes, unsigned.
 typedef unsigned long quad;  // quad is 4 bytes, unsigned.
 
-// already // typedef unsigned char bool;  // use a byte for a bool.
+typedef unsigned char bool;  // use a byte for a bool.
 typedef unsigned char error; // use a byte for an error (0 == OKAY).
 #define OKAY (error)0
 
