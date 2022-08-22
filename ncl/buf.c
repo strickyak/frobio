@@ -10,13 +10,15 @@
 
 void BufCheck(Buf *p) {
 #ifdef unix
-  if (p->n < 0 || p->s == NULL) {
-    panic("BufCheck fails");
-  }
+  assert (p->n >= 0 && p->s != NULL);
+  //if (p->n < 0 || p->s == NULL) {
+    //panic("BufCheck fails");
+  //}
 #else
-  if (p->n < 0 || p->s == NULL || p->s > 0xC000) {
-    panic("BufCheck fails");
-  }
+  assert (p->n >= 0 && p->s != NULL && p->s <= 0xC000);
+  //if (p->n < 0 || p->s == NULL || p->s > 0xC000) {
+    //panic("BufCheck fails");
+  //}
 #endif
 };
 
