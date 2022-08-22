@@ -1,5 +1,13 @@
-#include "frobio/nyformat.h"
 #include <stdarg.h>
+#include "frobio/nyformat.h"
+#include "frobio/nystdio.h"
+
+#ifdef unix
+#include <unistd.h>
+#include <errno.h>
+#else
+#include "frobio/os9call.h"
+#endif
 
 #define Debug printf
 
@@ -39,7 +47,7 @@ void BEncodeCurly(Buf* buf, byte* str, int n) {
 const byte* LowerHexAlphabet = "0123456789abcdef";
 const byte* UpperHexAlphabet = "0123456789ABCDEF";
 
-void BufFillGap(Buf* buf, byte width, byte n, bool fill0) {
+static void BufFillGap(Buf* buf, byte width, byte n, bool fill0) {
     if (width > n) {
         byte gap = width - n;
         for (byte i = 0; i < gap; i++) {
@@ -86,7 +94,6 @@ void BufAppStringQuoting(Buf* buf, const char* s) {
   }  // next s
 }
 
-#if 1
 
 // Define or Undef:
 #undef LONG_DECIMAL
@@ -97,7 +104,7 @@ void BufAppStringQuoting(Buf* buf, const char* s) {
 #define DECIMAL_TYPE int
 #endif
 
-byte* QFormatUnsignedInt(byte* p, unsigned DECIMAL_TYPE x) {
+static byte* QFormatUnsignedInt(byte* p, unsigned DECIMAL_TYPE x) {
   if (x > 9) {
     p = QFormatUnsignedInt(p, x / 10);
     *p++ = '0' + (byte)(x % 10);
@@ -106,7 +113,7 @@ byte* QFormatUnsignedInt(byte* p, unsigned DECIMAL_TYPE x) {
   }
   return (*p = 0), p;
 }
-byte* QFormatSignedInt(byte* p, signed DECIMAL_TYPE x) {
+static byte* QFormatSignedInt(byte* p, signed DECIMAL_TYPE x) {
   //Debug("signed! ");
   if (x<0) {
     *p++ = '-';
@@ -117,8 +124,8 @@ byte* QFormatSignedInt(byte* p, signed DECIMAL_TYPE x) {
   return p;
 }
 
-byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
-  Debug("(LongHex in %x < %lx) ", (unsigned)(word)p, x);
+static byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
+  //Debug("(LongHex in %x < %lx) ", (unsigned)(word)p, x);
   if (x > 15) {
     p = QFormatLongHex(p, alphabet, x >> 4);
     // TODO: report bug that (byte)x did not work.
@@ -126,17 +133,17 @@ byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
   } else {
     *p++ = alphabet[ (byte)x ];
   }
-  Debug("(LongHex out %x >) ", (unsigned)(word)p);
+  //Debug("(LongHex out %x >) ", (unsigned)(word)p);
   return (*p = 0), p;
 }
 
 
-void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
+void BufFormatVA(Buf* buf, const char* format, va_list ap) {
     // Quick Buffer for integer formatting.
     byte qbuf[20];
 
-    va_list ap;
-    va_start(ap, format);
+    // va_list ap;
+    // va_start(ap, format);
     for (const char* s = format; *s; s++) {
         if (*s != '%') {
             BufAppC(buf, *s);
@@ -186,6 +193,7 @@ void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
                 //Debug("arg(unsigned)%lx ", x);
             }
 #else
+            assert(!longingly);
             x = va_arg(ap, unsigned DECIMAL_TYPE);
 #endif
             // unsigned x = va_arg(ap, unsigned);
@@ -206,6 +214,7 @@ void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
                 //Debug("arg(unsigned)%lx ", x);
             }
 #else
+            assert(!longingly);
             x = va_arg(ap, unsigned DECIMAL_TYPE);
 #endif
             //Debug("arg(d)%ld ", x);
@@ -236,98 +245,94 @@ void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/) {
         }
     }
 
+    // va_end(ap);
+}
+void BufFormat(Buf* buf, const char* format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    BufFormatVA(buf, format, ap);
     va_end(ap);
 }
-#endif
 
 // int vsprintf(char* s, const char* format, va_list arg);
 
-#if 0
 int ny_printf(const char* fmt, ...) {
+    Buf buf;
+    BufInit(&buf);
+
     va_list ap;
     va_start(ap, fmt);
+    BufFormatVA(&buf, fmt, ap);
+    va_end(ap);
 
-    for () {
-        // type x = va_arg(ap, type);
-        int x = va_arg(ap, int);
-    }
-
-    va_end(ap, fmt);
+    BufFinish(&buf);
+    int bytes_written = 0;
+    error e = 0;
+    #ifdef unix
+    bytes_written = write(1, buf.s, buf.n);
+    if (bytes_written <= 0) e = errno;
+    #else
+    e = Os9Write(1, buf.s, buf.n, &bytes_written); 
+    #endif
+    BufDel(&buf);
+    return (e) ? -1 : bytes_written;
 }
-#endif
 
-#if 0
-int low__FormatToStaticBuffer(Buf* buf, String s, Slice args) {
-  BufferP = StaticBuffer;
-  BufferEnd = StaticBuffer + sizeof(StaticBuffer);
+int ny_eprintf(const char* fmt, ...) {
+    Buf buf;
+    BufInit(&buf);
 
-  P__any_* a = (P__any_*)(args.base + args.offset);
-  P__any_* a_end = a + (args.len / sizeof(*a));
+    va_list ap;
+    va_start(ap, fmt);
+    BufFormatVA(&buf, fmt, ap);
+    va_end(ap);
 
-  byte* p = (byte*)(s.base + s.offset);
-  byte* p_end = p + s.len;
+    BufFinish(&buf);
+    int bytes_written = 0;
+    error e = 0;
+    #ifdef unix
+    bytes_written = write(1, buf.s, buf.n);
+    if (bytes_written <= 0) e = errno;
+    #else
+    e = Os9Write(2, buf.s, buf.n, &bytes_written); 
+    #endif
+    BufDel(&buf);
+    return (e) ? -1 : bytes_written;
+}
 
-  for (; p < p_end; p++) {
-    byte c = *p;
-    if (c == 0/*EOS*/) goto END;
-    if (c=='%') {
-        ++p;
-        c = *p;
+int ny_fprintf(FILE* f, const char* fmt, ...) {
+    Buf buf;
+    BufInit(&buf);
 
-        if (a >= a_end) {
-          BPutStr(buf, "<end>");
-        } else {
+    va_list ap;
+    va_start(ap, fmt);
+    BufFormatVA(&buf, fmt, ap);
+    va_end(ap);
 
-          if (c == 0/*EOS*/) goto END;
+    BufFinish(&buf);
+    int bytes_written = 0;
+    error e = 0;
+    #ifdef unix
+    bytes_written = write(1, buf.s, buf.n);
+    if (bytes_written <= 0) e = errno;
+    #else
+    e = Os9Write(f->fd, buf.s, buf.n, &bytes_written); 
+    #endif
+    BufDel(&buf);
+    return (e) ? -1 : bytes_written;
+}
 
-          if (c == 'T') {
-            BPutStr(buf, a->typecode);
-          } else {
-            switch (a->typecode[0]) {
-              case 's': // case string
-              case 'S': // case Slice (actually for slice of bytes) pun as String:
-                {
-                  String* xp = (String*)a->pointer;
-                  if (c=='q')
-                    FormatQ((byte*)(xp->base + xp->offset), xp->len);
-                  else
-                    BPutStrN(buf, (const char*)(xp->base + xp->offset), xp->len);
-                }
-                break;
-              case 'z': // case bool
-                BPutStr(buf,  (*(P_bool*)a->pointer) ? "true" : "false");
-                break;
-              case 'b':  // case byte
-                BPutU(buf, *(P_byte*)a->pointer);
-                break;
-              case 'i':  // case int
-                BPutI(buf, *(P_int*)a->pointer);
-                break;
-              case 'u': // case uint
-                BPutU(buf, *(P_uint*)a->pointer);
-                break;
-              case 'p': // case pointer
-                BPutStr(buf,  "(*)" );
-                BPutU(buf, (P_uintptr)*(void**)a->pointer);
-                break;
-              default: // default: Unhandled Type
-                BPutStr(buf, "(percent "); BPutU(buf, c);
-                BPutStr(buf, " typecode "); BPutStr(buf, a->typecode);
-                BPutStr(buf, " pointer "); BPutU(buf, (P_uintptr)a->pointer);
-                BPutStr(buf, " * "); BPutU(buf, ((P_uintptr*)a->pointer)[0]);
-                BPutStr(buf, " * "); BPutU(buf, ((P_uintptr*)a->pointer)[1]);
-                BPutStr(buf, ")");
-                break;
-            }
-          }
-      }
-      a++;
-    } else {
-      // Not a % escape -- just a normal char
-      BPutChar(buf, *p);
-    }
-  }  // next byte *p
-END:
-  return BufferP - StaticBuffer;
-}  // end low__FormatToBuffer
-#endif
+int ny_sprintf(char* dest, const char* fmt, ...) {
+    Buf buf;
+    BufInit(&buf);
+
+    va_list ap;
+    va_start(ap, fmt);
+    BufFormatVA(&buf, fmt, ap);
+    va_end(ap);
+
+    BufFinish(&buf);
+    memcpy(dest, buf.s, buf.n);
+    BufDel(&buf);
+    return buf.n;
+}

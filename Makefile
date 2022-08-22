@@ -1,5 +1,12 @@
 all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig f.dhcp
 
+nyformat_test: FORCE
+	gcc -g -I.. nyformat_test.c nyformat.c ncl/buf.c
+	./a.out
+	cmoc --os9 -I.. nyformat_test.c nyformat.c nylib.c nystdio.c ncl/std.c ncl/buf.c ncl/malloc.c os9call.c ncl/puthex.c 
+	echo TODO -- MAKE launchx.sh STOP IF SUCCESS.
+	sh ../doing_os9/gomar/launchx.sh nyformat_test /dev/null
+
 f.config: FORCE
 	cmoc -i --os9 -I.. f.config.c wiz5100s.c nylib.c os9call.c stack300.asm
 

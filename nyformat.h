@@ -2,35 +2,14 @@
 #define FROBIO_NYFORMAT_h_
 
 #include "frobio/nytypes.h"
+#include "frobio/nystdio.h"
 #include "frobio/ncl/buf.h"
 
-// These all append to the Buf:
-
-#if 0
-// Put one char.
-void BPutChar(Buf* buf, byte x);
-// Put one str.
-void BPutStr(Buf* buf, const char* s);
-// Put one str with n.
-void BPutStrN(Buf* buf, const char* s, byte n);
-// Put a decimal digit.
-void BPutDec(Buf* buf, byte x);
-// Put an unsigned decimal word.
-void BPutU(Buf* buf, word x);
-// Put a signed decimal word.
-void BPutI(Buf* buf, int x);
-// Put a hex digit.
-void BPutHex(Buf* buf, byte x);
-// Put a hex word.
-void BPutX(Buf* buf, word x);
-// Put a char, curly encoded.
-void BPutCurly(Buf* buf, byte c);
-// Put a str with n, curly encoded.
-void BEncodeCurly(Buf* buf, byte* str, int n);
-#endif
-
 void BufAppStringQuoting(Buf* buf, const char* s);
-void BufFormat(Buf* buf, const char* format, ... /*va_list arg*/);
-
+void BufFormat(Buf* buf, const char* format, ...);
+int ny_printf(const char* fmt, ...);
+int ny_eprintf(const char* fmt, ...);
+int ny_fprintf(FILE* f, const char* fmt, ...);
+int ny_sprintf(char* dest, const char* fmt, ...);
 
 #endif // FROBIO_NYFORMAT_h_
