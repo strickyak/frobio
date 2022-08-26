@@ -5,12 +5,10 @@
 #include "frobio/frobmark/parseurl.h"
 #include "frobio/frobmark/fetch.h"
 
-//< typedef error (*getline_fn)(byte* buf, word max);
 typedef error (*putline_fn)(byte* buf);
 typedef error (*prompt_and_input_fn)(byte* buf, word max);
 
-#define FM_INBUF_SIZE 201 // Lines up to 200 long.
-#define FM_RBUF_SIZE 201 // Screens up to 200 wide.
+#define FM_RBUF_SIZE 101 // Screens up to 100 wide.
 typedef struct rendering {
     // Caller fills in these before each Render:
     word page;
@@ -25,7 +23,8 @@ typedef struct rendering {
     word x, y, ybegin, yend;
     byte* token;
     word len;
-    //< byte inbuf[FM_INBUF_SIZE];
+    bool prev_line_empty;
+    word next_link_num;
     byte rbuf[FM_RBUF_SIZE];
 } Rendering;
 

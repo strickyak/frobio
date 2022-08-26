@@ -12,6 +12,7 @@
 
 #ifndef _OS9CALL_H_
 #define _OS9CALL_H_
+#ifndef unix
 
 #include "frobio/nytypes.h"
 
@@ -70,4 +71,5 @@ error Os9ClrBlk(byte num_blocks, word first_address);
 // Was used in NCL code.  Calls Os9Write with strlen(str).
 asm error Os9_puts(const char* str);
 
+#endif // unix
 #endif // _OS9CALL_H_

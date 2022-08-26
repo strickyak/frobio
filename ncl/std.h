@@ -5,11 +5,6 @@
 
 #define BUF_SIZE 200            /* instead of 1024 */
 
-// Up(c): convert to upper case for 26 ascii letters.
-char Up(char c);
-// Down(c): convert to lower case for 26 ascii letters.
-char Down(char c);
-
 // prefixed_atoi() understands initial "0" for octal and "0x" for hex, and '-' before any of that.
 int prefixed_atoi(const char *s);
 

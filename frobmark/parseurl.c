@@ -6,13 +6,13 @@
 
 static const char* ScanNonSlashName(
            const char* p, const char** name_out) {
-    Buf b;
-    BufInit(&b);
+    Buf buf;
+    BufInit(&buf);
     while (*p > ' ' && *p <= '~' && *p != '/') {
-        BufAppC(&b, *p);
+        BufAppC(&buf, *p);
         p++;
     }
-    *name_out = BufTake(&b);
+    *name_out = BufFinish(&buf);
     return p;   
 }
 
@@ -122,4 +122,11 @@ void DeleteUrl(Url* a) {
     if (a->hostport) free((void*)a->hostport);
     if (a->path) free((void*)a->path);
     memset(a, 0, sizeof *a);
+}
+
+void CopyUrl(Url* dest, const Url* src) {
+    memcpy((void*)dest, (const void*)src, sizeof *src);
+    if (src->scheme) dest->scheme = strdup(src->scheme);
+    if (src->hostport) dest->hostport = strdup(src->hostport);
+    if (src->path) dest->path = strdup(src->path);
 }

@@ -3,7 +3,7 @@ all: f.config f.ticks f.ping f.arp f.tget f.ntp f.send f.recv f.dump f.dig f.dhc
 nyformat_test: FORCE
 	gcc -g -I.. nyformat_test.c nyformat.c ncl/buf.c
 	./a.out
-	cmoc --os9 -I.. nyformat_test.c nyformat.c nylib.c nystdio.c ncl/std.c ncl/buf.c ncl/malloc.c os9call.c ncl/puthex.c 
+	cmoc --os9 -I.. nyformat_test.c nyformat.c nylib.c nystdio.c ncl/std.c ncl/buf.c ncl/malloc.c os9call.c ncl/puthex.c
 	echo TODO -- MAKE launchx.sh STOP IF SUCCESS.
 	sh ../doing_os9/gomar/launchx.sh nyformat_test /dev/null
 
@@ -109,7 +109,7 @@ my: all ci
 #	(echo "echo f.config 10.1.2.3 255.0.0.0 10.2.2.2" ; echo "f.config 10.1.2.3 255.0.0.0 10.2.2.2"; echo "echo f.arp 10.2.2.2"; echo "f.arp 10.2.2.2";  echo "echo f.ping 10.2.2.2"; echo "f.ping 10.2.2.2") > _zz_
 
 markup_demo:
-	gcc -g -I.. frobmark/f.browser.c frobmark/fetch.c frobmark/markup.c frobmark/parseurl.c nyformat.c   ncl/buf.c
+	gcc -g -I.. frobmark/f.browser.c frobmark/fetch.c frobmark/markup.c frobmark/parseurl.c nyformat.c ncl/buf.c
 	./a.out /etc/fstab 2>&1 | egrep 'PAGE|PRINT'
 	./a.out /etc/sensors3.conf 2>&1 | egrep 'PAGE|PRINT'
 

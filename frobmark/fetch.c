@@ -9,6 +9,7 @@
 struct t_fetcher {
     Fetcher fetcher;
     //
+    // TODO
 };
 
 struct file_fetcher {
@@ -18,12 +19,28 @@ struct file_fetcher {
     FILE* fd;
 };
 
-static char buf[300];
+struct opener_registration {
+    struct opener_registration* next;
+    const char* scheme;
+    FetcherOpener opener;
+} *first_opener;
 
-byte* FileFetcher_Readline(struct fetcher* handle) {
+void InstallOpener(const char* scheme,
+                    FetcherOpener opener) {
+  struct opener_registration* p =
+      (struct opener_registration*)malloc(sizeof *p);
+  p->scheme = scheme;
+  p->opener = opener;
+  p->next = first_opener;
+  first_opener = p;
+}
+
+static char readline_buf[300];
+
+mstring FileFetcher_Readline(struct fetcher* handle) {
     struct file_fetcher* ff = (struct file_fetcher*)handle;
-    char* ee = fgets(buf, sizeof(buf)-1, ff->fd);
-    if (ee) return (byte*) strdup(buf);
+    char* ee = fgets(readline_buf, sizeof(readline_buf)-1, ff->fd);
+    if (ee) return strdup(readline_buf);
     return NULL;
 }
 void FileFetcher_Close(Fetcher* handle) {
@@ -32,50 +49,37 @@ void FileFetcher_Close(Fetcher* handle) {
     assert(!e);
 }
 
-error FileFetcher_Open(const Url* url, struct file_fetcher* ff) {
+Fetcher* FileFetcher_Open(const Url* url) {
+    struct file_fetcher* ff =
+                (struct file_fetcher*)malloc(sizeof *ff);
+    memset(ff, 0, sizeof *ff);
     ff->fd = fopen(url->path, "r");    
-    ny_eprintf("---- %s %lx ----\n", url->path, (long)ff->fd);
+    ny_eprintf("---- %s %lx ----\n", url->path, (long)(word)ff->fd);
     if (!ff->fd) {
-        return 252; // ERR(CANNOT_OPEN_FILE);
+        return NULL;
     }
     ff->fetcher.readline = FileFetcher_Readline;
     ff->fetcher.close = FileFetcher_Close;
-    return OKAY;
+    return (Fetcher*)ff;
 }
 
 Fetcher* FetcherFactory(const Url* url) {
-    Fetcher* z = NULL;
+    Fetcher* fetcher = NULL;
     const char* sch = url->scheme;
     if (!sch) sch="file:";
     if (!strlen(sch)) sch="file:";
 
-    #if 0
-    if (!strcmp(sch "t:")) {
-        struct t_fetcher* tf =
-            (struct t_fetcher*)malloc(sizeof *tf);
-        assert(false); // TODO
-        z = (Fetcher*) tf;
-    } else
-    #endif
-
-    if (!strcmp(sch, "file:") || !strcmp(sch, "")) {
-        struct file_fetcher* ff =
-            (struct file_fetcher*)malloc(sizeof *ff);
-        error e = FileFetcher_Open(url, ff);
-        if (e) {
-            ny_eprintf("Cannot open %q: error %d\n",
-                url->path, e);
-            free(ff);
-            return NULL;
+    struct opener_registration *p;
+    for (p=first_opener; p; p=p->next) {
+        if (!strcasecmp(sch, p->scheme)) {
+            fetcher = p->opener(url);
+            if (!fetcher) {
+                ny_eprintf("Cannot open %q\n", url->path);
+            }
+            break;
         }
-        z = (Fetcher*) ff;
-
-    } else {
-        return NULL;
     }
-    // Take the URL.
-    assert(z);
-    z->url = *url;
-    memset((void*)url, 0, sizeof(*url));
-    return z;
+
+    if (fetcher) CopyUrl(&fetcher->url, url);
+    return fetcher;
 }

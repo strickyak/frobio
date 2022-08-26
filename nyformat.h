@@ -13,4 +13,9 @@ int ny_fprintf(FILE* f, const char* fmt, ...);
 int ny_sprintf(char* dest, const char* fmt, ...);
 char* StrFormat(const char* fmt, ...);
 
+// Up(c): convert to upper case for 26 ascii letters.
+char Up(char c);
+// Down(c): convert to lower case for 26 ascii letters.
+char Down(char c);
+
 #endif // FROBIO_NYFORMAT_h_

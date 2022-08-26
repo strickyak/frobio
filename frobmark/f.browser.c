@@ -5,7 +5,7 @@
 #include "frobio/frobmark/markup.h"
 
 error PrintLine(byte* b) {
-    ny_eprintf("PRINT |||%s|||\n", b);
+    ny_eprintf("\nPRINT |||%s|||\n", b);
     return OKAY;
 }
 
@@ -26,6 +26,8 @@ int main(int argc, char *argv[]) {
     if (argc != 2) Usage();
     char* url_str = argv[1];
 
+    InstallOpener("file:", FileFetcher_Open);
+
     for (byte pg=0; pg<10;pg++) {
         ny_eprintf("###### PAGE %d #######\n", pg);
         Url url;
@@ -38,7 +40,7 @@ int main(int argc, char *argv[]) {
 
         Fetcher* f = FetcherFactory(&url);
         if (!f) {
-            ny_eprintf("cannot ParseUrl %q: error %d\n", url_str, e);
+            ny_eprintf("cannot ParseUrl %q\n", url_str);
             return 255;
         }
 

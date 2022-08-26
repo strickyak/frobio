@@ -36,5 +36,6 @@ error ParseUrl(const char* s, Url* url_out);
 error JoinUrls(const Url* a, const Url* b, Url* out);
 char* UrlToStr(Url* a);
 void DeleteUrl(Url* a);
+void CopyUrl(Url* dest, const Url* src);
 
 #endif // _FROBIO_FROBMARK_PARSEURL_H_

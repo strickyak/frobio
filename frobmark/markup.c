@@ -2,6 +2,15 @@
 #include "frobio/frobmark/markup.h"
 #include "frobio/os9defs.h"
 #include "frobio/nyformat.h"
+#include "frobio/ncl/std.h"
+#include "frobio/ncl/malloc.h"
+
+bool StrIsWhite(const byte* s) {
+    for (; *s; s++) {
+        if (*s > ' ') return false;
+    }
+    return true;
+}
 
 static byte* NextToken(Rendering* r, byte* s) {
     // Skip white.
@@ -15,6 +24,8 @@ static byte* NextToken(Rendering* r, byte* s) {
 }
 
 static void printIfNeededAndStartNewLine(Rendering* r) {
+  r->prev_line_empty = StrIsWhite(r->rbuf);
+
   // Printing is only needed when y is in ybegin to yend.
   if (r->ybegin <= r->y && r->y < r->yend) {
     // Y is in the range we want to print.
@@ -51,24 +62,63 @@ static void rspace(Rendering* r) {
   if (r->x) rPut(r, ' ');
 }
 
+void EndParagraph(Rendering* r) {
+        if (!r->prev_line_empty) {
+          // Finish the current line:
+          if (r->x) printIfNeededAndStartNewLine(r);
+          // Emit an empty line.
+          printIfNeededAndStartNewLine(r);
+        }
+}
+
+void EmitLink(Rendering* r) {
+  if (r->x) printIfNeededAndStartNewLine(r);
+  ny_sprintf(r->rbuf, "LINK #%d <<%s>>", r->token);
+  printIfNeededAndStartNewLine(r);
+}
+
 void FmRender(Rendering* r) {
+  r->prev_line_empty = false;
+  r->next_link_num = 2;
   r->x = r->y = 0;
   r->ybegin = r->page * r->height;
   r->yend = r->ybegin + r->height;
   ny_eprintf("# page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
 
   error e;
+  byte* bp = NULL;
   while (true) {
 ny_eprintf(" .%d. ", __LINE__);
-    byte* bp = r->fetcher->readline(r->fetcher);
+    if (bp) free(bp);
+    bp = r->fetcher->readline(r->fetcher);
 ny_eprintf(" .%d. ", __LINE__);
     ny_eprintf(" --r->fetcher->readline: %q\n", bp);
-    //< e = r->get_src_line(r->inbuf, sizeof r->inbuf - 1);
+
     if (!bp) break;
     byte* s = bp;
+
+    if (StrIsWhite(s)) {
+        // End-of-paragraph mark.
+        EndParagraph(r);
+        continue;
+    }
+
+    if (s[0]=='/' && 'A'<=Up(s[1]) && Up(s[1])<='Z') {
+        // Beginning-of-line Slash Markups.
+        s = NextToken(r, s+1);
+        if (r->len && !strcasecmp((const char*)r->token, "L")) {
+          s = NextToken(r, s+2);
+          if (s) {
+              EmitLink(r);  // using r->token & r->len
+              // fall through for any remaining text.
+          }
+        }
+    }
+
+    // Read remaining tokens and flow them into paragraph.
     while (true) {
         s = NextToken(r, s);
-        ny_eprintf("NextToken->%x %d %q\n", (long)s, r->len, r->token);
+        ny_eprintf("NextToken->%x %d %q\n", (long)(word)s, r->len, r->token);
 ny_eprintf(" .%d. ", __LINE__);
         if (!s) break;
 ny_eprintf(" .%d. ", __LINE__);

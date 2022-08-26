@@ -11,6 +11,16 @@
 
 #define Debug printf
 
+// Up(c): convert to upper case for 26 ascii letters.
+char Up(char c) {
+  return ('a' <= c && c <= 'z') ? c - 32 : c;
+}
+
+// Down(c): convert to lower case for 26 ascii letters.
+char Down(char c) {
+  return ('A' <= c && c <= 'Z') ? c + 32 : c;
+}
+
 #if 0  // FOR CURLY
 void BPutNumCurly(Buf* buf, byte c) {
           BPutChar(buf, '{');
@@ -348,6 +358,5 @@ char* StrFormat(const char* fmt, ...) {
     BufFormatVA(&buf, fmt, ap);
     va_end(ap);
 
-    BufFinish(&buf);
-    return BufTake(&buf);
+    return BufFinish(&buf);
 }
