@@ -12,6 +12,7 @@ typedef error (*prompt_and_input_fn)(byte* buf, word max);
 typedef struct rendering {
     // Caller fills in these before each Render:
     word page;
+    bool just_print_links;
     // Caller fills in these once, for configuration:
     word width;
     word height;

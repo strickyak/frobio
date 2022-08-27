@@ -81,18 +81,25 @@ void FmRender(Rendering* r) {
   r->prev_line_empty = false;
   r->next_link_num = 2;
   r->x = r->y = 0;
-  r->ybegin = r->page * r->height;
-  r->yend = r->ybegin + r->height;
-  ny_eprintf("# page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
+  if (r->page) {
+    // page counting starts on page 1.
+    r->ybegin = (r->page - 1) * r->height;
+    r->yend = r->ybegin + r->height;
+  } else {
+    // if page is 0, do not paginate.
+    r->ybegin = 0;
+    r->yend = 0xffff; // max word
+  }
+  //ny_eprintf("# page=%d ybegin=%d yend=%d\n", r->page, r->ybegin, r->yend);
 
   error e;
   byte* bp = NULL;
   while (true) {
-ny_eprintf(" .%d. ", __LINE__);
+//ny_eprintf(" .%d. ", __LINE__);
     if (bp) free(bp);
     bp = r->fetcher->readline(r->fetcher);
-ny_eprintf(" .%d. ", __LINE__);
-    ny_eprintf(" --r->fetcher->readline: %q\n", bp);
+//ny_eprintf(" .%d. ", __LINE__);
+    //ny_eprintf(" --r->fetcher->readline: %q\n", bp);
 
     if (!bp) break;
     byte* s = bp;
@@ -118,21 +125,21 @@ ny_eprintf(" .%d. ", __LINE__);
     // Read remaining tokens and flow them into paragraph.
     while (true) {
         s = NextToken(r, s);
-        ny_eprintf("NextToken->%x %d %q\n", (long)(word)s, r->len, r->token);
-ny_eprintf(" .%d. ", __LINE__);
+        //ny_eprintf("NextToken->%x %d %q\n", (long)(word)s, r->len, r->token);
+//ny_eprintf(" .%d. ", __LINE__);
         if (!s) break;
-ny_eprintf(" .%d. ", __LINE__);
+//ny_eprintf(" .%d. ", __LINE__);
 
         if (r->x + r->len  < r->width) {
-ny_eprintf(" .%d. ", __LINE__);
-            ny_eprintf("(fits x=%d y=%d) ", r->x, r->y);
+//ny_eprintf(" .%d. ", __LINE__);
+            //ny_eprintf("(fits x=%d y=%d) ", r->x, r->y);
             // It fits in the current rbuf.
             rspace(r);
             memcpy(r->rbuf+r->x, r->token, r->len);
             r->x += r->len;
         } else {
-ny_eprintf(" .%d. ", __LINE__);
-            ny_eprintf("(didnt x=%d y=%d) ", r->x, r->y);
+//ny_eprintf(" .%d. ", __LINE__);
+            //ny_eprintf("(didnt x=%d y=%d) ", r->x, r->y);
             printIfNeededAndStartNewLine(r);
             // Now we will force the token to print,
             // even if we have to chop it up.
@@ -142,7 +149,7 @@ ny_eprintf(" .%d. ", __LINE__);
         }  // endif it fits.
     }  // next token
   }  // next source line
-ny_eprintf(" .%d. ", __LINE__);
+//ny_eprintf(" .%d. ", __LINE__);
   printIfNeededAndStartNewLine(r);
-ny_eprintf(" .%d. ", __LINE__);
-}
+//ny_eprintf(" .%d. ", __LINE__);
+} // FmRender

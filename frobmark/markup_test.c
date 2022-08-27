@@ -5,55 +5,51 @@
 #include "frobio/ncl/std.h"
 
 mstring fizzbuzz(word x) {
-    if (x%100 == 0) {
+    if (false && x%100 == 0) {
         return strdup( "wifjwjfiejwofwijfiowejfoiewjfiewjfoiewjfewfjoewjffjeabcdefghijklmnopq");
-    } else if (x%15 == 0) {
+    } else if (false && x%15 == 0) {
         return strdup( "FIZZBUZZ");
-    } else if (x%5 == 0) {
+    } else if (false && x%5 == 0) {
         return strdup( "buzz");
-    } else if (x%3 == 0) {
+    } else if (false && x%3 == 0) {
         return strdup( "fizz");
     } else {
         return StrFormat("%d", x);
     }
 }
 
-/* typedef struct fetcher {
-    const char* debug_str;
-    Url url;
-
-    byte* (*readline)(struct fetcher* handle);
-    void  (*close)(struct fetcher* handle);
-} Fetcher; */
-
 struct fizz_fetcher {
-    Fetcher fetcher;
+    Fetcher super;
     word count;
 };
 
 mstring FizzFetcherReadLine(struct fetcher* handle) {
     struct fizz_fetcher* ff = (struct fizz_fetcher*)handle;
-    if (ff->count == 200) return NULL;
     ff->count++;
+    if (ff->count > 1000) return NULL;
     return fizzbuzz(ff->count);
 }
 void FizzFetcherClose(struct fetcher* handle) {
+    struct fizz_fetcher* ff = (struct fizz_fetcher*)handle;
+    DeleteUrl(&ff->super.url);
+    if(ff->super.debug_str) free(ff->super.debug_str);
+    memset(handle, 0, sizeof *handle);
 }
 
 Fetcher* FizzFetcher_Open(const Url* url) {
     struct fizz_fetcher* ff = (struct fizz_fetcher*) malloc(sizeof *ff);
     memset((void*)ff, 0, sizeof *ff);
-    ff->fetcher.readline = FizzFetcherReadLine;
-    ff->fetcher.close = FizzFetcherClose;
+    ff->super.readline = FizzFetcherReadLine;
+    ff->super.close = FizzFetcherClose;
     return (Fetcher*)ff;
 }
 
 error TestPrintLine(byte* buf) {
-    printf("\n<<< %3ld {%s} >>>\n", (long)strlen((const char*)buf), buf);
+    printf("%3ld {%s}\n", (long)strlen((const char*)buf), buf);
     return OKAY;
 }
 
-Rendering render_me; 
+Rendering rend_test; 
 
 int main() {
     InstallOpener("fizz:", FizzFetcher_Open);
@@ -62,20 +58,25 @@ int main() {
     error e = ParseUrl("fizz://buzz/fizz", &url);
     assert(!e);
 
-    render_me.width = 60;
-    render_me.height = 10;
-    render_me.fetcher = FetcherFactory(&url);
-    render_me.print_line = TestPrintLine;
-    render_me.prompt_and_input= NULL;
-    printf("\n####---------------------------------------------\n");
+    for (word page = 1; page <= 10; page++) {
+        ny_printf("# -----  PAGE %d  --------------------------------------\n", page);
+        rend_test.fetcher = FetcherFactory(&url);
 
-    for (word page = 0; page < 12; page++) {
-        render_me.page = page;
-        FmRender(&render_me);
-        printf("\n####---------------------------------------------\n");
+        rend_test.width = 60;
+        rend_test.height = 10;
+        rend_test.print_line = TestPrintLine;
+        rend_test.prompt_and_input= NULL;
+
+        rend_test.page = page;
+        FmRender(&rend_test);
+
+        rend_test.fetcher->close(rend_test.fetcher);
+        free((void*)rend_test.fetcher);
+        rend_test.fetcher = 0;
     }
+    ny_printf("# ---- EXIT ----------------\n");
     DeleteUrl(&url);
-    printf("\nDone (markup_test)\n");
+    ny_printf("\nDone (markup_test)\n");
     
     return 0;
 }
