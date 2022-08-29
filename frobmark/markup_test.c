@@ -32,7 +32,7 @@ mstring FizzFetcherReadLine(struct fetcher* handle) {
 void FizzFetcherClose(struct fetcher* handle) {
     struct fizz_fetcher* ff = (struct fizz_fetcher*)handle;
     DeleteUrl(&ff->super.url);
-    if(ff->super.debug_str) free(ff->super.debug_str);
+    if(ff->super.debug_str) free((void*)ff->super.debug_str);
     memset(handle, 0, sizeof *handle);
 }
 
