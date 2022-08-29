@@ -1,8 +1,14 @@
-all: a.out markup_test parseurl_test
+all: unix_all markup_test parseurl_test
 
-a.out: _FORCE_
-	gcc   -I../.. markup_test.c markup.c 
-	./a.out | grep '<<<.*>>>'
+unix_all: unix_markup_test unix_parseurl_test
+
+unix_markup_test: _FORCE_
+	gcc -fsanitize=address -static-libasan -g -I../.. markup_test.c  markup.c  ../nyformat.c ../ncl/buf.c  parseurl.c fetch.c
+	./a.out
+
+unix_parseurl_test: _FORCE_
+	gcc -g -I../.. parseurl_test.c  parseurl.c ../ncl/buf.c ../nyformat.c
+	./a.out
 
 markup_test: _FORCE_
 	gcc -fsanitize=address -static-libasan -g -I../.. markup_test.c  markup.c  ../nyformat.c ../ncl/buf.c  parseurl.c fetch.c
