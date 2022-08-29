@@ -266,6 +266,23 @@ void BufFormat(Buf* buf, const char* format, ...) {
     va_end(ap);
 }
 
+// TODO: this did not actually fix it.
+// TODO: Use WritLn, repeatedly to each \r, \n, or \r\n.
+void FixNewlines(char* s, word n) {
+#if 0
+    if (n<256) {
+        byte bn = (byte) n;
+        for (byte i = 0; i<bn; i++) {
+            if (*s == 10) *s = 13;
+            s++;
+        }
+    } else for (word i = 0; i<n; i++) {
+            if (*s == 10) *s = 13;
+            s++;
+    }
+#endif
+}
+
 // int vsprintf(char* s, const char* format, va_list arg);
 
 int ny_printf(const char* fmt, ...) {
@@ -284,6 +301,7 @@ int ny_printf(const char* fmt, ...) {
     bytes_written = write(1, buf.s, buf.n);
     if (bytes_written <= 0) e = errno;
     #else
+    FixNewlines(buf.s, buf.n);
     e = Os9Write(1, buf.s, buf.n, &bytes_written); 
     #endif
     BufDel(&buf);
@@ -306,13 +324,14 @@ int ny_eprintf(const char* fmt, ...) {
     bytes_written = write(1, buf.s, buf.n);
     if (bytes_written <= 0) e = errno;
     #else
+    FixNewlines(buf.s, buf.n);
     e = Os9Write(2, buf.s, buf.n, &bytes_written); 
     #endif
     BufDel(&buf);
     return (e) ? -1 : bytes_written;
 }
 
-int ny_fprintf(FILE* f, const char* fmt, ...) {
+int ny_fprintf(NY_FILE* f, const char* fmt, ...) {
     Buf buf;
     BufInit(&buf);
 
@@ -328,6 +347,7 @@ int ny_fprintf(FILE* f, const char* fmt, ...) {
     bytes_written = write(1, buf.s, buf.n);
     if (bytes_written <= 0) e = errno;
     #else
+    FixNewlines(buf.s, buf.n);
     e = Os9Write(f->fd, buf.s, buf.n, &bytes_written); 
     #endif
     BufDel(&buf);

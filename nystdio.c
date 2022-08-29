@@ -1,7 +1,9 @@
 #define DONT_RENAME_NY_STDIO 1 // Use ny_ names in this source file.
 #include "frobio/nystdio.h"
+#include "frobio/nyformat.h"
 #include "frobio/os9call.h"
 #include "frobio/ncl/malloc.h"
+#include "frobio/ncl/std.h"
 
 #ifndef unix
 
@@ -45,7 +47,10 @@ int ny_fputs(const char *str, NY_FILE *f) {
     assert(f);
     int bytes_written = 0;
     int n = strlen(str);
-    ny_errno = Os9Write(f->fd, str, n, &bytes_written);
+    char* z = strdup(str);
+    FixNewlines(z, n);
+    ny_errno = Os9Write(f->fd, z, n, &bytes_written);
+    free(z);
     if (ny_errno) return EOF;
     return bytes_written;
 }

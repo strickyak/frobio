@@ -3,15 +3,15 @@
 
 #include "frobio/nytypes.h"
 
+// There may be multiple implementatios of stdio laying around.
+// Cmoc includes some.  We prefix with ny_ to distinguish ours.
+typedef struct ny_file { int fd; } NY_FILE;
+
 #ifndef unix
 
 #ifndef EOF
 #define EOF (-1)
 #endif
-
-// There may be multiple implementatios of stdio laying around.
-// Cmoc includes some.  We prefix with ny_ to distinguish ours.
-typedef struct ny_file { int fd; } NY_FILE;
 
 // Fopen mode can be "r" or "w".
 NY_FILE* ny_fopen(const char* pathname, const char* mode);

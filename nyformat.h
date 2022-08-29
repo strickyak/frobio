@@ -9,9 +9,10 @@ void BufAppStringQuoting(Buf* buf, const char* s);
 void BufFormat(Buf* buf, const char* format, ...);
 int ny_printf(const char* fmt, ...);
 int ny_eprintf(const char* fmt, ...);
-int ny_fprintf(FILE* f, const char* fmt, ...);
+int ny_fprintf(NY_FILE* f, const char* fmt, ...);
 int ny_sprintf(char* dest, const char* fmt, ...);
 char* StrFormat(const char* fmt, ...);
+void FixNewlines(char* s, word n);  // did not work.
 
 // Up(c): convert to upper case for 26 ascii letters.
 char Up(char c);
