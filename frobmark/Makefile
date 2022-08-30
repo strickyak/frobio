@@ -1,6 +1,10 @@
 all: unix_all markup_test parseurl_test
 
-unix_all: unix_markup_test unix_parseurl_test
+unix_all: unix_markup_test unix_parseurl_test unix_browser
+
+unix_browser: _FORCE_
+	gcc -fsanitize=address -static-libasan -g -I../.. f.browser.c  markup.c  ../nyformat.c ../ncl/buf.c  parseurl.c fetch.c
+	./a.out fetch.c
 
 unix_markup_test: _FORCE_
 	gcc -fsanitize=address -static-libasan -g -I../.. markup_test.c  markup.c  ../nyformat.c ../ncl/buf.c  parseurl.c fetch.c

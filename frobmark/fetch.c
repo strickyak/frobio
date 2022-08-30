@@ -47,6 +47,7 @@ void FileFetcher_Close(Fetcher* handle) {
     struct file_fetcher* ff = (struct file_fetcher*)handle;
     error e = fclose(ff->fd);
     assert(!e);
+    DeleteUrl(&ff->fetcher.url);
 }
 
 Fetcher* FileFetcher_Open(const Url* url) {
@@ -54,7 +55,7 @@ Fetcher* FileFetcher_Open(const Url* url) {
                 (struct file_fetcher*)malloc(sizeof *ff);
     memset(ff, 0, sizeof *ff);
     ff->fd = fopen(url->path, "r");    
-    ny_eprintf("---- %s %x ----\n", url->path, (word)ff->fd);
+    // ny_eprintf("---- OPEN FILE FETCHER '%s' ----\n", url->path);
     if (!ff->fd) {
         return NULL;
     }

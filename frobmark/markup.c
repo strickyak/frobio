@@ -116,7 +116,10 @@ void FmRender(Rendering* r) {
               // fall through for any remaining text.
           }
         }
+        if (r->just_print_links) continue;
+        // TODO: Other Slash commands....
     }
+    if (r->just_print_links) continue;
 
     // Read remaining tokens and flow them into paragraph.
     while (true) {
