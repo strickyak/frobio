@@ -171,6 +171,12 @@ char *strdup(const char *s) {
   return p;
 }
 
+char *strndup(const char *s, int n) {
+  char *p = (char *) malloc(n + 1);
+  strncpy(p, s, n+1);
+  return p;
+}
+
 char *strdup_upper(const char *s) {
   int n = strlen(s);
   char *z = (char *) malloc(n + 1);

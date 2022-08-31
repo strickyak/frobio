@@ -15,6 +15,7 @@ void snprintf_d(char *buf, int max, const char *fmt, int x);
 void printf_d(const char *fmt, int x);
 void printf_s(const char *fmt, const char *s);
 char *strdup(const char *s);
+char *strndup(const char *s, int n);
 char *strdup_upper(const char *s);
 
 #if 1  // If I don't provide one of these, HCF.

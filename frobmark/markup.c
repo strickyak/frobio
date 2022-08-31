@@ -12,7 +12,7 @@ bool StrIsWhite(const byte* s) {
     return true;
 }
 
-static byte* NextToken(Rendering* r, byte* s) {
+static byte* GetNextToken(Rendering* r, byte* s) {
     // Skip white.
     while (*s && *s <= ' ') s++;  // Skip white.
     if (!*s) return NULL;  // Line ended.
@@ -62,7 +62,7 @@ static void rspace(Rendering* r) {
   if (r->x) rPut(r, ' ');
 }
 
-void EndParagraph(Rendering* r) {
+static void EndParagraph(Rendering* r) {
         if (!r->prev_line_empty) {
           // Finish the current line:
           if (r->x) printIfNeededAndStartNewLine(r);
@@ -71,15 +71,67 @@ void EndParagraph(Rendering* r) {
         }
 }
 
-void EmitLink(Rendering* r) {
-  if (r->x) printIfNeededAndStartNewLine(r);
-  ny_sprintf(r->rbuf, "LINK #%d <<%s>>", r->token);
-  printIfNeededAndStartNewLine(r);
+static void EmitWord(Rendering* r, const byte* tok, word len) {
+        if (r->x + len  < r->width) {
+            // It fits in the current rbuf.
+            rspace(r);
+            memcpy(r->rbuf+r->x, tok, len);
+            r->x += len;
+        } else {
+            printIfNeededAndStartNewLine(r);
+            // Now we will force the tok to print,
+            // even if we have to chop it up.
+            for (word i = 0; i < len; i++) {
+                rWrapPut(r, tok[i]);
+            }
+        }  // endif it fits.
+}
+
+static void EmitLink(Rendering* r) {
+  ny_eprintf("...EmitLink...\n");
+  ++ r->link_num;
+  char buf[10];
+  sprintf(buf, "[%d]", r->link_num);
+  EmitWord(r, (const byte*)buf, strlen(buf));
+  EmitWord(r, (const byte*)r->token, r->len);
+}
+
+mstring FmGetNthLink(Rendering* r, word n) {
+  int link_counter=0;
+  char* ptr = NULL;
+  while (true) {
+    if (ptr) free(ptr);
+    ptr = r->fetcher->readline(r->fetcher);
+
+    if (!ptr) break;
+    // s will advance, ptr will not.  ptr is needed for free().
+    byte* s = (byte*) ptr;
+    byte c0 = s[0];
+    byte c1 = Up(s[1]);
+
+    // Is it a "/L ..." link?
+    if (c0=='/' && c1=='L') {
+          s = GetNextToken(r, s+2);  // next token is URL
+          if (s) {
+            ++link_counter;
+            return strndup((const char*)r->token, r->len);
+          }
+    }
+  }
+  return NULL;
+}
+
+void EmitRemainingTokens(Rendering* r, const byte* s) {
+    while (true) {
+        s = GetNextToken(r, s);
+        if (!s) break;
+        EmitWord(r, r->token, r->len);
+    }  // next token
 }
 
 void FmRender(Rendering* r) {
   r->prev_line_empty = false;
-  r->next_link_num = 2;
+  r->link_num = 0;
   r->x = r->y = 0;
   if (r->page) {
     // page counting starts on page 1.
@@ -91,14 +143,29 @@ void FmRender(Rendering* r) {
     r->yend = 0xffff; // max word
   }
 
-  error e;
-  byte* bp = NULL;
+  char* ptr = NULL;
   while (true) {
-    if (bp) free(bp);
-    bp = r->fetcher->readline(r->fetcher);
+    if (ptr) free(ptr);
+    ptr = r->fetcher->readline(r->fetcher);
 
-    if (!bp) break;
-    byte* s = bp;
+    if (!ptr) break;
+    byte* s = (byte*) ptr;
+    byte c0 = s[0];
+    byte c1 = Up(s[1]);
+
+    // Is it a "/L ..." link?
+    if (c0=='/' && c1=='L') {
+          s = GetNextToken(r, s+2);  // next token is URL
+          if (s) {
+              EmitLink(r);  // using r->token & r->len
+              // fall through for any remaining text.
+          } else {
+            // Un-see the "/L".
+            s = (byte*)ptr;
+          }
+    } else {
+        if (r->just_print_links) continue;
+    }
 
     if (StrIsWhite(s)) {
         // End-of-paragraph mark.
@@ -106,40 +173,8 @@ void FmRender(Rendering* r) {
         continue;
     }
 
-    if (s[0]=='/' && 'A'<=Up(s[1]) && Up(s[1])<='Z') {
-        // Beginning-of-line Slash Markups.
-        s = NextToken(r, s+1);
-        if (r->len && !strcasecmp((const char*)r->token, "L")) {
-          s = NextToken(r, s+2);
-          if (s) {
-              EmitLink(r);  // using r->token & r->len
-              // fall through for any remaining text.
-          }
-        }
-        if (r->just_print_links) continue;
-        // TODO: Other Slash commands....
-    }
-    if (r->just_print_links) continue;
-
     // Read remaining tokens and flow them into paragraph.
-    while (true) {
-        s = NextToken(r, s);
-        if (!s) break;
-
-        if (r->x + r->len  < r->width) {
-            // It fits in the current rbuf.
-            rspace(r);
-            memcpy(r->rbuf+r->x, r->token, r->len);
-            r->x += r->len;
-        } else {
-            printIfNeededAndStartNewLine(r);
-            // Now we will force the token to print,
-            // even if we have to chop it up.
-            for (word i = 0; i < r->len; i++) {
-                rWrapPut(r, r->token[i]);
-            }
-        }  // endif it fits.
-    }  // next token
+    EmitRemainingTokens(r, s);
   }  // next source line
   printIfNeededAndStartNewLine(r);
 } // FmRender

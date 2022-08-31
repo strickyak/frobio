@@ -55,7 +55,6 @@ Fetcher* FileFetcher_Open(const Url* url) {
                 (struct file_fetcher*)malloc(sizeof *ff);
     memset(ff, 0, sizeof *ff);
     ff->fd = fopen(url->path, "r");    
-    // ny_eprintf("---- OPEN FILE FETCHER '%s' ----\n", url->path);
     if (!ff->fd) {
         return NULL;
     }

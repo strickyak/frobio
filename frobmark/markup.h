@@ -25,7 +25,7 @@ typedef struct rendering {
     byte* token;
     word len;
     bool prev_line_empty;
-    word next_link_num;
+    word link_num;
     byte rbuf[FM_RBUF_SIZE];
 } Rendering;
 
