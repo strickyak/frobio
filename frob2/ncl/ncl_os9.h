@@ -1,0 +1,13 @@
+int picolCommand9Chain(int argc, char **argv, void *pd);
+int picolCommand9Fork(int argc, char **argv, void *pd);
+int picolCommand9FileSize(int argc, char **argv, void *pd);
+int picolCommand9Wait(int argc, char **argv, void *pd);
+int picolCommand9Dup(int argc, char **argv, void *pd);
+int picolCommand9Close(int argc, char **argv, void *pd);
+int picolCommand9Kill(int argc, char **argv, void *pd);
+int picolCommand9Sleep(int argc, char **argv, void *pd);
+int picolCommand9Create(int argc, char **argv, void *pd);
+int picolCommand9Open(int argc, char **argv, void *pd);
+int picolCommand9MakOrChgDir(int argc, char **argv, void *pd);
+int picolCommand9Delete(int argc, char **argv, void *pd);
+int picolCommandSource(int argc, char **argv, void *pd);

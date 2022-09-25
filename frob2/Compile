@@ -1,0 +1,37 @@
+#!/bin/bash
+
+case $1 in
+    *.c )
+        TARGET=$(basename "$1" .c)
+        shift
+        ;;
+    * )
+        echo "Expected a .c file: $1" >&2
+        exit 13
+        ;;
+esac
+
+for x; do
+    case $x in
+        *.c ) : ok ;;
+        * ) echo "Expected rest are .c files: $x" >&2
+            exit 13
+            ;;
+    esac
+done
+
+set -ex
+case $HOW in
+    "" | cmoc )
+	    cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o "$TARGET" "$TARGET.c" "$@"
+        mv "$TARGET" "$TARGET.os9"
+        ;;
+    cmocly )
+	    /home/strick/go/bin/cmocly --cmoc_pre='-DMAX_VERBOSE=9' -I=.. --o "$TARGET" "$TARGET.c" "$@" &&
+        mv "$TARGET" "$TARGET.os9"
+        ;;
+    * )
+        echo "Use environment HOW=cmoc or HOW=cmocly or edit $0" >&2
+        exit 13
+        ;;
+esac
