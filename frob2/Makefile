@@ -3,24 +3,22 @@ LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc
 
 COMPILE=
 
-all: x-logging.os9
+all: x-logging.os9 f-ping.os9 f-config.os9
 	sync; sync
 
-x-logging.os9: x-logging.c $(LIBS) $(HDRS)
-	sh Compile x-logging.c $(LIBS)
-	os9 ident x-logging.os9
+.c.os9:
+	sh Compile $< $(LIBS)
+	os9 ident $@
 
-ZZx-logging: x-logging.c $(LIBS) $(HDRS)
-	/home/strick/go/bin/cmocly --cmoc_pre='-DMAX_VERBOSE=9' -I=.. --o=x-logging x-logging.c $(LIBS)
-	os9 ident x-logging.os9
+.SUFFIXES: .c .os9
 
-Zx-logging: x-logging.c $(LIBS) $(HDRS)
-	cmoc -i --os9 -I.. x-logging.c $(LIBS)
-	os9 ident x-logging.os9
-
-f-ping.os9: f-ping.c $(LIBS) $(HDRS)
-	sh Compile f-ping.c $(LIBS)
-	os9 ident f-ping.os9
+#x-logging.os9: x-logging.c $(LIBS) $(HDRS)
+#	sh Compile x-logging.c $(LIBS)
+#	os9 ident x-logging.os9
+#
+#f-ping.os9: f-ping.c $(LIBS) $(HDRS)
+#	sh Compile f-ping.c $(LIBS)
+#	os9 ident f-ping.os9
 
 ci:
 	set -x; ci-l ` find . -name '*.[ch]' `
@@ -30,3 +28,11 @@ clean:
 	rm -f *.list *.map *.asmap *.sym *.o *.s
 	rm -f *.os9 *.lst *.s-orig *.link
 	sync; sync
+
+#x-logging: x-logging.c $(LIBS) $(HDRS)
+#	/home/strick/go/bin/cmocly --cmoc_pre='-DMAX_VERBOSE=9' -I=.. --o=x-logging x-logging.c $(LIBS)
+#	os9 ident x-logging.os9
+#
+#x-logging: x-logging.c $(LIBS) $(HDRS)
+#	cmoc -i --os9 -I.. x-logging.c $(LIBS)
+#	os9 ident x-logging.os9

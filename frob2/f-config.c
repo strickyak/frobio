@@ -30,8 +30,21 @@ int main(int argc, char* argv[]) {
 
   const char* p = argv[0];
   quad addr = NyParseDottedDecimalQuad(&p);
+
   p = argv[1];
-  quad mask = NyParseDottedDecimalQuad(&p);
+  bool has_dot = false;
+  quad mask;
+  for (const char*s = p; *s; s++)
+    if (*s == '.') has_dot = true;
+  if (has_dot) {
+      mask = NyParseDottedDecimalQuad(&p);
+  } else {
+      byte n = (byte)atoi(p);
+      unsigned quad tmp = 0xffffffffL;
+      mask = ~(0xFFFFffffLU >> n);
+      LogInfo("mask = %lx", mask);
+  }
+
   p = argv[2];
   quad gateway = NyParseDottedDecimalQuad(&p);
 
