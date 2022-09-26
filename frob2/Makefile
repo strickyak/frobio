@@ -1,4 +1,4 @@
-PROD= f-config.os9 f-dhcp.os9 f-dig.os9 f-ntp.os9 f-ping.os9 f-tget.os9
+PROD= f-arp.os9 f-config.os9 f-dhcp.os9 f-dump.os9 f-dig.os9 f-ntp.os9 f-ping.os9 f-tget.os9
 DEMO= x-logging.os9 x-fputs.os9
 
 all: $(DEMO) $(PROD)
@@ -8,9 +8,13 @@ HDRS=froblib.h frobnet.h frobos9.h froblib/malloc.h match/util.h ncl/ncl.h ncl/n
 LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c
 
 # f-*.c are our intended frobio commands.
+f-arp.os9 : f-arp.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
 f-config.os9 : f-config.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)
 f-dhcp.os9 : f-dhcp.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
+f-dump.os9 : f-dump.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)
 f-dig.os9 : f-dig.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)

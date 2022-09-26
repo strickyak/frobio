@@ -1,28 +1,18 @@
-// f.ping ipaddr
+// f.arp ipaddr
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
 
 static void FatalUsage() {
-    LogFatal("Usage:  f.ping -wWiznetPortHex -cCount -iInterval ipaddr");
+    LogFatal("Usage:  f.arp -wWiznetPortHex ipaddr\n");
 }
 
 int main(int argc, char* argv[]) {
-  // Default flag arguments:
-  int interval = 10;
-  int count = 5;
-
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
   while (GetFlag(&argc, &argv, "c:i:v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
-      case 'c':
-         count = NyParseDecimalWord(&FlagArg);
-         break;
-      case 'i':
-         interval = NyParseDecimalWord(&FlagArg);
-         break;
       case 'v':
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
@@ -38,16 +28,17 @@ int main(int argc, char* argv[]) {
     FatalUsage();
   }
 
-  const char* host = argv[0];
-  const char* parse = host;
+  const char* parse = argv[0];
   quad addr = NyParseDottedDecimalQuad(&parse);
 
-  errnum err = wiz_ping(addr);
+  // Reset and configure.
+  byte mac[6];
+  errnum err = wiz_arp(addr, mac);  // int for a cmoc bug workaround!
   if (err) {
-    LogFatal("Ping %q: TIMEOUT", host);
+    LogFatal("*** TIMEOUT ***\n");
   } else {
-    LogStatus("Ping %q: OK", host);
+    printf("%02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   }
 
-  return err;
+  return 0;
 }
