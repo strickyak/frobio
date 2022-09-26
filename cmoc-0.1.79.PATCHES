@@ -1,0 +1,44 @@
+--- /opt/clean/cmoc-0.1.79/src/stdlib/memcmp.asm	2020-04-22 19:22:55.000000000 -0700
++++ memcmp.asm	2022-09-24 20:36:43.042076014 -0700
+@@ -6,7 +6,7 @@
+ 
+ 
+ _memcmp
+-        leax    compareBytes,pcr
++        leax    compareBytes,PCR
+         lbra    memcmpimpl
+ 
+ 
+--- /opt/clean/cmoc-0.1.79/src/stdlib/memicmp.asm	2020-04-22 19:23:26.000000000 -0700
++++ memicmp.asm	2022-09-24 20:37:17.646067511 -0700
+@@ -7,7 +7,7 @@
+ 
+ 
+ _memicmp
+-        leax    compareBytes,pcr
++        leax    compareBytes,PCR
+         lbra    memcmpimpl
+ 
+ 
+--- /opt/clean/cmoc-0.1.79/src/stdlib/strcmp.asm	2020-04-18 15:01:08.000000000 -0700
++++ strcmp.asm	2022-09-24 12:33:50.575428743 -0700
+@@ -8,7 +8,7 @@
+ * int strcmp(char *, char *);
+ *
+ _strcmp
+-        leax	noTransform,pcr
++        leax	noTransform,PCR
+ 		lbra	strcmpimpl
+ 
+ noTransform
+--- /opt/clean/cmoc-0.1.79/src/stdlib/stricmp.asm	2020-04-22 19:14:41.000000000 -0700
++++ stricmp.asm	2022-09-24 12:33:54.059281590 -0700
+@@ -9,7 +9,7 @@
+ * int strcmp(char *, char *);
+ *
+ _stricmp
+-        leax	convertABToUpperCase,pcr
++        leax	convertABToUpperCase,PCR
+ 		lbra	strcmpimpl
+ 
+ 
