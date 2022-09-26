@@ -1,23 +1,23 @@
-// f.config MY_ADDR MY_MASK MY_GATEWAY
+// f-config MY_ADDR MY_MASK MY_GATEWAY
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
 
 static void UsageAndExit() {
-    printf("Usage:  f.config ipaddr mask gateway\n");
+    printf("Usage:  f-config -w0xFF68 ipaddr mask gateway");
     exit(1);
 }
 
 int main(int argc, char* argv[]) {
   SkipArg(&argc, &argv);
-  while (GetFlag(&argc, &argv, "vw")) {
+  while (GetFlag(&argc, &argv, "v:w:")) {
     switch (FlagChar) {
     case 'v':
       Verbosity = prefixed_atoi(FlagArg);
       break;
     case 'w':
-      wiz_hwport = (byte*)NyParseHexWord(&FlagArg);
+      wiz_hwport = (byte*)prefixed_atoi(FlagArg);
       break;
     default:
       UsageAndExit();

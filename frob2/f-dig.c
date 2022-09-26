@@ -1,4 +1,4 @@
-// f.dig server-addr:123 query
+// f-dig server-addr:123 query
 
 // HINT: HOW TO SERVE DNS RESPONSES on an interface (e.g. on Ubuntu 20.04)
 // when systemd-resolved is bound to localhost:
@@ -266,14 +266,14 @@ void Resolv(byte socknum, quad server_host, word server_port, char* query, word 
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  f.dig -wWiznetPortHex -a -tN server_addr:53 www.example.com\n"
+    LogFatal("Usage:  f-dig -w0xFF68 -a -tN server_addr:53 www.example.com\n"
     "  (-a for all types)  (-tN for only type N, decimal integer)\n");
 }
 
 int main(int argc, char* argv[]) {
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
   word type = 1 /*=A*/;
-  while (GetFlag(&argc, &argv, "c:i:v:w:")) {
+  while (GetFlag(&argc, &argv, "at:v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
       case 'a':
@@ -286,46 +286,21 @@ int main(int argc, char* argv[]) {
         Verbosity = (byte)prefixed_atoi(FlagArg);
         break;
       case 'w':
-        wiz_hwport = (byte*)NyParseHexWord(&FlagArg);
+        wiz_hwport = (byte*)prefixed_atoi(FlagArg);
         break;
       default:
         FatalUsage();
     }
   }
 
-  const char* p;   // for parsing.
-  argc--, argv++;  // Discard argv[0], unused on OS-9.
-
-  while (argc && argv[0][0]=='-') {
-    p = argv[0]+2;  // In case needed for parsing.
-    switch (argv[0][1]) {
-    case 'a':
-      type = 0x00ff; /* = all types */
-      break;
-    case 't':
-      type = atoi(argv[0]+2);
-      break;
-    case 'v':
-      Verbosity = (byte)prefixed_atoi(FlagArg);
-      break;
-    case 'w':
-      wiz_hwport = (byte*)NyParseHexWord(&p);
-      break;
-    default:
-      FatalUsage();
-    }
-    argc--, argv++;  // Discard consumed flag.
-  }
-
   if (argc != 2) {
     FatalUsage();
   }
-  p = argv[0];
+  const char* parse = argv[0];
   word server_port = DEFAULT_SERVER_PORT;
-  quad server_addy = NyParseDottedDecimalQuadAndPort(&p, &server_port); 
+  quad server_addy = NyParseDottedDecimalQuadAndPort(&parse, &server_port); 
   byte socknum = OpenLocalSocket();
   Resolv(socknum, server_addy, server_port, /*query=*/argv[1], type);
-  // BUG: Resolv(socknum, server_addy, server_port, /*query=*/argv[1], type_any? 255/*=star*/ : 1 /*=type A*/);
 
   return OKAY;
 }

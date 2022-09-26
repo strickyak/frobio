@@ -1,4 +1,4 @@
-// f.dhcp NAME
+// f-dhcp NAME
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
@@ -37,22 +37,24 @@ DHCP Request;
 DHCP Ack;
 
 void DumpDHCP(DHCP* p) {
-    printf("opcode=%x htype=%x hlen=%x hops=%x  ",
+  if (Verbosity >= LLDebug) {
+    EPrintf("opcode=%x htype=%x hlen=%x hops=%x  ",
         p->opcode, p->htype, p->hlen, p->hops);
-    printf("xid=%02x %02x %02x %02x  ",
+    EPrintf("xid=%02x %02x %02x %02x  ",
         p->xid[0], p->xid[1], p->xid[2], p->xid[3]); 
-    printf("secs=%x flags=%x  ", p->secs, p->flags);
-    printf("ci=%lx yi=%lx si=%lx gi=%lx\n",
+    EPrintf("secs=%x flags=%x  ", p->secs, p->flags);
+    EPrintf("ci=%lx yi=%lx si=%lx gi=%lx\n",
         p->ciaddr, p->yiaddr, p->siaddr, p->giaddr);
-    printf("chaddr: ");
-    for (byte i=0; i<16; i++) printf("%02x ", p->chaddr[i]);
-    //printf("\n sname: ");
-    //for (byte i=0; i<64; i++) printf("%02x ", p->sname[i]);
-    //printf("\n bname: ");
-    //for (byte i=0; i<128; i++) printf("%02x ", p->bname[i]);
-    printf("\noptions: ");
-    for (byte i=0; i<66; i++) printf("%02x ", p->options[i]);
-    printf("\n");
+    EPrintf("chaddr: ");
+    for (byte i=0; i<16; i++) EPrintf("%02x ", p->chaddr[i]);
+    //EPrintf("\n sname: ");
+    //for (byte i=0; i<64; i++) EPrintf("%02x ", p->sname[i]);
+    //EPrintf("\n bname: ");
+    //for (byte i=0; i<128; i++) EPrintf("%02x ", p->bname[i]);
+    EPrintf("\noptions: ");
+    for (byte i=0; i<66; i++) EPrintf("%02x ", p->options[i]);
+    EPrintf("\n");
+  }
 }
 
 quad ip_mask;
@@ -61,8 +63,7 @@ quad ip_dns_server;
 
 void UseOptions(byte* o) {
     if (o[0]!=99 || o[1]!=130 || o[2]!=83 || o[3]!=99) {
-        printf("bad magic cookie\n");
-        return;
+        LogFatal("UseOptions: bad magic: %lx", *(quad*)o);
     }
     byte* p = o+4;
     while (*p != 255) {
@@ -71,22 +72,21 @@ void UseOptions(byte* o) {
         switch (opt) {
             case 1: // subnet mask
                 ip_mask = *(quad*)p;
-                printf("ip_mask %lx ", ip_mask);
+                LogStatus("ip_mask %lx ", ip_mask);
                 break;
             case 3: // Gateway
                 ip_gateway = *(quad*)p;
-                printf("ip_gateway %lx ", ip_gateway);
+                LogStatus("ip_gateway %lx ", ip_gateway);
                 break;
             case 6: // DNS Server
                 ip_dns_server = *(quad*)p;
-                printf("ip_dns_server %lx ", ip_dns_server);
+                LogStatus("ip_dns_server %lx ", ip_dns_server);
                 break;
             default:
-                printf("(opt %d len %d) ", opt, len);
+                LogInfo("(opt %d len %d) ", opt, len);
         }
         p += len;
     }
-    printf("(opt END)\n");
 }
 
 void Run() {
@@ -98,7 +98,7 @@ void Run() {
     memcpy(p->xid, Name, 4);
     p->flags = 0x80; // broadcast
     memcpy(p->chaddr, MacAddr, 6);
-    strcpy(p->bname, "frobio");
+    strcpy((char*)p->bname, "frobio");
 
     // The first four octets of the 'options' field of the DHCP message
     // contain the (decimal) values 99, 130, 83 and 99, respectively
@@ -126,21 +126,18 @@ void Run() {
     byte sock = 0;
     errnum e = udp_open(68, &sock);
     if (e) {
-        printf("*** cannot udp_open(88): e=%d.\n", e);
-        exit(e);
+        LogFatal("cannot udp_open: e=%d.", e);
     }
     e = udp_send(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        printf("*** cannot udp_send(93): e=%d.\n", e);
-        exit(e);
+        LogFatal("cannot udp_send: e=%d.", e);
     }
     word size = sizeof Offer;
     quad recv_from = 0;
     word recv_port = 0;
     e = udp_recv(sock, (byte*)&Offer, &size, &recv_from, &recv_port);
     if (e) {
-        printf("*** cannot udp_recv(101): e=%d.\n", e);
-        exit(e);
+        LogFatal("cannot udp_recv: e=%d.", e);
     }
     DumpDHCP(&Offer);
     quad yiaddr = Offer.yiaddr;
@@ -148,7 +145,7 @@ void Run() {
 
     byte* yi = (byte*)&Offer.yiaddr;
     byte* si = (byte*)&Offer.siaddr;
-    printf("yi=%d.%d.%d.%d  si=%d.%d.%d.%d\n",
+    LogDetail("you=%d.%d.%d.%d  server=%d.%d.%d.%d",
         yi[0], yi[1], yi[2], yi[3],
         si[0], si[1], si[2], si[3]
         );
@@ -171,7 +168,7 @@ void Run() {
     p->yiaddr = yiaddr;
     p->siaddr = siaddr;
     memcpy(p->chaddr, MacAddr, 6);
-    strcpy(p->bname, "frobio");
+    strcpy((char*)p->bname, "frobio");
 
     // The first four octets of the 'options' field of the DHCP message
     // contain the (decimal) values 99, 130, 83 and 99, respectively
@@ -205,16 +202,14 @@ void Run() {
 
     e = udp_send(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        printf("*** cannot udp_send(147): e=%d.\n", e);
-        exit(e);
+        LogFatal("cannot udp_send: e=%d.\n", e);
     }
     size = sizeof Ack;
     recv_from = 0;
     recv_port = 0;
     e = udp_recv(sock, (byte*)&Ack, &size, &recv_from, &recv_port);
     if (e) {
-        printf("*** cannot udp_recv(155): e=%d.\n", e);
-        exit(e);
+        LogFatal("cannot udp_recv: e=%d.\n", e);
     }
     DumpDHCP(&Ack);
 
@@ -228,31 +223,31 @@ void Run() {
     byte* ma = (byte*)&ip_mask;
     byte* ga = (byte*)&ip_gateway;
     byte* dn = (byte*)&ip_dns_server;
-    printf("yi=%d.%d.%d.%d  si=%d.%d.%d.%d ",
+
+    printf("you=%d.%d.%d.%d  server=%d.%d.%d.%d\n",
         yi[0], yi[1], yi[2], yi[3],
-        si[0], si[1], si[2], si[3]
-        );
+        si[0], si[1], si[2], si[3]);
+
     printf("mask=%d.%d.%d.%d  gateway=%d.%d.%d.%d  dns=%d.%d.%d.%d\n",
         ma[0], ma[1], ma[2], ma[3],
         ga[0], ga[1], ga[2], ga[3],
-        dn[0], dn[1], dn[2], dn[3]
-        );
+        dn[0], dn[1], dn[2], dn[3]);
 }
 
 void FatalUsage() {
-    LogFatal("Usage:   f.dhcp NAME (must be unique 4 letter name)");
+    LogFatal("Usage:   f-dhcp -w0xFF68 NAME (must be unique 4 letter name)");
 }
 
 int main(int argc, char *argv[]) {
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
-  while (GetFlag(&argc, &argv, "c:i:v:w:")) {
+  while (GetFlag(&argc, &argv, "v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
       case 'v':
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)NyParseHexWord(&FlagArg);
+         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();
@@ -261,7 +256,6 @@ int main(int argc, char *argv[]) {
 
     if (argc != 1 || strlen(argv[0]) != 4) {
         FatalUsage();
-        return 2;
     }
 
     Name = argv[0];

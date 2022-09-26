@@ -1,4 +1,4 @@
-// f.dump (like tcpdump).
+// f-dump (like tcpdump).
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
@@ -62,19 +62,19 @@ void MainLoop(byte socknum) {
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  f.recv -wWiznetPortHex -pLocalPort | ...\n");
+    LogFatal("Usage:  f-recv -w0xFF68 -pLocalPort | ...\n");
 }
 
 int main(int argc, char* argv[]) {
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
-  while (GetFlag(&argc, &argv, "c:i:v:w:")) {
+  while (GetFlag(&argc, &argv, "v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
       case 'v':
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)NyParseHexWord(&FlagArg);
+         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

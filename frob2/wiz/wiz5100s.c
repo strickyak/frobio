@@ -5,8 +5,7 @@
 
 // Global storage.
 byte* wiz_hwport = 0xFF68;  // default hardware port.
-// word ping_sequence = 100;    // ddt ddt ddt
-word ping_sequence;    // ddt ddt ddt
+word ping_sequence;
 
 static word bogus_word_for_delay;
 void wiz_delay(word n) {
@@ -294,10 +293,7 @@ errnum macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
 
   LogDebug(" ====== WAIT ====== ");
   while(1) {
-    byte v = Verbosity;
-    Verbosity = 127;
     byte irq = peek(base+SockInterrupt);
-    Verbosity = v;
     if (irq) {
       poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
@@ -448,10 +444,7 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
 
   LogDebug(" ====== WAIT ====== ");
   while(1) {
-    byte v = Verbosity;
-    Verbosity = 127;
     byte irq = peek(base+SockInterrupt);
-    Verbosity = v;
     if (irq) {
       poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
@@ -554,7 +547,7 @@ void wiz_recv_ignore(uint8_t sn, uint16_t len)
 
 #if 0
 void sock_show(byte socknum) {
-  bool v = wiz_verbose;
+  bool v = Verbose;
 
   if (v) {
       wiz_verbose = 0;

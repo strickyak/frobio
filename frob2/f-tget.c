@@ -1,4 +1,4 @@
-// f.tget server_addr:69 remote-file local-file
+// f-tget server_addr:69 remote-file local-file
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
@@ -19,7 +19,7 @@ byte OpenLocalSocket() {
   byte socknum = 0;
   word client_port = suggest_client_port();
   errnum err = udp_open(client_port, &socknum);
-  if (err) LogFatal("cannot udp_open: %d\n", err);
+  if (err) LogFatal("cannot udp_open: %d", err);
   return socknum;
 }
 
@@ -28,7 +28,7 @@ void SendAck(byte socknum, word block, quad addr, word tid) {
   wp[0] = OP_ACK;
   wp[1] = block;
   errnum err = udp_send(socknum, packet, 4, addr, tid);
-  if (err) LogFatal("cannot udp_send ack: errnum %d\n", err);
+  if (err) LogFatal("cannot udp_send ack: errnum %d", err);
 }
 
 void SendRequest(byte socknum, quad host, word port, word opcode, const char* filename, bool ascii) {
@@ -46,7 +46,7 @@ void SendRequest(byte socknum, quad host, word port, word opcode, const char* fi
   p += n+1;
 
   errnum err = udp_send(socknum, packet, p-(char*)packet, host, port);
-  if (err) LogFatal("cannot udp_send request: errnum %d\n", err);
+  if (err) LogFatal("cannot udp_send request: errnum %d", err);
 }
 
 errnum TGet(byte socknum, quad server_host, word server_port, const char* filename, const char* localfile) {
@@ -62,7 +62,7 @@ errnum TGet(byte socknum, quad server_host, word server_port, const char* filena
     quad from_addr = 0;
     word from_port = 0;
     err = udp_recv(socknum, packet, &size, &from_addr, &from_port);
-    if (err) LogFatal("cannot udp_recv data: errnum %d\n", err);
+    if (err) LogFatal("cannot udp_recv data: errnum %d", err);
     word type = ((word*)packet)[0];
     word arg = ((word*)packet)[1];
 
@@ -90,7 +90,7 @@ errnum TGet(byte socknum, quad server_host, word server_port, const char* filena
         break;
     case OP_ERROR:
         // arg is error number.
-      LogFatal("*** SERVER ERROR %d: %s\n", arg, packet+4);
+      LogFatal("*** Server error %d: %s", arg, packet+4);
       break;
     default:
       LogFatal("TGet() did not expect to recv type %d", type);
@@ -110,19 +110,19 @@ END_LOOP:
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  f.tget -wWiznetPortHex server:69 remote-file local-file\n");
+    LogFatal("Usage:  f-tget -w0xFF68 server:69 remote-file local-file");
 }
 
 int main(int argc, char* argv[]) {
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
-  while (GetFlag(&argc, &argv, "c:i:v:w:")) {
+  while (GetFlag(&argc, &argv, "v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
       case 'v':
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)NyParseHexWord(&FlagArg);
+         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

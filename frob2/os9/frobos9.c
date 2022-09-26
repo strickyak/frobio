@@ -342,11 +342,9 @@ asm errnum Os9Send(int process_id, int signal_code) {
 errnum Os9STime(byte* time_packet) {
   errnum err = OKAY;
   asm {
-        leax time_packet
+        ldx time_packet
 
-        pshs y,u
         os9 F_STIME
-        puls y,u
 
         bcc STimeOK
         stb err

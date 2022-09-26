@@ -3,8 +3,7 @@
 
 #include "frob2/froblib.h"
 
-extern bool wiz_verbose;
-extern byte* wiz_hwport;
+extern byte* wiz_hwport;  // Hardware Port.
 
 // First call wiz_reset, then call wiz_configure.
 void wiz_reset();

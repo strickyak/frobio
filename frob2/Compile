@@ -14,7 +14,8 @@ esac
 for x; do
     case $x in
         *.c ) : ok ;;
-        * ) echo "Expected rest are .c files: $x" >&2
+        *.asm ) : ok ;;
+        * ) echo "Expected rest are .c or .asm files: $x" >&2
             exit 13
             ;;
     esac

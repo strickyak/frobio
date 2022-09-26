@@ -67,6 +67,7 @@ int strncmp(const char* left, const char* right, size_t n);
 char* strdup(const char*);
 int atoi(const char*);
 
+// void sprintf(char*, const char* fmt, ...); // DANGER
 void printf(const char* fmt, ...);  // The slow one.
 void putchar(char ch);
 

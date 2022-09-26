@@ -1,4 +1,4 @@
-// f.ntp server-addr:123
+// f-ntp server-addr:123
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
@@ -69,9 +69,9 @@ void SNTP(byte socknum, quad server_host, word server_port) {
     LogFatal("ERROR, Cannot close UDP socket: errnum %d", err);
   }
   struct ntp_packet *a = (struct ntp_packet*)packet;
-  LogInfo("NTP: %lu %lu %lu %lu", a->ref_ts, a->orig_ts, a->recv_ts, a->xmit_ts);
+  LogDetail("NTP: %lu %lu %lu %lu", a->ref_ts, a->orig_ts, a->recv_ts, a->xmit_ts);
 
-  // f.ntp 10.2.2.2
+  // f-ntp 10.2.2.2
   // NTP: 3866319812 516934400 3866319934 3866319934
 
   // >>> 3866319812 / 86400 / 365.25
@@ -121,7 +121,7 @@ void SNTP(byte socknum, quad server_host, word server_port) {
   Assert(t < 60);
   byte sec = (byte)t;
 
-  LogStatus("y=%d m=%d d=%d %02d:%02d:%02d UTC", year, month, day, hour, min, sec);
+  printf("%04d-%02d-%02d %02d:%02d:%02d UTC\n", year, month, day, hour, min, sec);
 
   if (set_time) {
       byte time_pack[6];
@@ -137,7 +137,7 @@ void SNTP(byte socknum, quad server_host, word server_port) {
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  f.ntp -wWiznetPortHex server_addr:123");
+    LogFatal("Usage:  f-ntp -w0xFF68 server_addr:123");
 }
 
 int main(int argc, char* argv[]) {
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
       Verbosity = (byte)prefixed_atoi(FlagArg);
       break;
     case 'w':
-      wiz_hwport = (byte*)NyParseHexWord(&FlagArg);
+      wiz_hwport = (byte*)prefixed_atoi(FlagArg);
       break;
     default:
       FatalUsage();
