@@ -2,7 +2,7 @@
 
 The `frobio` repository is Network IO tools for NitrOS-9 with Wiznet W5100S,
 like with the CocoIO board.  You need `cmoc` to compile, and `cmoc` needs
-`lwtools` to assemble and link.  I am currently using cmoc 0.1.77
+`lwtools` to assemble and link.  I am currently using cmoc 0.1.79
 and lwasm 4.19.
 
 ## Current Work: frob2
