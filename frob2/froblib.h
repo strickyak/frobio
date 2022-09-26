@@ -60,13 +60,15 @@ void exit(int);
 size_t strlen(const char*);
 void memcpy(void*, const void*, size_t n);
 void memset(void*, byte b, size_t n);
-void printf(const char* fmt, ...);  // The slow one.
 void strcpy(char* dest, const char* src);
 void strncpy(char* dest, const char* src, size_t n);
 int strcmp(const char* left, const char* right);
 int strncmp(const char* left, const char* right, size_t n);
 char* strdup(const char*);
 int atoi(const char*);
+
+void printf(const char* fmt, ...);  // The slow one.
+void putchar(char ch);
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////

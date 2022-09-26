@@ -1,4 +1,4 @@
-PROD= f-ping.os9 f-config.os9 f-ntp.os9 f-dhcp.os9 f-tget.os9
+PROD= f-config.os9 f-dhcp.os9 f-dig.os9 f-ntp.os9 f-ping.os9 f-tget.os9
 DEMO= x-logging.os9 x-fputs.os9
 
 all: $(DEMO) $(PROD)
@@ -11,6 +11,8 @@ LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc
 f-config.os9 : f-config.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)
 f-dhcp.os9 : f-dhcp.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
+f-dig.os9 : f-dig.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)
 f-ntp.os9 : f-ntp.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)
