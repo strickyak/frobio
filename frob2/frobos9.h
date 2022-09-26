@@ -69,6 +69,7 @@ asm errnum Os9Fork(const char* program, const char* params, int paramlen, int la
 asm errnum Os9Chain(const char* program, const char* params, int paramlen, int lang_type, int mem_size);
 
 asm errnum Os9Send(int process_id, int signal_code);
+errnum Os9STime(byte* time_packet);
 
 errnum Os9Mem(word* new_memory_size_inout, word* end_of_new_mem_out);
 errnum Os9AllRam(byte num_blocks, word* start_block_out);

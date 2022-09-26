@@ -1,24 +1,29 @@
+PROD= f-ping.os9 f-config.os9 f-ntp.os9 f-dhcp.os9 f-tget.os9
+DEMO= x-logging.os9 x-fputs.os9
+
+all: $(DEMO) $(PROD)
+	sync; sync
+
 HDRS=froblib.h frobnet.h frobos9.h froblib/malloc.h match/util.h ncl/ncl.h ncl/ncl_os9.h os9/os9defs.h regexp/re.h wiz/wiz5100s.h
 LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c
 
-COMPILE=
-
-all: x-logging.os9 f-ping.os9 f-config.os9
-	sync; sync
-
-.c.os9:
+# f-*.c are our intended frobio commands.
+f-config.os9 : f-config.c $(HDRS) $(LIBS)
 	sh Compile $< $(LIBS)
-	os9 ident $@
+f-dhcp.os9 : f-dhcp.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
+f-ntp.os9 : f-ntp.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
+f-ping.os9 : f-ping.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
+f-tget.os9 : f-tget.c $(HDRS) $(LIBS)
+	sh Compile $< $(LIBS)
 
-.SUFFIXES: .c .os9
-
-#x-logging.os9: x-logging.c $(LIBS) $(HDRS)
-#	sh Compile x-logging.c $(LIBS)
-#	os9 ident x-logging.os9
-#
-#f-ping.os9: f-ping.c $(LIBS) $(HDRS)
-#	sh Compile f-ping.c $(LIBS)
-#	os9 ident f-ping.os9
+# x-*.c are dev or demo files.
+x-logging.os9 : x-logging.c
+	sh Compile $< $(LIBS)
+x-fputs.os9 : x-fputs.c
+	sh Compile $< $(LIBS)
 
 ci:
 	set -x; ci-l ` find . -name '*.[ch]' `

@@ -25,10 +25,12 @@ case $HOW in
     "" | cmoc )
 	    cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o "$TARGET" "$TARGET.c" "$@"
         mv "$TARGET" "$TARGET.os9"
+        os9 ident "$TARGET.os9"
         ;;
     cmocly )
 	    /home/strick/go/bin/cmocly --cmoc_pre='-DMAX_VERBOSE=9' -I=.. --o "$TARGET" "$TARGET.c" "$@" &&
         mv "$TARGET" "$TARGET.os9"
+        os9 ident "$TARGET.os9"
         ;;
     * )
         echo "Use environment HOW=cmoc or HOW=cmocly or edit $0" >&2

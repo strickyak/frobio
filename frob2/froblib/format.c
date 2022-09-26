@@ -101,6 +101,7 @@ escaped_x:
   }  // next s
 }
 
+#if 0
 static byte* QFormatUnsignedInt(byte* p, unsigned int x) {
   if (x > 9) {
     p = QFormatUnsignedInt(p, x / 10);
@@ -111,7 +112,6 @@ static byte* QFormatUnsignedInt(byte* p, unsigned int x) {
   return (*p = 0), p;
 }
 static byte* QFormatSignedInt(byte* p, signed int x) {
-  //debug_printf("signed! ");
   if (x<0) {
     *p++ = '-';
     p = QFormatUnsignedInt(p, (unsigned int)-x);
@@ -125,9 +125,33 @@ const char* StaticFormatSignedInt(int x) {
     *p = 0;
     return (const char*)ShortStaticBuffer;
 }
+#endif
+
+static byte* QFormatUnsignedLong(byte* p, unsigned long x) {
+  if (x > 9) {
+    p = QFormatUnsignedLong(p, x / 10);
+    *p++ = '0' + (byte)(x % 10);
+  } else {
+    *p++ = '0' + (byte)x;
+  }
+  return (*p = 0), p;
+}
+static byte* QFormatSignedLong(byte* p, signed long x) {
+  if (x<0) {
+    *p++ = '-';
+    p = QFormatUnsignedLong(p, (unsigned long)-x);
+  } else {
+    p = QFormatUnsignedLong(p, (unsigned long)x);
+  }
+  return p;
+}
+const char* StaticFormatSignedLong(int x) {
+    byte* p = QFormatSignedLong(ShortStaticBuffer, x);
+    *p = 0;
+    return (const char*)ShortStaticBuffer;
+}
 
 static byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
-  //debug_printf("(LongHex in %x < %lx) ", (unsigned)(word)p, x);
   if (x > 15) {
     p = QFormatLongHex(p, alphabet, x >> 4);
     // TODO: report bug that (byte)x did not work.
@@ -135,7 +159,6 @@ static byte* QFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
   } else {
     *p++ = alphabet[ (byte)x ];
   }
-  //debug_printf("(LongHex out %x >) ", (unsigned)(word)p);
   return (*p = 0), p;
 }
 
@@ -171,10 +194,8 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
             unsigned long x;
             if (longingly) {
                 x = va_arg(ap, unsigned long);
-                //debug_printf("arg(ul)%lx ", x);
             } else {
-                x = va_arg(ap, unsigned);
-                //debug_printf("arg(unsigned)%lx ", x);
+                x = va_arg(ap, unsigned int);
             }
             
             byte n = (byte)(QFormatLongHex(qbuf, ((*s=='X')? UpperHexAlphabet: LowerHexAlphabet), x) - qbuf);
@@ -183,21 +204,27 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
         }
         break;
         case 'u': {
-            unsigned int x;
-            Assert(!longingly);
-            x = va_arg(ap, unsigned int);
-            //debug_printf("arg(u)%lu ", x);
-            byte n = (byte)(QFormatUnsignedInt(qbuf, x) - qbuf);
+            unsigned long x;
+            if (longingly) {
+                x = va_arg(ap, unsigned long);
+            } else {
+                x = va_arg(ap, unsigned int);
+            }
+            
+            byte n = (byte)(QFormatUnsignedLong(qbuf, x) - qbuf);
             BufFillGap(buf, width, n, fill0);
             BufAppS(buf, (const char*)qbuf, n);
         }
         break;
         case 'd': {
-            signed int x;
-            Assert(!longingly);
-            x = va_arg(ap, unsigned int);
-            //debug_printf("arg(d)%ld ", x);
-            byte n = (byte)(QFormatSignedInt(qbuf, x) - qbuf);
+            signed long x;
+            if (longingly) {
+                x = va_arg(ap, signed long);
+            } else {
+                x = va_arg(ap, signed int);
+            }
+            
+            byte n = (byte)(QFormatSignedLong(qbuf, x) - qbuf);
             BufFillGap(buf, width, n, fill0);
             BufAppS(buf, (const char*)qbuf, n);
         }
@@ -227,7 +254,7 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
                 BufAppC(buf, ch);
             } else {
                 BufAppC(buf, '<');
-                byte n = (byte)(QFormatUnsignedInt(qbuf, (byte)ch) - qbuf);
+                byte n = (byte)(QFormatUnsignedLong(qbuf, (byte)ch) - qbuf);
                 BufAppS(buf, (const char*)qbuf, n);
                 BufAppC(buf, '>');
             }

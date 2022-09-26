@@ -65,6 +65,7 @@ int strcasecmp(const char *a, const char *b) {
   return 0;
 }
 
+#if 0
 void strcpy(char *d, const char *s) {
   char* p = d;
   while (*s) {
@@ -72,6 +73,7 @@ void strcpy(char *d, const char *s) {
   }
   *p = '\0';
 }
+#endif
 
 #if 0
 size_t strlen(const char *p) {
@@ -82,10 +84,12 @@ size_t strlen(const char *p) {
 }
 #endif
 
+#if 0
 void strcat(char *d, const char *s) {
   char* p = d + strlen(d);
   strcpy(p, s);
 }
+#endif
 
 void bzero(char *p, int n) {
   for (int i = 0; i < n; i++)

@@ -38,20 +38,15 @@ int main(int argc, char* argv[]) {
     FatalUsage();
   }
 
-  const char* parse = argv[0];
+  const char* host = argv[0];
+  const char* parse = host;
   quad addr = NyParseDottedDecimalQuad(&parse);
-  // Reproduce our interpretation of the dotted quad.
-  // char buffer[20];
-  // NyFormatDottedDecimalQuad(buffer, addr);
-  // TODO: NyFormatDottedDecimalQuad seems BROKEN?
 
-  errnum err = wiz_ping(addr);  // int for a cmoc bug workaround!
+  errnum err = wiz_ping(addr);
   if (err) {
-    // printf("Ping %s: TIMEOUT\n", argv[0]);
-    LogError("Ping %s: TIMEOUT", argv[0]);
+    LogError("Ping %q: TIMEOUT", host);
   } else {
-    printf("Ping %s: OK\n", argv[0]);
-    LogStatus("Ping %s: OK", argv[0]);
+    LogStatus("Ping %q: OK", host);
   }
 
   return err;
