@@ -14,7 +14,7 @@ cd frob2/
 make -B
 ```
 
-The resulting commands end with an extension .os9 so you can find them easily.
+The resulting Nitros9 commands end with an extension .os9 so you can find them easily.
 Copy them into the CMDS/ directory of the OS-9 disk, leaving off the .os9 extension.
 
 PROBLEM:  
