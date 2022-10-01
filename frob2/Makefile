@@ -46,5 +46,7 @@ clean:
 	rm -f *.os9 *.lst *.s-orig *.link
 	sync; sync
 
-i: all
-	os9install *.os9 *.shell
+# To install on a disk image, add DISK=... to the location of the disk image.
+# Example:  make install DISK=/tmp/my-disk.dsk
+install: all
+	sh Install.sh *.os9 *.shell
