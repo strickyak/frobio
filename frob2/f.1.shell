@@ -5,6 +5,6 @@ f.dhcp coco
 f.arp 192.168.86.1
 f.ping 192.168.86.1
 f.ping 8.8.8.8
-f-dig -a 1.1.1.1 yak.net
+f.dig -a 1.1.1.1 yak.net
 f.ntp -s 216.239.35.8
 date -t
