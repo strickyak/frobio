@@ -1,5 +1,5 @@
 #include "frob2/froblib.h"
-#include "frobos9.h"
+#include "frob2/frobos9.h"
 
 #ifdef unix
 
@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+byte disable_irq_count;
 
 void Os9Exit(byte status) {
     exit(status);

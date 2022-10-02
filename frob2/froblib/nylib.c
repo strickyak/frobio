@@ -243,7 +243,7 @@ size_t StrLen(const byte* s) {
     return strlen((const char*)s);
 }
 void StrCat(byte*a, const byte*b) {
-    return strcat((char*)a, (const char*)b);
+    strcat((char*)a, (const char*)b);
 }
 
 

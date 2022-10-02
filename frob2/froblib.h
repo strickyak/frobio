@@ -71,7 +71,7 @@ int strncmp(const char* left, const char* right, size_t n);
 int strcasecmp(const char* left, const char* right);
 int strncasecmp(const char* left, const char* right, size_t n);
 char* strdup(const char* s);
-char* strndup(const char* s, int n);
+char* strndup(const char* s, size_t n);
 int atoi(const char*);
 
 // void sprintf(char*, const char* fmt, ...); // DANGER

@@ -91,10 +91,12 @@ void strcat(char *d, const char *s) {
 }
 #endif
 
+#if 0
 void bzero(char *p, int n) {
   for (int i = 0; i < n; i++)
     p[i] = 0;
 }
+#endif
 
 #if 0
 void snprintf_s(char *buf, int max, const char *fmt, const char *s) {
@@ -177,7 +179,7 @@ char *strdup(const char *s) {
 
 mstring StrDup(const byte* p) { return strdup((const char*)p); }
 
-char *strndup(const char *s, int n) {
+char *strndup(const char *s, size_t n) {
   char *p = (char *) Malloc(n + 1);
   strncpy(p, s, n+1);
   return p;

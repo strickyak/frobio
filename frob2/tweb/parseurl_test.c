@@ -1,4 +1,4 @@
-#include "frobio/frobmark/parseurl.h"
+#include "frob2/tweb/parseurl.h"
 
 struct parse_test {
     char* input;
@@ -60,15 +60,15 @@ int main(int argc, char *argv[]) {
     for (struct parse_test *t = ParseTests; t->input; t++) {
         printf("ParseTest #%d: `%s`\n", (int)(t-ParseTests), t->input);
         Url got;
-        error e = ParseUrl(t->input, &got);
-        assert(!e);
-        assert(t->want.valid == got.valid);
-        assert(t->want.scheme == got.scheme ||
+        errnum e = ParseUrl(t->input, &got);
+        Assert(!e);
+        Assert(t->want.valid == got.valid);
+        Assert(t->want.scheme == got.scheme ||
                !strcmp(t->want.scheme , got.scheme));
-        assert(t->want.hostport == got.hostport ||
+        Assert(t->want.hostport == got.hostport ||
                !strcmp(t->want.hostport , got.hostport));
         printf(".......... path: want `%s` got `%s`\n", t->want.path, got.path);
-        assert(t->want.path == got.path ||
+        Assert(t->want.path == got.path ||
                !strcmp(t->want.path , got.path));
         count++;
     }
@@ -76,19 +76,19 @@ int main(int argc, char *argv[]) {
     for (struct join_test *t = JoinTests; t->first; t++) {
         printf("JoinTest #%d: `%s` join `%s`\n", (int)(t-JoinTests), t->first, t->second);
         Url a, b, got;
-        error e = ParseUrl(t->first, &a);
-        assert(!e);
+        errnum e = ParseUrl(t->first, &a);
+        Assert(!e);
         e = ParseUrl(t->second, &b);
-        assert(!e);
+        Assert(!e);
         e = JoinUrls(&a, &b, &got);
-        assert(!e);
-        assert(t->want.valid == got.valid);
-        assert(t->want.scheme == got.scheme ||
+        Assert(!e);
+        Assert(t->want.valid == got.valid);
+        Assert(t->want.scheme == got.scheme ||
                !strcmp(t->want.scheme , got.scheme));
-        assert(t->want.hostport == got.hostport ||
+        Assert(t->want.hostport == got.hostport ||
                !strcmp(t->want.hostport , got.hostport));
         printf(".......... path: want `%s` got `%s`\n", t->want.path, got.path);
-        assert(t->want.path == got.path ||
+        Assert(t->want.path == got.path ||
                !strcmp(t->want.path , got.path));
         count++;
     }

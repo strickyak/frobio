@@ -44,7 +44,7 @@ Fetcher* FizzFetcher_Open(const Url* url) {
     return (Fetcher*)ff;
 }
 
-error TestPrintLine(byte* buf) {
+errnum TestPrintLine(byte* buf) {
     printf("%3ld {%s}\n", (long)strlen((const char*)buf), buf);
     return OKAY;
 }
@@ -55,8 +55,8 @@ int main() {
     InstallOpener("fizz:", FizzFetcher_Open);
     Url url;
     memset((void*)&url, 0, sizeof url);
-    error e = ParseUrl("fizz://buzz/fizz", &url);
-    assert(!e);
+    errnum e = ParseUrl("fizz://buzz/fizz", &url);
+    Assert(!e);
 
     for (word page = 1; page <= 10; page++) {
         ny_printf("# -----  PAGE %d  --------------------------------------\n", page);
