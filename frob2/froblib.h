@@ -19,6 +19,9 @@
 
 #include <stdarg.h>
 
+typedef char* mstring;  // a Malloc'ed string
+typedef unsigned char errnum;     // for OS error numbers.
+
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 #ifdef unix
@@ -60,11 +63,15 @@ void exit(int);
 size_t strlen(const char*);
 void memcpy(void*, const void*, size_t n);
 void memset(void*, byte b, size_t n);
+void strcat(char* dest, const char* src);
 void strcpy(char* dest, const char* src);
 void strncpy(char* dest, const char* src, size_t n);
 int strcmp(const char* left, const char* right);
 int strncmp(const char* left, const char* right, size_t n);
-char* strdup(const char*);
+int strcasecmp(const char* left, const char* right);
+int strncasecmp(const char* left, const char* right, size_t n);
+char* strdup(const char* s);
+char* strndup(const char* s, int n);
 int atoi(const char*);
 
 // void sprintf(char*, const char* fmt, ...); // DANGER
@@ -74,9 +81,6 @@ void putchar(char ch);
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 #endif
-
-typedef char* mstring;  // a Malloc'ed string
-typedef byte errnum;     // for OS error numbers.
 
 #define MAXWORD ((word)(-1L))
 #define OKAY ((errnum)0)         // todo -- eliminate
@@ -169,7 +173,7 @@ void StrCat(byte*a, const byte*b);
 bool StrEq(const byte*a, const byte*b);
 bool StrNEq(const byte*a, const byte*b, word n);
 bool StrCaseEq(const byte*a, const byte*b);
-bool StrNCaseEq(const byte*a, const byte*b, word n);
+//bool StrNCaseEq(const byte*a, const byte*b, word n);
 int StrCmp(const byte*a, const byte*b);
 int StrNCmp(const byte*a, const byte*b, word n);
 int MemCmp(const byte*a, const byte*b);
@@ -197,6 +201,9 @@ extern char FlagChar;
 extern const char *FlagArg;
 
 //////// NyLib
+
+// bytes instead of chars:
+size_t StrLen(const byte* s);
 
 // NyWhite returns true if input is white:
 // Spaces and all control chars <32 are white.

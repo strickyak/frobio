@@ -239,3 +239,25 @@ quad NyParseDottedDecimalQuadAndPort(const char** pp, word* port) {
 }
 
 
+size_t StrLen(const byte* s) {
+    return strlen((const char*)s);
+}
+void StrCat(byte*a, const byte*b) {
+    return strcat((char*)a, (const char*)b);
+}
+
+
+bool StrEq(const byte*a, const byte*b) {
+    return 0 == strcmp((const char*)a, (const char*)b);
+}
+bool StrNEq(const byte*a, const byte*b, word n) {
+    return 0 != strcmp((const char*)a, (const char*)b);
+}
+bool StrCaseEq(const byte*a, const byte*b) {
+    return 0 == strcasecmp((const char*)a, (const char*)b);
+}
+#if 0
+bool StrNCaseEq(const byte*a, const byte*b, word n) {
+    return 0 != strncasecmp((const char*)a, (const char*)b, n);
+}
+#endif
