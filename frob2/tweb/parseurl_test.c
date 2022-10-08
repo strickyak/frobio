@@ -1,4 +1,5 @@
 #include "frob2/tweb/parseurl.h"
+#include "frob2/frobos9.h"
 
 struct parse_test {
     char* input;
@@ -94,5 +95,6 @@ int main(int argc, char *argv[]) {
     }
 
     printf("DONE (parseurl_test): passed %d tests\n", count);
+    GomarHyperExit(0);
     return 0;
 }

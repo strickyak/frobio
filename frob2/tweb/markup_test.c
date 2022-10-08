@@ -1,8 +1,5 @@
-#include "frobio/frobmark/markup.h"
-#include "frobio/os9defs.h"
-#include "frobio/nyformat.h"
-#include "frobio/ncl/malloc.h"
-#include "frobio/ncl/std.h"
+#include "frob2/tweb/markup.h"
+#include "frob2/frobos9.h"
 
 mstring fizzbuzz(word x) {
     if (false && x%100 == 0) {
@@ -32,12 +29,12 @@ mstring FizzFetcherReadLine(struct fetcher* handle) {
 void FizzFetcherClose(struct fetcher* handle) {
     struct fizz_fetcher* ff = (struct fizz_fetcher*)handle;
     DeleteUrl(&ff->super.url);
-    if(ff->super.debug_str) free((void*)ff->super.debug_str);
+    if(ff->super.debug_str) Free((void*)ff->super.debug_str);
     memset(handle, 0, sizeof *handle);
 }
 
 Fetcher* FizzFetcher_Open(const Url* url) {
-    struct fizz_fetcher* ff = (struct fizz_fetcher*) malloc(sizeof *ff);
+    struct fizz_fetcher* ff = (struct fizz_fetcher*) Malloc(sizeof *ff);
     memset((void*)ff, 0, sizeof *ff);
     ff->super.readline = FizzFetcherReadLine;
     ff->super.close = FizzFetcherClose;
@@ -59,7 +56,7 @@ int main() {
     Assert(!e);
 
     for (word page = 1; page <= 10; page++) {
-        ny_printf("# -----  PAGE %d  --------------------------------------\n", page);
+        Printf("# -----  PAGE %d  --------------------------------------\n", page);
         rend_test.fetcher = FetcherFactory(&url);
 
         rend_test.width = 60;
@@ -71,12 +68,13 @@ int main() {
         FmRender(&rend_test);
 
         rend_test.fetcher->close(rend_test.fetcher);
-        free((void*)rend_test.fetcher);
+        Free((void*)rend_test.fetcher);
         rend_test.fetcher = 0;
     }
-    ny_printf("# ---- EXIT ----------------\n");
+    Printf("# ---- EXIT ----------------\n");
     DeleteUrl(&url);
-    ny_printf("\nDone (markup_test)\n");
     
+    Printf("\nDONE (markup_test)\n");
+    GomarHyperExit(0);
     return 0;
 }

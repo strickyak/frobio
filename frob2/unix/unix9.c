@@ -74,4 +74,7 @@ errnum Os9Close(int path) {
     return 0;
 }
 
+void GomarHyperExit(errnum status) {  // exits unix process
+    exit(status);
+}
 #endif

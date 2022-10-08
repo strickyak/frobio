@@ -77,6 +77,9 @@ errnum Os9DelRam(byte num_blocks, word start_block);
 errnum Os9MapBlk(word starting_block, byte num_blocks, word* first_address_out);
 errnum Os9ClrBlk(byte num_blocks, word first_address);
 
+// For the Gomar hyper ops.
+void GomarHyperExit(errnum status);  // exits os9 process, if no hyper.
+
 // Was used in NCL code.  Calls Os9Write with strlen(str) to stderr.
 asm void Os9_print(const char* str);
 

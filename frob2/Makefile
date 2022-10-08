@@ -42,8 +42,8 @@ ci:
 	sync; sync
 
 clean:
-	rm -f *.list *.map *.asmap *.sym *.o *.s
-	rm -f *.os9 *.lst *.s-orig *.link
+	rm -f ./*.list ./*.map ./*.asmap ./*.sym ./*.o ./*.s ./*.os9 ./*.lst ./*.s-orig ./*.link
+	rm -f */*.list */*.map */*.asmap */*.sym */*.o */*.s */*.os9 */*.lst */*.s-orig */*.link
 	sync; sync
 
 # To install on a disk image, add DISK=... to the location of the disk image.

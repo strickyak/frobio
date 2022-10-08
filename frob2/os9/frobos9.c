@@ -462,3 +462,14 @@ void Os9_print(const char* str) {
     str += cc;
   }
 }
+
+void GomarHyperExit(errnum status) {
+  asm {
+    clra
+    ldb status
+    swi
+    fcb 107 ; Hyper Exit
+  }
+  // NOT REACHED if Hyper, but if no hyper, exit the OS9 process.  
+  Os9Exit(status);
+}
