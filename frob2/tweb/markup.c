@@ -117,7 +117,7 @@ mstring FmGetNthLink(Rendering* r, word n) {
 
 void EmitRemainingTokens(Rendering* r, const byte* s) {
     while (true) {
-        s = GetNextToken(r, s);
+        s = GetNextToken(r, (byte*)s);
         if (!s) break;
         EmitWord(r, r->token, r->len);
     }  // next token

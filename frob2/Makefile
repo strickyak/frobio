@@ -37,6 +37,10 @@ x.logging.os9 : x-logging.c
 x.fputs.os9 : x-fputs.c
 	sh Compile.sh $@ $< $(LIBS)
 
+f.b-unix:
+	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c 
+	./a.out -a tweb/testdata/index.fm
+
 ci:
 	set -x; ci-l ` find . -name '*.[ch]' `
 	sync; sync
