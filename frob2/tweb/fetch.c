@@ -34,7 +34,8 @@ static char readline_buf[300];
 
 mstring FileFetcher_Readline(struct fetcher* handle) {
     struct file_fetcher* ff = (struct file_fetcher*)handle;
-    FGets(readline_buf, sizeof(readline_buf)-1, ff->fd);
+    word bytes_read = FGets(readline_buf, sizeof(readline_buf)-1, ff->fd);
+    if (!bytes_read) return NULL;
     if (ErrNo) return NULL;
     return strdup(readline_buf);
 }

@@ -362,10 +362,11 @@ int SPrintf(char* dest, const char* fmt, ...) {
     BufFormatVA(&buf, fmt, ap);
     va_end(ap);
 
+    word n = buf.n;
     BufFinish(&buf);
-    memcpy(dest, buf.s, buf.n);
+    memcpy(dest, buf.s, n+1);
     BufDel(&buf);
-    return buf.n;
+    return n;
 }
 
 char* StrFormat(const char* fmt, ...) {

@@ -40,11 +40,30 @@ errnum Os9Read(int path, char* buf, int buflen, int* bytes_read) {
     return 0;
 }
 
+static int ReadOneChar(int path) {
+    char buf[1];
+    int n = read(path, buf, 1);
+    if (n==0) return EOF;
+    if (n==1) return buf[0];
+    ErrNo = errno;
+    LogFatal("ReadOneChar: %d", n);
+}
+
 errnum Os9ReadLn(int path, char* buf, int buflen, int* bytes_read) {
-    int cc = read(path, buf, buflen);
-    if (cc < 0) return errno;
+    int cc = 0;
+    while (cc < buflen-1) {
+
+        int ch = ReadOneChar(path);
+        if (ch==EOF) break;
+        buf[cc] = ch;
+        cc++;
+        buf[cc] = '\0';
+        if (ch==0 || ch==10 || ch==13) {
+            break;
+        }
+    }
     *bytes_read = cc;
-    return 0;
+    return OKAY;
 }
 
 errnum Os9Write(int path, const char* buf, int max, int* bytes_written) {

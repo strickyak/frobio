@@ -82,9 +82,11 @@ static void EmitWord(Rendering* r, const byte* tok, word len) {
 
 static void EmitLink(Rendering* r) {
   ++ r->link_num;
-  char buf[10];
-  SPrintf(buf, "[%d]", r->link_num);
-  EmitWord(r, (const byte*)buf, strlen(buf));
+
+  char*s = StrFormat("[%d]", r->link_num);
+  EmitWord(r, s, strlen(s));
+  Free(s);
+
   EmitWord(r, (const byte*)r->token, r->len);
 }
 
@@ -99,10 +101,10 @@ mstring FmGetNthLink(Rendering* r, word n) {
     // s will advance, ptr will not.  ptr is needed for Free().
     byte* s = (byte*) ptr;
     byte c0 = s[0];
-    byte c1 = CharUp(s[1]);
+    byte cu1 = CharUp(s[1]);
 
     // Is it a "/L ..." link?
-    if (c0=='/' && c1=='L') {
+    if (c0=='/' && cu1=='L') {
           s = GetNextToken(r, s+2);  // next token is URL
           if (s) {
             ++link_counter;
@@ -143,10 +145,10 @@ void FmRender(Rendering* r) {
     if (!ptr) break;
     byte* s = (byte*) ptr;
     byte c0 = s[0];
-    byte c1 = CharUp(s[1]);
+    byte cu1 = CharUp(s[1]);
 
     // Is it a "/L ..." link?
-    if (c0=='/' && c1=='L') {
+    if (c0=='/' && cu1=='L') {
           s = GetNextToken(r, s+2);  // next token is URL
           if (s) {
               EmitLink(r);  // using r->token & r->len

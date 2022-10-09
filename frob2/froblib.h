@@ -125,7 +125,7 @@ void PC_Trace(byte c, const void* w);
 
 // Fopen mode can be "r" or "w".
 File* FOpen(const char* pathname, const char* mode);
-void FGets(char *buf, int size, File *f);
+word FGets(char *buf, int size, File *f);
 void FClose(File *f);
 void PError(const char* str);
 
@@ -269,39 +269,46 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #define MAX_VERBOSE LLInfo // Override this if needed.
 #endif
 
-#define LogFatal(fmt,...) \
+#define LogFatal(fmt,...) do { \
     if (LLFatal <= MAX_VERBOSE && LLFatal <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLFatal, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLFatal, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
-#define LogError(fmt,...) \
+#define LogError(fmt,...) do { \
     if (LLError <= MAX_VERBOSE && LLError <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLError, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLError, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
-#define LogStatus(fmt,...) \
+#define LogStatus(fmt,...) do { \
     if (LLStatus <= MAX_VERBOSE && LLStatus <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLStatus, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLStatus, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
-#define LogStep(fmt,...) \
+#define LogStep(fmt,...) do { \
     if (LLStep <= MAX_VERBOSE && LLStep <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLStep, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLStep, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
-#define LogInfo(fmt,...) \
+#define LogInfo(fmt,...) do { \
     if (LLInfo <= MAX_VERBOSE && LLInfo <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLInfo, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLInfo, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
-#define LogDetail(fmt,...) \
+#define LogDetail(fmt,...) do { \
     if (LLDetail <= MAX_VERBOSE && LLDetail <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLDetail, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLDetail, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
-#define LogDebug(fmt,...) \
+#define LogDebug(fmt,...) do { \
     if (LLDebug <= MAX_VERBOSE && LLDebug <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLDebug, (fmt), ##__VA_ARGS__)
+        Logger(__FILE__, __LINE__, LLDebug, (fmt), ##__VA_ARGS__); \
+  } while (false)
 
 //////// Assert
 
-#define Assert(cond) { if (!(cond)) { \
+#define Assert(cond) do { if (!(cond)) { \
   LogFatal("***ASSERT FAILED: %s:%u: %s\n", \
-      __FILE__, __LINE__, #cond); } }
+      __FILE__, __LINE__, #cond); } } while(false) 
 
 #endif // _FROB2_FROBLIB_H_
 

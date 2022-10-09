@@ -26,7 +26,7 @@ File* FOpen(const char* pathname, const char* mode) {
     return f;
 }
 
-void FGets(char *buf, int size, File *f) {
+word FGets(char *buf, int size, File *f) {
     Assert(buf);
     Assert(size);
     Assert(f);
@@ -34,6 +34,7 @@ void FGets(char *buf, int size, File *f) {
     errnum e = Os9ReadLn(f->fd, buf, size-1, &bytes_read);
     buf[bytes_read] = '\0';
     if (e) {FailE(e, "ReadLn fails on path %d", f->fd);}
+    return bytes_read;
 }
 
 void FPuts(const char *str, File *f) {
