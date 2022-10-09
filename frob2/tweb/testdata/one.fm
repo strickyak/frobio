@@ -1,0 +1,6 @@
+page one
+
+Use dup=# to set the character to duplicate the last input line.
+For NitrOS9, this is typically set to 19 to work with the SCF editor.
+
+
