@@ -644,9 +644,30 @@ void TftpRequest(quad host, word port, word opcode, const char* filename) {
 }
 
 void RunTftpGet() {
-    TftpRequest(0xFFFFFFFFUL, DEFAULT_TFTPD_PORT, OP_READ, "cocoio.boot");
+    word opcode;
+    do {
+        opcode = 0;
+        printk("TFTP");
+        TftpRequest(0xFFFFFFFFUL, DEFAULT_TFTPD_PORT, OP_READ, "cocoio.boot");
+
+        word size = 600;
+        quad from_addr = 0;
+        word from_port = 0;
+        printk("recv");
+        // TODO: Timeouts in udp_recv
+        errnum e = udp_recv(Vars->packet, &size, &from_addr, &from_port);
+        if (e) {
+            printk("error %d", e);
+            opcode = 255;
+        } else {
+            word* w = (word*)Vars->packet;
+            opcode = w[0];
+            printk("opcode %d", opcode);
+        }
+    } while (opcode != OP_DATA);
 }
 
+// TODO: Load more than one block, at somewhere like $2600.
 int main() {
     memset(VARS_RAM, 0, sizeof (struct vars));
 
@@ -662,9 +683,9 @@ int main() {
     RunDhcp();
     RunTftpGet();
     udp_close();
-    char* addr = Vars->packet;
+    char* boot_me = Vars->packet + 4; // skip 4: opcode and blocknum.
     asm {
-        jmp [addr]
+        jmp [boot_me]
     }
     return OKAY;
 }
