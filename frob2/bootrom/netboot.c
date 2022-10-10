@@ -1,8 +1,16 @@
 // Boot ROM code for CocoIO 
 
+#include <cmoc.h>
+#include <stdarg.h>
+
+typedef unsigned char bool;
 typedef unsigned char byte;
+typedef unsigned char errnum;
 typedef unsigned int word;
 typedef unsigned long quad;
+#define true (bool)1
+#define false (bool)0
+#define OKAY (errnum)0
 
 #define WIZ_PORT 0xFF68
 #define DHCP_HOSTNAME "coco"
@@ -38,17 +46,51 @@ struct dhcp {
 struct vars {
     byte mac_addr[6];
     byte hostname[4];
-    quad my_ipaddr;
-    quad my_ipmask;
-    quad my_gateway;
-    byte* vdg_ptr;
+    quad ip_addr;
+    quad ip_mask;
+    quad ip_gateway;
+    quad ip_dns_server;
+    word vdg_ptr;
     byte packet[600];
 };
 
 #define Vars ((struct vars*)VARS_RAM)
 
+/////////////////////////////////////////////////
+//   Copied & modified from frob2/wiz/wiz5100s.h
+// Keep this at the default of 2K for each.
+#define TX_SIZE 2048
+#define RX_SIZE 2048
+#define TX_MASK (TX_SIZE - 1)
+#define RX_MASK (RX_SIZE - 1)
+#define TX_BUF_0  0x4000
+#define RX_BUF_0  0x6000
+
+// Socket register offsets:
+#define SockMode 0x00
+#define SockCommand 0x01
+#define SockInterrupt 0x02
+#define SockStatus 0x03
+#define SockSourcePort 0x04
+#define SockDestIp 0x0C
+#define SockDestPort 0x10
+#define TxFreeSize 0x20
+#define TxReadPtr 0x22
+#define TxWritePtr 0x24
+#define RxSize 0x26
+#define RxReadPtr 0x28
+#define RxWritePtr 0x2A
+
+struct UdpRecvHeader {
+    quad addr;
+    word port;
+    word len;
+};
+/////////////////////////////////////////////////
+
 void PutChar(char ch) {
-    *Vars->vdg_ptr = (byte)ch;
+    *(byte*)(Vars->vdg_ptr) = (byte)ch;
+
     Vars->vdg_ptr += 2;                // TODO?
     Vars->vdg_ptr &= VDG_MASK;
     Vars->vdg_ptr |= VDG_RAM;
@@ -57,7 +99,7 @@ void PutStr(const char* s) {
         while (*s) PutChar(*s);
 }
 
-const byte* HexAlphabet = "0123456789abcdef";
+const byte HexAlphabet[] = "0123456789abcdef";
 
 void PutHex(quad x) {
   if (x > 15) {
@@ -107,10 +149,16 @@ NEXT:       ++s;
         s++;
     }
     va_end(ap);
+    PutChar('|');
 }
 
-word bogus_word_for_delay;
+void Fatal() {
+    PutStr(" **FATAL** ");
+    while (1) continue;
+}
+
 void wiz_delay(word n) {
+  word bogus_word_for_delay = 0;
   for (word i=0; i<n; i++) bogus_word_for_delay += i;
 }
 
@@ -152,6 +200,29 @@ static void poke_n(word reg, const void* data, word size) {
   for (word i=0; i<size; i++) {
     WIZ[3] = *from++;
   }
+}
+
+// wiz_ticks: 0.1ms but may have readbyte,readbyte error?
+word wiz_ticks() {
+    word t = peek_word(0x0082/*TCNTR Tick Counter*/);
+    return t;
+}
+
+// Is current time before the limit?  Using Wiz Ticks.
+byte before(word limit) {
+    word t = peek_word(0x0082/*TCNTR Tick Counter*/);
+    // After t crosses limit, (limit-t) "goes negative" so high bit is set.
+    return 0 == ((limit-t) & 0x8000);
+}
+byte wait(word reg, byte value, word millisecs_max) {
+    word start = peek_word(0x0082/*TCNTR Tick Counter*/);
+    word limit = 10*millisecs_max + start;
+    while (before(limit)) {
+        if (peek(reg) == value) {
+            return OKAY;
+        }
+    }
+    return 5; // TIMEOUT
 }
 
 void wiz_reset() {
@@ -213,7 +284,6 @@ void udp_close() {
 }
 
 errnum udp_open(word src_port) {
-  errnum err = OKAY;
   word base = 0x400;
 
   poke(base+SockMode, 2); // Set UDP Protocol mode.
@@ -224,26 +294,26 @@ errnum udp_open(word src_port) {
 
   poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
-  err = wait(base+SockCommand, 0, 500);
-  if (err) goto Enable;
+  errnum err = wait(base+SockCommand, 0, 500);
+  if (err) return err;
 
   err = wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
-  if (err) goto Enable;
+  if (err) return err;
 
   word tx_r = peek_word(base+TxReadPtr);
   poke_word(base+TxWritePtr, tx_r);
   word rx_w = peek_word(base+0x002A/*_RX_WR*/);
   poke_word(base+0x0028/*_RX_RD*/, rx_w);
-  return err;
+  return OKAY;
 }
 
 errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
-  printk("SEND: sock=%x payload=%x size=%x ", socknum, payload, size);
+  printk("SEND: payload=%x size=%x ", payload, size);
   byte* d = (byte*)&dest_ip;
   printk(" dest=%x.%x.%x.%x:%x(dec) ", d[0], d[1], d[2], d[3], dest_port);
 
   word base = 0x400;
-  word buf = TX_BUF(0);
+  word buf = TX_BUF_0;
 
   byte status = peek(base+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
@@ -306,7 +376,7 @@ errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
 
 errnum udp_recv(byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
   word base = 0x0400;
-  word buf = RX_BUF(0);
+  word buf = RX_BUF_0;
 
   byte status = peek(base+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
@@ -400,10 +470,10 @@ void RunDhcp() {
     p->htype = 1; // ethernet
     p->hlen = 6; // 6-byte hw addrs
     p->hops = 0;
-    memcpy(p->xid, Name, 4);
+    memcpy(p->xid, Vars->hostname, 4);
     p->flags = 0x80; // broadcast
-    memcpy(p->chaddr, MacAddr, 6);
-    strcpy((char*)p->bname, "frobio");
+    memcpy(p->chaddr, Vars->mac_addr, 6);
+    strcpy((char*)p->bname, "cocoio.boot");
 
     // The first four octets of the 'options' field of the DHCP message
     // contain the (decimal) values 99, 130, 83 and 99, respectively
@@ -426,9 +496,9 @@ void RunDhcp() {
 
     *w++ = 255;  // 255 = End
     *w++ = 0;  // length 0 bytes
-    DumpDHCP(&Discover);
+    printk("Discover");
 
-    errnum e = udp_open(68);
+    errnum e = udp_open(DHCP_CLIENT_PORT);
     if (e) {
         printk("cannot udp_open: e=%x.", e);
         Fatal();
@@ -438,44 +508,42 @@ void RunDhcp() {
         printk("cannot udp_send: e=%x.", e);
         Fatal();
     }
-    word size = sizeof Offer;
+    memset(Vars->packet, 0, 600);
+    word size = 600;
     quad recv_from = 0;
     word recv_port = 0;
-    e = udp_recv((byte*)&Offer, &size, &recv_from, &recv_port);
+    e = udp_recv(Vars->packet, &size, &recv_from, &recv_port);
     if (e) {
         printk("cannot udp_recv: e=%x.", e);
         Fatal();
     }
-    DumpDHCP(&Offer);
-    quad yiaddr = Offer.yiaddr;
-    quad siaddr = Offer.siaddr;
+    printk("Offer");
+    quad yiaddr = p->yiaddr;
+    quad siaddr = p->siaddr;
 
-    byte* yi = (byte*)&Offer.yiaddr;
-    byte* si = (byte*)&Offer.siaddr;
+    byte* yi = (byte*)&p->yiaddr;
+    byte* si = (byte*)&p->siaddr;
     printk("you=%x.%x.%x.%x  server=%x.%x.%x.%x",
         yi[0], yi[1], yi[2], yi[3],
         si[0], si[1], si[2], si[3]
         );
 
-    UseOptions(Offer.options);
+    UseOptions(p->options);
 
-    ////////////////////////////////////////////////////////////////
-    // TODO: correct mask & gateway.
-    wiz_reconfigure_for_DHCP(yiaddr, ip_mask, ip_gateway);
-    ////////////////////////////////////////////////////////////////
+    wiz_reconfigure_for_DHCP(yiaddr, Vars->ip_mask, Vars->ip_gateway);
 
     memset(Vars->packet, 0, 600);
     p->opcode = 1; // request
     p->htype = 1; // ethernet
     p->hlen = 6; // 6-byte hw addrs
     p->hops = 0;
-    memcpy(p->xid, Name, 4);
+    memcpy(p->xid, Vars->hostname, 4);
     p->flags = 0x80; // broadcast
     p->ciaddr = yiaddr;
     p->yiaddr = yiaddr;
     p->siaddr = siaddr;
-    memcpy(p->chaddr, MacAddr, 6);
-    strcpy((char*)p->bname, "frobio");
+    memcpy(p->chaddr, Vars->mac_addr, 6);
+    strcpy((char*)p->bname, "cocoio.boot");
 
     // The first four octets of the 'options' field of the DHCP message
     // contain the (decimal) values 99, 130, 83 and 99, respectively
@@ -505,33 +573,35 @@ void RunDhcp() {
 
     *w++ = 255;  // 255 = End
     *w++ = 0;  // length 0 bytes
-    DumpDHCP(&Request);
+    printk("Request");
 
     e = udp_send((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
         printk("cannot udp_send: e=%x.\n", e);
         Fatal();
     }
-    size = sizeof Ack;
+
+    memset(Vars->packet, 0, 600);
+    size = 600;
     recv_from = 0;
     recv_port = 0;
-    e = udp_recv((byte*)&Ack, &size, &recv_from, &recv_port);
+    e = udp_recv(Vars->packet, &size, &recv_from, &recv_port);
     if (e) {
         printk("cannot udp_recv: e=%x.\n", e);
         Fatal();
     }
-    DumpDHCP(&Ack);
+    printk("Ack");
 
     // TODO: check for Ack option.
 
-    yiaddr = Ack.yiaddr;
-    siaddr = Ack.siaddr;
+    yiaddr = p->yiaddr;
+    siaddr = p->siaddr;
 
-    yi = (byte*)&Offer.yiaddr;
-    si = (byte*)&Offer.siaddr;
-    byte* ma = (byte*)&ip_mask;
-    byte* ga = (byte*)&ip_gateway;
-    byte* dn = (byte*)&ip_dns_server;
+    yi = (byte*)&p->yiaddr;
+    si = (byte*)&p->siaddr;
+    byte* ma = (byte*)&Vars->ip_mask;
+    byte* ga = (byte*)&Vars->ip_gateway;
+    byte* dn = (byte*)&Vars->ip_dns_server;
 
     printk("you=%x.%x.%x.%x  server=%x.%x.%x.%x\n",
         yi[0], yi[1], yi[2], yi[3],
@@ -553,7 +623,7 @@ void RunDhcp() {
 #define OP_ERROR 5
 
 void TftpRequest(quad host, word port, word opcode, const char* filename) {
-  char* p = (char*)packet;
+  char* p = (char*)Vars->packet;
   *(word*)p = opcode;
   p += 2;
 
@@ -566,14 +636,18 @@ void TftpRequest(quad host, word port, word opcode, const char* filename) {
   strcpy(p, mode);
   p += n+1;
 
-  errnum err = udp_send(packet, p-(char*)packet, host, port);
+  errnum err = udp_send(Vars->packet, p-(char*)Vars->packet, host, port);
   if (err) {
     printk("cannot udp_send request: errnum %x", err);
     Fatal();
   }
 }
 
-void Boot() {
+void RunTftpGet() {
+    TftpRequest(0xFFFFFFFFUL, DEFAULT_TFTPD_PORT, OP_READ, "cocoio.boot");
+}
+
+int main() {
     memset(VARS_RAM, 0, sizeof (struct vars));
 
     Vars->vdg_ptr = VDG_RAM;
@@ -581,15 +655,16 @@ void Boot() {
     
     wiz_reset();
     PutStr("wiz_reset ");
-    MemCpy(Vars->hostname, DHCP_HOSTNAME, 4);
+    memcpy(Vars->hostname, DHCP_HOSTNAME, 4);
     wiz_configure_for_DHCP(DHCP_HOSTNAME, Vars->mac_addr);
     PutStr("wiz_configure_for_DHCP ");
 
     RunDhcp();
     RunTftpGet();
     udp_close();
-    char* addr = Var->packet;
+    char* addr = Vars->packet;
     asm {
-        lbra [addr]
+        jmp [addr]
     }
+    return OKAY;
 }

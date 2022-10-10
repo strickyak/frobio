@@ -41,12 +41,17 @@ f.b-unix:
 	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c 
 	./a.out -a tweb/testdata/index.fm
 
+netboot.raw: bootrom/netboot.c
+	cmoc -i --org=C000 --raw -o netboot.raw bootrom/preboot.asm bootrom/netboot.c 
+	ls -l netboot.raw
+
 ci:
 	set -x; ci-l ` find . -name '*.[ch]' `
+	ci-l */*.asm
 	sync; sync
 
 clean:
-	rm -f ./*.list ./*.map ./*.asmap ./*.sym ./*.o ./*.s ./*.os9 ./*.lst ./*.s-orig ./*.link
+	rm -f ./*.list ./*.map ./*.asmap ./*.sym ./*.o ./*.s ./*.os9 ./*.lst ./*.s-orig ./*.link *.bin *.raw
 	rm -f */*.list */*.map */*.asmap */*.sym */*.o */*.s */*.os9 */*.lst */*.s-orig */*.link
 	sync; sync
 
