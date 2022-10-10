@@ -2,9 +2,11 @@
 
     SECTION start
 
-    lds #$0C00
+    lds #$2000
     ldy #$0000
     ldu #$0000
-    jmp program_start
+    pshs y,u
+    pshs y,u
+    jmp _main
 
     ENDSECTION
