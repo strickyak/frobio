@@ -1,4 +1,5 @@
     IMPORT program_start
+    IMPORT _main
 
     SECTION start
 
