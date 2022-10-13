@@ -1,4 +1,6 @@
 // Boot ROM code for CocoIO 
+//
+// to compile with CMOC and launch with `preboot.asm`.
 
 #include <cmoc.h>
 #include <stdarg.h>
@@ -18,9 +20,13 @@ typedef unsigned long quad;
 #define DHCP_CLIENT_PORT 68
 #define DHCP_SERVER_PORT 67
 
-#define VARS_RAM 0x1000  // TODO?
-#define VDG_RAM 0x0400  // TODO?
-#define VDG_MASK 0x03ff  // TODO?
+#define VARS_RAM 0x1000
+
+#define VDG_RAM  0x0400
+#define VDG_LEN  0x0200
+#define VDG_END  0x0600
+
+#define BASE 0x0400 // Wiz Socket 0 control base address
 
 struct dhcp {
     byte opcode; // 1=request 2=response
@@ -88,27 +94,51 @@ struct UdpRecvHeader {
 };
 /////////////////////////////////////////////////
 
-void PutChar(char ch) {
-    *(byte*)(Vars->vdg_ptr) = (byte)ch;
-
-    Vars->vdg_ptr += 2;                // TODO?
-    Vars->vdg_ptr &= VDG_MASK;
-    Vars->vdg_ptr |= VDG_RAM;
+void Delay(word n) {
+  word bogus_word_for_delay = 0;
+  for (word i=0; i<n; i++) bogus_word_for_delay += i;
 }
+
+void PutChar(char ch) {
+    word p = Vars->vdg_ptr;
+    if (96 <= ch && ch <= 126) ch -= 32;
+    if (ch < 32 || ch >= 127) ch = '?';
+    byte codepoint = (byte)ch;
+    *(byte*)p = 0x40 | (0x3f & codepoint);
+    p++;
+    if (p>=VDG_END) {
+        for (word i = VDG_RAM; i< VDG_END; i++) {
+            if (i < VDG_END-32) {
+                // Copy the line below.
+                *(byte*)i = *(byte*)(i+32);
+            } else {
+                // Clear the last line.
+                *(byte*)i = 0x40 | 32;
+            }
+        }
+        p = VDG_END-32;
+    }
+    Vars->vdg_ptr = p;
+    Delay(100);  // don't print too fast and then HCF!
+}
+
 void PutStr(const char* s) {
-        while (*s) PutChar(*s);
+    while (*s) PutChar(*s++);
 }
 
 const byte HexAlphabet[] = "0123456789abcdef";
 
 void PutHex(quad x) {
-  if (x > 15) {
-    PutHex(x >> 4);
-    // TODO: report bug that (byte)x did not work.
-    PutChar( HexAlphabet[ (byte)(word)x & (byte)15 ] );
-  } else {
-    PutChar( HexAlphabet[ (byte)x ] );
+  if (x > 15u) {
+    PutHex(x >> 4u);
   }
+  PutChar( HexAlphabet[ 15u & (word)x ] );
+}
+void PutDec(word x) {
+  if (x > 9u) {
+    PutDec(x / 10u);
+  }
+  PutChar('0' + (byte)(x % 10u));
 }
 
 void printk(const char* format, ...) {
@@ -135,6 +165,11 @@ NEXT:       ++s;
                     PutHex(x);
                 }
                 break;
+                case 'u': {
+                    word x = va_arg(ap, word);
+                    PutDec(x);
+                }
+                break;
                 case 's': {
                     const char* x = va_arg(ap, const char*);
                     PutStr(x);
@@ -144,61 +179,67 @@ NEXT:       ++s;
                     PutChar(*s);
             }
         } else {
-            PutChar((*s < ' ') ? ' ' : *s);
+            PutChar((*s < ' ' || *s > 126) ? '?' : *s);
         }
         s++;
     }
     va_end(ap);
-    PutChar('|');
+    PutChar(';');
+    Delay(1000);
 }
 
+// Debug Trace by Line Number
+void ShowLine(word line) {
+    printk("%u", line);
+}
+#define L ShowLine(__LINE__);
+
 void Fatal() {
-    PutStr(" **FATAL** ");
+    PutStr(" *FATAL* ");
     while (1) continue;
 }
 
-void wiz_delay(word n) {
-  word bogus_word_for_delay = 0;
-  for (word i=0; i<n; i++) bogus_word_for_delay += i;
-}
-
-#define WIZ ((byte*)WIZ_PORT)
-
 static byte peek(word reg) {
-  WIZ[1] = (byte)(reg >> 8);
-  WIZ[2] = (byte)(reg);
-  byte z = WIZ[3];
-  printk("[%x->%x]", reg, z);
+  byte* wiz = (byte*)WIZ_PORT;
+  wiz[1] = (byte)(reg >> 8);
+  wiz[2] = (byte)(reg);
+  byte z = wiz[3];
+  //printk("[%x->%x]", reg, z);
   return z;
 }
 static word peek_word(word reg) {
-  WIZ[1] = (byte)(reg >> 8);
-  WIZ[2] = (byte)(reg);
-  byte hi = WIZ[3];
-  byte lo = WIZ[3];
-  word z = ((word)(hi) << 8) + lo;
-  printk("[%x->%x]", reg, z);
+  byte* wiz = (byte*)WIZ_PORT;
+  wiz[1] = (byte)(reg >> 8);
+  wiz[2] = (byte)(reg);
+  byte hi = wiz[3];
+  byte lo = wiz[3];
+  word z = ((word)(hi) << 8) + (word)lo;
+  //printk("[%x=>%x]", reg, z);
   return z;
 }
 static void poke(word reg, byte value) {
-  WIZ[1] = (byte)(reg >> 8);
-  WIZ[2] = (byte)(reg);
-  WIZ[3] = value;
-  printk("[%x<=%x]", reg, value);
+  byte* wiz = (byte*)WIZ_PORT;
+  wiz[1] = (byte)(reg >> 8);
+  wiz[2] = (byte)(reg);
+  wiz[3] = value;
+  //printk("[%x<-%x]", reg, value);
 }
 static void poke_word(word reg, word value) {
-  WIZ[1] = (byte)(reg >> 8);
-  WIZ[2] = (byte)(reg);
-  WIZ[3] = (byte)(value >> 8);
-  WIZ[3] = (byte)(value);
-  printk("[%x<=%x]", reg, value);
+  byte* wiz = (byte*)WIZ_PORT;
+  wiz[1] = (byte)(reg >> 8);
+  wiz[2] = (byte)(reg);
+  wiz[3] = (byte)(value >> 8);
+  wiz[3] = (byte)(value);
+  //printk("[%x<=%x]", reg, value);
 }
 static void poke_n(word reg, const void* data, word size) {
+  byte* wiz = (byte*)WIZ_PORT;
+  //printk("[%x<<%x]", reg, size);
   const byte* from = (const byte*) data;
-  WIZ[1] = (byte)(reg >> 8);
-  WIZ[2] = (byte)(reg);
+  wiz[1] = (byte)(reg >> 8);
+  wiz[2] = (byte)(reg);
   for (word i=0; i<size; i++) {
-    WIZ[3] = *from++;
+    wiz[3] = *from++;
   }
 }
 
@@ -215,43 +256,42 @@ byte before(word limit) {
     return 0 == ((limit-t) & 0x8000);
 }
 byte wait(word reg, byte value, word millisecs_max) {
-    word start = peek_word(0x0082/*TCNTR Tick Counter*/);
-    word limit = 10*millisecs_max + start;
-    while (before(limit)) {
-        if (peek(reg) == value) {
-            return OKAY;
+L   word start = peek_word(0x0082/*TCNTR Tick Counter*/);
+L   word limit = 10*millisecs_max + start;
+    while (true || before(limit)) {  // TODO ddt
+L       if (peek(reg) == value) {
+L           return OKAY;
         }
     }
-    return 5; // TIMEOUT
+L   return 5; // TIMEOUT
 }
 
 void wiz_reset() {
-  WIZ[0] = 128; // Reset
-  wiz_delay(42);
-  WIZ[0] = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  wiz_delay(42);
+  byte* wiz = (byte*)WIZ_PORT;
+  wiz[0] = 128; // Reset
+L Delay(99);
+  wiz[0] = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
+L Delay(99);
 }
 
 void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
-  WIZ[1] = 0; WIZ[2] = 1;  // start at addr 0x0001: Gateway IP.
-  poke_n(0x0001/*gateway*/, &ip_gateway, 4);
-  poke_n(0x0005/*mask*/, &ip_mask, 4);
-  poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
+L poke_n(0x0001/*gateway*/, &ip_gateway, 4);
+L poke_n(0x0005/*mask*/, &ip_mask, 4);
+L poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
 
   // Create locally assigned mac_addr from ip_addr.
-  poke_n(0x0009/*ether_mac*/, Vars->mac_addr, 6);
+L poke_n(0x0009/*ether_mac*/, Vars->mac_addr, 6);
 
-  poke(0x001a/*=Rx Memory Size*/, 0x55); // 2k per sock
-  poke(0x001b/*=Tx Memory Size*/, 0x55); // 2k per sock
+L poke(0x001a/*=Rx Memory Size*/, 0x55); // 2k per sock
+L poke(0x001b/*=Tx Memory Size*/, 0x55); // 2k per sock
 
   // Force all 4 sockets to be closed.
-  for (byte socknum=0; socknum<4; socknum++) {
-      word base = ((word)socknum + 4) << 8;
-      poke(base+SockCommand, 0x10/*CLOSE*/);
-      wait(base+SockCommand, 0, 500);
-      poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
-      poke(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
-      poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
+  for (word base=0x0400; base<0x0800; base+=0x0100) {
+L     poke(base+SockCommand, 0x10/*CLOSE*/);
+L     wait(base+SockCommand, 0, 500);
+L     poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
+L     poke(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
+L     poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
   }
 }
 
@@ -266,7 +306,7 @@ void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
 }
 
 void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
-  WIZ[1] = 0; WIZ[2] = 1;  // start at addr 0x0001: Gateway IP.
+  printk("reconfigure");
   poke_n(0x0001/*gateway*/, &ip_gateway, 4);
   poke_n(0x0005/*mask*/, &ip_mask, 4);
   poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
@@ -276,52 +316,50 @@ void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
 void udp_close() {
   printk("CLOSE");
 
-  word base = 0x0400;
-  poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
-  poke(base+SockCommand, 0x10/*CLOSE*/);
-  wait(base+SockCommand, 0, 500);
-  poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
+  poke(BASE+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  poke(BASE+SockCommand, 0x10/*CLOSE*/);
+  wait(BASE+SockCommand, 0, 500);
+  poke(BASE+SockMode, 0x00/*Protocol: Socket Closed*/);
 }
 
 errnum udp_open(word src_port) {
-  word base = 0x400;
+  printk("udp_open %u....", src_port);
+  poke(BASE+SockMode, 2); // Set UDP Protocol mode.
+  poke_word(BASE+SockSourcePort, src_port);
+  poke(BASE+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  poke(BASE+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
+  poke_word(BASE+0x002d/*_FRAGR*/, 0); // don't fragment.
 
-  poke(base+SockMode, 2); // Set UDP Protocol mode.
-  poke_word(base+SockSourcePort, src_port);
-  poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
-  poke(base+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
-  poke_word(base+0x002d/*_FRAGR*/, 0); // don't fragment.
+  poke(BASE+0x002f/*_MR2*/, 0x00); // no blocks.
+  poke(BASE+SockCommand, 1/*=OPEN*/);  // OPEN IT!
+  errnum err = wait(BASE+SockCommand, 0, 500);
+  if (err) {L; Fatal();}
 
-  poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
-  poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
-  errnum err = wait(base+SockCommand, 0, 500);
-  if (err) return err;
+  err = wait(BASE+SockStatus, 0x22/*SOCK_UDP*/, 500);
+  if (err) {L; Fatal();}
 
-  err = wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
-  if (err) return err;
-
-  word tx_r = peek_word(base+TxReadPtr);
-  poke_word(base+TxWritePtr, tx_r);
-  word rx_w = peek_word(base+0x002A/*_RX_WR*/);
-  poke_word(base+0x0028/*_RX_RD*/, rx_w);
+  word tx_r = peek_word(BASE+TxReadPtr);
+  poke_word(BASE+TxWritePtr, tx_r);
+  word rx_w = peek_word(BASE+0x002A/*_RX_WR*/);
+  poke_word(BASE+0x0028/*_RX_RD*/, rx_w);
+  printk("udp_open OKAY", src_port);
   return OKAY;
 }
 
 errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
   printk("SEND: payload=%x size=%x ", payload, size);
   byte* d = (byte*)&dest_ip;
-  printk(" dest=%x.%x.%x.%x:%x(dec) ", d[0], d[1], d[2], d[3], dest_port);
+  printk(" dest=%u.%u.%u.%u:%u. ", d[0], d[1], d[2], d[3], dest_port);
 
-  word base = 0x400;
   word buf = TX_BUF_0;
 
-  byte status = peek(base+SockStatus);
+  byte status = peek(BASE+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
 
   printk("dest_ip ");
-  poke_n(base+SockDestIp, &dest_ip, sizeof dest_ip);
+  poke_n(BASE+SockDestIp, &dest_ip, sizeof dest_ip);
   printk("dest_p ");
-  poke_word(base+SockDestPort, dest_port);
+  poke_word(BASE+SockDestPort, dest_port);
 
   bool broadcast = false;
   byte send_command = 0x20;
@@ -329,14 +367,14 @@ errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
     // Broadcast to 255.255.255.255
     broadcast = true;
     send_command = 0x21;
-    poke_n(base+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
+    poke_n(BASE+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
   }
 
-  word free = peek_word(base + TxFreeSize);
-  printk("SEND: base=%x buf=%x free=%x ", base, buf, free);
+  word free = peek_word(BASE + TxFreeSize);
+  printk("SEND: buf=%x free=%x ", buf, free);
   if (free < size) return 255; // no buffer room.
 
-  word tx_r = peek_word(base+TxReadPtr);
+  word tx_r = peek_word(BASE+TxReadPtr);
   printk("tx_r=%x ", tx_r);
   printk("size=%x ", size);
   printk("tx_r+size=%x ", tx_r+size);
@@ -354,47 +392,46 @@ errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
   }
 
   printk("size ");
-  word tx_w = peek_word(base+TxWritePtr);
-  poke_word(base+TxWritePtr, tx_w + size);
+  word tx_w = peek_word(BASE+TxWritePtr);
+  poke_word(BASE+TxWritePtr, tx_w + size);
 
-  printk("status->%x ", peek(base+SockStatus));
+  printk("status->%x ", peek(BASE+SockStatus));
   //sock_show(socknum);
   printk("cmd:SEND ");
 
-  poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  poke(base+SockCommand, send_command);  // SEND IT!
-  wait(base+SockCommand, 0, 500);
-  printk("status->%x ", peek(base+SockStatus));
+  poke(BASE+SockInterrupt, 0x1f);  // Reset interrupts.
+  poke(BASE+SockCommand, send_command);  // SEND IT!
+  wait(BASE+SockCommand, 0, 500);
+  printk("status->%x ", peek(BASE+SockStatus));
 
   while(1) {
-    byte irq = peek(base+SockInterrupt);
+    byte irq = peek(BASE+SockInterrupt);
     if (irq&0x10) break;
   }
-  poke(base+SockInterrupt, 0x10);  // Reset RECV interrupt.
+  poke(BASE+SockInterrupt, 0x10);  // Reset RECV interrupt.
   return OKAY;
 }
 
 errnum udp_recv(byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
-  word base = 0x0400;
   word buf = RX_BUF_0;
 
-  byte status = peek(base+SockStatus);
+  byte status = peek(BASE+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
 
-  poke_word(base+0x000c, 0); // clear Dest IP Addr
-  poke_word(base+0x000e, 0); // ...
-  poke_word(base+0x0010, 0); // clear Dest port addr
+  poke_word(BASE+0x000c, 0); // clear Dest IP Addr
+  poke_word(BASE+0x000e, 0); // ...
+  poke_word(BASE+0x0010, 0); // clear Dest port addr
 
-  poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  wait(base+SockCommand, 0, 500);
-  printk("status->%x ", peek(base+SockStatus));
+  poke(BASE+SockInterrupt, 0x1f);  // Reset interrupts.
+  poke(BASE+SockCommand, 0x40/*=RECV*/);  // RECV command.
+  wait(BASE+SockCommand, 0, 500);
+  printk("status->%x ", peek(BASE+SockStatus));
 
   printk(" ====== WAIT ====== ");
   while(1) {
-    byte irq = peek(base+SockInterrupt);
+    byte irq = peek(BASE+SockInterrupt);
     if (irq) {
-      poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
+      poke(BASE+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
         return 0xf4/*=E_READ*/;
       }
@@ -402,9 +439,9 @@ errnum udp_recv(byte* payload, word* size_in_out, quad* from_addr_out, word* fro
     }
   }
 
-  word recv_size = peek_word(base+0x0026/*_RX_RSR*/);
-  word rx_rd = peek_word(base+0x0028/*_RX_RD*/);
-  word rx_wr = peek_word(base+0x002A/*_RX_WR*/);
+  word recv_size = peek_word(BASE+0x0026/*_RX_RSR*/);
+  word rx_rd = peek_word(BASE+0x0028/*_RX_RD*/);
+  word rx_wr = peek_word(BASE+0x002A/*_RX_WR*/);
 
   word ptr = rx_rd;
   ptr &= RX_MASK;
@@ -430,7 +467,7 @@ errnum udp_recv(byte* payload, word* size_in_out, quad* from_addr_out, word* fro
   *from_addr_out = hdr.addr;
   *from_port_out = hdr.port;
 
-  poke_word(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
+  poke_word(BASE+0x0028/*_RX_RD*/, rx_rd + recv_size);
 
   return OKAY;
 }
@@ -523,7 +560,7 @@ void RunDhcp() {
 
     byte* yi = (byte*)&p->yiaddr;
     byte* si = (byte*)&p->siaddr;
-    printk("you=%x.%x.%x.%x  server=%x.%x.%x.%x",
+    printk("you=%u.%u.%u.%u  server=%u.%u.%u.%u",
         yi[0], yi[1], yi[2], yi[3],
         si[0], si[1], si[2], si[3]
         );
@@ -603,11 +640,11 @@ void RunDhcp() {
     byte* ga = (byte*)&Vars->ip_gateway;
     byte* dn = (byte*)&Vars->ip_dns_server;
 
-    printk("you=%x.%x.%x.%x  server=%x.%x.%x.%x\n",
+    printk("you=%u.%u.%u.%u server=%u.%u.%u.%u ",
         yi[0], yi[1], yi[2], yi[3],
         si[0], si[1], si[2], si[3]);
 
-    printk("mask=%x.%x.%x.%x  gateway=%x.%x.%x.%x  dns=%x.%x.%x.%x\n",
+    printk("mask=%u.%u.%u.%u gateway=%u.%u.%u.%u dns=%u.%u.%u.%u",
         ma[0], ma[1], ma[2], ma[3],
         ga[0], ga[1], ga[2], ga[3],
         dn[0], dn[1], dn[2], dn[3]);
@@ -644,8 +681,8 @@ void TftpRequest(quad host, word port, word opcode, const char* filename) {
 }
 
 void RunTftpGet() {
-    word opcode;
-    do {
+L   word opcode;
+    while (true) {
         opcode = 0;
         printk("TFTP");
         TftpRequest(0xFFFFFFFFUL, DEFAULT_TFTPD_PORT, OP_READ, "cocoio.boot");
@@ -653,35 +690,52 @@ void RunTftpGet() {
         word size = 600;
         quad from_addr = 0;
         word from_port = 0;
-        printk("recv");
+L       printk("recv");
         // TODO: Timeouts in udp_recv
         errnum e = udp_recv(Vars->packet, &size, &from_addr, &from_port);
+L       printk("got size $%x", size);
         if (e) {
-            printk("error %d", e);
+L           printk("error %u.", e);
             opcode = 255;
         } else {
-            word* w = (word*)Vars->packet;
+L           word* w = (word*)Vars->packet;
             opcode = w[0];
-            printk("opcode %d", opcode);
+            printk("opcode %u.", opcode);
         }
-    } while (opcode != OP_DATA);
+
+        if (opcode == OP_ERROR) {
+            printk("GOT TFTP ERROR");
+            const byte* p = (byte*) Vars->packet;
+            for (word i=0; i<size; i++) {
+                printk("*%x", p[i]);
+            }
+        }
+
+        if (opcode == OP_DATA) {
+            printk("GOT TFTP DATA");
+            break;
+        }
+        Delay(60000u);
+        Delay(60000u);
+    }
 }
 
 // TODO: Load more than one block, at somewhere like $2600.
 int main() {
     memset(VARS_RAM, 0, sizeof (struct vars));
-
-    Vars->vdg_ptr = VDG_RAM;
+    memset(VDG_RAM+32, '.', VDG_LEN-32);
+    Vars->vdg_ptr = 0x0420;
     PutStr("Hello BootRom ");
-    
-    wiz_reset();
-    PutStr("wiz_reset ");
-    memcpy(Vars->hostname, DHCP_HOSTNAME, 4);
-    wiz_configure_for_DHCP(DHCP_HOSTNAME, Vars->mac_addr);
-    PutStr("wiz_configure_for_DHCP ");
 
-    RunDhcp();
-    RunTftpGet();
+L   wiz_reset();
+L   PutStr("wiz_reset ");
+L   memcpy(Vars->hostname, DHCP_HOSTNAME, 4);
+L   wiz_configure_for_DHCP(DHCP_HOSTNAME, Vars->mac_addr);
+L   PutStr("wiz_configure_for_DHCP ");
+
+L   RunDhcp();
+
+L   RunTftpGet();
     udp_close();
     char* boot_me = Vars->packet + 4; // skip 4: opcode and blocknum.
     asm {

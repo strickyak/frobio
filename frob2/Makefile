@@ -41,24 +41,23 @@ f.b-unix:
 	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c 
 	./a.out -a tweb/testdata/index.fm
 
-netboot.raw: bootrom/netboot.c bootrom/preboot.asm
-	cmoc -i --org=2600 --raw -o netboot.raw bootrom/preboot.asm bootrom/netboot.c 
-	ls -l netboot.raw
+netboot.coco: bootrom/netboot.c bootrom/preboot.asm
+	cmoc -i --org=2600 --coco -o netboot.coco bootrom/preboot.asm bootrom/netboot.c 
+	ls -l netboot.coco
+netboot.wav: netboot.coco
+	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
+	ls -l netboot.wav
 
 nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
 	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm bootrom/nullboot.c 
+	dd bs=1 skip=5 if=nullboot.coco of=/tmp/cocoio.boot
 	ls -l nullboot.coco
-
-netboot.wav: netboot.raw
-	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'netboot ' -o'netboot.wav' -v netboot.raw
-	ls -l netboot.wav
 nullboot.wav: nullboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NULLBOOT' -o'nullboot.wav' -v nullboot.coco
 	ls -l nullboot.wav
 
 ci:
-	set -x; ci-l ` find . -name '*.[ch]' `
-	ci-l */*.asm
+	set -x; ci-l */*.asm ` find . -name '*.[ch]' `
 	sync; sync
 
 clean:
