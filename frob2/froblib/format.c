@@ -249,7 +249,7 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
         }
         break;
         case 'c': {
-            char ch = va_arg(ap, int);
+            char ch = (char) va_arg(ap, int);
             if (' ' <= ch && ch <= '~') {
                 BufAppC(buf, ch);
             } else {
