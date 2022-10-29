@@ -42,19 +42,34 @@ f.b-unix:
 	./a.out -a tweb/testdata/index.fm
 
 netboot.coco: bootrom/netboot.c bootrom/preboot.asm
-	cmoc -i --org=2600 --coco -o netboot.coco bootrom/preboot.asm bootrom/netboot.c 
+	cmoc -i -c bootrom/netboot.c 
+	sed 's/program_start/program_unused/g' < netboot.s > netboot.tmp
+	mv netboot.tmp netboot.s
+	cmoc -i --org=2600 --coco -o netboot.coco bootrom/preboot.asm netboot.s
 	ls -l netboot.coco
 netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
 	ls -l netboot.wav
-
 nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
-	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm bootrom/nullboot.c 
+	cmoc -i -c bootrom/nullboot.c 
+	sed 's/program_start/program_unused/g' < nullboot.s > nullboot.tmp
+	mv nullboot.tmp nullboot.s
+	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
 	dd bs=1 skip=5 if=nullboot.coco of=/tmp/cocoio.boot
 	ls -l nullboot.coco
 nullboot.wav: nullboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NULLBOOT' -o'nullboot.wav' -v nullboot.coco
 	ls -l nullboot.wav
+floppy.dsk: netboot.coco nullboot.coco
+	rm -f floppy.dsk
+	decb dskini floppy.dsk -4
+	decb copy -2 -b nullboot.coco floppy.dsk,NULLBOOT
+	decb copy -2 -b netboot.coco floppy.dsk,NETBOOT
+	decb dir floppy.dsk
+	ls -l floppy.dsk
+z: floppy.dsk
+	dd if=floppy.dsk of=/media/strick/APRIL3/z
+	sync ; sync
 
 ci:
 	set -x; ci-l */*.asm ` find . -name '*.[ch]' `
