@@ -332,6 +332,7 @@ errnum udp_open(word src_port, byte* socknum_out) {
     err = 0xf0/*E_UNIT*/;
     goto Enable;
   }
+  *socknum_out = socknum;
 
   poke(base+SockMode, 2); // Set UDP Protocol mode.
   poke_word(base+SockSourcePort, src_port);
