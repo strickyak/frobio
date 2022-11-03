@@ -1,5 +1,13 @@
 # frobio
 
+I'm afraid I've broken the build in `frob2`.
+
+The binaries from the first working version are available in
+the directory `built/v1/CMDS/`.  You can continue to use them
+for now.  Copy them to your CMDS directory and set the execute bits.
+
+# frobio
+
 The `frobio` repository is Network IO tools for NitrOS-9 with Wiznet W5100S,
 like with the CocoIO board.  You need `cmoc` to compile, and `cmoc` needs
 `lwtools` to assemble and link.  I am currently using cmoc 0.1.79
