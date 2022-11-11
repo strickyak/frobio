@@ -9,6 +9,7 @@
 *.out
 *.app
 
+*.un~
 *.swp
 *,v
 RCS/
