@@ -32,6 +32,7 @@ byte OpenLocalSocket() {
   word client_port = suggest_client_port();
   errnum err = udp_open(client_port, &socknum);
   if (err) LogFatal("cannot udp_open: %d\n", err);
+  LogDebug("OpenLS=>%x", socknum);
   return socknum;
 }
 
