@@ -231,11 +231,11 @@ byte find_available_socket(word* base_out) {
   byte socknum;
   word base = 0x0400;
   for (socknum = 0; socknum < 4; socknum++) {
-    word base = ((word)socknum + 4) << 8;
     if (peek(base+SockStatus) == 0/*=SOCK_CLOSED*/) break;
     base += 0x0100;
   }
   *base_out = base;
+  LogDebug("FAS=>%x,%x", socknum, base);
   return socknum;
 }
 
@@ -343,10 +343,16 @@ errnum udp_open(word src_port, byte* socknum_out) {
   poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
   err = wait(base+SockCommand, 0, 500);
-  if (err) goto Enable;
+  if (err) {
+    LogError("waitC=>%x", err);
+    goto Enable;
+  }
 
   err = wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
-  if (err) goto Enable;
+  if (err) {
+    LogError("waitS=>%x", err);
+    goto Enable;
+  }
 
   word tx_r = peek_word(base+TxReadPtr);
   poke_word(base+TxWritePtr, tx_r);
@@ -367,7 +373,10 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
   word buf = TX_BUF(socknum);
 
   byte status = peek(base+SockStatus);
-  if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
+  if (status != 0x22/*SOCK_UDP*/) {
+    LogError("status=$x => NOTRDY", status);
+    return 0xf6 /*E_NOTRDY*/;
+  }
 
   LogDebug("dest_ip ");
   poke_n(base+SockDestIp, &dest_ip, sizeof dest_ip);
