@@ -6,6 +6,11 @@ The binaries from the first working version are available in
 the directory `built/v1/CMDS/`.  You can continue to use them
 for now.  Copy them to your CMDS directory and set the execute bits.
 
+```
+github.com/strickyak/frobio$ ls built/v1/CMDS/
+f.1 f.arp f.config f.dhcp f.dig f.dump f.ntp f.ping f.recv f.resolv f.send f.tget f.ticks
+```
+
 # frobio
 
 The `frobio` repository is Network IO tools for NitrOS-9 with Wiznet W5100S,
