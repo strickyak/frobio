@@ -4,6 +4,8 @@
 
 #include "frob2/froblib.h"
 
+//chop
+
 void BufCheck(Buf *p) {
 #ifdef unix
   Assert (p->n >= 0 && p->s != NULL);

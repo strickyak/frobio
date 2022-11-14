@@ -1,9 +1,18 @@
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
 
+// forward
+extern File StdIn_File;
+extern File StdOut_File;
+extern File StdErr_File;
+
+//chop
 File StdIn_File = {0};
+//chop
 File StdOut_File = {1};
+//chop
 File StdErr_File = {2};
+//chop
 
 File* FOpen(const char* pathname, const char* mode) {
     Assert(pathname);

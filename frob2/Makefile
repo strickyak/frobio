@@ -78,9 +78,17 @@ ci:
 clean:
 	rm -f ./*.list ./*.map ./*.asmap ./*.sym ./*.o ./*.s ./*.os9 ./*.lst ./*.s-orig ./*.link *.bin *.raw *.wav *.coco
 	rm -f */*.list */*.map */*.asmap */*.sym */*.o */*.s */*.os9 */*.lst */*.s-orig */*.link
+	rm -f __*_.*
 	sync; sync
 
 # To install on a disk image, add DISK=... to the location of the disk image.
 # Example:  make install DISK=/tmp/my-disk.dsk
 install: all
 	sh Install.sh *.os9 *.shell
+
+chop:
+	python chopper.py froblib/*.c
+	for x in __*_.c; do cmoc -c --os9 -I.. $$x || kill $$$$; done
+	lwar -c __chopped.a __*_.o
+	sh Compile.sh f.ntp f-ntp.c __chopped.a $(LIBS)
+	tr '()' '  ' < f.map | grep '^Section: code ' | awk '{print $3}' | sort -u | grep ^__ | wc

@@ -12,6 +12,27 @@
 #define ZERO_FREE               // catch bugs faster.
 // #define AUDIT_MALLOC_FREE  // for leak and unmatched malloc/free detection.
 
+extern word heap_min;
+extern word heap_here;
+extern word heap_max;
+extern bool heap_retry;  // Not thread-safe.
+
+extern struct MallocHead *buck_freelist[NBUCKETS];
+extern int buck_num_alloc[NBUCKETS];
+extern int buck_num_free[NBUCKETS];
+extern int buck_num_brk[NBUCKETS];
+
+#ifdef unix
+extern byte MemoryPoolForUnix[1024000];
+#endif
+
+// forward
+extern void MallocOOM(errnum e, word n, word cap);
+extern byte which_bucket(int n, int *capP);
+extern void heap_check_block(struct MallocHead *h, int cap);
+
+// chop
+
 // Heap boundaries.
 word heap_min;
 word heap_here;
@@ -75,7 +96,7 @@ void ShowChains() {
     puts("\r");
   }
   puts("\r");
-}
+}//
 #endif
 
 void *Malloc(word n) {

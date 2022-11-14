@@ -2,11 +2,19 @@
 
 #include "frob2/froblib.h"
 
+// Hereafter, pp will point to a pointer to const char,
+// and will be an argument to all functions.
+// In the body, P will act like a normal pointer, using (*pp).
+#define P (*pp)
+
+//chop
 byte Verbosity = LLInfo;
+//chop
 Buf ErrBuf;
 byte ErrNo;
 const char* ErrFile;
 word ErrLine;
+//chop
 
 void SetFailure(const char* file, word line, byte e, const char* fmt, ...) {
     if (!ErrBuf.s) {
@@ -155,11 +163,6 @@ void NyFormatDottedDecimalQuad(char* buffer, quad addr) {
     SPrintf(buffer, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
 }
 
-// Hereafter, pp will point to a pointer to const char,
-// and will be an argument to all functions.
-// In the body, P will act like a normal pointer, using (*pp).
-#define P (*pp)
-
 void NySkipSpaces(const char** pp) {
   while (*P == ' ') {
     P++;
@@ -259,5 +262,5 @@ bool StrCaseEq(const byte*a, const byte*b) {
 #if 0
 bool StrNCaseEq(const byte*a, const byte*b, word n) {
     return 0 != strncasecmp((const char*)a, (const char*)b, n);
-}
+} //
 #endif

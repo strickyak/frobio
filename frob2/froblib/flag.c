@@ -6,8 +6,12 @@
 #define ARGV (*p_argv)
 #define SKIP (--ARGC, ++ARGV)
 
+//chop
+
 char FlagChar;
 const char *FlagArg;
+
+//chop
 
 // Call SkipArg() once before using GetFlag,
 // to skip the unused argv0 cell.

@@ -1,6 +1,8 @@
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
 
+//chop
+
 // prefixed_atoi() understands initial "0" for octal and "0x" for hex, and '-' before any of that.
 int prefixed_atoi(const char *s) {
   int z = 0;
@@ -45,7 +47,7 @@ void memcpy(void *d, const void *s, size_t sz) {
   int i;
   for (i = 0; i < sz; i++)
     *a++ = *b++;
-}
+}//
 #endif
 
 int strcasecmp(const char *a, const char *b) {
@@ -72,7 +74,7 @@ void strcpy(char *d, const char *s) {
     *p++ = *s++;
   }
   *p = '\0';
-}
+}//
 #endif
 
 #if 0
@@ -81,21 +83,21 @@ size_t strlen(const char *p) {
   while (*q)
     q++;
   return q - p;
-}
+}//
 #endif
 
 #if 0
 void strcat(char *d, const char *s) {
   char* p = d + strlen(d);
   strcpy(p, s);
-}
+}//
 #endif
 
 #if 0
 void bzero(char *p, int n) {
   for (int i = 0; i < n; i++)
     p[i] = 0;
-}
+}//
 #endif
 
 #if 0
@@ -124,7 +126,7 @@ void snprintf_s(char *buf, int max, const char *fmt, const char *s) {
     *p++ = *fmt++;
   }
   *p = '\0';
-}
+}//
 
 void snprintf_d(char *buf, int max, const char *fmt, int x) {
   char tmp[8];
@@ -154,7 +156,7 @@ void snprintf_d(char *buf, int max, const char *fmt, int x) {
   }
 
   snprintf_s(buf, max, fmt, z);
-}
+}//
 #endif
 
 #if 0
@@ -162,12 +164,12 @@ static char p_buf[BUF_SIZE];
 void printf_d(const char *fmt, int x) {
   snprintf_d(p_buf, BUF_SIZE, fmt, x);
   Os9_puts(p_buf);
-}
+}//
 
 void printf_s(const char *fmt, const char *s) {
   snprintf_s(p_buf, BUF_SIZE, fmt, s);
   Os9_puts(p_buf);
-}
+}//
 #endif
 
 char *strdup(const char *s) {
@@ -177,7 +179,9 @@ char *strdup(const char *s) {
   return p;
 }
 
-mstring StrDup(const byte* p) { return strdup((const char*)p); }
+mstring StrDup(const byte* p) {
+    return strdup((const char*)p);
+}
 
 char *strndup(const char *s, size_t n) {
   char *p = (char *) Malloc(n + 1);
