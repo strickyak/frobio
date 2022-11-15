@@ -9,12 +9,12 @@ shift
 set -ex
 case $HOW in
     "" | cmoc )
-	    cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o "$OBJECT" "$@"
+        cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o "$OBJECT" "$@"
         mv "$OBJECT" "$OBJECT.os9"
         os9 ident "$OBJECT.os9"
         ;;
     cmocly )
-	    /home/strick/go/bin/cmocly --cmoc_pre='-DMAX_VERBOSE=9' -I=.. --o "$OBJECT" "$@" &&
+        /home/strick/go/bin/cmocly --cmoc_pre="-DMAX_VERBOSE=9" -I=.. --o "$OBJECT" "$@" &&
         mv "$OBJECT" "$OBJECT.os9"
         os9 ident "$OBJECT.os9"
         ;;

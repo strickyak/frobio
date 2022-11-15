@@ -38,11 +38,11 @@ x.fputs.os9 : x-fputs.c
 	sh Compile.sh $@ $< $(LIBS)
 
 f.b-unix:
-	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c 
+	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c
 	./a.out -a tweb/testdata/index.fm
 
 netboot.coco: bootrom/netboot.c bootrom/preboot.asm
-	cmoc -i -c bootrom/netboot.c 
+	cmoc -i -c bootrom/netboot.c
 	sed 's/program_start/program_unused/g' < netboot.s > netboot.tmp
 	mv netboot.tmp netboot.s
 	cmoc -i --org=2600 --coco -o netboot.coco bootrom/preboot.asm netboot.s
@@ -51,7 +51,7 @@ netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
 	ls -l netboot.wav
 nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
-	cmoc -i -c bootrom/nullboot.c 
+	cmoc -i -c bootrom/nullboot.c
 	sed 's/program_start/program_unused/g' < nullboot.s > nullboot.tmp
 	mv nullboot.tmp nullboot.s
 	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
@@ -70,6 +70,10 @@ floppy.dsk: netboot.coco nullboot.coco
 z: floppy.dsk
 	dd if=floppy.dsk of=/media/strick/APRIL3/z
 	sync ; sync
+z2:
+	DISK=/tmp/disk2 sh Install.sh *.os9
+	os9 dir /tmp/disk2,CMDS
+
 
 ci:
 	set -x; ci-l */*.asm ` find . -name '*.[ch]' `
