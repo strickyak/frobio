@@ -8,8 +8,14 @@
 
 byte disable_irq_count;
 
-// Untested.
 void DisableIrqsCounting() {
+  // If you use -v9 for Verbosity, you're really debugging
+  // and you really want to see all debug logs.
+  // Since we skip debug logs when Irqs are disabled,
+  // at -v9 we never disable Irqs.  So you're on your own
+  // not to cause conflicts at -v9.
+  if (Verbosity >= 9) return;
+
   // Disable interrupts and increment the counter.
   // if counter overflows ($7f to $80), then exit(13).
   asm {
@@ -26,8 +32,9 @@ DisableIrqsEND
   }
 }
 
-// Untested.
 void EnableIrqsCounting() {
+  if (Verbosity >= 9) return;
+
   // Decrement counter, and enable if it reaches zero.
   // if counter overflows ($80 to $7f), then exit(13).
   byte enabled = 0;

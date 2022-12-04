@@ -18,7 +18,7 @@ static byte peek(word reg) {
   P2 = (byte)(reg);
   byte z = P3;
     EnableIrqsCounting();
-  LogDebug("[%x->%2x]", reg, z);
+  LogDebug("[%4x->%2x]", reg, z);
   return z;
 }
 static word peek_word(word reg) {
@@ -29,7 +29,7 @@ static word peek_word(word reg) {
   byte lo = P3;
     EnableIrqsCounting();
   word z = ((word)(hi) << 8) + lo;
-  LogDebug("[%x->%4x]", reg, z);
+  LogDebug("[%4x=>%4x]", reg, z);
   return z;
 }
 static void poke(word reg, byte value) {
@@ -38,7 +38,7 @@ static void poke(word reg, byte value) {
   P2 = (byte)(reg);
   P3 = value;
     EnableIrqsCounting();
-  LogDebug("[%x<=%2x]", reg, value);
+  LogDebug("[%4x<-%2x]", reg, value);
 }
 static void poke_word(word reg, word value) {
     DisableIrqsCounting();
@@ -47,7 +47,7 @@ static void poke_word(word reg, word value) {
   P3 = (byte)(value >> 8);
   P3 = (byte)(value);
     EnableIrqsCounting();
-  LogDebug("[%x<=%4x]", reg, value);
+  LogDebug("[%4x<=%4x]", reg, value);
 }
 static void poke_n(word reg, const void* data, word size) {
   const byte* from = (const byte*) data;
@@ -73,13 +73,16 @@ static byte before(word limit) {
     return 0 == ((limit-t) & 0x8000);
 }
 static byte wait(word reg, byte value, word millisecs_max) {
+    LogDebug("Wait reg %x value %x ms %x", reg, value, millisecs_max);
     word start = peek_word(0x0082/*TCNTR Tick Counter*/);
     word limit = 10*millisecs_max + start;
     while (before(limit)) {
         if (peek(reg) == value) {
+            LogDebug("Wait OK");
             return OKAY;
         }
     }
+    LogDebug("Wait Timeout");
     return 5; // TIMEOUT
 }
 

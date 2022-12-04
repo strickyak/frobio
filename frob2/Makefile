@@ -7,6 +7,8 @@ all: $(DEMO) $(PROD)
 HDRS=froblib.h frobnet.h frobos9.h froblib/malloc.h match/util.h ncl/ncl.h ncl/ncl_os9.h os9/os9defs.h regexp/re.h wiz/wiz5100s.h
 LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c stack300.asm
 
+.SUFFIXES:  # Use no builtin rules.
+
 # f-*.c are our intended frobio commands.
 f.arp.os9 : f-arp.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
