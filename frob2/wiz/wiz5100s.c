@@ -395,6 +395,12 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
     poke_n(base+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
   }
 
+  { // Just verbosity:
+    word r = peek_word(base+TxReadPtr);
+    LogDebug("tx_r=%x ", r);
+    word w = peek_word(base+TxWritePtr);
+    LogDebug("tx_w=%x ", w);
+  }
   word free = peek_word(base + TxFreeSize);
   LogDebug("SEND: base=%x buf=%x free=%x ", base, buf, free);
   if (free < size) return 255; // no buffer room.
