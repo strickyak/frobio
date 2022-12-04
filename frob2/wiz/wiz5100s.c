@@ -419,7 +419,7 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
     poke_n(buf, payload + size1, size2);   // 2nd part
   } else {
     // contiguous within the buffer.
-    poke_n(buf + tx_r, payload, size);  // whole thing
+    poke_n(buf + offset, payload, size);  // whole thing
   }
 
   LogDebug("size ");
@@ -501,7 +501,9 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
   *from_addr_out = hdr.addr;
   *from_port_out = hdr.port;
 
-  poke_word(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
+  LogDebug("nando RX lib: base=%x rs=%x rd=%x wr=%x hdr.len=%x new_rx_rd=%x", base, recv_size, rx_rd, rx_wr, hdr.len,
+                                   RX_MASK & (rx_rd + recv_size));
+  poke_word(base+0x0028/*_RX_RD*/, RX_MASK & (rx_rd + recv_size));
 
   return OKAY;
 }
