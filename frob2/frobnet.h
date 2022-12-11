@@ -53,4 +53,16 @@ BTW, TFTP uses UDP payload of 2(opcode) + 2(block) + 512(data) = 516 bytes.
 How many 600 byte buffers in an 8K page?  13.65 buffers.
 */
 
+
+// USED IN TCP -- TODO move to froblib.
+typedef const char* prob;
+#define GOOD (const char*)(NULL)
+#define NOT_YET "~"
+
+prob tcp_open_server(word listen_port, byte* socknum_out);
+prob tcp_accept(byte socknum);
+prob tcp_recv(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
+prob tcp_send(byte socknum, char* buf, size_t num_bytes_to_send);
+prob tcp_close(byte socknum);
+
 #endif // _FROB2_FROBNET_H_

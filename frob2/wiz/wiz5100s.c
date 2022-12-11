@@ -3,10 +3,6 @@
 #include "frob2/frobos9.h"
 #include "frob2/wiz/wiz5100s.h"
 
-typedef const char* prob;
-#define GOOD (const char*)(NULL)
-#define NOT_YET "~"
-
 // Global storage.
 byte* wiz_hwport = 0xFF68;  // default hardware port.
 word ping_sequence;

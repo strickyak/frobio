@@ -1,4 +1,4 @@
-PROD= f.arp.os9 f.config.os9 f.dhcp.os9 f.dump.os9 f.dig.os9 f.ntp.os9 f.ping.os9 f.tget.os9 f.send.os9 f.recv.os9 f.ticks.os9
+PROD= f.arp.os9 f.config.os9 f.dhcp.os9 f.dump.os9 f.dig.os9 f.ntp.os9 f.ping.os9 f.tget.os9 f.send.os9 f.recv.os9 f.ticks.os9 f.telnetd0.os9
 DEMO= x.logging.os9 x.fputs.os9
 
 all: $(DEMO) $(PROD)
@@ -31,6 +31,8 @@ f.send.os9 : f-send.c $(HDRS) $(LIBS)
 f.recv.os9 : f-recv.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
 f.ticks.os9 : f-ticks.c $(HDRS) $(LIBS)
+	sh Compile.sh $@ $< $(LIBS)
+f.telnetd0.os9 : f-telnetd0.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
 
 # x-*.c are dev or demo files.
