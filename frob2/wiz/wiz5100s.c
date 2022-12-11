@@ -3,6 +3,10 @@
 #include "frob2/frobos9.h"
 #include "frob2/wiz/wiz5100s.h"
 
+typedef const char* prob;
+#define GOOD (const char*)(NULL)
+#define NOT_YET "~"
+
 // Global storage.
 byte* wiz_hwport = 0xFF68;  // default hardware port.
 word ping_sequence;
@@ -509,64 +513,6 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
 }
 
 #if 0
-Hints of how to do this correctly?
-
-/home/strick/go/src/github.com/Wiznet/W5100S-EVB/Loopback/Eclipse/W5100S_loopback/W5100S_Loopback/src/ioLibrary_Driver/Ethernet/W5100/w5100.c
-
-/*
-@brief  This function is being called by recv() also. This function is being used for copy the data form Receive buffer of the chip to application buffer.
-
-This function read the Rx read pointer register
-and after copy the data from receive buffer update the Rx write pointer register.
-User should read upper byte first and lower byte later to get proper value.
-It calculate the actual physical address where one has to read
-the data from Receive buffer. Here also take care of the condition while it exceed
-the Rx memory uper-bound of socket.
-*/
-void wiz_recv_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
-{
-  uint16_t ptr;
-  uint16_t size;
-  uint16_t src_mask;
-  uint16_t src_ptr;
-
-  ptr = getSn_RX_RD(sn);
-
-  src_mask = (uint32_t)ptr & getSn_RxMASK(sn);
-  src_ptr = (getSn_RxBASE(sn) + src_mask);
-
-
-  if( (src_mask + len) > getSn_RxMAX(sn) )
-  {
-    size = getSn_RxMAX(sn) - src_mask;
-    WIZCHIP_READ_BUF((uint32_t)src_ptr, (uint8_t*)wizdata, size);
-    wizdata += size;
-    size = len - size;
-        src_ptr = getSn_RxBASE(sn);
-    WIZCHIP_READ_BUF(src_ptr, (uint8_t*)wizdata, size);
-  }
-  else
-  {
-    WIZCHIP_READ_BUF(src_ptr, (uint8_t*)wizdata, len);
-  }
-
-  ptr += len;
-
-  setSn_RX_RD(sn, ptr);
-}
-
-void wiz_recv_ignore(uint8_t sn, uint16_t len)
-{
-  uint16_t ptr;
-
-  ptr = getSn_RX_RD(sn);
-
-  ptr += len;
-  setSn_RX_RD(sn,ptr);
-}
-#endif
-
-#if 0
 void sock_show(byte socknum) {
   bool v = Verbose;
 
@@ -585,3 +531,177 @@ void sock_show(byte socknum) {
   }
 }
 #endif
+
+///// ===== TCP =====
+
+#include "frob2/froblib.h"
+#include "frob2/frobnet.h"
+#include "frob2/frobos9.h"
+#include "frob2/wiz/wiz5100s.h"
+#include "frob2/wiz/w5100s_defs.h"
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
+static bool sock_command(word base, byte cmd, byte want) {
+  poke(base+SK_CR, SK_CR_OPEN);  // Open Command.
+  while (peek(base+SK_CR)) {
+    LogDebug("do_sock_command %x: wait", cmd);
+  }
+  if (want) {
+    byte status = peek(base+SK_SR);
+    if (status == want) return true;
+    LogDebug("check_sock_status: cmd $x got %x want %x", cmd, status, want);
+    return false;
+  } else {
+    return true;
+  }
+}
+
+prob tcp_open_server(word listen_port, byte* socknum_out) {
+  errnum err = OKAY;
+  word base;
+
+  byte socknum = find_available_socket(&base);
+  if (socknum > 3) {
+    err = 0xf0/*E_UNIT*/;
+    return "NoAvailableSocket";
+  }
+  *socknum_out = socknum;
+
+  while (true) {
+    poke(base+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
+    poke_word(base+SK_PORTR0, listen_port);
+    poke(base+SK_IR, 0xFF); // Clear all interrupts.
+    poke(base+SK_IMR, 0xFF); // mask all interrupts.
+
+    if (!sock_command(base, SK_CR_OPEN, SK_SR_INIT)) continue;
+
+    if (!sock_command(base, SK_CR_LSTN, SK_SR_LSTN)) continue;
+
+  }
+  return OKAY;
+}
+
+#if 0
+--errnum tcp_accept(byte socknum, bool* accepted_out) {
+  *accepted_out = false;
+  word base = ((word)socknum + 4) << 8;
+  byte ir = peek(base+SK_IR);
+  if (ir & SK_IR_TOUT) {
+    poke(base+SK_IR, SK_IR_TOUT);
+    return E_TIMEOUT;
+  }
+  if (ir & SK_IR_CON) {
+    poke(base+SK_IR, SK_IR_CON);
+    *accepted_out = true;
+  }
+  return OKAY;
+--}
+#endif
+
+// Error Compromise:
+//   Use literal "const char*" for errors.
+//   Use literal "~" for Not Yet.
+//   Use literal GOOD for good status.
+// To communicate better error messages, application can LogError.
+
+prob tcp_accept(byte socknum) {
+  word base = ((word)socknum + 4) << 8;
+  byte ir = peek(base+SK_IR);
+  if (ir & SK_IR_TOUT) {
+    poke(base+SK_IR, SK_IR_TOUT);
+    return "TcpAcceptTimeout";
+  }
+  if (ir & SK_IR_CON) { // test interrupt bit.
+    poke(base+SK_IR, SK_IR_CON); // clear interrrupt bit.
+    return GOOD;  // Good, Accepted.
+  }
+  return NOT_YET;
+}
+
+prob tcp_recv(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
+  word base = ((word)socknum + 4) << 8;
+  word rxbuf = RX_BUF(socknum);
+
+  word get_size = peek_word(base+SK_RX_RSR0);
+  if (get_size == 0) {
+    return NOT_YET;
+  }
+
+  word get_offset = peek_word(base+SK_RX_RD0) & RX_MASK;
+  word get_start_address = rxbuf + get_offset;
+
+  word n = MIN(get_size, buflen);
+
+  word p = get_offset;
+  for (size_t i = 0; i < n; i++) {
+    byte x = peek(rxbuf + p);
+    p = (p+1) & RX_MASK;
+  }
+
+  poke_word(base+SK_RX_RD0, n + peek_word(base+SK_RX_RD0));
+
+  bool ok = sock_command(base, SK_CR_RECV, SK_SR_ESTB);
+  if (!ok) return "BROKEN";
+  return GOOD;
+}
+
+prob tcp_send(byte socknum, char* buf, size_t num_bytes_to_send) {
+
+  word base = ((word)socknum + 4) << 8;
+  word txbuf = TX_BUF(socknum);
+
+  while (num_bytes_to_send) {
+    word send_size = MIN(num_bytes_to_send , TX_SIZE);
+    num_bytes_to_send -= send_size;
+
+    word get_offset = peek_word(base+SK_TX_WR0) & TX_MASK;
+
+    while (send_size <= peek_word(base+SK_TX_FSR0)) {
+        ; // sleep or spin
+    }
+
+    // calculate Write Offset Address.
+    // word get_start_address = TX_BASE + get_offset;
+
+    word p = get_offset;
+    for (size_t i = 0; i < send_size; i++) {
+      poke(txbuf + p, buf[i]);
+      p = (p+1) & TX_MASK;
+    }
+
+    // increase SX_TX_WR as send_size
+    poke_word(base+SK_TX_WR0, send_size + peek_word(base+SK_TX_WR0));
+
+    // set SEND command
+    bool ok = sock_command(base, SK_CR_SEND, SK_SR_ESTB);
+    if (!ok) {
+      return "TcpSendFailed";
+    }
+
+    byte interrupts = peek(base+SK_IR);
+    while (true) {
+      interrupts = peek(base+SK_IR);
+      if (interrupts & SK_IR_DISC) {
+        poke(base+SK_IR, SK_IR_DISC);  // clear bit
+        return "TcpSendDisconnect";
+      }
+      if (interrupts & SK_IR_TOUT) {
+        poke(base+SK_IR, SK_IR_TOUT);  // clear bit
+        return "TcpSendTimeout";
+      }
+      if (interrupts & SK_IR_TXOK) {
+        poke(base+SK_IR, SK_IR_TXOK);  // clear bit
+        break; // maybe send some more.
+      }
+    } // end while
+  } // next num_bytes_to_send
+  return GOOD;
+}
+
+prob tcp_close(byte socknum) {
+  word base = ((word)socknum + 4) << 8;
+  sock_command(base, SK_CR_DISC, 0); // Disconnect.
+  poke(base + SK_MR, SK_MR_CLSD); // Closed.
+  return GOOD;
+}

@@ -262,5 +262,6 @@
 #define SK_RTR1    0x0033       /* Socket K Retransmission Time Register 1 */
 #define SK_RCR     0x0034       /* Socket K Retransmission Count Register */
 
-
                                 /* End of Equates */
+
+#endif // W5100S_DEFS_H_
