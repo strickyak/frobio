@@ -13,7 +13,7 @@ static void FatalUsage() {
 int main(int argc, char* argv[]) {
   word port = 23; // default telnet port.
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
-  while (GetFlag(&argc, &argv, "sv:w:")) {
+  while (GetFlag(&argc, &argv, "p:v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
     case 'p':
@@ -29,28 +29,39 @@ int main(int argc, char* argv[]) {
       FatalUsage();
     }
   }
-  if (argc != 1) FatalUsage();
+  if (argc) FatalUsage();
   if (!port) FatalUsage();
 
   byte socknum = 255;
   prob err = tcp_open_server(port, &socknum);
   if (err) LogFatal("Cannot open TCP server port %d: %s", port, err);
+  LogStep("opened");
 
-  err = tcp_accept(socknum);
-  if (err) LogFatal("Cannot accept TCP connection: %s", err);
+  while (1) {
+    err = tcp_accept(socknum);
+    if (!err) break;
+    LogInfo("... accept->%s", err);
+  }
+  LogStep("accepted");
 
   const char* banner = "(WELCOME)\r\n";
   err = tcp_send(socknum, banner, strlen(banner));
   if (err) LogFatal("Cannot send banner: %s", err);
+  LogStep("welcomed");
 
   while (true) {
     int cc = 0;
     err = tcp_recv(socknum, buf, sizeof buf, &cc);
-    if (err) LogFatal("Cannot tcp_recv: %s", err);
+    if (err) {
+        LogInfo("... recv->%s", err);
+        continue;
+    }
+    LogStep("recv cc=%x: %s", cc, buf);
 
     if (cc) {
       err = tcp_send(socknum, buf, cc);
       if (err) LogFatal("Cannot tcp_send: %s", err);
+      LogStep("send: %s", buf);
     }
 
     if (buf[0]=='q' || buf[0]=='Q') break;
@@ -59,9 +70,12 @@ int main(int argc, char* argv[]) {
   banner = "(BYE)\r\n";
   err = tcp_send(socknum, banner, strlen(banner));
   if (err) LogFatal("Cannot send (BYE): %s", err);
+  LogStep("bye");
 
   err = tcp_close(socknum);
   if (err) LogFatal("Cannot tcp_close: %s", err);
+  LogStep("closed");
+  LogStatus("Excellent");
 
   return 0;
 }

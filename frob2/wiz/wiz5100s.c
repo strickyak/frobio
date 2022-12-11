@@ -539,14 +539,15 @@ void sock_show(byte socknum) {
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 static bool sock_command(word base, byte cmd, byte want) {
-  poke(base+SK_CR, SK_CR_OPEN);  // Open Command.
+  LogDebug("COMMAND: base %x cmd %x want %x", base, cmd, want);
+  poke(base+SK_CR, cmd);
   while (peek(base+SK_CR)) {
     LogDebug("do_sock_command %x: wait", cmd);
   }
   if (want) {
     byte status = peek(base+SK_SR);
     if (status == want) return true;
-    LogDebug("check_sock_status: cmd $x got %x want %x", cmd, status, want);
+    LogDebug("check_sock_status: cmd %x got %x want %x", cmd, status, want);
     return false;
   } else {
     return true;
@@ -554,28 +555,23 @@ static bool sock_command(word base, byte cmd, byte want) {
 }
 
 prob tcp_open_server(word listen_port, byte* socknum_out) {
-  errnum err = OKAY;
-  word base;
-
+  word base = 0;
   byte socknum = find_available_socket(&base);
   if (socknum > 3) {
-    err = 0xf0/*E_UNIT*/;
     return "NoAvailableSocket";
   }
   *socknum_out = socknum;
 
-  while (true) {
-    poke(base+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
-    poke_word(base+SK_PORTR0, listen_port);
-    poke(base+SK_IR, 0xFF); // Clear all interrupts.
-    poke(base+SK_IMR, 0xFF); // mask all interrupts.
+  poke(base+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
+  poke_word(base+SK_PORTR0, listen_port);
+  poke(base+SK_IR, 0xFF); // Clear all interrupts.
+  poke(base+SK_IMR, 0xFF); // mask all interrupts.
+  if (!sock_command(base, SK_CR_OPEN, SK_SR_INIT)) return "TcpCannotOpen";
+  if (!sock_command(base, SK_CR_LSTN, SK_SR_LSTN)) return "TcpCannotListen";
 
-    if (!sock_command(base, SK_CR_OPEN, SK_SR_INIT)) continue;
-
-    if (!sock_command(base, SK_CR_LSTN, SK_SR_LSTN)) continue;
-
-  }
-  return OKAY;
+  poke_word(base+SK_TX_RD0, 0); // Does this help?
+  poke_word(base+SK_TX_WR0, 0); // Does this help?
+  return GOOD;
 }
 
 #if 0
@@ -629,16 +625,19 @@ prob tcp_recv(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
 
   word n = MIN(get_size, buflen);
 
+  // Read from Wiz rxbuf into caller's buf.
   word p = get_offset;
   for (size_t i = 0; i < n; i++) {
-    byte x = peek(rxbuf + p);
+    buf[i] = peek(rxbuf + p);
     p = (p+1) & RX_MASK;
   }
+  *num_bytes_out = n;
 
+  // advance the receive Read pointer.
   poke_word(base+SK_RX_RD0, n + peek_word(base+SK_RX_RD0));
 
   bool ok = sock_command(base, SK_CR_RECV, SK_SR_ESTB);
-  if (!ok) return "BROKEN";
+  if (!ok) return "TcpRecvRequestBad";
   return GOOD;
 }
 
@@ -651,9 +650,12 @@ prob tcp_send(byte socknum, char* buf, size_t num_bytes_to_send) {
     word send_size = MIN(num_bytes_to_send , TX_SIZE);
     num_bytes_to_send -= send_size;
 
+    // peek_word -> $9c53
     word get_offset = peek_word(base+SK_TX_WR0) & TX_MASK;
 
-    while (send_size <= peek_word(base+SK_TX_FSR0)) {
+    // peek_word -> $0800
+    // TODO why does the document (p60/111) have "<="?
+    while (send_size >= peek_word(base+SK_TX_FSR0)) {
         ; // sleep or spin
     }
 
