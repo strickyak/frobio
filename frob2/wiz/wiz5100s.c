@@ -540,17 +540,16 @@ void sock_show(byte socknum) {
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 static void wiz_command(word base, byte cmd) {
-  LogDebug("COMMAND: base %x cmd %x", base, cmd);
+  LogDebug("WIZ COMMAND: base %x cmd %x", base, cmd);
   poke(base+SK_CR, cmd);
-  while (peek(base+SK_CR)) {
-    LogDebug("do_sock_command %x: wait", cmd);
-  }
+  while (peek(base+SK_CR)) {}
 }
 // Advance to a new status after old_status.
 static byte wiz_advance(word base, byte old_status) {
   byte status;
   do {
-    byte status = peek(base+SK_SR);
+    status = peek(base+SK_SR);
+    LogDebug("WIZ ADVANCE: base %x old %x new %x", base, old_status, status);
   } while (status == old_status);
   return status;
 }
@@ -595,7 +594,7 @@ prob tcp_connect(byte socknum, quad host, word port) {
   poke_word(base+SK_DIPR0, (word)(host>>16));
   poke_word(base+SK_DIPR2, (word)host);
   poke_word(base+SK_DPORTR0, port);
-  sock_command(base, SK_CR_CONN, 0);
+  wiz_command(base, SK_CR_CONN);
   return GOOD;
 }
 
@@ -603,7 +602,9 @@ prob tcp_connect(byte socknum, quad host, word port) {
 prob tcp_listen(byte socknum, word listen_port) {
   word base = ((word)socknum + 4) << 8;
   poke_word(base+SK_PORTR0, listen_port);
-  if (!sock_command(base, SK_CR_LSTN, SK_SR_LSTN)) return "TcpCannotListen";
+  wiz_command(base, SK_CR_LSTN);
+  byte a = wiz_advance(base, SK_SR_INIT);
+  if (a != SK_SR_LSTN && a != SK_SR_ESTB) return tcp_close(socknum), "TcpCannotListen";
   return GOOD;
 }
 
@@ -616,8 +617,9 @@ prob tcp_establish_or_not_yet(byte socknum) {
     poke(base+SK_IR, SK_IR_TOUT); // Clear Timeout Interrupt.
     return "TcpTimeout";
   }
-
-  poke(base+SK_IR, SK_IR_CON); // Clear Connection Interrupt.
+  if (ir & SK_IR_CON) {
+    poke(base+SK_IR, SK_IR_CON); // Clear Connection Interrupt.
+  }
 
   byte status = peek(base+SK_SR);
   switch (status) {
