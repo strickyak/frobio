@@ -34,35 +34,36 @@ int main(int argc, char* argv[]) {
 
   byte socknum = 255;
   prob err = tcp_open(&socknum);
-  if (err) LogFatal("Cannot open TCP socket: %s", err);
+  if (err) LogFatal("Cannot open TCP socket: %q", err);
   LogStep("opened");
 
   err = tcp_listen(socknum, port);
-  if (err) LogFatal("Cannot listen on TCP server port %d: %s", port, err);
+  if (err) LogFatal("Cannot listen on TCP server port %d: %q", port, err);
   LogStep("listened");
 
   err = tcp_establish_blocking(socknum);
-  if (err) LogFatal("Cannot accept on TCP server port %d: %s", port, err);
+  if (err) LogFatal("Cannot accept on TCP server port %d: %q", port, err);
   LogStep("accepted");
 
   const char* banner = "(WELCOME)\r\n";
   err = tcp_send_blocking(socknum, banner, strlen(banner));
-  if (err) LogFatal("Cannot send banner: %s", err);
+  if (err) LogFatal("Cannot send banner: %q", err);
   LogStep("welcomed");
 
   while (true) {
     size_t cc = 0;
-    err = tcp_recv_blocking(socknum, buf, sizeof buf, &cc);
+    memset(buf, 0, sizeof buf);
+    err = tcp_recv_blocking(socknum, buf, sizeof buf - 1, &cc);
     if (err) {
-        LogInfo("... recv->%s", err);
+        LogInfo("... recv->%q", err);
         continue;
     }
-    LogStep("recv cc=%x: %s", cc, buf);
+    LogStep("recv cc=%x: %q", cc, buf);
 
     if (cc) {
       err = tcp_send_blocking(socknum, buf, cc);
-      if (err) LogFatal("Cannot tcp_send: %s", err);
-      LogStep("send: %s", buf);
+      if (err) LogFatal("Cannot tcp_send: %q", err);
+      LogStep("send: %q", buf);
     }
 
     if (buf[0]=='q' || buf[0]=='Q') break;
@@ -70,11 +71,11 @@ int main(int argc, char* argv[]) {
 
   banner = "(BYE)\r\n";
   err = tcp_send_blocking(socknum, banner, strlen(banner));
-  if (err) LogFatal("Cannot send (BYE): %s", err);
+  if (err) LogFatal("Cannot send (BYE): %q", err);
   LogStep("bye");
 
   err = tcp_close(socknum);
-  if (err) LogFatal("Cannot tcp_close: %s", err);
+  if (err) LogFatal("Cannot tcp_close: %q", err);
   LogStep("closed");
   LogStatus("Excellent");
 
