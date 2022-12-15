@@ -33,25 +33,26 @@ int main(int argc, char* argv[]) {
   if (!port) FatalUsage();
 
   byte socknum = 255;
-  prob err = tcp_open_server(port, &socknum);
-  if (err) LogFatal("Cannot open TCP server port %d: %s", port, err);
+  prob err = tcp_open(&socknum);
+  if (err) LogFatal("Cannot open TCP socket: %s", err);
   LogStep("opened");
 
-  while (1) {
-    err = tcp_accept(socknum);
-    if (!err) break;
-    LogInfo("... accept->%s", err);
-  }
+  err = tcp_listen(socknum, port);
+  if (err) LogFatal("Cannot listen on TCP server port %d: %s", port, err);
+  LogStep("listened");
+
+  err = tcp_establish_blocking(socknum);
+  if (err) LogFatal("Cannot accept on TCP server port %d: %s", port, err);
   LogStep("accepted");
 
   const char* banner = "(WELCOME)\r\n";
-  err = tcp_send(socknum, banner, strlen(banner));
+  err = tcp_send_blocking(socknum, banner, strlen(banner));
   if (err) LogFatal("Cannot send banner: %s", err);
   LogStep("welcomed");
 
   while (true) {
-    int cc = 0;
-    err = tcp_recv(socknum, buf, sizeof buf, &cc);
+    size_t cc = 0;
+    err = tcp_recv_blocking(socknum, buf, sizeof buf, &cc);
     if (err) {
         LogInfo("... recv->%s", err);
         continue;
@@ -59,7 +60,7 @@ int main(int argc, char* argv[]) {
     LogStep("recv cc=%x: %s", cc, buf);
 
     if (cc) {
-      err = tcp_send(socknum, buf, cc);
+      err = tcp_send_blocking(socknum, buf, cc);
       if (err) LogFatal("Cannot tcp_send: %s", err);
       LogStep("send: %s", buf);
     }
@@ -68,7 +69,7 @@ int main(int argc, char* argv[]) {
   }
 
   banner = "(BYE)\r\n";
-  err = tcp_send(socknum, banner, strlen(banner));
+  err = tcp_send_blocking(socknum, banner, strlen(banner));
   if (err) LogFatal("Cannot send (BYE): %s", err);
   LogStep("bye");
 

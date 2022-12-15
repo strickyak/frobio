@@ -55,14 +55,24 @@ How many 600 byte buffers in an 8K page?  13.65 buffers.
 
 
 // USED IN TCP -- TODO move to froblib.
+// Error Compromise:
+//   Use literal const char* for errors.
+//   Use NotYet to mean try again later, because an asynchronous event hasn't happened yet.
+//   Use GOOD (or NULL) for good status.
+// To communicate better error messages, application can LogError.
 typedef const char* prob;
-#define GOOD (const char*)(NULL)
-#define NOT_YET "~"
+#define GOOD ((const char*)NULL)
+extern const char NotYet[]; // defined as "NotYet"
 
-prob tcp_open_server(word listen_port, byte* socknum_out);
-prob tcp_accept(byte socknum);
-prob tcp_recv(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
-prob tcp_send(byte socknum, char* buf, size_t num_bytes_to_send);
+prob tcp_open(byte* socknum_out);
+prob tcp_connect(byte socknum, quad host, word port);
+prob tcp_listen(byte socknum, word listen_port);
+prob tcp_establish_or_not_yet(byte socknum); // may return NotYet
+prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
+prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send);
+prob tcp_establish_blocking(byte socknum); // may return NotYet
+prob tcp_recv_blocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
+prob tcp_send_blocking(byte socknum, const char* buf, size_t num_bytes_to_send);
 prob tcp_close(byte socknum);
 
 #endif // _FROB2_FROBNET_H_

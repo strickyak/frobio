@@ -6,6 +6,7 @@
 // Global storage.
 byte* wiz_hwport = 0xFF68;  // default hardware port.
 word ping_sequence;
+const char NotYet[] = "NotYet";
 
 static word bogus_word_for_delay;
 void wiz_delay(word n) {
@@ -538,6 +539,22 @@ void sock_show(byte socknum) {
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
+static void wiz_command(word base, byte cmd) {
+  LogDebug("COMMAND: base %x cmd %x", base, cmd);
+  poke(base+SK_CR, cmd);
+  while (peek(base+SK_CR)) {
+    LogDebug("do_sock_command %x: wait", cmd);
+  }
+}
+// Advance to a new status after old_status.
+static byte wiz_advance(word base, byte old_status) {
+  byte status;
+  do {
+    byte status = peek(base+SK_SR);
+  } while (status == old_status);
+  return status;
+}
+
 static bool sock_command(word base, byte cmd, byte want) {
   LogDebug("COMMAND: base %x cmd %x want %x", base, cmd, want);
   poke(base+SK_CR, cmd);
@@ -547,14 +564,14 @@ static bool sock_command(word base, byte cmd, byte want) {
   if (want) {
     byte status = peek(base+SK_SR);
     if (status == want) return true;
-    LogDebug("check_sock_status: cmd %x got %x want %x", cmd, status, want);
+    LogDebug("do_sock_command Bad Status: cmd %x got %x want %x", cmd, status, want);
     return false;
   } else {
     return true;
   }
 }
 
-prob tcp_open_server(word listen_port, byte* socknum_out) {
+prob tcp_open(byte* socknum_out) {
   word base = 0;
   byte socknum = find_available_socket(&base);
   if (socknum > 3) {
@@ -563,61 +580,74 @@ prob tcp_open_server(word listen_port, byte* socknum_out) {
   *socknum_out = socknum;
 
   poke(base+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
-  poke_word(base+SK_PORTR0, listen_port);
   poke(base+SK_IR, 0xFF); // Clear all interrupts.
-  poke(base+SK_IMR, 0xFF); // mask all interrupts.
-  if (!sock_command(base, SK_CR_OPEN, SK_SR_INIT)) return "TcpCannotOpen";
-  if (!sock_command(base, SK_CR_LSTN, SK_SR_LSTN)) return "TcpCannotListen";
-
-  poke_word(base+SK_TX_RD0, 0); // Does this help?
-  poke_word(base+SK_TX_WR0, 0); // Does this help?
+  poke(base+SK_IMR, 0xFF); // Inhibit all interrupts.
+  wiz_command(base, SK_CR_OPEN);
+  if (wiz_advance(base, SK_SR_CLOS) != SK_SR_INIT) {
+    return tcp_close(socknum), "TcpCannotOpen";
+  }
   return GOOD;
 }
 
-#if 0
---errnum tcp_accept(byte socknum, bool* accepted_out) {
-  *accepted_out = false;
+// Only called for TCP Client.
+prob tcp_connect(byte socknum, quad host, word port) {
   word base = ((word)socknum + 4) << 8;
-  byte ir = peek(base+SK_IR);
-  if (ir & SK_IR_TOUT) {
-    poke(base+SK_IR, SK_IR_TOUT);
-    return E_TIMEOUT;
-  }
-  if (ir & SK_IR_CON) {
-    poke(base+SK_IR, SK_IR_CON);
-    *accepted_out = true;
-  }
-  return OKAY;
---}
-#endif
-
-// Error Compromise:
-//   Use literal "const char*" for errors.
-//   Use literal "~" for Not Yet.
-//   Use literal GOOD for good status.
-// To communicate better error messages, application can LogError.
-
-prob tcp_accept(byte socknum) {
-  word base = ((word)socknum + 4) << 8;
-  byte ir = peek(base+SK_IR);
-  if (ir & SK_IR_TOUT) {
-    poke(base+SK_IR, SK_IR_TOUT);
-    return "TcpAcceptTimeout";
-  }
-  if (ir & SK_IR_CON) { // test interrupt bit.
-    poke(base+SK_IR, SK_IR_CON); // clear interrrupt bit.
-    return GOOD;  // Good, Accepted.
-  }
-  return NOT_YET;
+  poke_word(base+SK_DIPR0, (word)(host>>16));
+  poke_word(base+SK_DIPR2, (word)host);
+  poke_word(base+SK_DPORTR0, port);
+  sock_command(base, SK_CR_CONN, 0);
+  return GOOD;
 }
 
-prob tcp_recv(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
+// Only called for TCP Server.
+prob tcp_listen(byte socknum, word listen_port) {
+  word base = ((word)socknum + 4) << 8;
+  poke_word(base+SK_PORTR0, listen_port);
+  if (!sock_command(base, SK_CR_LSTN, SK_SR_LSTN)) return "TcpCannotListen";
+  return GOOD;
+}
+
+// For Server or Client to accept/establish connection.
+prob tcp_establish_or_not_yet(byte socknum) {
+  word base = ((word)socknum + 4) << 8;
+
+  byte ir = peek(base+SK_IR);
+  if (ir & SK_IR_TOUT) {
+    poke(base+SK_IR, SK_IR_TOUT); // Clear Timeout Interrupt.
+    return "TcpTimeout";
+  }
+
+  poke(base+SK_IR, SK_IR_CON); // Clear Connection Interrupt.
+
+  byte status = peek(base+SK_SR);
+  switch (status) {
+    case SK_SR_LSTN:  // Server: Listen mode; Syn not received yet.
+    case SK_SR_SYNS:  // Client: Syn Sent; SynAck not received yet.
+      return NotYet;
+
+    case SK_SR_ESTB:
+      break;  // Established.
+
+    case SK_SR_FINW: // FIN Wait
+    case SK_SR_TIMW: // Time Wait
+    case SK_SR_CLWT: // Close Wait
+    case SK_SR_LACK: // Last Ack
+    case SK_SR_CLOS: // Closed
+      return tcp_close(socknum), "TcpMoribund";  // Some closing state.
+
+    default:
+      return tcp_close(socknum), "TcpWeird";  // Something weird happened.
+  }
+  return GOOD;
+}
+
+prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
   word base = ((word)socknum + 4) << 8;
   word rxbuf = RX_BUF(socknum);
 
   word get_size = peek_word(base+SK_RX_RSR0);
   if (get_size == 0) {
-    return NOT_YET;
+    return NotYet;
   }
 
   word get_offset = peek_word(base+SK_RX_RD0) & RX_MASK;
@@ -641,7 +671,7 @@ prob tcp_recv(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
   return GOOD;
 }
 
-prob tcp_send(byte socknum, char* buf, size_t num_bytes_to_send) {
+prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send) {
 
   word base = ((word)socknum + 4) << 8;
   word txbuf = TX_BUF(socknum);
@@ -702,4 +732,26 @@ prob tcp_close(byte socknum) {
   sock_command(base, SK_CR_DISC, 0); // Disconnect.
   poke(base + SK_MR, SK_MR_CLSD); // Closed.
   return GOOD;
+}
+
+prob tcp_establish_blocking(byte socknum) {
+  prob e;
+  do {
+    e = tcp_establish_or_not_yet(socknum);
+  } while (e == NotYet);
+  return e;
+}
+prob tcp_recv_blocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
+  prob e;
+  do {
+    e = tcp_recv_or_not_yet(socknum, buf, buflen, num_bytes_out);
+  } while (e == NotYet);
+  return e;
+}
+prob tcp_send_blocking(byte socknum, const char* buf, size_t num_bytes_to_send) {
+  prob e;
+  do {
+    e = tcp_send_or_not_yet(socknum, buf, num_bytes_to_send);
+  } while (e == NotYet);
+  return e;
 }
