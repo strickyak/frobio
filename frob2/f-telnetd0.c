@@ -58,12 +58,12 @@ int main(int argc, char* argv[]) {
         LogInfo("... recv->%q", err);
         continue;
     }
-    LogStep("recv cc=%x: %q", cc, buf);
+    LogStep("recv cc=%x: %.*q", cc, cc, buf);
 
     if (cc) {
       err = tcp_send_blocking(socknum, buf, cc);
       if (err) LogFatal("Cannot tcp_send: %q", err);
-      LogStep("send: %q", buf);
+      LogStep("send cc=%x: %.*q", cc, cc, buf);
     }
 
     if (buf[0]=='q' || buf[0]=='Q') break;
