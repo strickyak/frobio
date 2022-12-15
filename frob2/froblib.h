@@ -149,7 +149,7 @@ extern const byte* LowerHexAlphabet;
 extern const byte* UpperHexAlphabet;
 
 const char* StaticFormatSignedInt(int x);
-void BufAppStringQuoting(Buf* buf, const char* s);
+void BufAppStringQuoting(Buf* buf, const char* s, word precision);
 void BufFormat(Buf* buf, const char* format, ...);
 void BufFormatVA(Buf* buf, const char* format, va_list ap);
 void WritLnAll(int path, const char* s, word n);

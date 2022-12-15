@@ -3,7 +3,7 @@
 
 #define debug_printf if(false)printf
 
-void staticBufFillGap(Buf* buf, byte width, byte n, bool fill0);
+void staticBufFillGap(Buf* buf, word width, word n, bool fill0);
 byte* staticQFormatUnsignedLong(byte* p, unsigned long x);
 byte* staticQFormatSignedLong(byte* p, signed long x);
 byte* staticQFormatLongHex(byte* p, const byte* alphabet, unsigned long x);
@@ -61,18 +61,18 @@ const byte* LowerHexAlphabet = "0123456789abcdef";
 const byte* UpperHexAlphabet = "0123456789ABCDEF";
 //chop
 
-void staticBufFillGap(Buf* buf, byte width, byte n, bool fill0) {
+void staticBufFillGap(Buf* buf, word width, word n, bool fill0) {
     if (width > n) {
-        byte gap = width - n;
+        word gap = width - n;
         for (byte i = 0; i < gap; i++) {
             BufAppC(buf, fill0? '0' : ' ');
         }
     }
 }
 
-void BufAppStringQuoting(Buf* buf, const char* s) {
+void BufAppStringQuoting(Buf* buf, const char* s, word precision) {
   char x;
-  for (; *s; s++) {
+  for (word i = 0; i<precision; i++) {
       x = *s;
       switch (x) {
          case 9:
@@ -185,17 +185,32 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
 
         s++;
         bool fill0 = false, longingly = false;
-        byte width = 0;
+        word width = 0;
+        word precision = 0;
+        bool use_precision = 0;
         if (*s == '0') {
             fill0 = true;
             s++;
         }
         while ('0'<=*s && *s<='9') {
+          if (use_precision) {
+            precision = 10*precision + (*s - '0');
+          } else {
             width = 10*width + (*s - '0');
-            s++;
+          }
+          s++;
         }
         if (*s == 'l') {
             longingly = true;
+            s++;
+        }
+        if (*s == '*') {
+            int x = va_arg(ap, int);
+          if (use_precision) {
+            precision = x;
+          } else {
+            width = x;
+          }
             s++;
         }
         switch (*s) {
@@ -243,18 +258,18 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
             const char* x = va_arg(ap, const char*);
             if (!x) x = "<NULL>";
             //debug_printf("arg(s)%s ", x);
-            byte n = (byte) strlen(x);
-            staticBufFillGap(buf, width, n, fill0);
-            BufAppS(buf, x, n);
+            precision = (precision == 0) ? strlen(x) : precision;
+            staticBufFillGap(buf, width, precision, fill0);
+            BufAppS(buf, x, precision);
         }
         break;
         case 'q': {
             const char* x = va_arg(ap, const char*);
             if (!x) x = "<NULL>";
             //debug_printf("arg(s)%s ", x);
-            word n = (word) strlen(x);
+            precision = (precision == 0) ? strlen(x) : precision;
             BufAppC(buf, '\"');
-            BufAppStringQuoting(buf, x);
+            BufAppStringQuoting(buf, x, precision);
             BufAppC(buf, '\"');
         }
         break;
