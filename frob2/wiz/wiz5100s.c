@@ -585,6 +585,7 @@ prob tcp_open(byte* socknum_out) {
   if (wiz_advance(base, SK_SR_CLOS) != SK_SR_INIT) {
     return tcp_close(socknum), "TcpCannotOpen";
   }
+  poke_word(base+SK_TX_WR0, 0); // Does this help?
   return GOOD;
 }
 
