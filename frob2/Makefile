@@ -97,6 +97,6 @@ install: all
 chop:
 	python chopper.py froblib/*.c
 	for x in __*_.c; do cmoc -c --os9 -I.. $$x || kill $$$$; done
-	lwar -c __chopped.a __*_.o
-	sh Compile.sh f.ntp f-ntp.c __chopped.a $(LIBS)
-	tr '()' '  ' < f.map | grep '^Section: code ' | awk '{print $3}' | sort -u | grep ^__ | wc
+	lwar -c lib__chopped.a __*_.o
+	# cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o f.ntp f-ntp.c -L. -l__chopped wiz/wiz5100s.c os9/frobos9.c  stack300.asm
+	sh Compile.sh f.ntp f-ntp.c  wiz/wiz5100s.c os9/frobos9.c  stack300.asm  -L. -l__chopped
