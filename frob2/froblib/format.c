@@ -73,7 +73,7 @@ void staticBufFillGap(Buf* buf, word width, word n, bool fill0) {
 void BufAppStringQuoting(Buf* buf, const char* s, word precision) {
   char x;
   for (word i = 0; i<precision; i++) {
-      x = *s;
+      x = s[i];
       switch (x) {
          case 9:
             x = 't';
@@ -108,7 +108,7 @@ escaped_x:
                 BufAppC(buf, LowerHexAlphabet[(byte)x&15]);
               }
       }  // switch
-  }  // next s
+  }  // next i
 }
 
 #if 0
@@ -200,19 +200,27 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
           }
           s++;
         }
-        if (*s == 'l') {
-            longingly = true;
+
+       // TODO put all this, and 0-9, in a while.
+        if (*s == '.') {
+            use_precision = true;
             s++;
         }
         if (*s == '*') {
             int x = va_arg(ap, int);
-          if (use_precision) {
-            precision = x;
-          } else {
-            width = x;
-          }
+            if (use_precision) {
+                precision = x;
+            } else {
+                width = x;
+            }
             s++;
         }
+        if (*s == 'l') {
+            longingly = true;
+            s++;
+        }
+
+
         switch (*s) {
         case 'X':
         case 'x': {

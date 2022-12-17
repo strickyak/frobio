@@ -127,14 +127,14 @@ int main(int argc, char* argv[]) {
         LogInfo("... recv->%q", err);
         continue;
     }
-    LogStep("recv cc=%x: %q", cc, Buffer);
+    LogStep("recv cc=%x: %.*q", cc, cc, Buffer);
 
     ProcessTelnetOptions(&cc);
 
     if (cc) {
       err = tcp_send_blocking(SocketNum, Buffer, cc);
       if (err) LogFatal("Cannot tcp_send: %q", err);
-      LogStep("send: %q", Buffer);
+      LogStep("send cc=%x: %.*q", cc, cc, Buffer);
     }
 
     if (Buffer[0]=='q' || Buffer[0]=='Q') break;
