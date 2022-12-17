@@ -592,6 +592,7 @@ prob tcp_open(byte* socknum_out) {
 // Only called for TCP Client.
 prob tcp_connect(byte socknum, quad host, word port) {
   word base = ((word)socknum + 4) << 8;
+  poke(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
   poke_word(base+SK_DIPR0, (word)(host>>16));
   poke_word(base+SK_DIPR2, (word)host);
   poke_word(base+SK_DPORTR0, port);
@@ -602,6 +603,7 @@ prob tcp_connect(byte socknum, quad host, word port) {
 // Only called for TCP Server.
 prob tcp_listen(byte socknum, word listen_port) {
   word base = ((word)socknum + 4) << 8;
+  poke(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
   poke_word(base+SK_PORTR0, listen_port);
   wiz_command(base, SK_CR_LSTN);
   byte a = wiz_advance(base, SK_SR_INIT);
