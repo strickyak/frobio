@@ -627,7 +627,8 @@ prob tcp_establish_or_not_yet(byte socknum) {
   byte status = peek(base+SK_SR);
   switch (status) {
     case SK_SR_LSTN:  // Server: Listen mode; Syn not received yet.
-    case SK_SR_SYNS:  // Client: Syn Sent; SynAck not received yet.
+    case SK_SR_SYNS:  // Client: Syn Sent.
+    case SK_SR_SYNR:  // Client: Syn Recv.
       return NotYet;
 
     case SK_SR_ESTB:
@@ -638,9 +639,11 @@ prob tcp_establish_or_not_yet(byte socknum) {
     case SK_SR_CLWT: // Close Wait
     case SK_SR_LACK: // Last Ack
     case SK_SR_CLOS: // Closed
+      LogError("establish: TcpMoribund=%x", status);
       return tcp_close(socknum), "TcpMoribund";  // Some closing state.
 
     default:
+      LogError("establish: TcpWeird=%x", status);
       return tcp_close(socknum), "TcpWeird";  // Something weird happened.
   }
   return GOOD;

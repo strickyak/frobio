@@ -4,6 +4,7 @@
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
 
+#define ECHO 1
 #define SUPRESS_GO_AHEAD 3
 
 #define WILL (char)0xfb
@@ -26,13 +27,13 @@ static void SendCommand(byte modal, byte option) {
             LogStep("sent: modal %x option %x", modal, option);
 }
 
-// Reject all options except SUPRESS_GO_AHEAD.
+// Reject all options except ECHO and SUPRESS_GO_AHEAD.
 // Filter out characters with high bit, for now.
 static void ProcessTelnetOptions(size_t* cc_in_out) {
   // Read Buffer at i, write Buffer at j.
   // i may get ahead of j, when we trim out commands and chars with the high bit set.
   word i=0, j=0, n = *cc_in_out;
-  for (; i<n; i++) {
+  while (i<n) {
     char a = Buffer[i];
     if (a==IAC) {
       char b=Buffer[i+1], c=Buffer[i+2];
@@ -48,7 +49,7 @@ static void ProcessTelnetOptions(size_t* cc_in_out) {
           SendCommand(DONT, c);
           break;
         case DO:
-          if (c==SUPRESS_GO_AHEAD) {
+          if (c==ECHO || c==SUPRESS_GO_AHEAD) {
             SendCommand(WILL, c);
           } else {
             SendCommand(WONT, c);
@@ -114,6 +115,7 @@ int main(int argc, char* argv[]) {
   if (err) LogFatal("Cannot accept on TCP server port %d: %q", port, err);
   LogStep("accepted");
 
+  SendCommand(WILL, ECHO);
   const char* banner = "(WELCOME)\r\n";
   err = tcp_send_blocking(SocketNum, banner, strlen(banner));
   if (err) LogFatal("Cannot send banner: %q", err);
