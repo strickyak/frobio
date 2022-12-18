@@ -100,3 +100,5 @@ chop:
 	lwar -c lib__chopped.a __*_.o
 	# cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o f.ntp f-ntp.c -L. -l__chopped wiz/wiz5100s.c os9/frobos9.c  stack300.asm
 	sh Compile.sh f.ntp f-ntp.c  wiz/wiz5100s.c os9/frobos9.c  stack300.asm  -L. -l__chopped
+	tr '()' '  ' < f.map | grep '^Section: code ' | awk '{print $$3}' | sort -u | grep ^__  | wc -l
+	ls __*.c | wc -l
