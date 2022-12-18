@@ -269,49 +269,78 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #define MAX_VERBOSE LLInfo // Override this if needed.
 #endif
 
+#if LLFatal <= MAX_VERBOSE
 #define LogFatal(fmt,...) do { \
-    if (LLFatal <= MAX_VERBOSE && LLFatal <= Verbosity) \
+    if (LLFatal <= Verbosity) \
         Logger(__FILE__, __LINE__, LLFatal, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogFatal(fmt,...) {}
+#endif
 
+#if LLError <= MAX_VERBOSE
 #define LogError(fmt,...) do { \
-    if (LLError <= MAX_VERBOSE && LLError <= Verbosity) \
+    if (LLError <= Verbosity) \
         Logger(__FILE__, __LINE__, LLError, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogError(fmt,...) {}
+#endif
 
+#if LLStatus <= MAX_VERBOSE
 #define LogStatus(fmt,...) do { \
-    if (LLStatus <= MAX_VERBOSE && LLStatus <= Verbosity) \
+    if (LLStatus <= Verbosity) \
         Logger(__FILE__, __LINE__, LLStatus, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogStatus(fmt,...) {}
+#endif
 
+#if LLStep <= MAX_VERBOSE
 #define LogStep(fmt,...) do { \
-    if (LLStep <= MAX_VERBOSE && LLStep <= Verbosity) \
+    if (LLStep <= Verbosity) \
         Logger(__FILE__, __LINE__, LLStep, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogStep(fmt,...) {}
+#endif
 
+#if LLInfo <= MAX_VERBOSE
 #define LogInfo(fmt,...) do { \
-    if (LLInfo <= MAX_VERBOSE && LLInfo <= Verbosity) \
+    if (LLInfo <= Verbosity) \
         Logger(__FILE__, __LINE__, LLInfo, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogInfo(fmt,...) {}
+#endif
 
+#if LLDetail <= MAX_VERBOSE
 #define LogDetail(fmt,...) do { \
-    if (LLDetail <= MAX_VERBOSE && LLDetail <= Verbosity) \
+    if (LLDetail <= Verbosity) \
         Logger(__FILE__, __LINE__, LLDetail, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogDetail(fmt,...) {}
+#endif
 
+#if LLDebug <= MAX_VERBOSE
 #define LogDebug(fmt,...) do { \
-    if (LLDebug <= MAX_VERBOSE && LLDebug <= Verbosity) \
+    if (LLDebug <= Verbosity) \
         Logger(__FILE__, __LINE__, LLDebug, (fmt), ##__VA_ARGS__); \
   } while (false)
+#else
+#define LogDebug(fmt,...) {}
+#endif
 
 //////// Assert
 
 #define Assert(cond) do { if (!(cond)) { \
-  LogFatal("***ASSERT FAILED: %s:%u: %s\n", \
-      __FILE__, __LINE__, #cond); } } while(false) 
+  LogFatal("***ASSERT FAILED: %s:%u\n", \
+      __FILE__, __LINE__); } } while(false) 
 
 #endif // _FROB2_FROBLIB_H_
 
+//////// Notes.
 
 /*
      1	#ifdef unix
@@ -327,7 +356,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
     11	    printf("long long : %d\n", (int)sizeof(long long));
     12	    printf("size_t : %d\n", (int)sizeof(size_t));
     13	    printf("char* : %d\n", (int)sizeof(char*));
-    13	    printf("0 < (size_t)(-1L) = %d\n", 0 < (size_t)(-1L));
+    13
     14	    return 0;
     15	}
 
@@ -340,7 +369,6 @@ long : 4
 long long : 4
 size_t : 2
 char* : 2
-0 < (size_t)(-1L) = 1
 
 *** cc: x86_64 x86_64 x86_64 GNU/Linux
 
@@ -351,6 +379,5 @@ long : 8
 long long : 8
 size_t : 8
 char* : 8
-0 < (size_t)(-1L) = 1
 
 */
