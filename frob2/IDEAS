@@ -1,0 +1,52 @@
+IDEAS TODO: 
+
+Memory bug in dig.
+DNS Extensions corretly in dig.
+
+Port to OS9. Level1.
+Port to non-OS9.
+Shared LibFrobio module?
+
+Device Drivers:
+  Wiz, UDP, TCP, Resolve
+FUSE Manager/driver.
+Tap into CCIO.
+
+Telnet into OS9 Shell.
+Telnet into CCIO Text. Graphics?
+Terminfo for NitrOS9.
+
+UnixLooknFeel:
+  Bournish shell
+  real Argv & Envp
+  ULF.* commands
+Rebuild NCL.
+
+Thats when I reach for my resolver!
+
+Rename API with consistent CamelCase, separating frobio API from any Unix or other API.
+
+IRC client.
+
+Omnitrix (reliable UDP monster).
+  -- shard memory.
+  -- omni daemon.
+
+Security:
+  SSL/TLS?
+  RC4? RC49?
+  MD2?
+  Secretmail
+  Bignum lib.
+
+/wiz/raw:
+  Packets to R and W to the wiznet chip.
+  r: read bytes from wiznet
+  w: write bytes to wiznet
+  c: send one-byte command and wait for 0.
+  i: pull in from a circular buffer
+  o: push out to a circular buffer.
+  x: reset wiznet.
+  z: wait on an outcome (set of possible results).
+
+
