@@ -1,10 +1,14 @@
 # frobio
 
-I'm afraid I've broken the build in `frob2`.
+In case you have problems running `make` in the `frob2` directory:
 
-The binaries from the first working version are available in
+The OS9 binaries from the first working version are available in
 the directory `built/v1/CMDS/`.  You can continue to use them
 for now.  Copy them to your CMDS directory and set the execute bits.
+
+The OS9 binaries from the second working version are available in
+the directory `built/v2/CMDS/` ...
+
 
 ```
 github.com/strickyak/frobio$ ls built/v1/CMDS/
