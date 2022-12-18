@@ -95,10 +95,9 @@ install: all
 	sh Install.sh *.os9 *.shell
 
 chop:
-	python chopper.py froblib/*.c
-	for x in __*_.c; do cmoc -c --os9 -I.. $$x || kill $$$$; done
+	python chopper.py froblib/*.c wiz/*.c
+	MAX_VERBOSE=$${MAX_VERBOSE:-9} sh -c 'for x in __*_.c; do cmoc -c --os9 -I.. -D"MAX_VERBOSE"="$$MAX_VERBOSE" $$x || kill $$$$; done'
 	lwar -c lib__chopped.a __*_.o
-	# cmoc -i --os9 -I.. -DMAX_VERBOSE=9 -o f.ntp f-ntp.c -L. -l__chopped wiz/wiz5100s.c os9/frobos9.c  stack300.asm
-	sh Compile.sh f.ntp f-ntp.c  wiz/wiz5100s.c os9/frobos9.c  stack300.asm  -L. -l__chopped
+	sh Compile.sh f.ntp f-ntp.c  os9/frobos9.c  stack300.asm  -L. -l__chopped
 	tr '()' '  ' < f.map | grep '^Section: code ' | awk '{print $$3}' | sort -u | grep ^__  | wc -l
 	ls __*.c | wc -l
