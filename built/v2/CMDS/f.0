@@ -1,0 +1,1 @@
+* f.0: Example CocoIO/frobio commands with static addresses.tf.config 10.1.2.3 255.0.0.0 10.2.2.2-xf.arp 10.2.2.2f.ping 10.2.2.2f.ping 8.8.8.8
