@@ -2,18 +2,38 @@
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
 #include "frob2/wiz/wiz5100s.h"
+#include "frob2/wiz/w5100s_defs.h"
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
+// FORWARD of what-was-static:
+extern byte WizGet1(word reg);
+extern word WizGet2(word reg);
+extern void WizPut1(word reg, byte value);
+extern void WizPut2(word reg, word value);
+extern void WizPutN(word reg, const void* data, word size);
+
+extern byte Wiz__before(word limit);
+extern byte Wiz__wait(word reg, byte value, word millisecs_max);
+
+void Wiz__command(word base, byte cmd);
+byte Wiz__advance(word base, byte old_status);
+bool Wiz__sock_command(word base, byte cmd, byte want);
+
+//chop
 
 // Global storage.
 byte* wiz_hwport = 0xFF68;  // default hardware port.
-word ping_sequence;
+//chop
 const char NotYet[] = "NotYet";
+//chop
 
 static word bogus_word_for_delay;
 void wiz_delay(word n) {
   for (word i=0; i<n; i++) bogus_word_for_delay += i;
 }
 
-static byte peek(word reg) {
+byte WizGet1(word reg) {
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
@@ -22,7 +42,7 @@ static byte peek(word reg) {
   LogDebug("[%4x->%2x]", reg, z);
   return z;
 }
-static word peek_word(word reg) {
+word WizGet2(word reg) {
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
@@ -33,7 +53,7 @@ static word peek_word(word reg) {
   LogDebug("[%4x=>%4x]", reg, z);
   return z;
 }
-static void poke(word reg, byte value) {
+void WizPut1(word reg, byte value) {
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
@@ -41,7 +61,7 @@ static void poke(word reg, byte value) {
     EnableIrqsCounting();
   LogDebug("[%4x<-%2x]", reg, value);
 }
-static void poke_word(word reg, word value) {
+void WizPut2(word reg, word value) {
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
@@ -50,7 +70,7 @@ static void poke_word(word reg, word value) {
     EnableIrqsCounting();
   LogDebug("[%4x<=%4x]", reg, value);
 }
-static void poke_n(word reg, const void* data, word size) {
+void WizPutN(word reg, const void* data, word size) {
   const byte* from = (const byte*) data;
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
@@ -63,22 +83,22 @@ static void poke_n(word reg, const void* data, word size) {
 
 // wiz_ticks: 0.1ms but may have readbyte,readbyte error?
 word wiz_ticks() {
-    word t = peek_word(0x0082/*TCNTR Tick Counter*/);
+    word t = WizGet2(0x0082/*TCNTR Tick Counter*/);
     return t;
 }
 
-// Is current time before the limit?  Using Wiz Ticks.
-static byte before(word limit) {
-    word t = peek_word(0x0082/*TCNTR Tick Counter*/);
+// Is current time Wiz__before the limit?  Using Wiz Ticks.
+byte Wiz__before(word limit) {
+    word t = WizGet2(0x0082/*TCNTR Tick Counter*/);
     // After t crosses limit, (limit-t) "goes negative" so high bit is set.
     return 0 == ((limit-t) & 0x8000);
 }
-static byte wait(word reg, byte value, word millisecs_max) {
+byte Wiz__wait(word reg, byte value, word millisecs_max) {
     LogDebug("Wait reg %x value %x ms %x", reg, value, millisecs_max);
-    word start = peek_word(0x0082/*TCNTR Tick Counter*/);
+    word start = WizGet2(0x0082/*TCNTR Tick Counter*/);
     word limit = 10*millisecs_max + start;
-    while (before(limit)) {
-        if (peek(reg) == value) {
+    while (Wiz__before(limit)) {
+        if (WizGet1(reg) == value) {
             LogDebug("Wait OK");
             return OKAY;
         }
@@ -102,41 +122,41 @@ void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
   // Create locally assigned mac_addr from name4.
   byte mac_addr[6] = {2, 32, 0, 0, 0, 0};  // local prefix.
   strncpy((char*)mac_addr+2, name4, 4);
-  poke_n(0x0009/*ether_mac*/, mac_addr, 6);
+  WizPutN(0x0009/*ether_mac*/, mac_addr, 6);
   memcpy(hw6_out, mac_addr, 6);
 }
 
 void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
   P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
-  poke_n(0x0001/*gateway*/, &ip_gateway, 4);
-  poke_n(0x0005/*mask*/, &ip_mask, 4);
-  poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
+  WizPutN(0x0001/*gateway*/, &ip_gateway, 4);
+  WizPutN(0x0005/*mask*/, &ip_mask, 4);
+  WizPutN(0x000f/*ip_addr*/, &ip_addr, 4);
   // Keep the same mac_addr.
 }
 void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   DisableIrqsCounting();
 
   P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
-  poke_n(0x0001/*gateway*/, &ip_gateway, 4);
-  poke_n(0x0005/*mask*/, &ip_mask, 4);
-  poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
+  WizPutN(0x0001/*gateway*/, &ip_gateway, 4);
+  WizPutN(0x0005/*mask*/, &ip_mask, 4);
+  WizPutN(0x000f/*ip_addr*/, &ip_addr, 4);
 
   // Create locally assigned mac_addr from ip_addr.
   byte mac_addr[6] = {2, 0, 0, 0, 0, 0};  // local prefix.
   *(quad*)(mac_addr+2) = ip_addr;
-  poke_n(0x0009/*ether_mac*/, mac_addr, 6);
+  WizPutN(0x0009/*ether_mac*/, mac_addr, 6);
 
-  poke(0x001a/*=Rx Memory Size*/, 0x55); // 2k per sock
-  poke(0x001b/*=Tx Memory Size*/, 0x55); // 2k per sock
+  WizPut1(0x001a/*=Rx Memory Size*/, 0x55); // 2k per sock
+  WizPut1(0x001b/*=Tx Memory Size*/, 0x55); // 2k per sock
 
   // Force all 4 sockets to be closed.
   for (byte socknum=0; socknum<4; socknum++) {
       word base = ((word)socknum + 4) << 8;
-      poke(base+SockCommand, 0x10/*CLOSE*/);
-      wait(base+SockCommand, 0, 500);
-      poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
-      poke(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
-      poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
+      WizPut1(base+SockCommand, 0x10/*CLOSE*/);
+      Wiz__wait(base+SockCommand, 0, 500);
+      WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
+      WizPut1(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
+      WizPut1(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
   }
   EnableIrqsCounting();
 }
@@ -146,10 +166,10 @@ errnum udp_close(byte socknum) {
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
   word base = ((word)socknum + 4) << 8;
-  poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
-  poke(base+SockCommand, 0x10/*CLOSE*/);
-  wait(base+SockCommand, 0, 500);
-  poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
+  WizPut1(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  WizPut1(base+SockCommand, 0x10/*CLOSE*/);
+  Wiz__wait(base+SockCommand, 0, 500);
+  WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
 
@@ -159,26 +179,26 @@ errnum wiz_arp(quad dest_ip, byte* mac_out) {
   // Socketless ARP command.
   DisableIrqsCounting();
   // Socket-less Peer IP Address Register
-  poke(0x004c/*=SLCR*/, 0/*=Clear*/); // command
-  poke(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
-  poke(0x005f/*=SL Irq Mask Reg*/, 7/*=clear all*/);
-  poke_n(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
+  WizPut1(0x004c/*=SLCR*/, 0/*=Clear*/); // command
+  WizPut1(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
+  WizPut1(0x005f/*=SL Irq Mask Reg*/, 7/*=clear all*/);
+  WizPutN(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
 
   // Socketless PING command.
-  poke(0x004c/*=SLCR*/, 2/*=ARP*/); // command
+  WizPut1(0x004c/*=SLCR*/, 2/*=ARP*/); // command
 
   byte x = 0;
   do {
-    poke(0x005f, 0); // clear interrupt reg
+    WizPut1(0x005f, 0); // clear interrupt reg
 
     wiz_delay(42);
-    x = peek(0x005f/*=SLIR socketless interrupt reg*/);
-    byte m1 = peek(0x0054);
-    byte m2 = peek(0x0055);
-    byte m3 = peek(0x0056);
-    byte m4 = peek(0x0057);
-    byte m5 = peek(0x0058);
-    byte m6 = peek(0x0059);
+    x = WizGet1(0x005f/*=SLIR socketless interrupt reg*/);
+    byte m1 = WizGet1(0x0054);
+    byte m2 = WizGet1(0x0055);
+    byte m3 = WizGet1(0x0056);
+    byte m4 = WizGet1(0x0057);
+    byte m5 = WizGet1(0x0058);
+    byte m6 = WizGet1(0x0059);
     LogDebug("(arp->(%x) %x:%x:%x:%x:%x:%x) ",
       x, m1, m2, m3, m4, m5, m6);
     mac_out[0] = m1;
@@ -192,31 +212,32 @@ errnum wiz_arp(quad dest_ip, byte* mac_out) {
   return (x&2) ? OKAY : 255; // look for ARP ack.
 }
 
+word ping_sequence;
 errnum wiz_ping(quad dest_ip) {
   byte* d = (byte*)&dest_ip;
   LogDebug("PING: dest_ip=%d.%d.%d.%d ", d[0], d[1], d[2], d[3]);
 
   DisableIrqsCounting();
   // Socket-less Peer IP Address Register
-  poke(0x004c/*=SLCR*/, 0/*=Clear*/); // command
-  poke(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
-  poke(0x005f/*=SL Irq Mask Reg*/, 7/*=clear all*/);
-  poke_n(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
+  WizPut1(0x004c/*=SLCR*/, 0/*=Clear*/); // command
+  WizPut1(0x005e/*=SL Irq Mask Reg*/, 0/*=no irqs*/);
+  WizPut1(0x005f/*=SL Irq Mask Reg*/, 7/*=clear all*/);
+  WizPutN(0x0050 /*=SLPIPR*/, &dest_ip, sizeof dest_ip);
 
   // Socketless PING command.
   LogDebug(" Ping(%x) ", ping_sequence);
-  poke_word(0x005A, ping_sequence++);
-  poke(0x004c/*=SLCR*/, 1/*=PING*/); // command
+  WizPut2(0x005A, ping_sequence++);
+  WizPut1(0x004c/*=SLCR*/, 1/*=PING*/); // command
 
   byte x = 0;
   do {
-    x = peek(0x005f/*=SLIR socketless interrupt reg*/);
-    byte m1 = peek(0x0054);
-    byte m2 = peek(0x0055);
-    byte m3 = peek(0x0056);
-    byte m4 = peek(0x0057);
-    byte m5 = peek(0x0058);
-    byte m6 = peek(0x0059);
+    x = WizGet1(0x005f/*=SLIR socketless interrupt reg*/);
+    byte m1 = WizGet1(0x0054);
+    byte m2 = WizGet1(0x0055);
+    byte m3 = WizGet1(0x0056);
+    byte m4 = WizGet1(0x0057);
+    byte m5 = WizGet1(0x0058);
+    byte m6 = WizGet1(0x0059);
     LogDebug("(ping->(%x) %x:%x:%x:%x:%x:%x) ",
       x, m1, m2, m3, m4, m5, m6);
   } while (!x);
@@ -235,7 +256,7 @@ byte find_available_socket(word* base_out) {
   byte socknum;
   word base = 0x0400;
   for (socknum = 0; socknum < 4; socknum++) {
-    if (peek(base+SockStatus) == 0/*=SOCK_CLOSED*/) break;
+    if (WizGet1(base+SockStatus) == 0/*=SOCK_CLOSED*/) break;
     base += 0x0100;
   }
   *base_out = base;
@@ -252,20 +273,20 @@ errnum macraw_open(byte* socknum_out) {
   if (socknum > 0) return 0xf0/*E_UNIT*/;
   *socknum_out = socknum;
     
-  poke(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
-  poke(base+0x002F/*Sx_MR2*/, 0x70/*Broadcast Block, Multicast block, IPv6 block*/);
-  poke(base+SockCommand/*Sx_CR command reg*/, 1/*=OPEN*/);
+  WizPut1(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
+  WizPut1(base+0x002F/*Sx_MR2*/, 0x70/*Broadcast Block, Multicast block, IPv6 block*/);
+  WizPut1(base+SockCommand/*Sx_CR command reg*/, 1/*=OPEN*/);
 
-  err = wait(base+SockCommand, 0, 500);
+  err = Wiz__wait(base+SockCommand, 0, 500);
   if (err) goto Enable;
 
-  err = wait(base+SockStatus, 0x42/*SOCK_MACRAW*/, 500);
+  err = Wiz__wait(base+SockStatus, 0x42/*SOCK_MACRAW*/, 500);
   if (err) goto Enable;
 
-  word tx_r = peek_word(base+TxReadPtr);
-  poke_word(base+TxWritePtr, tx_r);
-  word rx_w = peek_word(base+0x002A/*_RX_WR*/);
-  poke_word(base+0x0028/*_RX_RD*/, rx_w);
+  word tx_r = WizGet2(base+TxReadPtr);
+  WizPut2(base+TxWritePtr, tx_r);
+  word rx_w = WizGet2(base+0x002A/*_RX_WR*/);
+  WizPut2(base+0x0028/*_RX_RD*/, rx_w);
 Enable:
   EnableIrqsCounting();
   return err;
@@ -276,9 +297,9 @@ errnum macraw_close(byte socknum) {
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
   word base = ((word)socknum + 4) << 8;
-  poke(base+SockCommand, 0x10/*CLOSE*/);
-  wait(base+SockCommand, 0, 500);
-  poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
+  WizPut1(base+SockCommand, 0x10/*CLOSE*/);
+  Wiz__wait(base+SockCommand, 0, 500);
+  WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
   return OKAY;
 }
 
@@ -287,19 +308,19 @@ errnum macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
   word base = ((word)socknum + 4) << 8;
   word buf = RX_BUF(socknum);
 
-  byte status = peek(base+SockStatus);
+  byte status = WizGet1(base+SockStatus);
   if (status != 0x42/*SOCK_MACRAW*/) return 0xf6 /*E_NOTRDY*/;
 
-  poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  wait(base+SockCommand, 0, 500);
-  LogDebug("status->%x ", peek(base+SockStatus));
+  WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
+  WizPut1(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
+  Wiz__wait(base+SockCommand, 0, 500);
+  LogDebug("status->%x ", WizGet1(base+SockStatus));
 
   LogDebug(" ====== WAIT ====== ");
   while(1) {
-    byte irq = peek(base+SockInterrupt);
+    byte irq = WizGet1(base+SockInterrupt);
     if (irq) {
-      poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
+      WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
         return 0xf4/*=E_READ*/;
       }
@@ -307,9 +328,9 @@ errnum macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
     }
   }
 
-  word recv_size = peek_word(base+0x0026/*_RX_RSR*/);
-  word rx_rd = peek_word(base+0x0028/*_RX_RD*/);
-  word rx_wr = peek_word(base+0x002A/*_RX_WR*/);
+  word recv_size = WizGet2(base+0x0026/*_RX_RSR*/);
+  word rx_rd = WizGet2(base+0x0028/*_RX_RD*/);
+  word rx_wr = WizGet2(base+0x002A/*_RX_WR*/);
 
   word ptr = rx_rd;
   ptr &= RX_MASK;
@@ -317,11 +338,11 @@ errnum macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
   word buffer_size = *size_in_out;
   word i;
   for (i = 0; i < recv_size && i < buffer_size; i++) {
-      buffer[i] = peek(buf+ptr);
+      buffer[i] = WizGet1(buf+ptr);
       ptr++;
       ptr &= RX_MASK;
   }
-  poke_word(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
+  WizPut2(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
   *size_in_out = i; 
   return OKAY;
 }
@@ -338,30 +359,30 @@ errnum udp_open(word src_port, byte* socknum_out) {
   }
   *socknum_out = socknum;
 
-  poke(base+SockMode, 2); // Set UDP Protocol mode.
-  poke_word(base+SockSourcePort, src_port);
-  poke(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
-  poke(base+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
-  poke_word(base+0x002d/*_FRAGR*/, 0); // don't fragment.
+  WizPut1(base+SockMode, 2); // Set UDP Protocol mode.
+  WizPut2(base+SockSourcePort, src_port);
+  WizPut1(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  WizPut1(base+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
+  WizPut2(base+0x002d/*_FRAGR*/, 0); // don't fragment.
 
-  poke(base+0x002f/*_MR2*/, 0x00); // no blocks.
-  poke(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
-  err = wait(base+SockCommand, 0, 500);
+  WizPut1(base+0x002f/*_MR2*/, 0x00); // no blocks.
+  WizPut1(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
+  err = Wiz__wait(base+SockCommand, 0, 500);
   if (err) {
     LogError("waitC=>%x", err);
     goto Enable;
   }
 
-  err = wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
+  err = Wiz__wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
   if (err) {
     LogError("waitS=>%x", err);
     goto Enable;
   }
 
-  word tx_r = peek_word(base+TxReadPtr);
-  poke_word(base+TxWritePtr, tx_r);
-  word rx_w = peek_word(base+0x002A/*_RX_WR*/);
-  poke_word(base+0x0028/*_RX_RD*/, rx_w);
+  word tx_r = WizGet2(base+TxReadPtr);
+  WizPut2(base+TxWritePtr, tx_r);
+  word rx_w = WizGet2(base+0x002A/*_RX_WR*/);
+  WizPut2(base+0x0028/*_RX_RD*/, rx_w);
 Enable:
   EnableIrqsCounting();
   return err;
@@ -376,16 +397,16 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
   word base = ((word)socknum + 4) << 8;
   word buf = TX_BUF(socknum);
 
-  byte status = peek(base+SockStatus);
+  byte status = WizGet1(base+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) {
     LogError("status=$x => NOTRDY", status);
     return 0xf6 /*E_NOTRDY*/;
   }
 
   LogDebug("dest_ip ");
-  poke_n(base+SockDestIp, &dest_ip, sizeof dest_ip);
+  WizPutN(base+SockDestIp, &dest_ip, sizeof dest_ip);
   LogDebug("dest_p ");
-  poke_word(base+SockDestPort, dest_port);
+  WizPut2(base+SockDestPort, dest_port);
 
   bool broadcast = false;
   byte send_command = 0x20;
@@ -393,20 +414,20 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
     // Broadcast to 255.255.255.255
     broadcast = true;
     send_command = 0x21;
-    poke_n(base+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
+    WizPutN(base+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
   }
 
   { // Just verbosity:
-    word r = peek_word(base+TxReadPtr);
+    word r = WizGet2(base+TxReadPtr);
     LogDebug("tx_r=%x ", r);
-    word w = peek_word(base+TxWritePtr);
+    word w = WizGet2(base+TxWritePtr);
     LogDebug("tx_w=%x ", w);
   }
-  word free = peek_word(base + TxFreeSize);
+  word free = WizGet2(base + TxFreeSize);
   LogDebug("SEND: base=%x buf=%x free=%x ", base, buf, free);
   if (free < size) return 255; // no buffer room.
 
-  word tx_r = peek_word(base+TxReadPtr);
+  word tx_r = WizGet2(base+TxReadPtr);
   LogDebug("tx_r=%x ", tx_r);
   LogDebug("size=%x ", size);
   LogDebug("tx_r+size=%x ", tx_r+size);
@@ -416,31 +437,31 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
     // split across edges of circular buffer.
     word size1 = TX_SIZE - offset;
     word size2 = size - size1;
-    poke_n(buf + offset, payload, size1);  // 1st part
-    poke_n(buf, payload + size1, size2);   // 2nd part
+    WizPutN(buf + offset, payload, size1);  // 1st part
+    WizPutN(buf, payload + size1, size2);   // 2nd part
   } else {
     // contiguous within the buffer.
-    poke_n(buf + offset, payload, size);  // whole thing
+    WizPutN(buf + offset, payload, size);  // whole thing
   }
 
   LogDebug("size ");
-  word tx_w = peek_word(base+TxWritePtr);
-  poke_word(base+TxWritePtr, tx_w + size);
+  word tx_w = WizGet2(base+TxWritePtr);
+  WizPut2(base+TxWritePtr, tx_w + size);
 
-  LogDebug("status->%x ", peek(base+SockStatus));
+  LogDebug("status->%x ", WizGet1(base+SockStatus));
   //sock_show(socknum);
   LogDebug("cmd:SEND ");
 
-  poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  poke(base+SockCommand, send_command);  // SEND IT!
-  wait(base+SockCommand, 0, 500);
-  LogDebug("status->%x ", peek(base+SockStatus));
+  WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
+  WizPut1(base+SockCommand, send_command);  // SEND IT!
+  Wiz__wait(base+SockCommand, 0, 500);
+  LogDebug("status->%x ", WizGet1(base+SockStatus));
 
   while(1) {
-    byte irq = peek(base+SockInterrupt);
+    byte irq = WizGet1(base+SockInterrupt);
     if (irq&0x10) break;
   }
-  poke(base+SockInterrupt, 0x10);  // Reset RECV interrupt.
+  WizPut1(base+SockInterrupt, 0x10);  // Reset RECV interrupt.
   return OKAY;
 }
 
@@ -450,23 +471,23 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
   word base = ((word)socknum + 4) << 8;
   word buf = RX_BUF(socknum);
 
-  byte status = peek(base+SockStatus);
+  byte status = WizGet1(base+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
 
-  poke_word(base+0x000c, 0); // clear Dest IP Addr
-  poke_word(base+0x000e, 0); // ...
-  poke_word(base+0x0010, 0); // clear Dest port addr
+  WizPut2(base+0x000c, 0); // clear Dest IP Addr
+  WizPut2(base+0x000e, 0); // ...
+  WizPut2(base+0x0010, 0); // clear Dest port addr
 
-  poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  poke(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  wait(base+SockCommand, 0, 500);
-  LogDebug("status->%x ", peek(base+SockStatus));
+  WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
+  WizPut1(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
+  Wiz__wait(base+SockCommand, 0, 500);
+  LogDebug("status->%x ", WizGet1(base+SockStatus));
 
   LogDebug(" ====== WAIT ====== ");
   while(1) {
-    byte irq = peek(base+SockInterrupt);
+    byte irq = WizGet1(base+SockInterrupt);
     if (irq) {
-      poke(base+SockInterrupt, 0x1f);  // Reset interrupts.
+      WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
         return 0xf4/*=E_READ*/;
       }
@@ -474,16 +495,16 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
     }
   }
 
-  word recv_size = peek_word(base+0x0026/*_RX_RSR*/);
-  word rx_rd = peek_word(base+0x0028/*_RX_RD*/);
-  word rx_wr = peek_word(base+0x002A/*_RX_WR*/);
+  word recv_size = WizGet2(base+0x0026/*_RX_RSR*/);
+  word rx_rd = WizGet2(base+0x0028/*_RX_RD*/);
+  word rx_wr = WizGet2(base+0x002A/*_RX_WR*/);
 
   word ptr = rx_rd;
   ptr &= RX_MASK;
 
   struct UdpRecvHeader hdr;
   for (word i = 0; i < sizeof hdr; i++) {
-      ((byte*)&hdr)[i] = peek(buf+ptr);
+      ((byte*)&hdr)[i] = WizGet1(buf+ptr);
       ptr++;
       ptr &= RX_MASK;
   }
@@ -494,7 +515,7 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
   }
 
   for (word i = 0; i < hdr.len; i++) {
-      payload[i] = peek(buf+ptr);
+      payload[i] = WizGet1(buf+ptr);
       ptr++;
       ptr &= RX_MASK;
   }
@@ -504,64 +525,36 @@ errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_
 
   LogDebug("nando RX lib: base=%x rs=%x rd=%x wr=%x hdr.len=%x new_rx_rd=%x", base, recv_size, rx_rd, rx_wr, hdr.len,
                                    RX_MASK & (rx_rd + recv_size));
-  poke_word(base+0x0028/*_RX_RD*/, RX_MASK & (rx_rd + recv_size));
+  WizPut2(base+0x0028/*_RX_RD*/, RX_MASK & (rx_rd + recv_size));
 
   return OKAY;
 }
 
-#if 0
-void sock_show(byte socknum) {
-  bool v = Verbose;
-
-  if (v) {
-      wiz_verbose = 0;
-      word base = ((word)socknum + 4) << 8;
-      for (byte i = 0; i < 64; i+=16) {
-        printf("\n%04x: ", base+i);
-        for (byte j = 0; j < 16; j++) {
-          byte k = i+j;
-          printf("%02x ", peek(base+k));
-          if ((j&3)==3) printf(" ");
-        }
-      }
-      wiz_verbose = v;
-  }
-}
-#endif
-
 ///// ===== TCP =====
 
-#include "frob2/froblib.h"
-#include "frob2/frobnet.h"
-#include "frob2/frobos9.h"
-#include "frob2/wiz/wiz5100s.h"
-#include "frob2/wiz/w5100s_defs.h"
-
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-
-static void wiz_command(word base, byte cmd) {
+void Wiz__command(word base, byte cmd) {
   LogDebug("WIZ COMMAND: base %x cmd %x", base, cmd);
-  poke(base+SK_CR, cmd);
-  while (peek(base+SK_CR)) {}
+  WizPut1(base+SK_CR, cmd);
+  while (WizGet1(base+SK_CR)) {}
 }
 // Advance to a new status after old_status.
-static byte wiz_advance(word base, byte old_status) {
+byte Wiz__advance(word base, byte old_status) {
   byte status;
   do {
-    status = peek(base+SK_SR);
+    status = WizGet1(base+SK_SR);
     LogDebug("WIZ ADVANCE: base %x old %x new %x", base, old_status, status);
   } while (status == old_status);
   return status;
 }
 
-static bool sock_command(word base, byte cmd, byte want) {
+bool Wiz__sock_command(word base, byte cmd, byte want) {
   LogDebug("COMMAND: base %x cmd %x want %x", base, cmd, want);
-  poke(base+SK_CR, cmd);
-  while (peek(base+SK_CR)) {
+  WizPut1(base+SK_CR, cmd);
+  while (WizGet1(base+SK_CR)) {
     LogDebug("do_sock_command %x: wait", cmd);
   }
   if (want) {
-    byte status = peek(base+SK_SR);
+    byte status = WizGet1(base+SK_SR);
     if (status == want) return true;
     LogDebug("do_sock_command Bad Status: cmd %x got %x want %x", cmd, status, want);
     return false;
@@ -578,35 +571,35 @@ prob tcp_open(byte* socknum_out) {
   }
   *socknum_out = socknum;
 
-  poke(base+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
-  poke(base+SK_IR, 0xFF); // Clear all interrupts.
-  poke(base+SK_IMR, 0xFF); // Inhibit all interrupts.
-  wiz_command(base, SK_CR_OPEN);
-  if (wiz_advance(base, SK_SR_CLOS) != SK_SR_INIT) {
+  WizPut1(base+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
+  WizPut1(base+SK_IR, 0xFF); // Clear all interrupts.
+  WizPut1(base+SK_IMR, 0xFF); // Inhibit all interrupts.
+  Wiz__command(base, SK_CR_OPEN);
+  if (Wiz__advance(base, SK_SR_CLOS) != SK_SR_INIT) {
     return tcp_close(socknum), "TcpCannotOpen";
   }
-  poke_word(base+SK_TX_WR0, 0); // Does this help?
+  WizPut2(base+SK_TX_WR0, 0); // Does this help?
   return GOOD;
 }
 
 // Only called for TCP Client.
 prob tcp_connect(byte socknum, quad host, word port) {
   word base = ((word)socknum + 4) << 8;
-  poke(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
-  poke_word(base+SK_DIPR0, (word)(host>>16));
-  poke_word(base+SK_DIPR2, (word)host);
-  poke_word(base+SK_DPORTR0, port);
-  wiz_command(base, SK_CR_CONN);
+  WizPut1(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
+  WizPut2(base+SK_DIPR0, (word)(host>>16));
+  WizPut2(base+SK_DIPR2, (word)host);
+  WizPut2(base+SK_DPORTR0, port);
+  Wiz__command(base, SK_CR_CONN);
   return GOOD;
 }
 
 // Only called for TCP Server.
 prob tcp_listen(byte socknum, word listen_port) {
   word base = ((word)socknum + 4) << 8;
-  poke(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
-  poke_word(base+SK_PORTR0, listen_port);
-  wiz_command(base, SK_CR_LSTN);
-  byte a = wiz_advance(base, SK_SR_INIT);
+  WizPut1(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
+  WizPut2(base+SK_PORTR0, listen_port);
+  Wiz__command(base, SK_CR_LSTN);
+  byte a = Wiz__advance(base, SK_SR_INIT);
   if (a != SK_SR_LSTN && a != SK_SR_ESTB) return tcp_close(socknum), "TcpCannotListen";
   return GOOD;
 }
@@ -615,16 +608,16 @@ prob tcp_listen(byte socknum, word listen_port) {
 prob tcp_establish_or_not_yet(byte socknum) {
   word base = ((word)socknum + 4) << 8;
 
-  byte ir = peek(base+SK_IR);
+  byte ir = WizGet1(base+SK_IR);
   if (ir & SK_IR_TOUT) {
-    poke(base+SK_IR, SK_IR_TOUT); // Clear Timeout Interrupt.
+    WizPut1(base+SK_IR, SK_IR_TOUT); // Clear Timeout Interrupt.
     return "TcpTimeout";
   }
   if (ir & SK_IR_CON) {
-    poke(base+SK_IR, SK_IR_CON); // Clear Connection Interrupt.
+    WizPut1(base+SK_IR, SK_IR_CON); // Clear Connection Interrupt.
   }
 
-  byte status = peek(base+SK_SR);
+  byte status = WizGet1(base+SK_SR);
   switch (status) {
     case SK_SR_LSTN:  // Server: Listen mode; Syn not received yet.
     case SK_SR_SYNS:  // Client: Syn Sent.
@@ -653,12 +646,12 @@ prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_byt
   word base = ((word)socknum + 4) << 8;
   word rxbuf = RX_BUF(socknum);
 
-  word get_size = peek_word(base+SK_RX_RSR0);
+  word get_size = WizGet2(base+SK_RX_RSR0);
   if (get_size == 0) {
     return NotYet;
   }
 
-  word get_offset = peek_word(base+SK_RX_RD0) & RX_MASK;
+  word get_offset = WizGet2(base+SK_RX_RD0) & RX_MASK;
   word get_start_address = rxbuf + get_offset;
 
   word n = MIN(get_size, buflen);
@@ -666,15 +659,15 @@ prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_byt
   // Read from Wiz rxbuf into caller's buf.
   word p = get_offset;
   for (size_t i = 0; i < n; i++) {
-    buf[i] = peek(rxbuf + p);
+    buf[i] = WizGet1(rxbuf + p);
     p = (p+1) & RX_MASK;
   }
   *num_bytes_out = n;
 
   // advance the receive Read pointer.
-  poke_word(base+SK_RX_RD0, n + peek_word(base+SK_RX_RD0));
+  WizPut2(base+SK_RX_RD0, n + WizGet2(base+SK_RX_RD0));
 
-  bool ok = sock_command(base, SK_CR_RECV, SK_SR_ESTB);
+  bool ok = Wiz__sock_command(base, SK_CR_RECV, SK_SR_ESTB);
   if (!ok) return "TcpRecvRequestBad";
   return GOOD;
 }
@@ -688,12 +681,12 @@ prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send
     word send_size = MIN(num_bytes_to_send , TX_SIZE);
     num_bytes_to_send -= send_size;
 
-    // peek_word -> $9c53
-    word get_offset = peek_word(base+SK_TX_WR0) & TX_MASK;
+    // WizGet2 -> $9c53
+    word get_offset = WizGet2(base+SK_TX_WR0) & TX_MASK;
 
-    // peek_word -> $0800
+    // WizGet2 -> $0800
     // TODO why does the document (p60/111) have "<="?
-    while (send_size >= peek_word(base+SK_TX_FSR0)) {
+    while (send_size >= WizGet2(base+SK_TX_FSR0)) {
         ; // sleep or spin
     }
 
@@ -702,32 +695,32 @@ prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send
 
     word p = get_offset;
     for (size_t i = 0; i < send_size; i++) {
-      poke(txbuf + p, buf[i]);
+      WizPut1(txbuf + p, buf[i]);
       p = (p+1) & TX_MASK;
     }
 
     // increase SX_TX_WR as send_size
-    poke_word(base+SK_TX_WR0, send_size + peek_word(base+SK_TX_WR0));
+    WizPut2(base+SK_TX_WR0, send_size + WizGet2(base+SK_TX_WR0));
 
     // set SEND command
-    bool ok = sock_command(base, SK_CR_SEND, SK_SR_ESTB);
+    bool ok = Wiz__sock_command(base, SK_CR_SEND, SK_SR_ESTB);
     if (!ok) {
       return "TcpSendFailed";
     }
 
-    byte interrupts = peek(base+SK_IR);
+    byte interrupts = WizGet1(base+SK_IR);
     while (true) {
-      interrupts = peek(base+SK_IR);
+      interrupts = WizGet1(base+SK_IR);
       if (interrupts & SK_IR_DISC) {
-        poke(base+SK_IR, SK_IR_DISC);  // clear bit
+        WizPut1(base+SK_IR, SK_IR_DISC);  // clear bit
         return "TcpSendDisconnect";
       }
       if (interrupts & SK_IR_TOUT) {
-        poke(base+SK_IR, SK_IR_TOUT);  // clear bit
+        WizPut1(base+SK_IR, SK_IR_TOUT);  // clear bit
         return "TcpSendTimeout";
       }
       if (interrupts & SK_IR_TXOK) {
-        poke(base+SK_IR, SK_IR_TXOK);  // clear bit
+        WizPut1(base+SK_IR, SK_IR_TXOK);  // clear bit
         break; // maybe send some more.
       }
     } // end while
@@ -737,8 +730,8 @@ prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send
 
 prob tcp_close(byte socknum) {
   word base = ((word)socknum + 4) << 8;
-  sock_command(base, SK_CR_DISC, 0); // Disconnect.
-  poke(base + SK_MR, SK_MR_CLSD); // Closed.
+  Wiz__sock_command(base, SK_CR_DISC, 0); // Disconnect.
+  WizPut1(base + SK_MR, SK_MR_CLSD); // Closed.
   return GOOD;
 }
 
