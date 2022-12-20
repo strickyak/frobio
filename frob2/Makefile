@@ -101,3 +101,6 @@ chop:
 	sh Compile.sh f.ntp f-ntp.c  os9/frobos9.c  stack300.asm  -L. -l__chopped
 	tr '()' '  ' < f.map | grep '^Section: code ' | awk '{print $$3}' | sort -u | grep ^__  | wc -l
 	ls __*.c | wc -l
+
+f.ncl.os9:
+	sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c stack300.asm
