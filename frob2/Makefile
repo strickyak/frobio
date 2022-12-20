@@ -36,6 +36,10 @@ f.telnetd0.os9 : f-telnetd0.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
 
 # x-*.c are dev or demo files.
+x.argv.os9 : x-argv.c
+	sh Compile.sh $@ $< $(LIBS)
+x.cat.os9 : x-cat.c
+	sh Compile.sh $@ $< $(LIBS)
 x.logging.os9 : x-logging.c
 	sh Compile.sh $@ $< $(LIBS)
 x.fputs.os9 : x-fputs.c
