@@ -1,4 +1,4 @@
-IDEAS TODO: 
+IDEAS TODO:
 
 Memory bug in dig.
 DNS Extensions corretly in dig.
@@ -21,6 +21,7 @@ UnixLooknFeel:
   real Argv & Envp
   ULF.* commands
 Rebuild NCL.
+  make f.ncl.os9 (has simple errors)
 
 Thats when I reach for my resolver!
 
@@ -48,5 +49,12 @@ Security:
   o: push out to a circular buffer.
   x: reset wiznet.
   z: wait on an outcome (set of possible results).
+
+
+Compile with gcc, perhaps omit frame pointer:
+  -- alias CC='/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 -std=c99'
+  -- CC -c -I.. froblib/buf.c
+  -- CC -c -I..  -fomit-frame-pointer wiz/wiz5100s.c   froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c
+  -- CC -Wall -S -I..  -fomit-frame-pointer wiz/wiz5100s.c   froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c
 
 
