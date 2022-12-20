@@ -305,21 +305,26 @@ void BufFormat(Buf* buf, const char* format, ...) {
     va_end(ap);
 }
 
-void WritLnAll(int path, const char* s, word n) {
+// returns OKAY or ErrNo.
+errnum WritLnAll(int path, const char* s, word n) {
+    ErrNo = OKAY;
+    word n0 = n;
     while (n>0) {
         int wrote = 0;
 #ifdef unix
         wrote = write(path, s, n);
-        errnum e = wrote < 1 ? errno : 0;
+        ErrNo = wrote < 1 ? errno : 0;
 #else
-        errnum e = Os9WritLn(path, s, n, &wrote);
+        ErrNo = Os9WritLn(path, s, n, &wrote);
 #endif
-        if (e) {FailE(e, "cannot WritLn path %d", path); return;}
+        if (ErrNo) return ErrNo;
         s += wrote;
         n -= wrote;
     }
+    return 0;
 }
 
+// return bytes_written or -1.
 int Printf(const char* fmt, ...) {
     Buf buf;
     BufInit(&buf);
@@ -331,15 +336,15 @@ int Printf(const char* fmt, ...) {
 
     BufFinish(&buf);
     int bytes_written = buf.n;
-    errnum e = 0;
+    ErrNo = 0;
     #ifdef unix
     bytes_written = write(1, buf.s, buf.n);
-    if (bytes_written <= 0) e = errno;
+    if (bytes_written <= 0) ErrNo = errno;
     #else
     WritLnAll(1, buf.s, buf.n);
     #endif
     BufDel(&buf);
-    return (e) ? -1 : bytes_written;
+    return (ErrNo) ? -1 : bytes_written;
 }
 
 int EPrintf(const char* fmt, ...) {

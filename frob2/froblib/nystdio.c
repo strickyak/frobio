@@ -14,6 +14,7 @@ File StdOut_File = {1};
 File StdErr_File = {2};
 //chop
 
+// FOpen returns NULL and sets ErrNo on error.
 File* FOpen(const char* pathname, const char* mode) {
     Assert(pathname);
     Assert(mode);
@@ -21,12 +22,12 @@ File* FOpen(const char* pathname, const char* mode) {
     int fd = -1;
 
     if (mode[0] == 'r') {
-      errnum e = Os9Open(pathname, 1/*=READ*/, &fd);
-      if (e) {FailE(e, "Cannot open: %s", pathname); return NULL;}
+      ErrNo = Os9Open(pathname, 1/*=READ*/, &fd);
+      if (ErrNo) return NULL;
     } else if (mode[0] == 'w') {
       Os9Delete(pathname);
-      errnum e = Os9Create(pathname, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
-      if (e) {FailE(e, "Cannot create: %s", pathname); return NULL;}
+      ErrNo = Os9Create(pathname, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
+      if (ErrNo) return NULL;
     }
     Assert (fd>=0);
 
@@ -35,35 +36,51 @@ File* FOpen(const char* pathname, const char* mode) {
     return f;
 }
 
+// FOpen returns bytes_read, or 0 and sets ErrNo on error.
 word FGets(char *buf, int size, File *f) {
     Assert(buf);
     Assert(size);
     Assert(f);
     int bytes_read = 0;
-    errnum e = Os9ReadLn(f->fd, buf, size-1, &bytes_read);
+    ErrNo = Os9ReadLn(f->fd, buf, size-1, &bytes_read);
+    if (ErrNo) return 0;
     buf[bytes_read] = '\0';
-    if (e) {FailE(e, "ReadLn fails on path %d", f->fd);}
     return bytes_read;
 }
 
-void FPuts(const char *str, File *f) {
+// returns length of str, or -1 on error.
+int FPuts(const char *str, File *f) {
     Assert(str);
     Assert(f);
     int n = strlen(str);
-    WritLnAll(f->fd, str, n);
+    ErrNo = WritLnAll(f->fd, str, n);
+    return (ErrNo) ? -1 : n;
 }
 
-void FClose(File *f) {
+// returns 0, or -1 on error.
+int FClose(File *f) {
     Assert(f);
-    errnum e = Os9Close(f->fd);
+    ErrNo = Os9Close(f->fd);
+    if (ErrNo) return -1;
     f->fd = -1;
     Free(f);
-    if (e) {FailE(e, "Close fails on path %d", f->fd);}
+    return 0;
 }
 
 void PError(const char* str) {
+    int e = ErrNo;
+    ErrNo = OKAY;
     Assert(str);
     FPuts(" ", StdErr);
     FPuts(str, StdErr);
-    FPuts(": ERROR TODO\n", StdErr);
+    char ebuf[4];
+    ebuf[0] = e / 100 + '0';
+    e = e % 100;
+    ebuf[1] = e / 10 + '0';
+    e = e % 10;
+    ebuf[2] = e + '0';
+    ebuf[3] = '\0';
+    FPuts(": ErrNo ", StdErr);
+    FPuts(ebuf, StdErr);
+    FPuts(".\n", StdErr);
 }

@@ -10,44 +10,8 @@
 //chop
 byte Verbosity = LLInfo;
 //chop
-Buf ErrBuf;
 byte ErrNo;
-const char* ErrFile;
-word ErrLine;
 //chop
-
-void SetFailure(const char* file, word line, byte e, const char* fmt, ...) {
-    if (!ErrBuf.s) {
-        // First time, allocate.
-        ErrBuf.s = (char*)Malloc(128);
-        Assert(ErrBuf.s);
-        ErrBuf.s[0] = 0;  // Clear any failure.
-    }
-    if (!fmt) {
-        ErrBuf.s[0] = 0;  // Clear any failure.
-        ErrBuf.n = 0;  // Clear any failure.
-        return;
-    }
-
-    if (ErrBuf.n) {
-      FPuts("\n[prev error] ", StdErr);
-      WritLnAll(2, ErrBuf.s, ErrBuf.n);
-      FPuts("\n", StdErr);
-    }
-    ErrBuf.s[0] = 0;
-    ErrBuf.n = 0;
-
-    ErrFile = file;
-    ErrLine = line;
-    ErrNo = e;
-
-    va_list ap;
-    va_start(ap, fmt);
-    BufFormatVA(&ErrBuf, fmt, ap);
-    va_end(ap);
-
-    BufFinish(&ErrBuf);
-}
 
 Buf LogBuf;
 void Logger(const char* file, word line, byte level, const char* fmt, ...) {

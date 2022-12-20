@@ -118,15 +118,19 @@ const char *ElemDecode(const char *s);
 typedef struct { int fd; } File;
 
 // Low Level: do not invoke Malloc, Fail, Printf, etc.
-void FPuts(const char *str, File *f);
+//
+// returns length of str, or -1 on error.
+int FPuts(const char *str, File *f);
 void PutHex(byte c, word w);
 void Panic(const char* message);
 void PC_Trace(byte c, const void* w);
 
 // Fopen mode can be "r" or "w".
 File* FOpen(const char* pathname, const char* mode);
+// FOpen returns bytes_read, or 0 and sets ErrNo on error.
 word FGets(char *buf, int size, File *f);
-void FClose(File *f);
+// returns 0, or -1 on error.
+int FClose(File *f);
 void PError(const char* str);
 
 extern File StdIn_File;
@@ -152,7 +156,7 @@ const char* StaticFormatSignedInt(int x);
 void BufAppStringQuoting(Buf* buf, const char* s, word precision);
 void BufFormat(Buf* buf, const char* format, ...);
 void BufFormatVA(Buf* buf, const char* format, va_list ap);
-void WritLnAll(int path, const char* s, word n);
+errnum WritLnAll(int path, const char* s, word n);
 
 // CharUp(c): convert to upper case for 26 ascii letters.
 char CharUp(char c);
@@ -235,23 +239,10 @@ quad NyParseDottedDecimalQuadAndPort(const char** pp, word* port);
 // ncl/std
 int prefixed_atoi(const char*);
 
-////////   Errors
-
-extern Buf ErrBuf;
-extern const char* ErrFile;
-extern word ErrLine;
+////////   Operating System Errors
 extern errnum ErrNo;  // for OS Error number.
 
-// To declare failures
-void SetFailure(const char* file, word line, byte e, const char* fmt, ...);
-#define Fail(fmt,...) SetFailure(__FILE__, __LINE__, 0, (fmt), ##__VA_ARGS__)
-#define FailE(E,fmt,...) SetFailure(__FILE__, __LINE__, (E), (fmt), ##__VA_ARGS__)
-
-// To test for failures
-#define Bad (ErrBuf.n)  // e.g. if (Bad) return;
-
 ////////   Logging and Verbosity
-
 extern byte Verbosity;
 extern Buf LogBuf;
 void Logger(const char* file, word line, byte level, const char* fmt, ...);
