@@ -32,6 +32,13 @@ asm void EnableIrqs();
 void DisableIrqsCounting(); // untested
 void EnableIrqsCounting(); // untested
 
+/* alias CC='/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 -std=c99' */
+#ifdef __SIZE_MAX__ // detect gcc
+#if __SIZE_MAX__ == 65535U // detect gcc
+#define asm extern
+#endif
+#endif
+
 asm void Os9Exit(byte status);
 
 asm errnum Os9Create(const char* path, int mode, int attrs, int* fd);
@@ -82,5 +89,11 @@ void GomarHyperExit(errnum status);  // exits os9 process, if no hyper.
 
 // Was used in NCL code.  Calls Os9Write with strlen(str) to stderr.
 asm void Os9_print(const char* str);
+
+#ifdef __SIZE_MAX__ // detect gcc
+#if __SIZE_MAX__ == 65535U // detect gcc
+#define asm extern
+#endif
+#endif
 
 #endif // _FROBOS9_H_
