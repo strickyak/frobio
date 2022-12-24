@@ -7,6 +7,7 @@ OBJECT="$(basename $1 .os9)"
 shift
 
 MAX_VERBOSE=${MAX_VERBOSE:-9}
+GCC_6809=${GCC_6809:-/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4}
 
 set -ex
 case $HOW in
@@ -16,9 +17,31 @@ case $HOW in
         os9 ident "$OBJECT.os9"
         ;;
     cmocly )
-        /home/strick/go/bin/cmocly --cmoc_pre="-DMAX_VERBOSE=$MAX_VERBOSE" -I=.. --o "$OBJECT" "$@" &&
+        /home/strick/go/bin/cmocly --cmoc_pre="-DMAX_VERBOSE=$MAX_VERBOSE" -I=.. -o "$OBJECT" "$@"
         mv "$OBJECT" "$OBJECT.os9"
         os9 ident "$OBJECT.os9"
+        ;;
+    gcc )
+        # $GCC_6809 --std='gnu99' -f'no-builtin' -I.. -Os -o "$OBJECT" "$@"
+        for x
+        do
+          case "$x" in 
+            *.c )
+                y=$(basename $x .c)
+                $GCC_6809 --std='gnu99' -f'pic' -f'no-builtin' -f'unsigned-char' -f'unsigned-bitfields' -I.. -Os -S "$x"
+                lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource -o "$y.o" -l"$y.o.list" "$y.s"
+                ;;
+            *.asm )
+                y=$(basename $x .asm)
+                lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource -o "$y.o" -l"$y.o.list" "$y.asm"
+                ;;
+            * )
+                echo "UNKNOWN COMPILE THING: $x" >&2
+                exit 13
+                ;;
+          esac
+        done
+        false
         ;;
     * )
         echo "Use environment HOW=cmoc or HOW=cmocly or edit $0" >&2

@@ -58,3 +58,140 @@ Compile with gcc, perhaps omit frame pointer:
   -- CC -Wall -S -I..  -fomit-frame-pointer wiz/wiz5100s.c   froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c
 
 
+------------------------------------------------
+32061   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin -S -I..  zhello.c 
+32062   m zhello.s
+32063   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin -c -I..  zhello.c 
+32064   file zhello.o
+32065   m zhello.o
+32066   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin -S -I..  zhello.c 
+32067   m zhello.s
+32068   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin  -I..  zhello.c 
+32069   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=c++98 -fno-builtin  -I..  zhello.c 
+32070   ln -s /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 /opt/yak/fuzix/bin/g++
+32071   /opt/yak/fuzix/bin/g++ -I.. -S zhello.c 
+32072   m zhello.s 
+32073   vi zhello.c 
+32074   /opt/yak/fuzix/bin/g++ -I.. -S zhello.c 
+32075   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=c++98 -fno-builtin  -I..  '-###' zhello.c 
+32076   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=c++98 -fno-builtin  -I..   zhello.c 
+32077   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin  -I..   zhello.c 
+32078   vi zhello.c
+32079   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin  -I..   zhello.c 
+32080   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I..   zhello.c 
+32081   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -v  zhello.c 
+32082   /opt/yak/fuzix/libexec/gcc/m6809-unknown/4.6.4/collect2 /opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/crt0.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4 -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/../../../../m6809-unknown/lib /tmp/ccGwbFS3.o 
+32083   file /opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/crt0.o
+32084   hd /opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/crt0.o |head
+32085   p lwobjdump /opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/crt0.o
+32086   ff /opt/yak/fuzix/lib/gcc/
+32087   p ff /opt/yak/fuzix/lib/gcc/
+32088   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -v -S  zhello.c 
+32089   m zhello.s 
+32090   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=c11  -I.. -v -S  zhello.c
+32091   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu11  -I.. -v -S  zhello.c
+32092   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu11  -I..  -S  zhello.c
+32093   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -v -S  zhello.c
+32094   vi zhello.c
+32095   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -v -S  zhello.c
+32096   cat zhello.c 
+32097   vi zhello.c 
+32098   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -v -S  zhello.c
+32099   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I..  -S  zhello.c
+32100   cat zhello.s
+32101   vi zhello.s
+32102   vi zhello.c
+32103   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I..  -S  zhello.c
+32104   n zhello.s
+32105   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -O2 -S  zhello.c
+32106   n zhello.s
+32107   /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99  -I.. -Os -S  zhello.c
+32108   n zhello.s
+32109   history 50
+32110   history 50 >> IDEAS 
+------------------------------------------------
+  -f"whole-program"  -f"lto"[=n]
+  -f"inline-functions"
+------------------------------------------------
+extern int puts(const char *s);
+
+/*
+class Foo {
+  public:
+    void bar() {
+      puts("hello world");
+    }
+}
+*/
+
+inline void Greet() { 
+      puts("hello world");
+}
+
+int main() {
+  Greet();
+  asm (
+    "   NOP foobar  "
+  );
+  unsigned int a=100, b=200, c=300;
+  for (unsigned i = 0; i < a; i++) Greet();
+  for (unsigned i = 0; i < b; i++) Greet();
+  for (unsigned i = 0; i < c; i++) Greet();
+  return 13;
+}
+------------------------------------------------
+32145   HOW=gcc make -B x.logging.os9 
+32146   ls *.s
+32147   cmoc -o a.out --os9 *.s 
+32148   HOW=gcc make -B x.logging.os9 
+32149   ll *.c.o
+32150   HOW=gcc make -B x.logging.os9 
+32151   ll *.o
+32152   rm *.o
+32153   make clean 
+32154   HOW=gcc make -B x.logging.os9 
+32155   ll *.o
+32156   ll *.s
+32157   HOW=gcc make -B x.logging.os9 
+32158   ll *.s
+32159   ll *.o
+32160   cmoc --os9 -o a.out *.o 
+32161   cmoc -i --os9 -o a.out *.o 
+32162   ls -t
+32163   m a.link 
+32164   m x-logging.s
+32165   g mul *.s
+32166   m format.s 
+32167   g __ format.s
+32168   m format.s 
+32169   g -i ini *.s
+32170   p lwobjdump format.o
+32171   mkdir Z11
+32172   cp *.s *.o Z11 
+32173   HOW=gcc make -B x.logging.os9 
+32174   ll format.s Z11/format.s
+32175   vimdiff format.s Z11/format.s 
+32176   p lwobjdump format.o
+32177   vi crt_gcc.asm 
+32178   fg
+32179   cmoc -i --os9 -nodefaultlibs -o a.out *.o 
+32180   fg
+32181   cmoc -i --os9 -nodefaultlibs -o a.out *.o crt_gcc.asm 
+32182   cmoc -i --raw -nodefaultlibs -o a.out *.o crt_gcc.asm 
+32183   cmoc -i --raw --void-target -nodefaultlibs -o a.out *.o crt_gcc.asm 
+32184   ls
+32185   m x-logging.s
+32186   cmoc -i --raw --void-target -nodefaultlibs -o a.out *.o crt_gcc.asm 
+32187   lwlink-orig --format=raw --output=a.out --script=a.link --map=a.map buf.o crt_gcc.o flag.o format.o frobos9.o malloc.o nylib.o nystdio.o stack300.o std.o wiz5100s.o x-logging.o 
+32188   n a.link
+32189   vi a.link
+32190   lwlink-orig --format=raw --output=a.out --script=a.link --map=a.map buf.o crt_gcc.o flag.o format.o frobos9.o malloc.o nylib.o nystdio.o stack300.o std.o wiz5100s.o x-logging.o 
+32191   m x-logging.o 
+32192   m x-logging.s
+32193   history 50 
+32194   history 50 >> IDEAS 
+------------------------------------------------
+-mint8 works.
+-mno-reg-args works.
+-m6309 accepted, no change.
+-mdret works (return in D, not X)

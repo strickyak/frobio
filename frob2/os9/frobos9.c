@@ -8,6 +8,9 @@
 
 byte disable_irq_count;
 
+#if __SIZE_MAX__ != 65535U // if NOT GCC
+
+
 void DisableIrqsCounting() {
   // If you use -v9 for Verbosity, you're really debugging
   // and you really want to see all debug logs.
@@ -480,3 +483,5 @@ void GomarHyperExit(errnum status) {
   // NOT REACHED if Hyper, but if no hyper, exit the OS9 process.  
   Os9Exit(status);
 }
+
+#endif // NOT GCC
