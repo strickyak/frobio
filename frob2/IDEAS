@@ -209,6 +209,8 @@ https://raw.githubusercontent.com/haikuports/haikuports/master/dev-embedded/gcc6
 March 2019 patch set.
 https://github.com/haikuports/haikuports/tree/master/dev-embedded/gcc6809
 ------------------------------------------------
+https://gcc.gnu.org/onlinedocs/gcc-4.6.4/gccint/
+------------------------------------------------
 Wednesday:
    * Rename UDP/FrobNet camel style.
    * use prob in UDP/FrobNet
