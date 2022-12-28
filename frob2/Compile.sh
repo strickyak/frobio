@@ -11,6 +11,13 @@ GCC_6809=${GCC_6809:-/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4}
 
 set -ex
 case $HOW in
+    decb-cmoc )
+        cmoc -i --decb -I.. -DFROB_DECB_CMOC -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" $(ls "$@" | grep -v os9/) decb/frob-decb.c
+        mv "$OBJECT" "$OBJECT.decb"
+        hd "$OBJECT.decb" | head -4
+        ls -l "$OBJECT.decb"
+        echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/f.ticks.decb /media/strick/APRIL3/YDECB.DSK,TICKS.BIN' -- HINT
+        ;;
     "" | cmoc )
         cmoc -i --os9 -I.. -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" "$@"
         mv "$OBJECT" "$OBJECT.os9"

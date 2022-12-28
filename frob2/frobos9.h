@@ -16,15 +16,12 @@
 #include "frob2/froblib.h"
 
 #ifdef unix
-
 // Can emulate OS9 calls?
-#define asm /**/
-
+#define IF_os9_THEN_asm /**/
 #endif
 
-#if 0
-asm void DisableIrqs();
-asm void EnableIrqs();
+#ifdef FROB_DECB_CMOC // HOW=decb-cmoc
+#define IF_os9_THEN_asm /**/
 #endif
 
 // These are *counting*, so an equal number of EnableIrqs()
@@ -35,47 +32,47 @@ void EnableIrqsCounting(); // untested
 /* alias CC='/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 -std=c99' */
 #ifdef __SIZE_MAX__ // detect gcc
 #if __SIZE_MAX__ == 65535U // detect gcc
-#define asm extern
+#define IF_os9_THEN_asm extern
 #endif
 #endif
 
-asm void Os9Exit(byte status);
+IF_os9_THEN_asm void Os9Exit(byte status);
 
-asm errnum Os9Create(const char* path, int mode, int attrs, int* fd);
+IF_os9_THEN_asm errnum Os9Create(const char* path, int mode, int attrs, int* fd);
 
-asm errnum Os9Open(const char* path, int mode, int* fd);
+IF_os9_THEN_asm errnum Os9Open(const char* path, int mode, int* fd);
 
-asm errnum Os9Delete(const char* path);
+IF_os9_THEN_asm errnum Os9Delete(const char* path);
 
-asm errnum Os9ChgDir(const char* path, int mode);
+IF_os9_THEN_asm errnum Os9ChgDir(const char* path, int mode);
 
-asm errnum Os9MakDir(const char* path, int mode);
+IF_os9_THEN_asm errnum Os9MakDir(const char* path, int mode);
 
-asm errnum Os9GetStt(int path, int func, int* dOut, int* xOut, int* uOut);
+IF_os9_THEN_asm errnum Os9GetStt(int path, int func, int* dOut, int* xOut, int* uOut);
 
-asm byte Os9SetStt(int path, int func, int* dOut, int* x_inout, int* u_inout);
+IF_os9_THEN_asm byte Os9SetStt(int path, int func, int* dOut, int* x_inout, int* u_inout);
 
-asm errnum Os9Read(int path, char* buf, int buflen, int* bytes_read);
+IF_os9_THEN_asm errnum Os9Read(int path, char* buf, int buflen, int* bytes_read);
 
-asm errnum Os9ReadLn(int path, char* buf, int buflen, int* bytes_read);
+IF_os9_THEN_asm errnum Os9ReadLn(int path, char* buf, int buflen, int* bytes_read);
 
-asm errnum Os9Write(int path, const char* buf, int max, int* bytes_written);
+IF_os9_THEN_asm errnum Os9Write(int path, const char* buf, int max, int* bytes_written);
 
-asm errnum Os9WritLn(int path, const char* buf, int max, int* bytes_written);
+IF_os9_THEN_asm errnum Os9WritLn(int path, const char* buf, int max, int* bytes_written);
 
-asm errnum Os9Dup(int path, int* new_path);
+IF_os9_THEN_asm errnum Os9Dup(int path, int* new_path);
 
-asm errnum Os9Close(int path);
+IF_os9_THEN_asm errnum Os9Close(int path);
 
-asm errnum Os9Sleep(int secs);
+IF_os9_THEN_asm errnum Os9Sleep(int secs);
 
-asm errnum Os9Wait(int* child_id_and_exit_status);
+IF_os9_THEN_asm errnum Os9Wait(int* child_id_and_exit_status);
 
-asm errnum Os9Fork(const char* program, const char* params, int paramlen, int lang_type, int mem_size, int* child_id);
+IF_os9_THEN_asm errnum Os9Fork(const char* program, const char* params, int paramlen, int lang_type, int mem_size, int* child_id);
 
-asm errnum Os9Chain(const char* program, const char* params, int paramlen, int lang_type, int mem_size);
+IF_os9_THEN_asm errnum Os9Chain(const char* program, const char* params, int paramlen, int lang_type, int mem_size);
 
-asm errnum Os9Send(int process_id, int signal_code);
+IF_os9_THEN_asm errnum Os9Send(int process_id, int signal_code);
 errnum Os9STime(byte* time_packet);
 
 errnum Os9Mem(word* new_memory_size_inout, word* end_of_new_mem_out);
@@ -88,11 +85,11 @@ errnum Os9ClrBlk(byte num_blocks, word first_address);
 void GomarHyperExit(errnum status);  // exits os9 process, if no hyper.
 
 // Was used in NCL code.  Calls Os9Write with strlen(str) to stderr.
-asm void Os9_print(const char* str);
+IF_os9_THEN_asm void Os9_print(const char* str);
 
 #ifdef __SIZE_MAX__ // detect gcc
 #if __SIZE_MAX__ == 65535U // detect gcc
-#define asm extern
+#define IF_os9_THEN_asm extern
 #endif
 #endif
 
