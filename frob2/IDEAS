@@ -195,3 +195,24 @@ int main() {
 -mno-reg-args works.
 -m6309 accepted, no change.
 -mdret works (return in D, not X)
+
+------------------------------------------------
+This seems to have worked:
+
+/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -fno-builtin -funsigned-char -funsigned-bitfields -Os -S -fwhole-program  -fpic zhello.c
+alias ASM="lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource"
+ASM -o whole-pic.o -lwhole-pic.list  whole-pic.asm
+
+Not sure why the combination of -f'whole-program' and -f'pic' did not work last night.
+------------------------------------------------
+https://raw.githubusercontent.com/haikuports/haikuports/master/dev-embedded/gcc6809/patches/gcc6809-4.6.4.patchset
+March 2019 patch set.
+https://github.com/haikuports/haikuports/tree/master/dev-embedded/gcc6809
+------------------------------------------------
+Wednesday:
+   * Rename UDP/FrobNet camel style.
+   * use prob in UDP/FrobNet
+   * Compile for RSB!?
+   * Monster Command
+   * Monster Shell
+   * All flags 1 word: --flag=1
