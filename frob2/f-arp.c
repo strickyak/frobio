@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
 
   // Reset and configure.
   byte mac[6];
-  errnum err = wiz_arp(addr, mac);  // int for a cmoc bug workaround!
+  errnum err = WizArp(addr, mac);  // int for a cmoc bug workaround!
   if (err) {
     LogFatal("*** TIMEOUT ***");
   } else {

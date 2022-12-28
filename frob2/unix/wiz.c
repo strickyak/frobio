@@ -7,6 +7,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-byte* wiz_hwport;
+byte* WizHwPort;
 
 #endif

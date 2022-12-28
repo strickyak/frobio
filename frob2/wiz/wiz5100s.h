@@ -4,13 +4,13 @@
 #include "frob2/froblib.h"
 
 extern bool wiz_verbose;
-extern byte* wiz_hwport;
+extern byte* WizHwPort;
 
-// Short names for hardware ports depend on `wiz_hwport`.
-#define P0 wiz_hwport[0] // control reg
-#define P1 wiz_hwport[1] // addr hi
-#define P2 wiz_hwport[2] // addr lo
-#define P3 wiz_hwport[3] // data
+// Short names for hardware ports depend on `WizHwPort`.
+#define P0 WizHwPort[0] // control reg
+#define P1 WizHwPort[1] // addr hi
+#define P2 WizHwPort[2] // addr lo
+#define P3 WizHwPort[3] // data
 
 // Keep this at the default of 2K for each.
 #define TX_SIZE 2048u

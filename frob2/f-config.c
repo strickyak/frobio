@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
       Verbosity = prefixed_atoi(FlagArg);
       break;
     case 'w':
-      wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+      WizHwPort = (byte*)prefixed_atoi(FlagArg);
       break;
     default:
       UsageAndExit();
@@ -49,8 +49,8 @@ int main(int argc, char* argv[]) {
   quad gateway = NyParseDottedDecimalQuad(&p);
 
   // Reset and configure.
-  wiz_reset();
-  wiz_configure(addr, mask, gateway);
+  WizReset();
+  WizConfigure(addr, mask, gateway);
 
   return 0;
 }

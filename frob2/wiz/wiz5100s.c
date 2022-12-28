@@ -23,13 +23,13 @@ bool Wiz__sock_command(word base, byte cmd, byte want);
 //chop
 
 // Global storage.
-byte* wiz_hwport = 0xFF68;  // default hardware port.
+byte* WizHwPort = 0xFF68;  // default hardware port.
 //chop
 const char NotYet[] = "NotYet";
 //chop
 
 static word bogus_word_for_delay;
-void wiz_delay(word n) {
+void WizDelay(word n) {
   for (word i=0; i<n; i++) bogus_word_for_delay += i;
 }
 
@@ -81,8 +81,8 @@ void WizPutN(word reg, const void* data, word size) {
   EnableIrqsCounting();
 }
 
-// wiz_ticks: 0.1ms but may have readbyte,readbyte error?
-word wiz_ticks() {
+// WizTicks: 0.1ms but may have readbyte,readbyte error?
+word WizTicks() {
     word t = WizGet2(0x0082/*TCNTR Tick Counter*/);
     return t;
 }
@@ -107,17 +107,17 @@ byte Wiz__wait(word reg, byte value, word millisecs_max) {
     return 5; // TIMEOUT
 }
 
-void wiz_reset() {
+void WizReset() {
   DisableIrqsCounting();
   P0 = 128; // Reset
-  wiz_delay(42);
+  WizDelay(42);
   P0 = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  wiz_delay(42);
+  WizDelay(42);
   EnableIrqsCounting();
 }
 
 void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
-  wiz_configure(0L, 0xFFFFFF00, 0L);
+  WizConfigure(0L, 0xFFFFFF00, 0L);
 
   // Create locally assigned mac_addr from name4.
   byte mac_addr[6] = {2, 32, 0, 0, 0, 0};  // local prefix.
@@ -126,14 +126,14 @@ void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
   memcpy(hw6_out, mac_addr, 6);
 }
 
-void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
+void WizReconfigureForDhcp(quad ip_addr, quad ip_mask, quad ip_gateway) {
   P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
   WizPutN(0x0001/*gateway*/, &ip_gateway, 4);
   WizPutN(0x0005/*mask*/, &ip_mask, 4);
   WizPutN(0x000f/*ip_addr*/, &ip_addr, 4);
   // Keep the same mac_addr.
 }
-void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
+void WizConfigure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   DisableIrqsCounting();
 
   P1 = 0; P2 = 1;  // start at addr 0x0001: Gateway IP.
@@ -161,7 +161,7 @@ void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   EnableIrqsCounting();
 }
 
-errnum udp_close(byte socknum) {
+errnum UdpClose(byte socknum) {
   LogDebug("CLOSE: sock=%x ", socknum);
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
@@ -173,7 +173,7 @@ errnum udp_close(byte socknum) {
   return OKAY;
 }
 
-errnum wiz_arp(quad dest_ip, byte* mac_out) {
+errnum WizArp(quad dest_ip, byte* mac_out) {
   byte* d = (byte*)&dest_ip;
 
   // Socketless ARP command.
@@ -191,7 +191,7 @@ errnum wiz_arp(quad dest_ip, byte* mac_out) {
   do {
     WizPut1(0x005f, 0); // clear interrupt reg
 
-    wiz_delay(42);
+    WizDelay(42);
     x = WizGet1(0x005f/*=SLIR socketless interrupt reg*/);
     byte m1 = WizGet1(0x0054);
     byte m2 = WizGet1(0x0055);
@@ -213,7 +213,7 @@ errnum wiz_arp(quad dest_ip, byte* mac_out) {
 }
 
 word ping_sequence;
-errnum wiz_ping(quad dest_ip) {
+errnum WizPing(quad dest_ip) {
   byte* d = (byte*)&dest_ip;
   LogDebug("PING: dest_ip=%d.%d.%d.%d ", d[0], d[1], d[2], d[3]);
 
@@ -248,7 +248,7 @@ errnum wiz_ping(quad dest_ip) {
 word suggest_client_port() {
   // Pick a client port in range 0x4000 to 0xbfff.
   // That should avoid degenerate ports and well-known ports.
-  word ticks = 0x7fff & wiz_ticks();
+  word ticks = 0x7fff & WizTicks();
   return ticks + 0x4000;
 }
 
@@ -264,7 +264,7 @@ byte find_available_socket(word* base_out) {
   return socknum;
 }
 
-errnum macraw_open(byte* socknum_out) {
+errnum MacRawOpen(byte* socknum_out) {
   word base = 0;
   errnum err = OKAY;
   DisableIrqsCounting();
@@ -292,7 +292,7 @@ Enable:
   return err;
 }
 
-errnum macraw_close(byte socknum) {
+errnum MacRawClose(byte socknum) {
   LogDebug("CLOSE: sock=%x ", socknum);
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
@@ -303,7 +303,7 @@ errnum macraw_close(byte socknum) {
   return OKAY;
 }
 
-errnum macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
+errnum MacRawRecv(byte socknum, byte* buffer, word* size_in_out) {
   if (socknum > 3) return 0xf0/*E_UNIT*/;
   word base = ((word)socknum + 4) << 8;
   word buf = RX_BUF(socknum);
@@ -348,7 +348,7 @@ errnum macraw_recv(byte socknum, byte* buffer, word* size_in_out) {
 }
 
 
-errnum udp_open(word src_port, byte* socknum_out) {
+errnum UdpOpen(word src_port, byte* socknum_out) {
   DisableIrqsCounting();
   errnum err = OKAY;
   word base;
@@ -388,7 +388,7 @@ Enable:
   return err;
 }
 
-errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_port) {
+errnum UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_port) {
   LogDebug("SEND: sock=%x payload=%x size=%x ", socknum, payload, size);
   byte* d = (byte*)&dest_ip;
   LogDebug(" dest=%d.%d.%d.%d:%d(dec) ", d[0], d[1], d[2], d[3], dest_port);
@@ -465,7 +465,7 @@ errnum udp_send(byte socknum, byte* payload, word size, quad dest_ip, word dest_
   return OKAY;
 }
 
-errnum udp_recv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
+errnum UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
   if (socknum > 3) return 0xf0/*E_UNIT*/;
 
   word base = ((word)socknum + 4) << 8;

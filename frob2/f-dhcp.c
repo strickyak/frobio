@@ -124,20 +124,20 @@ void Run() {
     DumpDHCP(&Discover);
 
     byte sock = 0;
-    errnum e = udp_open(68, &sock);
+    errnum e = UdpOpen(68, &sock);
     if (e) {
-        LogFatal("cannot udp_open: e=%d.", e);
+        LogFatal("cannot UdpOpen: e=%d.", e);
     }
-    e = udp_send(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
+    e = UdpSend(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        LogFatal("cannot udp_send: e=%d.", e);
+        LogFatal("cannot UdpSend: e=%d.", e);
     }
     word size = sizeof Offer;
     quad recv_from = 0;
     word recv_port = 0;
-    e = udp_recv(sock, (byte*)&Offer, &size, &recv_from, &recv_port);
+    e = UdpRecv(sock, (byte*)&Offer, &size, &recv_from, &recv_port);
     if (e) {
-        LogFatal("cannot udp_recv: e=%d.", e);
+        LogFatal("cannot UdpRecv: e=%d.", e);
     }
     DumpDHCP(&Offer);
     quad yiaddr = Offer.yiaddr;
@@ -154,7 +154,7 @@ void Run() {
 
     ////////////////////////////////////////////////////////////////
     // TODO: correct mask & gateway.
-    wiz_reconfigure_for_DHCP(yiaddr, ip_mask, ip_gateway);
+    WizReconfigureForDhcp(yiaddr, ip_mask, ip_gateway);
     ////////////////////////////////////////////////////////////////
 
     p = &Request;
@@ -200,16 +200,16 @@ void Run() {
     *w++ = 0;  // length 0 bytes
     DumpDHCP(&Request);
 
-    e = udp_send(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
+    e = UdpSend(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        LogFatal("cannot udp_send: e=%d.\n", e);
+        LogFatal("cannot UdpSend: e=%d.\n", e);
     }
     size = sizeof Ack;
     recv_from = 0;
     recv_port = 0;
-    e = udp_recv(sock, (byte*)&Ack, &size, &recv_from, &recv_port);
+    e = UdpRecv(sock, (byte*)&Ack, &size, &recv_from, &recv_port);
     if (e) {
-        LogFatal("cannot udp_recv: e=%d.\n", e);
+        LogFatal("cannot UdpRecv: e=%d.\n", e);
     }
     DumpDHCP(&Ack);
 
@@ -247,7 +247,7 @@ int main(int argc, char *argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
     }
 
     Name = argv[0];
-    wiz_reset();
+    WizReset();
     wiz_configure_for_DHCP(Name /*in*/, MacAddr /*out*/);
     Run();
     return 0;

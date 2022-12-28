@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

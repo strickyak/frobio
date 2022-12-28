@@ -18,8 +18,8 @@ byte packet[666];
 byte OpenLocalSocket() {
   byte socknum = 0;
   word client_port = suggest_client_port();
-  errnum err = udp_open(client_port, &socknum);
-  if (err) LogFatal("cannot udp_open: %d", err);
+  errnum err = UdpOpen(client_port, &socknum);
+  if (err) LogFatal("cannot UdpOpen: %d", err);
   return socknum;
 }
 
@@ -27,8 +27,8 @@ void SendAck(byte socknum, word block, quad addr, word tid) {
   word* wp = (word*)packet;
   wp[0] = OP_ACK;
   wp[1] = block;
-  errnum err = udp_send(socknum, packet, 4, addr, tid);
-  if (err) LogFatal("cannot udp_send ack: errnum %d", err);
+  errnum err = UdpSend(socknum, packet, 4, addr, tid);
+  if (err) LogFatal("cannot UdpSend ack: errnum %d", err);
 }
 
 void SendRequest(byte socknum, quad host, word port, word opcode, const char* filename, bool ascii) {
@@ -45,8 +45,8 @@ void SendRequest(byte socknum, quad host, word port, word opcode, const char* fi
   strcpy(p, mode);
   p += n+1;
 
-  errnum err = udp_send(socknum, packet, p-(char*)packet, host, port);
-  if (err) LogFatal("cannot udp_send request: errnum %d", err);
+  errnum err = UdpSend(socknum, packet, p-(char*)packet, host, port);
+  if (err) LogFatal("cannot UdpSend request: errnum %d", err);
 }
 
 errnum TGet(byte socknum, quad server_host, word server_port, const char* filename, const char* localfile) {
@@ -61,8 +61,8 @@ errnum TGet(byte socknum, quad server_host, word server_port, const char* filena
     word size = sizeof packet;
     quad from_addr = 0;
     word from_port = 0;
-    err = udp_recv(socknum, packet, &size, &from_addr, &from_port);
-    if (err) LogFatal("cannot udp_recv data: errnum %d", err);
+    err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+    if (err) LogFatal("cannot UdpRecv data: errnum %d", err);
     word type = ((word*)packet)[0];
     word arg = ((word*)packet)[1];
 
@@ -101,7 +101,7 @@ END_LOOP:
   if (err) {
     LogFatal("ERROR, Cannot close written file: errnum %d", err);
   }
-  err = udp_close(socknum);
+  err = UdpClose(socknum);
   if (err) {
     LogFatal("ERROR, Cannot close UDP socket: errnum %d", err);
   }
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       case 'x':
         in_hex = true;
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     FatalUsage();
   }
 
-  word ticks = wiz_ticks();
+  word ticks = WizTicks();
   if (in_hex) {
     printf("%04x\n", ticks);
   } else {

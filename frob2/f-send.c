@@ -12,14 +12,14 @@ byte OpenLocalSocket(word localport) {
   if (!localport) {
     localport = suggest_client_port();
   }
-  errnum err = udp_open(localport, &socknum);
-  if (err) LogFatal("cannot udp_open: %d", err);
+  errnum err = UdpOpen(localport, &socknum);
+  if (err) LogFatal("cannot UdpOpen: %d", err);
   return socknum;
 }
 
 void SendRequest(byte socknum, quad host, word port) {
-  errnum err = udp_send(socknum, buffer, bytes_read, host, port);
-  if (err) LogFatal("cannot udp_send request: %d", err);
+  errnum err = UdpSend(socknum, buffer, bytes_read, host, port);
+  if (err) LogFatal("cannot UdpSend request: %d", err);
 }
 
 void MainLoop(byte socknum, quad peer_host, word peer_port) {
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

@@ -243,8 +243,8 @@ static void poke_n(word reg, const void* data, word size) {
   }
 }
 
-// wiz_ticks: 0.1ms but may have readbyte,readbyte error?
-word wiz_ticks() {
+// WizTicks: 0.1ms but may have readbyte,readbyte error?
+word WizTicks() {
     word t = peek_word(0x0082/*TCNTR Tick Counter*/);
     return t;
 }
@@ -266,7 +266,7 @@ L           return OKAY;
 L   return 5; // TIMEOUT
 }
 
-void wiz_reset() {
+void WizReset() {
   byte* wiz = (byte*)WIZ_PORT;
   wiz[0] = 128; // Reset
 L Delay(99);
@@ -274,7 +274,7 @@ L Delay(99);
 L Delay(99);
 }
 
-void wiz_configure(quad ip_addr, quad ip_mask, quad ip_gateway) {
+void WizConfigure(quad ip_addr, quad ip_mask, quad ip_gateway) {
 L poke_n(0x0001/*gateway*/, &ip_gateway, 4);
 L poke_n(0x0005/*mask*/, &ip_mask, 4);
 L poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
@@ -296,7 +296,7 @@ L     poke(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
 }
 
 void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
-  wiz_configure(0L, 0xFFFFFF00, 0L);
+  WizConfigure(0L, 0xFFFFFF00, 0L);
 
   // Create locally assigned mac_addr from name4.
   byte mac_addr[6] = {2, 32, 0, 0, 0, 0};  // local prefix.
@@ -305,7 +305,7 @@ void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
   memcpy(hw6_out, mac_addr, 6);
 }
 
-void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
+void WizReconfigureForDhcp(quad ip_addr, quad ip_mask, quad ip_gateway) {
   printk("reconfigure");
   poke_n(0x0001/*gateway*/, &ip_gateway, 4);
   poke_n(0x0005/*mask*/, &ip_mask, 4);
@@ -313,7 +313,7 @@ void wiz_reconfigure_for_DHCP(quad ip_addr, quad ip_mask, quad ip_gateway) {
   // Keep the same mac_addr.
 }
 
-void udp_close() {
+void UdpClose() {
   printk("CLOSE");
 
   poke(BASE+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
@@ -322,8 +322,8 @@ void udp_close() {
   poke(BASE+SockMode, 0x00/*Protocol: Socket Closed*/);
 }
 
-errnum udp_open(word src_port) {
-  printk("udp_open %u....", src_port);
+errnum UdpOpen(word src_port) {
+  printk("UdpOpen %u....", src_port);
   poke(BASE+SockMode, 2); // Set UDP Protocol mode.
   poke_word(BASE+SockSourcePort, src_port);
   poke(BASE+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
@@ -342,11 +342,11 @@ errnum udp_open(word src_port) {
   poke_word(BASE+TxWritePtr, tx_r);
   word rx_w = peek_word(BASE+0x002A/*_RX_WR*/);
   poke_word(BASE+0x0028/*_RX_RD*/, rx_w);
-  printk("udp_open OKAY", src_port);
+  printk("UdpOpen OKAY", src_port);
   return OKAY;
 }
 
-errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
+errnum UdpSend(byte* payload, word size, quad dest_ip, word dest_port) {
   printk("SEND: payload=%x size=%x ", payload, size);
   byte* d = (byte*)&dest_ip;
   printk(" dest=%u.%u.%u.%u:%u. ", d[0], d[1], d[2], d[3], dest_port);
@@ -412,7 +412,7 @@ errnum udp_send(byte* payload, word size, quad dest_ip, word dest_port) {
   return OKAY;
 }
 
-errnum udp_recv(byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
+errnum UdpRecv(byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
   word buf = RX_BUF_0;
 
   byte status = peek(BASE+SockStatus);
@@ -535,23 +535,23 @@ void RunDhcp() {
     *w++ = 0;  // length 0 bytes
     printk("Discover");
 
-    errnum e = udp_open(DHCP_CLIENT_PORT);
+    errnum e = UdpOpen(DHCP_CLIENT_PORT);
     if (e) {
-        printk("cannot udp_open: e=%x.", e);
+        printk("cannot UdpOpen: e=%x.", e);
         Fatal();
     }
-    e = udp_send((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
+    e = UdpSend((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        printk("cannot udp_send: e=%x.", e);
+        printk("cannot UdpSend: e=%x.", e);
         Fatal();
     }
     memset(Vars->packet, 0, 600);
     word size = 600;
     quad recv_from = 0;
     word recv_port = 0;
-    e = udp_recv(Vars->packet, &size, &recv_from, &recv_port);
+    e = UdpRecv(Vars->packet, &size, &recv_from, &recv_port);
     if (e) {
-        printk("cannot udp_recv: e=%x.", e);
+        printk("cannot UdpRecv: e=%x.", e);
         Fatal();
     }
     printk("Offer");
@@ -567,7 +567,7 @@ void RunDhcp() {
 
     UseOptions(p->options);
 
-    wiz_reconfigure_for_DHCP(yiaddr, Vars->ip_mask, Vars->ip_gateway);
+    WizReconfigureForDhcp(yiaddr, Vars->ip_mask, Vars->ip_gateway);
 
     memset(Vars->packet, 0, 600);
     p->opcode = 1; // request
@@ -612,9 +612,9 @@ void RunDhcp() {
     *w++ = 0;  // length 0 bytes
     printk("Request");
 
-    e = udp_send((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
+    e = UdpSend((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        printk("cannot udp_send: e=%x.\n", e);
+        printk("cannot UdpSend: e=%x.\n", e);
         Fatal();
     }
 
@@ -622,9 +622,9 @@ void RunDhcp() {
     size = 600;
     recv_from = 0;
     recv_port = 0;
-    e = udp_recv(Vars->packet, &size, &recv_from, &recv_port);
+    e = UdpRecv(Vars->packet, &size, &recv_from, &recv_port);
     if (e) {
-        printk("cannot udp_recv: e=%x.\n", e);
+        printk("cannot UdpRecv: e=%x.\n", e);
         Fatal();
     }
     printk("Ack");
@@ -673,9 +673,9 @@ void TftpRequest(quad host, word port, word opcode, const char* filename) {
   strcpy(p, mode);
   p += n+1;
 
-  errnum err = udp_send(Vars->packet, p-(char*)Vars->packet, host, port);
+  errnum err = UdpSend(Vars->packet, p-(char*)Vars->packet, host, port);
   if (err) {
-    printk("cannot udp_send request: errnum %x", err);
+    printk("cannot UdpSend request: errnum %x", err);
     Fatal();
   }
 }
@@ -691,8 +691,8 @@ L   word opcode;
         quad from_addr = 0;
         word from_port = 0;
 L       printk("recv");
-        // TODO: Timeouts in udp_recv
-        errnum e = udp_recv(Vars->packet, &size, &from_addr, &from_port);
+        // TODO: Timeouts in UdpRecv
+        errnum e = UdpRecv(Vars->packet, &size, &from_addr, &from_port);
 L       printk("got size $%x", size);
         if (e) {
 L           printk("error %u.", e);
@@ -727,8 +727,8 @@ int main() {
     Vars->vdg_ptr = 0x0420;
     PutStr("Hello BootRom ");
 
-L   wiz_reset();
-L   PutStr("wiz_reset ");
+L   WizReset();
+L   PutStr("WizReset ");
 L   memcpy(Vars->hostname, DHCP_HOSTNAME, 4);
 L   wiz_configure_for_DHCP(DHCP_HOSTNAME, Vars->mac_addr);
 L   PutStr("wiz_configure_for_DHCP ");
@@ -736,7 +736,7 @@ L   PutStr("wiz_configure_for_DHCP ");
 L   RunDhcp();
 
 L   RunTftpGet();
-    udp_close();
+    UdpClose();
     char* boot_me = Vars->packet + 4; // skip 4: opcode and blocknum.
     asm {
         jmp [boot_me]

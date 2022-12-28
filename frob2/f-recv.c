@@ -10,8 +10,8 @@ char buffer[600];
 
 byte OpenLocalSocket(word localport) {
   byte socknum = 0;
-  errnum err = udp_open(localport, &socknum);
-  if (err) LogFatal("cannot udp_open: %d\n", err);
+  errnum err = UdpOpen(localport, &socknum);
+  if (err) LogFatal("cannot UdpOpen: %d\n", err);
   return socknum;
 }
 
@@ -20,8 +20,8 @@ void MainLoop(byte socknum) {
       quad from_addr = 0;
       word from_port = 0;
       word size = sizeof packet;
-      errnum err = udp_recv(socknum, packet, &size, &from_addr, &from_port);
-      if (err) LogFatal("cannot udp_recv data: %d\n", err);
+      errnum err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+      if (err) LogFatal("cannot UdpRecv data: %d\n", err);
 
       int n = 0;
       if (show_from) {
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

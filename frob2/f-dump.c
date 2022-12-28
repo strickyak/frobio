@@ -9,8 +9,8 @@ byte packet[1550];
 
 byte OpenLocalSocket() {
   byte socknum = 0;
-  errnum err = macraw_open(&socknum);
-  if (err) LogFatal("cannot macraw_open: %d\n", err);
+  errnum err = MacRawOpen(&socknum);
+  if (err) LogFatal("cannot MacRawOpen: %d\n", err);
   return socknum;
 }
 
@@ -54,8 +54,8 @@ void MacRawDump(byte* packet, word size) {
 void MainLoop(byte socknum) {
   while (true) {
       word size = sizeof packet;
-      errnum err = macraw_recv(socknum, packet, &size);
-      if (err) LogFatal("cannot macraw_recv data: %d\n", err);
+      errnum err = MacRawRecv(socknum, packet, &size);
+      if (err) LogFatal("cannot MacRawRecv data: %d\n", err);
 
       MacRawDump(packet, size);
   }
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();

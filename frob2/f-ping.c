@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
       case 'w':
-         wiz_hwport = (byte*)prefixed_atoi(FlagArg);
+         WizHwPort = (byte*)prefixed_atoi(FlagArg);
          break;
       default:
         FatalUsage();
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
   const char* parse = host;
   quad addr = NyParseDottedDecimalQuad(&parse);
 
-  errnum err = wiz_ping(addr);
+  errnum err = WizPing(addr);
   if (err) {
     LogFatal("Ping %q: TIMEOUT", host);
   } else {
