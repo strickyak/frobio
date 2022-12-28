@@ -563,7 +563,7 @@ bool Wiz__sock_command(word base, byte cmd, byte want) {
   }
 }
 
-prob tcp_open(byte* socknum_out) {
+prob TcpOpen(byte* socknum_out) {
   word base = 0;
   byte socknum = find_available_socket(&base);
   if (socknum > 3) {
@@ -576,14 +576,14 @@ prob tcp_open(byte* socknum_out) {
   WizPut1(base+SK_IMR, 0xFF); // Inhibit all interrupts.
   Wiz__command(base, SK_CR_OPEN);
   if (Wiz__advance(base, SK_SR_CLOS) != SK_SR_INIT) {
-    return tcp_close(socknum), "TcpCannotOpen";
+    return TcpClose(socknum), "TcpCannotOpen";
   }
   WizPut2(base+SK_TX_WR0, 0); // Does this help?
   return GOOD;
 }
 
 // Only called for TCP Client.
-prob tcp_connect(byte socknum, quad host, word port) {
+prob TcpDial(byte socknum, quad host, word port) {
   word base = ((word)socknum + 4) << 8;
   WizPut1(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
   WizPut2(base+SK_DIPR0, (word)(host>>16));
@@ -594,18 +594,18 @@ prob tcp_connect(byte socknum, quad host, word port) {
 }
 
 // Only called for TCP Server.
-prob tcp_listen(byte socknum, word listen_port) {
+prob TcpListen(byte socknum, word listen_port) {
   word base = ((word)socknum + 4) << 8;
   WizPut1(base+SK_KPALVTR, 6);  // 30 sec keepalive // ?manual says RO?
   WizPut2(base+SK_PORTR0, listen_port);
   Wiz__command(base, SK_CR_LSTN);
   byte a = Wiz__advance(base, SK_SR_INIT);
-  if (a != SK_SR_LSTN && a != SK_SR_ESTB) return tcp_close(socknum), "TcpCannotListen";
+  if (a != SK_SR_LSTN && a != SK_SR_ESTB) return TcpClose(socknum), "TcpCannotListen";
   return GOOD;
 }
 
 // For Server or Client to accept/establish connection.
-prob tcp_establish_or_not_yet(byte socknum) {
+prob TcpEstablishOrNotYet(byte socknum) {
   word base = ((word)socknum + 4) << 8;
 
   byte ir = WizGet1(base+SK_IR);
@@ -633,16 +633,16 @@ prob tcp_establish_or_not_yet(byte socknum) {
     case SK_SR_LACK: // Last Ack
     case SK_SR_CLOS: // Closed
       LogError("establish: TcpMoribund=%x", status);
-      return tcp_close(socknum), "TcpMoribund";  // Some closing state.
+      return TcpClose(socknum), "TcpMoribund";  // Some closing state.
 
     default:
       LogError("establish: TcpWeird=%x", status);
-      return tcp_close(socknum), "TcpWeird";  // Something weird happened.
+      return TcpClose(socknum), "TcpWeird";  // Something weird happened.
   }
   return GOOD;
 }
 
-prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
+prob TcpRecvOrNotYet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
   word base = ((word)socknum + 4) << 8;
   word rxbuf = RX_BUF(socknum);
 
@@ -672,7 +672,7 @@ prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_byt
   return GOOD;
 }
 
-prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send) {
+prob TcpSendOrNotYet(byte socknum, const char* buf, size_t num_bytes_to_send) {
 
   word base = ((word)socknum + 4) << 8;
   word txbuf = TX_BUF(socknum);
@@ -728,31 +728,31 @@ prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send
   return GOOD;
 }
 
-prob tcp_close(byte socknum) {
+prob TcpClose(byte socknum) {
   word base = ((word)socknum + 4) << 8;
   Wiz__sock_command(base, SK_CR_DISC, 0); // Disconnect.
   WizPut1(base + SK_MR, SK_MR_CLSD); // Closed.
   return GOOD;
 }
 
-prob tcp_establish_blocking(byte socknum) {
+prob TcpEstablishBlocking(byte socknum) {
   prob e;
   do {
-    e = tcp_establish_or_not_yet(socknum);
+    e = TcpEstablishOrNotYet(socknum);
   } while (e == NotYet);
   return e;
 }
-prob tcp_recv_blocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
+prob TcpRecvBlocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
   prob e;
   do {
-    e = tcp_recv_or_not_yet(socknum, buf, buflen, num_bytes_out);
+    e = TcpRecvOrNotYet(socknum, buf, buflen, num_bytes_out);
   } while (e == NotYet);
   return e;
 }
-prob tcp_send_blocking(byte socknum, const char* buf, size_t num_bytes_to_send) {
+prob TcpSendBlocking(byte socknum, const char* buf, size_t num_bytes_to_send) {
   prob e;
   do {
-    e = tcp_send_or_not_yet(socknum, buf, num_bytes_to_send);
+    e = TcpSendOrNotYet(socknum, buf, num_bytes_to_send);
   } while (e == NotYet);
   return e;
 }

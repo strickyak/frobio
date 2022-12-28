@@ -64,15 +64,15 @@ typedef const char* prob;
 #define GOOD ((const char*)NULL)
 extern const char NotYet[]; // defined as "NotYet"
 
-prob tcp_open(byte* socknum_out);
-prob tcp_connect(byte socknum, quad host, word port);
-prob tcp_listen(byte socknum, word listen_port);
-prob tcp_establish_or_not_yet(byte socknum); // may return NotYet
-prob tcp_recv_or_not_yet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
-prob tcp_send_or_not_yet(byte socknum, const char* buf, size_t num_bytes_to_send);
-prob tcp_establish_blocking(byte socknum); // may return NotYet
-prob tcp_recv_blocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
-prob tcp_send_blocking(byte socknum, const char* buf, size_t num_bytes_to_send);
-prob tcp_close(byte socknum);
+prob TcpOpen(byte* socknum_out);
+prob TcpDial(byte socknum, quad host, word port);
+prob TcpListen(byte socknum, word listen_port);
+prob TcpEstablishOrNotYet(byte socknum); // may return NotYet
+prob TcpRecvOrNotYet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
+prob TcpSendOrNotYet(byte socknum, const char* buf, size_t num_bytes_to_send);
+prob TcpEstablishBlocking(byte socknum); // may return NotYet
+prob TcpRecvBlocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
+prob TcpSendBlocking(byte socknum, const char* buf, size_t num_bytes_to_send);
+prob TcpClose(byte socknum);
 
 #endif // _FROB2_FROBNET_H_

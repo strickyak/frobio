@@ -22,7 +22,7 @@ static void SendCommand(byte modal, byte option) {
             CommandBuf[1] = modal;
             CommandBuf[2] = option;
 
-            prob err = tcp_send_blocking(SocketNum, CommandBuf, 3);
+            prob err = TcpSendBlocking(SocketNum, CommandBuf, 3);
             if (err) LogFatal("Cannot tcp_send: %q", err);
             LogStep("sent: modal %x option %x", modal, option);
 }
@@ -103,28 +103,28 @@ int main(int argc, char* argv[]) {
   if (argc) FatalUsage();
   if (!port) FatalUsage();
 
-  prob err = tcp_open(&SocketNum);
+  prob err = TcpOpen(&SocketNum);
   if (err) LogFatal("Cannot open TCP socket: %q", err);
   LogStep("opened");
 
-  err = tcp_listen(SocketNum, port);
+  err = TcpListen(SocketNum, port);
   if (err) LogFatal("Cannot listen on TCP server port %d: %q", port, err);
   LogStep("listened");
 
-  err = tcp_establish_blocking(SocketNum);
+  err = TcpEstablishBlocking(SocketNum);
   if (err) LogFatal("Cannot accept on TCP server port %d: %q", port, err);
   LogStep("accepted");
 
   SendCommand(WILL, ECHO);
   const char* banner = "(WELCOME)\r\n";
-  err = tcp_send_blocking(SocketNum, banner, strlen(banner));
+  err = TcpSendBlocking(SocketNum, banner, strlen(banner));
   if (err) LogFatal("Cannot send banner: %q", err);
   LogStep("welcomed");
 
   while (true) {
     size_t cc = 0;
     memset(Buffer, 0, sizeof Buffer);
-    err = tcp_recv_blocking(SocketNum, Buffer, sizeof Buffer - 1, &cc);
+    err = TcpRecvBlocking(SocketNum, Buffer, sizeof Buffer - 1, &cc);
     if (err) {
         LogInfo("... recv->%q", err);
         continue;
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
     ProcessTelnetOptions(&cc);
 
     if (cc) {
-      err = tcp_send_blocking(SocketNum, Buffer, cc);
+      err = TcpSendBlocking(SocketNum, Buffer, cc);
       if (err) LogFatal("Cannot tcp_send: %q", err);
       LogStep("send cc=%x: %.*q", cc, cc, Buffer);
     }
@@ -143,12 +143,12 @@ int main(int argc, char* argv[]) {
   }
 
   banner = "(BYE)\r\n";
-  err = tcp_send_blocking(SocketNum, banner, strlen(banner));
+  err = TcpSendBlocking(SocketNum, banner, strlen(banner));
   if (err) LogFatal("Cannot send (BYE): %q", err);
   LogStep("bye");
 
-  err = tcp_close(SocketNum);
-  if (err) LogFatal("Cannot tcp_close: %q", err);
+  err = TcpClose(SocketNum);
+  if (err) LogFatal("Cannot TcpClose: %q", err);
   LogStep("closed");
   LogStatus("Excellent");
 

@@ -216,3 +216,5 @@ Wednesday:
    * Monster Command
    * Monster Shell
    * All flags 1 word: --flag=1
+   * Longer timeout for Socketless (0.5s * (1+3) = 2.0s).
+   * Make UDP timeout with NotYet.
