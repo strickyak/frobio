@@ -40,16 +40,6 @@ int prefixed_atoi(const char *s) {
   return neg ? -z : z;
 }
 
-#if 0
-void memcpy(void *d, const void *s, size_t sz) {
-  char *a = (char *) d;
-  const char *b = (const char *) s;
-  int i;
-  for (i = 0; i < sz; i++)
-    *a++ = *b++;
-}//
-#endif
-
 int strcasecmp(const char *a, const char *b) {
   while (*a && *b) {
     if ((byte) CharUp(*a) < (byte) CharUp(*b))
@@ -66,111 +56,6 @@ int strcasecmp(const char *a, const char *b) {
     return +1;
   return 0;
 }
-
-#if 0
-void strcpy(char *d, const char *s) {
-  char* p = d;
-  while (*s) {
-    *p++ = *s++;
-  }
-  *p = '\0';
-}//
-#endif
-
-#if 0
-size_t strlen(const char *p) {
-  const char *q = p;
-  while (*q)
-    q++;
-  return q - p;
-}//
-#endif
-
-#if 0
-void strcat(char *d, const char *s) {
-  char* p = d + strlen(d);
-  strcpy(p, s);
-}//
-#endif
-
-#if 0
-void bzero(char *p, int n) {
-  for (int i = 0; i < n; i++)
-    p[i] = 0;
-}//
-#endif
-
-#if 0
-void snprintf_s(char *buf, int max, const char *fmt, const char *s) {
-  int flen = strlen(fmt);
-  int slen = strlen(s);
-  if (flen + slen - 1 > max) {  // drop '%s' but add '\0', so net minus 1.
-    PutHex('f', flen);
-    PutHex('s', slen);
-    PutHex('m', max);
-    Panic("buf overflow snprintf_s");
-  }
-
-  char *p = buf;
-  while (*fmt) {
-    if (fmt[0] == '%' && 'a' <= fmt[1] && fmt[1] <= 'z') {      // who cares what letter.
-      fmt += 2;
-      while (*s)
-        *p++ = *s++;
-      break;
-    } else {
-      *p++ = *fmt++;
-    }
-  }
-  while (*fmt) {
-    *p++ = *fmt++;
-  }
-  *p = '\0';
-}//
-
-void snprintf_d(char *buf, int max, const char *fmt, int x) {
-  char tmp[8];
-  const char *z;
-
-  if (x == 0) {
-    z = "0";
-  } else {
-    byte neg = false;
-    char *p = tmp + 7;
-    *p-- = '\0';
-    word y;
-    if (x < 0) {
-      neg = true;
-      y = -x;
-    } else {
-      y = x;
-    }
-    while (y) {
-      word r = y % 10;
-      y = y / 10;
-      *p-- = (byte) ('0' + r);
-    }
-    if (neg)
-      *p-- = '-';
-    z = p + 1;
-  }
-
-  snprintf_s(buf, max, fmt, z);
-}//
-#endif
-
-#if 0
-static char p_buf[BUF_SIZE];
-void printf_d(const char *fmt, int x) {
-  snprintf_d(p_buf, BUF_SIZE, fmt, x);
-  Os9_puts(p_buf);
-}//
-
-void printf_s(const char *fmt, const char *s) {
-  snprintf_s(p_buf, BUF_SIZE, fmt, s);
-  Os9_puts(p_buf);
-}//
-#endif
 
 char *strdup(const char *s) {
   int n = strlen(s);
