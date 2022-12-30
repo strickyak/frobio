@@ -30,6 +30,7 @@ void EnableIrqsCounting();
 /* alias CC='/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 -std=c99' */
 #ifdef __SIZE_MAX__ // detect gcc
 #if __SIZE_MAX__ == 65535U // detect gcc
+#undef IF_os9_THEN_asm
 #define IF_os9_THEN_asm extern
 #endif
 #endif
