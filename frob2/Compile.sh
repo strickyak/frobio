@@ -11,12 +11,24 @@ GCC_6809=${GCC_6809:-/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4}
 
 set -ex
 case $HOW in
+    decb-gcc6809 )
+        # HINT: HOW=decb-gcc6809 make -B x.decb0.decb
+        cat $(ls "$@" | grep -v os9/ | grep -v [.]asm$ ) decb/frob-decb.c decb/std4gcc.c> combined-$OBJECT.c
+
+        $GCC_6809 --std=gnu99 -funsigned-char -funsigned-bitfields -Os -S -fwhole-program -I.. -DFROB_DECB_GCC -DMAX_VERBOSE="$MAX_VERBOSE" combined-$OBJECT.c
+
+        lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=combined.list --map=combined.map  -I.. -DFROB_DECB_CMOC -DMAX_VERBOSE=9 -o combined-x.decb0.decb.o  combined-x.decb0.decb.s
+
+        lwlink --format=decb --entry=_main -o decb0.bin --map=decb0.map combined-x.decb0.decb.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc
+
+        echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/decb0.bin /media/strick/APRIL3/YDECB.DSK,DECB0.BIN ; sync' -- HINT
+        ;;
     decb-cmoc )
-        cmoc -i --decb -I.. -DFROB_DECB_CMOC -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" $(ls "$@" | grep -v os9/) decb/frob-decb.c
+        cmoc --org=2000 -i --decb -I.. -DFROB_DECB_CMOC -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" $(ls "$@" | grep -v os9/) decb/frob-decb.c
         mv "$OBJECT" "$OBJECT.decb"
         hd "$OBJECT.decb" | head -4
         ls -l "$OBJECT.decb"
-        echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/f.ticks.decb /media/strick/APRIL3/YDECB.DSK,TICKS.BIN' -- HINT
+        echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/f.ticks.decb /media/strick/APRIL3/YDECB.DSK,TICKS.BIN ; sync' -- HINT
         ;;
     "" | cmoc )
         cmoc -i --os9 -I.. -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" "$@"

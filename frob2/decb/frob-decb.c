@@ -1,5 +1,6 @@
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
+#include "frob2/decb/std4gcc.h"
 
 /* we need
 EnableIrqsCounting
@@ -18,50 +19,41 @@ void DisableIrqsCounting() {}
 void EnableIrqsCounting() {}
 
 void STOP() {
-    printf(" [STOP]");
+    decb_putstr(" [STOP]");
     while (1) {
       disable_irq_count = disable_irq_count;
     }
 }
 
 IF_os9_THEN_asm void Os9Exit(byte status) {
-    printf(" [EXIT]"); STOP();
+    decb_putstr(" [EXIT]"); STOP();
 }
 IF_os9_THEN_asm errnum Os9Create(const char* path, int mode, int attrs, int* fd) {
-    printf(" [Os9Create]"); STOP(); return 68;
+    decb_putstr(" [Os9Create]"); STOP(); return 68;
 }
 IF_os9_THEN_asm errnum Os9Open(const char* path, int mode, int* fd) {
-    printf(" [Os9Open]"); STOP(); return 68;
+    decb_putstr(" [Os9Open]"); STOP(); return 68;
 }
 IF_os9_THEN_asm errnum Os9Delete(const char* path) {
-    printf(" [Os9Delete]"); STOP(); return 68;
+    decb_putstr(" [Os9Delete]"); STOP(); return 68;
 }
 IF_os9_THEN_asm errnum Os9ReadLn(int path, char* buf, int buflen, int* bytes_read) {
-    printf(" [Os9ReadLn]"); STOP(); return 68;
+    decb_putstr(" [Os9ReadLn]"); STOP(); return 68;
 }
 IF_os9_THEN_asm errnum Os9WritLn(int path, const char* buf, int max, int* bytes_written) {
-    printf("{");
-    for (int i = 0; i < max; i++) {
-      char ch = buf[i];
-      switch (ch) {
-        case '\n':
-        case '\r':
-          printf("\r\n");
-          break;
-        default:
-          if (' ' <= ch && ch <= '~') {
-            printf("%c", ch);
-          } else {
-            printf("(%d)", ch);
-          }
-      }
+    decb_putstr("{");
+    int i;
+    for (i = 0; i < max; i++) {
+      if (buf[i]==0) break;
+      decb_putchar(buf[i]);
+      if (buf[i]==10 || buf[i]==13) { i++; break; }
     }
-    printf("}");
-    *bytes_written = max;
+    decb_putstr("}");
+    *bytes_written = i;
     return OKAY;
 }
 IF_os9_THEN_asm errnum Os9Close(int path) {
-    printf(" [Os9Close]"); STOP(); return 68;
+    decb_putstr(" [Os9Close]"); STOP(); return 68;
 }
 
 #define MAX_DECB_MEMORY_SIZE 0x8000
@@ -81,3 +73,21 @@ errnum Os9Mem(word* new_memory_size_inout, word* end_of_new_mem_out) {
     *end_of_new_mem_out = MAX_DECB_MEMORY_SIZE;
     return OKAY;
 }
+
+void decb_putstr(const char* s) {
+    while (*s) {
+        decb_putchar(*s);
+        ++s;
+    }
+}
+
+#ifdef FROB_DECB_CMOC
+extern char* readline();
+char* decb_readline() {
+  return readline();
+}
+extern void putchar(char c);
+void decb_putchar(int c) {
+  putchar((char)c);
+}
+#endif

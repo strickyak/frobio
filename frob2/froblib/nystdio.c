@@ -74,11 +74,11 @@ void PError(const char* str) {
     FPuts(" ", StdErr);
     FPuts(str, StdErr);
     char ebuf[4];
-    ebuf[0] = e / 100 + '0';
+    ebuf[0] = (char) (e / 100 + '0');
     e = e % 100;
-    ebuf[1] = e / 10 + '0';
+    ebuf[1] = (char) (e / 10 + '0');
     e = e % 10;
-    ebuf[2] = e + '0';
+    ebuf[2] = (char) (e + '0');
     ebuf[3] = '\0';
     FPuts(": ErrNo ", StdErr);
     FPuts(ebuf, StdErr);

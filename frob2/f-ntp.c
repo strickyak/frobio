@@ -37,8 +37,8 @@ byte packet[2000];
 byte OpenLocalSocket() {
   byte socknum = 0;
   word client_port = suggest_client_port();
-  prob err = UdpOpen(client_port, &socknum);
-  if (err) LogFatal("cannot UdpOpen: %s", err);
+  prob ps = UdpOpen(client_port, &socknum);
+  if (ps) LogFatal("cannot UdpOpen: %s", ps);
   return socknum;
 }
 
@@ -47,8 +47,8 @@ void SendRequest(byte socknum, quad host, word port) {
   memset(&x, 0, sizeof x);
   x.li_vn_mode = CLIENT_LI_VN_MODE;
 
-  prob err = UdpSend(socknum, (byte*)&x, sizeof x, host, port);
-  if (err) LogFatal("cannot UdpSend request: %s", err);
+  prob ps = UdpSend(socknum, (byte*)&x, sizeof x, host, port);
+  if (ps) LogFatal("cannot UdpSend request: %s", ps);
 }
 
 void SNTP(byte socknum, quad server_host, word server_port) {
@@ -57,16 +57,16 @@ void SNTP(byte socknum, quad server_host, word server_port) {
   word size = sizeof packet;
   quad from_addr = 0;
   word from_port = 0;
-  prob err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
-  if (err) LogFatal("cannot UdpRecv data: %s", err);
+  prob ps = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+  if (ps) LogFatal("cannot UdpRecv data: %s", ps);
   
   if (size < sizeof (struct ntp_packet)) {
     LogFatal("received size too small: %d", size);
   }
 
-  err = UdpClose(socknum);
-  if (err) {
-    LogFatal("Cannot close UDP socket: %s", err);
+  ps = UdpClose(socknum);
+  if (ps) {
+    LogFatal("Cannot close UDP socket: %s", ps);
   }
   struct ntp_packet *a = (struct ntp_packet*)packet;
   LogDetail("NTP: %lu %lu %lu %lu", a->ref_ts, a->orig_ts, a->recv_ts, a->xmit_ts);
@@ -131,7 +131,7 @@ void SNTP(byte socknum, quad server_host, word server_port) {
       time_pack[3] = hour;
       time_pack[4] = min;
       time_pack[5] = sec;
-      err = Os9STime(time_pack);
+      errnum err = Os9STime(time_pack);
       if (err) LogFatal("Cannot set time: errnum %d", err);
   }
 }

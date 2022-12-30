@@ -59,13 +59,14 @@ typedef unsigned int size_t;
 #define NULL ((void*)0)
 #define EOF (-1)        // TODO not use this?
 
-void exit(int);
-size_t strlen(const char*);
-void memcpy(void*, const void*, size_t n);
-void memset(void*, byte b, size_t n);
+#include "frob2/decb/std4gcc.h"
+//@ void exit(int);
+//@ size_t strlen(const char*);
+//@ void memcpy(void*, const void*, size_t n);
+//@ void memset(void*, byte b, size_t n);
 void strcat(char* dest, const char* src);
-void strcpy(char* dest, const char* src);
-void strncpy(char* dest, const char* src, size_t n);
+//@ void strcpy(char* dest, const char* src);
+//@ void strncpy(char* dest, const char* src, size_t n);
 int strcmp(const char* left, const char* right);
 int strncmp(const char* left, const char* right, size_t n);
 int strcasecmp(const char* left, const char* right);

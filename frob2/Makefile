@@ -44,8 +44,8 @@ x.logging.os9 : x-logging.c
 	sh Compile.sh $@ $< $(LIBS)
 x.fputs.os9 : x-fputs.c
 	sh Compile.sh $@ $< $(LIBS)
-x.decb0.bin : x-decb0.c
-	HOW=decb-cmoc sh Compile.sh $@ $< $(LIBS)
+x.decb0.decb : x-decb0.c
+	HOW=$${HOW:-decb-cmoc} sh Compile.sh $@ $< $(LIBS)
 
 f.b-unix:
 	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c

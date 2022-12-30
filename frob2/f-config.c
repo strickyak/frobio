@@ -14,10 +14,10 @@ int main(int argc, char* argv[]) {
   while (GetFlag(&argc, &argv, "v:w:")) {
     switch (FlagChar) {
     case 'v':
-      Verbosity = prefixed_atoi(FlagArg);
+      Verbosity = (byte) prefixed_atoi(FlagArg);
       break;
     case 'w':
-      WizHwPort = (byte*)prefixed_atoi(FlagArg);
+      WizHwPort = (byte*) prefixed_atoi(FlagArg);
       break;
     default:
       UsageAndExit();

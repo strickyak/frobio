@@ -14,4 +14,4 @@ void* memset(void* dest, int ch, size_t n);
 char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, size_t n);
 size_t strlen(const char *str);
-#endif _FROB2_DECB_STD4GCC_H_
+#endif // _FROB2_DECB_STD4GCC_H_
