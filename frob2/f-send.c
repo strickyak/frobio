@@ -12,14 +12,14 @@ byte OpenLocalSocket(word localport) {
   if (!localport) {
     localport = suggest_client_port();
   }
-  errnum err = UdpOpen(localport, &socknum);
-  if (err) LogFatal("cannot UdpOpen: %d", err);
+  prob ps = UdpOpen(localport, &socknum);
+  if (ps) LogFatal("cannot UdpOpen: %s", ps);
   return socknum;
 }
 
 void SendRequest(byte socknum, quad host, word port) {
-  errnum err = UdpSend(socknum, buffer, bytes_read, host, port);
-  if (err) LogFatal("cannot UdpSend request: %d", err);
+  prob ps = UdpSend(socknum, buffer, bytes_read, host, port);
+  if (ps) LogFatal("cannot UdpSend request: %s", ps);
 }
 
 void MainLoop(byte socknum, quad peer_host, word peer_port) {
@@ -30,7 +30,7 @@ void MainLoop(byte socknum, quad peer_host, word peer_port) {
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  ... | f-send -w0xFF68 -pLocalPort peeraddr:port\n");
+    LogFatal("Usage:  ... | f-send -w0xFF68 -pLocalPort peeraddr:port");
 }
 
 int main(int argc, char* argv[]) {

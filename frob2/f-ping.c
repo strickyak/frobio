@@ -32,12 +32,11 @@ int main(int argc, char* argv[]) {
   const char* parse = host;
   quad addr = NyParseDottedDecimalQuad(&parse);
 
-  errnum err = WizPing(addr);
+  prob err = WizPing(addr);
   if (err) {
-    LogFatal("Ping %q: TIMEOUT", host);
-  } else {
-    LogStatus("Ping %q: OK", host);
+    LogFatal("Ping failed: %s", err);
   }
 
-  return err;
+  LogStatus("Ping %q: OK", host);
+  return 0;
 }

@@ -33,9 +33,9 @@ int main(int argc, char* argv[]) {
 
   // Reset and configure.
   byte mac[6];
-  errnum err = WizArp(addr, mac);  // int for a cmoc bug workaround!
+  prob err = WizArp(addr, mac);  // int for a cmoc bug workaround!
   if (err) {
-    LogFatal("*** TIMEOUT ***");
+    LogFatal("ARP failed: %s", err);
   } else {
     printf("%02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   }

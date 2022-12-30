@@ -10,8 +10,8 @@ char buffer[600];
 
 byte OpenLocalSocket(word localport) {
   byte socknum = 0;
-  errnum err = UdpOpen(localport, &socknum);
-  if (err) LogFatal("cannot UdpOpen: %d\n", err);
+  prob ps = UdpOpen(localport, &socknum);
+  if (ps) LogFatal("cannot UdpOpen: %s", ps);
   return socknum;
 }
 
@@ -20,8 +20,8 @@ void MainLoop(byte socknum) {
       quad from_addr = 0;
       word from_port = 0;
       word size = sizeof packet;
-      errnum err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
-      if (err) LogFatal("cannot UdpRecv data: %d\n", err);
+      prob ps = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+      if (ps) LogFatal("cannot UdpRecv: %s", ps);
 
       int n = 0;
       if (show_from) {
@@ -34,7 +34,7 @@ void MainLoop(byte socknum) {
 
       memcpy(buffer+n, (char*)packet, size);
       int bytes_written = 0;
-      err = Os9WritLn(1/*=stdout*/, buffer, n+size, &bytes_written);
+      errnum err = Os9WritLn(1/*=stdout*/, buffer, n+size, &bytes_written);
       if (err) LogFatal("cannot writln to stdout: err %d", err);
       if (bytes_written != n+size) {
         LogFatal("short writln to stdout: short by %d",

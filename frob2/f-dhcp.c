@@ -124,20 +124,20 @@ void Run() {
     DumpDHCP(&Discover);
 
     byte sock = 0;
-    errnum e = UdpOpen(68, &sock);
+    prob e = UdpOpen(68, &sock);
     if (e) {
-        LogFatal("cannot UdpOpen: e=%d.", e);
+        LogFatal("cannot UdpOpen: %s", e);
     }
     e = UdpSend(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        LogFatal("cannot UdpSend: e=%d.", e);
+        LogFatal("cannot UdpSend: %s", e);
     }
     word size = sizeof Offer;
     quad recv_from = 0;
     word recv_port = 0;
     e = UdpRecv(sock, (byte*)&Offer, &size, &recv_from, &recv_port);
     if (e) {
-        LogFatal("cannot UdpRecv: e=%d.", e);
+        LogFatal("cannot UdpRecv: %s", e);
     }
     DumpDHCP(&Offer);
     quad yiaddr = Offer.yiaddr;
@@ -202,14 +202,14 @@ void Run() {
 
     e = UdpSend(sock, (byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
     if (e) {
-        LogFatal("cannot UdpSend: e=%d.\n", e);
+        LogFatal("cannot UdpSend: %s", e);
     }
     size = sizeof Ack;
     recv_from = 0;
     recv_port = 0;
     e = UdpRecv(sock, (byte*)&Ack, &size, &recv_from, &recv_port);
     if (e) {
-        LogFatal("cannot UdpRecv: e=%d.\n", e);
+        LogFatal("cannot UdpRecv: %s", e);
     }
     DumpDHCP(&Ack);
 

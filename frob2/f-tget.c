@@ -18,8 +18,8 @@ byte packet[666];
 byte OpenLocalSocket() {
   byte socknum = 0;
   word client_port = suggest_client_port();
-  errnum err = UdpOpen(client_port, &socknum);
-  if (err) LogFatal("cannot UdpOpen: %d", err);
+  prob ps = UdpOpen(client_port, &socknum);
+  if (ps) LogFatal("cannot UdpOpen: %s", ps);
   return socknum;
 }
 
@@ -27,8 +27,8 @@ void SendAck(byte socknum, word block, quad addr, word tid) {
   word* wp = (word*)packet;
   wp[0] = OP_ACK;
   wp[1] = block;
-  errnum err = UdpSend(socknum, packet, 4, addr, tid);
-  if (err) LogFatal("cannot UdpSend ack: errnum %d", err);
+  prob ps = UdpSend(socknum, packet, 4, addr, tid);
+  if (ps) LogFatal("cannot UdpSend ack: %s", ps);
 }
 
 void SendRequest(byte socknum, quad host, word port, word opcode, const char* filename, bool ascii) {
@@ -45,14 +45,15 @@ void SendRequest(byte socknum, quad host, word port, word opcode, const char* fi
   strcpy(p, mode);
   p += n+1;
 
-  errnum err = UdpSend(socknum, packet, p-(char*)packet, host, port);
-  if (err) LogFatal("cannot UdpSend request: errnum %d", err);
+  prob ps = UdpSend(socknum, packet, p-(char*)packet, host, port);
+  if (ps) LogFatal("cannot UdpSend request: %s", ps);
 }
 
-errnum TGet(byte socknum, quad server_host, word server_port, const char* filename, const char* localfile) {
+void TGet(byte socknum, quad server_host, word server_port, const char* filename, const char* localfile) {
+  errnum err;
   int fd = -1;
-  errnum err = Os9Create(localfile, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
-  if (err) LogFatal("Cannot create %q: errnum %d", localfile, err);
+  prob ps = Os9Create(localfile, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
+  if (ps) LogFatal("Cannot create %q: %s", localfile, ps);
 
   SendRequest(socknum, server_host, server_port, OP_READ, filename, /*ascii=*/0);
 
@@ -61,8 +62,8 @@ errnum TGet(byte socknum, quad server_host, word server_port, const char* filena
     word size = sizeof packet;
     quad from_addr = 0;
     word from_port = 0;
-    err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
-    if (err) LogFatal("cannot UdpRecv data: errnum %d", err);
+    ps = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+    if (ps) LogFatal("cannot UdpRecv: %s", ps);
     word type = ((word*)packet)[0];
     word arg = ((word*)packet)[1];
 
@@ -101,12 +102,11 @@ END_LOOP:
   if (err) {
     LogFatal("ERROR, Cannot close written file: errnum %d", err);
   }
-  err = UdpClose(socknum);
-  if (err) {
-    LogFatal("ERROR, Cannot close UDP socket: errnum %d", err);
+  ps = UdpClose(socknum);
+  if (ps) {
+    LogFatal("ERROR, Cannot close UDP socket: %s", ps);
   }
   LogStatus("OKAY: wrote %q", localfile);
-  return 0;
 }
 
 static void FatalUsage() {
@@ -136,5 +136,6 @@ int main(int argc, char* argv[]) {
   word server_port = DEFAULT_SERVER_PORT;
   quad server_addy = NyParseDottedDecimalQuadAndPort(&p, &server_port); 
   byte socknum = OpenLocalSocket();
-  return TGet(socknum, server_addy, server_port, argv[1], argv[2]);
+  TGet(socknum, server_addy, server_port, argv[1], argv[2]);
+  return 0;
 }

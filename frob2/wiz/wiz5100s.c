@@ -14,7 +14,7 @@ extern void WizPut2(word reg, word value);
 extern void WizPutN(word reg, const void* data, word size);
 
 extern byte Wiz__before(word limit);
-extern byte Wiz__wait(word reg, byte value, word millisecs_max);
+extern prob Wiz__wait(word reg, byte value, word millisecs_max);
 
 void Wiz__command(word base, byte cmd);
 byte Wiz__advance(word base, byte old_status);
@@ -93,18 +93,18 @@ byte Wiz__before(word limit) {
     // After t crosses limit, (limit-t) "goes negative" so high bit is set.
     return 0 == ((limit-t) & 0x8000);
 }
-byte Wiz__wait(word reg, byte value, word millisecs_max) {
+prob Wiz__wait(word reg, byte value, word millisecs_max) {
     LogDebug("Wait reg %x value %x ms %x", reg, value, millisecs_max);
     word start = WizGet2(0x0082/*TCNTR Tick Counter*/);
     word limit = 10*millisecs_max + start;
     while (Wiz__before(limit)) {
         if (WizGet1(reg) == value) {
             LogDebug("Wait OK");
-            return OKAY;
+            return GOOD;
         }
     }
     LogDebug("Wait Timeout");
-    return 5; // TIMEOUT
+    return "Timeout";
 }
 
 void WizReset() {
@@ -153,7 +153,7 @@ void WizConfigure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   for (byte socknum=0; socknum<4; socknum++) {
       word base = ((word)socknum + 4) << 8;
       WizPut1(base+SockCommand, 0x10/*CLOSE*/);
-      Wiz__wait(base+SockCommand, 0, 500);
+      (void) Wiz__wait(base+SockCommand, 0, 500);
       WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
       WizPut1(base+0x001e/*_RXBUF_SIZE*/, 2); // 2KB
       WizPut1(base+0x001f/*_TXBUF_SIZE*/, 2); // 2KB
@@ -161,19 +161,19 @@ void WizConfigure(quad ip_addr, quad ip_mask, quad ip_gateway) {
   EnableIrqsCounting();
 }
 
-errnum UdpClose(byte socknum) {
+prob UdpClose(byte socknum) {
   LogDebug("CLOSE: sock=%x ", socknum);
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+  if (socknum > 3) return "NoAvailableSocket";
 
   word base = ((word)socknum + 4) << 8;
   WizPut1(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
   WizPut1(base+SockCommand, 0x10/*CLOSE*/);
-  Wiz__wait(base+SockCommand, 0, 500);
+  (void) Wiz__wait(base+SockCommand, 0, 500);
   WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
-  return OKAY;
+  return GOOD;
 }
 
-errnum WizArp(quad dest_ip, byte* mac_out) {
+prob WizArp(quad dest_ip, byte* mac_out) {
   byte* d = (byte*)&dest_ip;
 
   // Socketless ARP command.
@@ -209,11 +209,11 @@ errnum WizArp(quad dest_ip, byte* mac_out) {
     mac_out[5] = m6;
   } while (!x);
   EnableIrqsCounting();
-  return (x&2) ? OKAY : 255; // look for ARP ack.
+  return (x&2) ? GOOD : "NoAck"; // look for ARP ack.
 }
 
 word ping_sequence;
-errnum WizPing(quad dest_ip) {
+prob WizPing(quad dest_ip) {
   byte* d = (byte*)&dest_ip;
   LogDebug("PING: dest_ip=%d.%d.%d.%d ", d[0], d[1], d[2], d[3]);
 
@@ -242,7 +242,7 @@ errnum WizPing(quad dest_ip) {
       x, m1, m2, m3, m4, m5, m6);
   } while (!x);
   EnableIrqsCounting();
-  return (x&1) ? OKAY : 255; // look for PING ack.
+  return (x&1) ? GOOD : "NoAck"; // look for PING ack.
 }
 
 word suggest_client_port() {
@@ -264,13 +264,13 @@ byte find_available_socket(word* base_out) {
   return socknum;
 }
 
-errnum MacRawOpen(byte* socknum_out) {
+prob MacRawOpen(byte* socknum_out) {
   word base = 0;
-  errnum err = OKAY;
+  prob err = GOOD;
   DisableIrqsCounting();
   byte socknum = find_available_socket(&base);
   // Only socket 0 can be macraw!
-  if (socknum > 0) return 0xf0/*E_UNIT*/;
+  if (socknum > 0) return "NoAvailableSocket";
   *socknum_out = socknum;
     
   WizPut1(base+0x0000/*Sx_MR*/, 0x44/*=MACRAW mode with MAC Filter Enable*/);
@@ -292,24 +292,24 @@ Enable:
   return err;
 }
 
-errnum MacRawClose(byte socknum) {
+prob MacRawClose(byte socknum) {
   LogDebug("CLOSE: sock=%x ", socknum);
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+  if (socknum > 3) return "BadSockNum";
 
   word base = ((word)socknum + 4) << 8;
   WizPut1(base+SockCommand, 0x10/*CLOSE*/);
   Wiz__wait(base+SockCommand, 0, 500);
   WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
-  return OKAY;
+  return GOOD;
 }
 
-errnum MacRawRecv(byte socknum, byte* buffer, word* size_in_out) {
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+prob MacRawRecv(byte socknum, byte* buffer, word* size_in_out) {
+  if (socknum > 3) return "BadSockNum";
   word base = ((word)socknum + 4) << 8;
   word buf = RX_BUF(socknum);
 
   byte status = WizGet1(base+SockStatus);
-  if (status != 0x42/*SOCK_MACRAW*/) return 0xf6 /*E_NOTRDY*/;
+  if (status != 0x42/*SOCK_MACRAW*/) return "BadStatus";
 
   WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
   WizPut1(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
@@ -322,7 +322,7 @@ errnum MacRawRecv(byte socknum, byte* buffer, word* size_in_out) {
     if (irq) {
       WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
-        return 0xf4/*=E_READ*/;
+        return "BadRecv";
       }
       break;
     }
@@ -344,17 +344,17 @@ errnum MacRawRecv(byte socknum, byte* buffer, word* size_in_out) {
   }
   WizPut2(base+0x0028/*_RX_RD*/, rx_rd + recv_size);
   *size_in_out = i; 
-  return OKAY;
+  return GOOD;
 }
 
 
-errnum UdpOpen(word src_port, byte* socknum_out) {
+prob UdpOpen(word src_port, byte* socknum_out) {
   DisableIrqsCounting();
-  errnum err = OKAY;
+  prob err = GOOD;
   word base;
   byte socknum = find_available_socket(&base);
   if (socknum > 3) {
-    err = 0xf0/*E_UNIT*/;
+    err = "NoAvailableSocket";
     goto Enable;
   }
   *socknum_out = socknum;
@@ -369,13 +369,13 @@ errnum UdpOpen(word src_port, byte* socknum_out) {
   WizPut1(base+SockCommand, 1/*=OPEN*/);  // OPEN IT!
   err = Wiz__wait(base+SockCommand, 0, 500);
   if (err) {
-    LogError("waitC=>%x", err);
+    LogError("waitC=>%q", err);
     goto Enable;
   }
 
   err = Wiz__wait(base+SockStatus, 0x22/*SOCK_UDP*/, 500);
   if (err) {
-    LogError("waitS=>%x", err);
+    LogError("waitS=>%q", err);
     goto Enable;
   }
 
@@ -388,11 +388,11 @@ Enable:
   return err;
 }
 
-errnum UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_port) {
+prob UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_port) {
   LogDebug("SEND: sock=%x payload=%x size=%x ", socknum, payload, size);
   byte* d = (byte*)&dest_ip;
   LogDebug(" dest=%d.%d.%d.%d:%d(dec) ", d[0], d[1], d[2], d[3], dest_port);
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+  if (socknum > 3) return "NoAvailableSocket";
 
   word base = ((word)socknum + 4) << 8;
   word buf = TX_BUF(socknum);
@@ -400,7 +400,7 @@ errnum UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
   byte status = WizGet1(base+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) {
     LogError("status=$x => NOTRDY", status);
-    return 0xf6 /*E_NOTRDY*/;
+    return "NotReady";
   }
 
   LogDebug("dest_ip ");
@@ -425,7 +425,7 @@ errnum UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
   }
   word free = WizGet2(base + TxFreeSize);
   LogDebug("SEND: base=%x buf=%x free=%x ", base, buf, free);
-  if (free < size) return 255; // no buffer room.
+  if (free < size) return "NotYet";
 
   word tx_r = WizGet2(base+TxReadPtr);
   LogDebug("tx_r=%x ", tx_r);
@@ -462,17 +462,17 @@ errnum UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_p
     if (irq&0x10) break;
   }
   WizPut1(base+SockInterrupt, 0x10);  // Reset RECV interrupt.
-  return OKAY;
+  return GOOD;
 }
 
-errnum UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
-  if (socknum > 3) return 0xf0/*E_UNIT*/;
+prob UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
+  if (socknum > 3) return "NoAvailableSocket";
 
   word base = ((word)socknum + 4) << 8;
   word buf = RX_BUF(socknum);
 
   byte status = WizGet1(base+SockStatus);
-  if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
+  if (status != 0x22/*SOCK_UDP*/) return "NotReady";
 
   WizPut2(base+0x000c, 0); // clear Dest IP Addr
   WizPut2(base+0x000e, 0); // ...
@@ -489,7 +489,7 @@ errnum UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
     if (irq) {
       WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
-        return 0xf4/*=E_READ*/;
+        return "BadRecv";
       }
       break;
     }
@@ -511,7 +511,7 @@ errnum UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
   
   if (hdr.len > *size_in_out) {
     LogError(" *** Packet Too Big [rs=%d. sio=%d.]\n", hdr.len, *size_in_out);
-    return 0xed/*E_NORAM*/;
+    return "TooBig";
   }
 
   for (word i = 0; i < hdr.len; i++) {
@@ -527,7 +527,7 @@ errnum UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_o
                                    RX_MASK & (rx_rd + recv_size));
   WizPut2(base+0x0028/*_RX_RD*/, RX_MASK & (rx_rd + recv_size));
 
-  return OKAY;
+  return GOOD;
 }
 
 ///// ===== TCP =====

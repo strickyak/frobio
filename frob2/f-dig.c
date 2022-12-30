@@ -30,8 +30,8 @@ struct header {
 byte OpenLocalSocket() {
   byte socknum = 0;
   word client_port = suggest_client_port();
-  errnum err = UdpOpen(client_port, &socknum);
-  if (err) LogFatal("cannot UdpOpen: %d\n", err);
+  prob err = UdpOpen(client_port, &socknum);
+  if (err) LogFatal("cannot UdpOpen: %s", err);
   LogDebug("OpenLS=>%x", socknum);
   return socknum;
 }
@@ -92,8 +92,8 @@ void SendRequest(byte socknum, quad host, word port, char* query, word type) {
   p = (byte*)(wp+2);  // End of used part.
   word packet_size = p - packet;
 
-  errnum err = UdpSend(socknum, packet, packet_size, host, port);
-  if (err) LogFatal("cannot UdpSend request: %d\n", err);
+  prob err = UdpSend(socknum, packet, packet_size, host, port);
+  if (err) LogFatal("cannot UdpSend request: %s", err);
   memset(packet, 0, packet_size);  // paranoidly prepare to receive.
 }
 
@@ -238,8 +238,8 @@ void Resolv(byte socknum, quad server_host, word server_port, char* query, word 
   word size = sizeof packet;
   quad from_addr = 0;
   word from_port = 0;
-  errnum err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
-  if (err) LogFatal("cannot UdpRecv data: %d\n", err);
+  prob err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+  if (err) LogFatal("cannot UdpRecv data: %s", err);
 
   struct header *h = (struct header*)packet;
   printf(";; id %x qr_opcode %x rcode %x\n", h->id, h->qr_opcode, h->rcode);
@@ -262,12 +262,12 @@ void Resolv(byte socknum, quad server_host, word server_port, char* query, word 
 
   err = UdpClose(socknum);
   if (err) {
-    LogFatal("ERROR, Cannot close UDP socket: errnum %d", err);
+    LogFatal("Cannot close UDP socket: %s", err);
   }
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  f-dig -w0xFF68 -a -tN server_addr:53 www.example.com\n"
+    LogFatal("Usage:  f-dig -w0xFF68 -a -tN server_addr:53 www.example.com"
     "  (-a for all types)  (-tN for only type N, decimal integer)\n");
 }
 

@@ -15,19 +15,17 @@
 
 #include "frob2/froblib.h"
 
-#ifdef unix
+#if defined(unix) || defined(FROB_DECB_CMOC)
 // Can emulate OS9 calls?
 #define IF_os9_THEN_asm /**/
-#endif
-
-#ifdef FROB_DECB_CMOC // HOW=decb-cmoc
-#define IF_os9_THEN_asm /**/
+#else
+#define IF_os9_THEN_asm asm
 #endif
 
 // These are *counting*, so an equal number of EnableIrqs()
 // must be called before Irqs are actually enabled.
-void DisableIrqsCounting(); // untested
-void EnableIrqsCounting(); // untested
+void DisableIrqsCounting();
+void EnableIrqsCounting();
 
 /* alias CC='/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 -std=c99' */
 #ifdef __SIZE_MAX__ // detect gcc

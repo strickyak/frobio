@@ -9,8 +9,8 @@ byte packet[1550];
 
 byte OpenLocalSocket() {
   byte socknum = 0;
-  errnum err = MacRawOpen(&socknum);
-  if (err) LogFatal("cannot MacRawOpen: %d\n", err);
+  prob err = MacRawOpen(&socknum);
+  if (err) LogFatal("cannot MacRawOpen: %s", err);
   return socknum;
 }
 
@@ -54,15 +54,15 @@ void MacRawDump(byte* packet, word size) {
 void MainLoop(byte socknum) {
   while (true) {
       word size = sizeof packet;
-      errnum err = MacRawRecv(socknum, packet, &size);
-      if (err) LogFatal("cannot MacRawRecv data: %d\n", err);
+      prob err = MacRawRecv(socknum, packet, &size);
+      if (err) LogFatal("cannot MacRawRecv data: %s", err);
 
       MacRawDump(packet, size);
   }
 }
 
 static void FatalUsage() {
-    LogFatal("Usage:  f-recv -w0xFF68 -pLocalPort | ...\n");
+    LogFatal("Usage:  f-recv -w0xFF68 -pLocalPort | ...");
 }
 
 int main(int argc, char* argv[]) {

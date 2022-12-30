@@ -5,7 +5,7 @@
 #include "frob2/frobos9.h"
 
 static void FatalUsage() {
-    LogFatal("Usage:  f.ticks -wWiznetPortHex -x (for hex output)\n");
+    LogFatal("Usage:  f.ticks -wWiznetPortHex -x (for hex output)");
 }
 
 int main(int argc, char* argv[]) {

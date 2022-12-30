@@ -37,8 +37,8 @@ byte packet[2000];
 byte OpenLocalSocket() {
   byte socknum = 0;
   word client_port = suggest_client_port();
-  errnum err = UdpOpen(client_port, &socknum);
-  if (err) LogFatal("cannot UdpOpen: %d", err);
+  prob err = UdpOpen(client_port, &socknum);
+  if (err) LogFatal("cannot UdpOpen: %s", err);
   return socknum;
 }
 
@@ -47,8 +47,8 @@ void SendRequest(byte socknum, quad host, word port) {
   memset(&x, 0, sizeof x);
   x.li_vn_mode = CLIENT_LI_VN_MODE;
 
-  errnum err = UdpSend(socknum, (byte*)&x, sizeof x, host, port);
-  if (err) LogFatal("cannot UdpSend request: %d", err);
+  prob err = UdpSend(socknum, (byte*)&x, sizeof x, host, port);
+  if (err) LogFatal("cannot UdpSend request: %s", err);
 }
 
 void SNTP(byte socknum, quad server_host, word server_port) {
@@ -57,8 +57,8 @@ void SNTP(byte socknum, quad server_host, word server_port) {
   word size = sizeof packet;
   quad from_addr = 0;
   word from_port = 0;
-  errnum err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
-  if (err) LogFatal("cannot UdpRecv data: %d", err);
+  prob err = UdpRecv(socknum, packet, &size, &from_addr, &from_port);
+  if (err) LogFatal("cannot UdpRecv data: %s", err);
   
   if (size < sizeof (struct ntp_packet)) {
     LogFatal("received size too small: %d", size);
@@ -66,7 +66,7 @@ void SNTP(byte socknum, quad server_host, word server_port) {
 
   err = UdpClose(socknum);
   if (err) {
-    LogFatal("ERROR, Cannot close UDP socket: errnum %d", err);
+    LogFatal("Cannot close UDP socket: %s", err);
   }
   struct ntp_packet *a = (struct ntp_packet*)packet;
   LogDetail("NTP: %lu %lu %lu %lu", a->ref_ts, a->orig_ts, a->recv_ts, a->xmit_ts);
@@ -93,7 +93,7 @@ void SNTP(byte socknum, quad server_host, word server_port) {
   while (true) {
     quad t_next = t;
     t_next -= 31536000UL;  // 365 days.
-    if ((year%3) == 0) t_next -= 86400UL;  // 1 extra day.
+    if ((year&3) == 0) t_next -= 86400UL;  // 1 extra day.
     if (t_next > t0) break;  // if underflowed.
     t = t_next;
     year++;
@@ -102,7 +102,7 @@ void SNTP(byte socknum, quad server_host, word server_port) {
   byte month;
   for (month=1; month<=12; month++) {
     byte days = dpm[month];
-    if (month==2 && (year%3)==0) ++days;  // If Feb hath 29.
+    if (month==2 && (year&3)==0) ++days;  // If Feb hath 29.
     quad t_next = t - 86400UL * days;
     if (t_next > t0) break;  // if underflowed.
     t = t_next;
