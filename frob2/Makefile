@@ -112,3 +112,16 @@ chop:
 
 f.ncl.os9:
 	sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c stack300.asm
+
+trapa.o:
+	lwasm --obj -o trapa.o trapa.asm 
+trapc.o:
+	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os  trapc.c
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=trapc.list   -I.. -o trapc.o trapc.s
+
+z2z.bin:
+	cat z2.c froblib/*.c  decb/*.c  > z2a.c
+	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os -fwhole-program  z2a.c 
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map  -I.. -o z2a.o z2a.s 
+	lwlink --format=decb --entry=_main -o z2a.bin --map=z2a.bin.map -s decb.script z2a.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc
+	scp z2a.bin root@yak.net:/tmp/

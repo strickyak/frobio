@@ -7,10 +7,12 @@
 //chop
 
 void BufCheck(Buf *p) {
+  Assert (p->n >= 0);
+  Assert (p->s != NULL);
 #ifdef unix
-  Assert (p->n >= 0 && p->s != NULL);
+  {}
 #else
-  Assert (p->n >= 0 && p->s != NULL && p->s <= 0xC000);
+  Assert (p->s <= (char*)0xC000);
 #endif
 };
 

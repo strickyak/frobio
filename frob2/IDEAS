@@ -220,3 +220,17 @@ Wednesday:
    * All flags 1 word: --flag=1
    * Longer timeout for Socketless (0.5s * (1+3) = 2.0s).
    * Make UDP timeout with NotYet.
+
+
+
+------------------------------------------------
+/sy/frobio/frob2$ cat z2.c froblib/*.c  decb/*.c  > z2a.c && /opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os -fwhole-program  z2a.c  && lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map  -I.. -o z2a.o z2a.s  && lwlink --format=decb --entry=_main -o z2z.bin --map=z2z.map -s decb.script z2a.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc && scp z2z.bin root@yak.net:/tmp/
+In file included from z2a.c:1:0:
+../frob2/froblib.h:67:6: warning: conflicting types for built-in function 'strcat' [enabled by default]
+../frob2/froblib.h:79:6: warning: conflicting types for built-in function 'printf' [enabled by default]
+../frob2/froblib.h:80:6: warning: conflicting types for built-in function 'putchar' [enabled by default]
++ lwasm-orig --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map -I.. -o z2a.o z2a.s -l.list
++ lwlink-orig --format=decb --entry=_main -o z2z.bin --map=z2z.map -s decb.script z2a.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc
+z2z.bin                                                                                                                                                     100% 7710   140.6KB/s   00:00
+/sy/frobio/frob2$
+------------------------------------------------

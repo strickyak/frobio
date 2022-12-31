@@ -5,7 +5,7 @@ typedef unsigned int size_t;
 void abort(void) {
   decb_putstr(" *ABORT* *LOOP*\n");
 
-  asm volatile("abort_loop: bra abort_loop");
+  while(1){}
 }
 
 void exit(int status) {
@@ -60,21 +60,27 @@ size_t strlen(const char *str) {
     return s - str;
 }
 
+
 void decb_putchar(int c) {
     char ch = (char)c;
     if (ch==10) ch=13;
 
-    unsigned short emit = 0xA002; // for coco
+    // unsigned short emit = 0xA002; // for coco
+    // asm volatile(" lda %0 \n jsr [%1]": : "m" (ch), "m" (emit));
 
-    asm volatile(" lda %0 \n jmp [%1]": : "m" (ch), "m" (emit));
+    // asm volatile(" lda %0 \n ldx 0xA002 \n jsr ,x" : : "m" (ch) : "a", "x" );
+
+    asm volatile("lda %0\n\tjsr [$A002]" : : "m" (ch) : "a" );
 }
 
 char* decb_readline() {
-    char* LINBUF = 0x02DC; // for coco
+    char* LINBUF = (char*) 0x02DC; // for coco
     size_t LBUFMX = 250; // for coco
 
-    for (size_t i = 0; i < LBUFMX; i++) LINBUF[i]='\0';
+    // Start at 1, not 0.
+    for (size_t i = 1; i < LBUFMX; i++) LINBUF[i]='\0';
 
-    asm volatile(" JSR     $A390");
+    // Not sure what is clobbered, so I save & restore all registers.
+    asm volatile("pshs D,X,Y,U\n\tjsr $A390\n\tpuls D,X,Y,U");
     return LINBUF + 1;
 }
