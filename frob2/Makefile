@@ -119,7 +119,7 @@ trapc.o:
 	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os  trapc.c
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=trapc.list   -I.. -o trapc.o trapc.s
 
-z2z.bin:
+z2a.bin:
 	cat z2.c froblib/*.c  decb/*.c  > z2a.c
 	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os -fwhole-program  z2a.c 
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map  -I.. -o z2a.o z2a.s 
