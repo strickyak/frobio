@@ -1,0 +1,9 @@
+define basesympat s_%s
+define lensympat l_%s
+section init load 2800
+section .text.startup
+section .text
+section code
+section *,!bss
+section *,bss
+entry 2800
