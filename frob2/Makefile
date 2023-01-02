@@ -34,6 +34,8 @@ f.ticks.os9 : f-ticks.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
 f.telnetd0.os9 : f-telnetd0.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
+fuse.twice.os9 : fuse-twice.c $(HDRS) $(LIBS)
+	sh Compile.sh $@ $< $(LIBS)
 
 # x-*.c are dev or demo files.
 x.argv.os9 : x-argv.c

@@ -80,6 +80,13 @@ errnum Os9DelRam(byte num_blocks, word start_block);
 errnum Os9MapBlk(word starting_block, byte num_blocks, word* first_address_out);
 errnum Os9ClrBlk(byte num_blocks, word first_address);
 
+#if ONLY_IN_KERNEL_MODE
+// 64-byte block routines.
+errnum Os9All64(word base, word* base_out, word* block_addr, byte* block_num);
+errnum Os9Find64(byte block_num, word base, word* block_addr);
+errnum Os9Ret64(byte block_num, word base);
+#endif
+
 // For the Gomar hyper ops.
 void GomarHyperExit(errnum status);  // exits os9 process, if no hyper.
 

@@ -484,4 +484,70 @@ void GomarHyperExit(errnum status) {
   Os9Exit(status);
 }
 
+#if ONLY_IN_KERNEL_MODE
+// 64-byte block routines.
+errnum Os9All64(word base, word* base_out, word* block_addr, byte* block_num) {
+    errnum err = OKAY;
+    asm {
+        pshs y,u
+        ldx base
+
+        swi2
+        fcb F_ALL64
+        bcs ALL64BAD
+
+        stx [base_out]
+        sty [block_addr]
+        sta [block_num]
+        bra ALL64OK
+
+ALL64BAD
+        stb err
+ALL64OK
+        puls y,u
+    }
+    return err;
+}
+
+errnum Os9Find64(byte block_num, word base, word* block_addr) {
+    errnum err = OKAY;
+    asm {
+        pshs y,u
+        lda block_num
+        ldx base
+
+        swi2
+        fcb F_FIND64
+        bcs FIND64BAD
+
+        sty [block_addr]
+        bra FIND64OK
+
+FIND64BAD
+        stb err
+FIND64OK
+        puls y,u
+    }
+    return err;
+}
+
+errnum Os9Ret64(byte block_num, word base) {
+    errnum err = OKAY;
+    asm {
+        pshs y,u
+        lda block_num
+        ldx base
+
+        swi2
+        fcb F_RET64
+        bcc RET64OK
+
+        stb err
+RET64OK
+        puls y,u
+    }
+    return err;
+}
+#endif // ONLY_IN_KERNEL_MODE
+
 #endif // NOT GCC
