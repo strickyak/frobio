@@ -22,6 +22,16 @@
 typedef char* mstring;  // a Malloc'ed string
 typedef unsigned char errnum;     // for OS error numbers.
 
+// `prob`: High-Level Error Strings.
+//   Use literal const char* for errors.
+//   Use NotYet to mean try again later, because an asynchronous event hasn't happened yet.
+//   Use GOOD (i.e. NULL) for good status.
+// To communicate better error messages, application can LogError, or LogFatal.
+typedef const char* prob;
+#define GOOD ((const char*)NULL)
+extern const char NotYet[]; // defined as "NotYet"
+
+
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 #ifdef unix
@@ -83,8 +93,25 @@ void putchar(char ch);
 ////////////////////////////////////////////////////////////////
 #endif
 
-#define MAXWORD ((word)(-1L))
-#define OKAY ((errnum)0)         // todo -- eliminate
+// Check a function call returning a bool result.
+#define CheckB(FN,ARGS) {\
+  bool _ok_ = FN ARGS; \
+  if (!_ok_) LogFatal("CANNOT %s", #FN); \
+}
+
+// Check a function call returning an errnum result.
+#define CheckE(FN,ARGS) {\
+  errnum _e_ = FN ARGS; \
+  if (_e_) LogFatal("CANNOT %s: %d", #FN, _e_); \
+}
+
+// Check a function call returning a prob result.
+#define CheckP(FN,ARGS) {\
+  prob _ps_ = FN ARGS; \
+  if (_ps_) LogFatal("CANNOT %s: %s", #FN, _ps_); \
+}
+
+#define OKAY ((errnum)0)
 
 //////// Buf
 

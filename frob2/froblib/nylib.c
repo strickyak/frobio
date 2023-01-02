@@ -12,6 +12,8 @@ byte Verbosity = LLInfo;
 //chop
 byte ErrNo;
 //chop
+const char NotYet[] = "NotYet";
+//chop
 
 Buf LogBuf;
 void Logger(const char* file, word line, byte level, const char* fmt, ...) {

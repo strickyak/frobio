@@ -10,11 +10,6 @@ char status[99];
 char payload[999];
 char DaemonPath[] = "/Fuse/Daemon/Twice";
 
-#define CheckE(CALL) {\
-  errnum _e_ = CALL; \
-  if (_e_) LogFatal("cannot %s: %d", #CALL, _e_); \
-}\
-
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
 
@@ -35,11 +30,11 @@ int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
   LogStep("Hello Hello Twice");
 
-  CheckE(Os9Create(DaemonPath, /*mode=*/READ_WRITE, /*attrs=*/SHARABLE_RW, &fd));
+  CheckE(Os9Create, (DaemonPath, /*mode=*/READ_WRITE, /*attrs=*/SHARABLE_RW, &fd));
 
   while (true) {
     int cc;
-    CheckE(Os9ReadLn(fd, command, sizeof command, &cc));
+    CheckE(Os9ReadLn, (fd, command, sizeof command, &cc));
     LogInfo("ReadLn: %q", command);
 
     if (!payload[0]) {

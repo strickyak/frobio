@@ -3,16 +3,6 @@
 
 #include "frob2/froblib.h"
 
-// USED IN Tcp, Udp, & MacRaw.  TODO: move to froblib.h
-// Error Compromise:
-//   Use literal const char* for errors.
-//   Use NotYet to mean try again later, because an asynchronous event hasn't happened yet.
-//   Use GOOD (or NULL) for good status.
-// To communicate better error messages, application can LogError.
-typedef const char* prob;
-#define GOOD ((const char*)NULL)
-extern const char NotYet[]; // defined as "NotYet"
-
 extern byte* WizHwPort;  // Hardware Port.
 
 // First call WizReset, then call WizConfigure.

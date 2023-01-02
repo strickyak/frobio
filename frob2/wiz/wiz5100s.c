@@ -25,8 +25,6 @@ bool Wiz__sock_command(word base, byte cmd, byte want);
 // Global storage.
 byte* WizHwPort = 0xFF68;  // default hardware port.
 //chop
-const char NotYet[] = "NotYet";
-//chop
 
 static word bogus_word_for_delay;
 void WizDelay(word n) {
@@ -425,7 +423,7 @@ prob UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_por
   }
   word free = WizGet2(base + TxFreeSize);
   LogDebug("SEND: base=%x buf=%x free=%x ", base, buf, free);
-  if (free < size) return "NotYet";
+  if (free < size) return NotYet;
 
   word tx_r = WizGet2(base+TxReadPtr);
   LogDebug("tx_r=%x ", tx_r);
