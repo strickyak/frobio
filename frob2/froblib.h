@@ -354,7 +354,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 //////// Assert
 
 #define Assert(cond) do { if (!(cond)) { \
-  LogFatal("***ASSERT FAILED: %s:%u\n", \
+  LogFatal("ASSERT FAILED: %s:%u\n", \
       __FILE__, __LINE__); } } while(false) 
 
 #endif // _FROB2_FROBLIB_H_

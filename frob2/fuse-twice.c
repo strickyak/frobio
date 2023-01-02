@@ -3,6 +3,7 @@
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
+#include "frob2/os9/os9defs.h" // E_EOF
 
 int fd;
 char command[99];
@@ -13,18 +14,72 @@ char DaemonPath[] = "/Fuse/Daemon/Twice";
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
 
-void DoOpen() {
-  LogFatal("not yet DoOpen");
+//////////////////////////////////////////
+
+byte DeHexChar(char ch) {
+  if ('0' <= ch && ch <= '9') {
+    return ch - '0';
+  }
+  if ('A' <= ch && ch <= 'Z') {
+    return ch - 'A' + 10;
+  }
+  if ('a' <= ch && ch <= 'z') {
+    return ch - 'a' + 10;
+  }
+  LogFatal("DeHex %d", ch);
 }
+
+//////////////////////////////////////////
+
+void SendStatus(errnum status, word len) {
+  Buf buf;
+  BufInit(&buf);
+  BufFormat(&buf, "%02x %04x\r", status, len);
+  BufFinish(&buf);
+
+  int cc;
+  CheckE(Os9WritLn, (fd, buf.s, buf.n, &cc));
+  Assert(cc == buf.n);
+
+  BufDel(&buf);
+}
+
+void DoOpen() {
+  SendStatus(OKAY, 0);
+}
+int nth = 1;
 void DoRead() {
-  LogFatal("not yet DoRead");
+  if (nth > 3) {
+    SendStatus(E_EOF, 0);
+  } else {
+    SendStatus(OKAY, 5);
+  }
+
+  int cc;
+  switch (nth) {
+    case 1:
+      CheckE(Os9Write, (fd, "uno.\r", 5, &cc));
+      break;
+    case 2:
+      CheckE(Os9Write, (fd, "dos.\r", 5, &cc));
+      break;
+    case 3:
+      CheckE(Os9Write, (fd, "tres\r", 5, &cc));
+      break;
+    default:
+      Assert(0);
+  }
+  Assert(cc == 5);
+  ++nth;
 }
 void DoReadLn() {
-  LogFatal("not yet DoReadLn");
+  DoRead();
 }
 void DoClose() {
-  LogFatal("not yet DoClose");
+  SendStatus(OKAY, 0);
 }
+
+//////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
@@ -57,7 +112,6 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-
 
   LogStatus("Finished Finished Twice");
   return 0;
