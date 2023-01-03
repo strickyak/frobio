@@ -13,10 +13,17 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    while (FGets(buf, 1, StdIn)) {
+    while (true) {
+        LogInfo("x.cat: Calling FGets...");
+        char* ok = FGets(buf, 1, StdIn);
+        if (!ok) {
+          if (ErrNo) { PError("x.cat: FGets: "); exit(ErrNo); }
+          break;
+        }
         buf[1] = '\0';
+        LogInfo("x.cat: Calling FPuts...");
         FPuts(buf, StdOut);
-        if (ErrNo) { PError("x.cat"); exit(ErrNo); }
+        if (ErrNo) { PError("x.cat: FPuts: "); exit(ErrNo); }
     }
     return 0;
 }
