@@ -50,21 +50,31 @@ void DoOpen() {
 int nth = 1;
 void DoRead() {
   if (nth > 3) {
+    LogInfo("Sending Status EOF");
     SendStatus(E_EOF, 0);
+    LogInfo("Sent Status EOF");
   } else {
+    LogInfo("Sending Status OKAY");
     SendStatus(OKAY, 5);
+    LogInfo("Sent Status OKAY");
   }
 
   int cc;
   switch (nth) {
     case 1:
+      LogInfo("calling Write uno");
       CheckE(Os9Write, (fd, "uno.\r", 5, &cc));
+      LogInfo("called Write uno");
       break;
     case 2:
+      LogInfo("calling Write dos");
       CheckE(Os9Write, (fd, "dos.\r", 5, &cc));
+      LogInfo("called Write dos");
       break;
     case 3:
+      LogInfo("calling Write tres");
       CheckE(Os9Write, (fd, "tres\r", 5, &cc));
+      LogInfo("called Write tres");
       break;
     default:
       Assert(0);
