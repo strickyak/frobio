@@ -17,6 +17,8 @@ const char NotYet[] = "NotYet";
 
 Buf LogBuf;
 void Logger(const char* file, word line, byte level, const char* fmt, ...) {
+  byte restoreErrNo = ErrNo;
+
     extern byte disable_irq_count;
 
     // fmt may be NULL just to flush when irqs are re-enabled.
@@ -64,6 +66,8 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...) {
         exit(127);
     }
     LogBuf.n = 0;
+
+  ErrNo = restoreErrNo;
 }
 
 

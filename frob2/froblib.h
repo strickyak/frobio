@@ -155,7 +155,7 @@ void PC_Trace(byte c, const void* w);
 
 // Fopen mode can be "r" or "w".
 File* FOpen(const char* pathname, const char* mode);
-// FOpen returns bytes_read, or 0 and sets ErrNo on error.
+// FGets returns bytes_read, or 0 and sets ErrNo on error.
 word FGets(char *buf, int size, File *f);
 // returns 0, or -1 on error.
 int FClose(File *f);

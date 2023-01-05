@@ -23,16 +23,19 @@ File* FOpen(const char* pathname, const char* mode) {
 
     if (mode[0] == 'r') {
       ErrNo = Os9Open(pathname, 1/*=READ*/, &fd);
+      if (ErrNo) LogDebug("Os9Open returned %x", ErrNo);
       if (ErrNo) return NULL;
     } else if (mode[0] == 'w') {
       Os9Delete(pathname);
       ErrNo = Os9Create(pathname, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
+      if (ErrNo) LogDebug("Os9Create returned %x", ErrNo);
       if (ErrNo) return NULL;
     }
     Assert (fd>=0);
 
     File* f = (File*) Malloc(sizeof *f);
     f->fd = fd;
+    LogDebug("FOpen returning %x with fd=%x", f, fd);
     return f;
 }
 
@@ -73,6 +76,8 @@ void PError(const char* str) {
     Assert(str);
     FPuts(" ", StdErr);
     FPuts(str, StdErr);
+    FPuts(": ErrNo ", StdErr);
+
     char ebuf[4];
     ebuf[0] = (char) (e / 100 + '0');
     e = e % 100;
@@ -80,7 +85,8 @@ void PError(const char* str) {
     e = e % 10;
     ebuf[2] = (char) (e + '0');
     ebuf[3] = '\0';
-    FPuts(": ErrNo ", StdErr);
+
     FPuts(ebuf, StdErr);
     FPuts(".\n", StdErr);
+    ErrNo = OKAY;
 }

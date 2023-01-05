@@ -6,17 +6,11 @@
 
 char buf[8];
 
-int main(int argc, char *argv[]) {
-    SkipArg(&argc, &argv);
-    if (argc != 0) {
-        LogFatal("Usage:   ... | x.cat | ...");
-        return 2;
-    }
-
+void DoCat(File* f) {
     while (true) {
         LogInfo("x.cat: Calling FGets...");
-        char* ok = FGets(buf, 1, StdIn);
-        if (!ok) {
+        word cc = FGets(buf, 1, f);
+        if (cc == 0) {
           if (ErrNo) { PError("x.cat: FGets: "); exit(ErrNo); }
           break;
         }
@@ -25,5 +19,24 @@ int main(int argc, char *argv[]) {
         FPuts(buf, StdOut);
         if (ErrNo) { PError("x.cat: FPuts: "); exit(ErrNo); }
     }
+}
+int main(int argc, char *argv[]) {
+    SkipArg(&argc, &argv);
+    Verbosity = 9;
+
+    if (argc == 0) {
+        DoCat(StdIn);
+    } else for (int i = 0; i < argc; i++) {
+      LogInfo("x.cat: Opening file %q", argv[i]);
+      File* f = FOpen(argv[i], "r");
+      if (!f) {
+        PError("FOpen");
+        LogFatal("Cannot open %q", argv[i]);
+      }
+      DoCat(f);
+      LogInfo("x.cat: Closing file %q", argv[i]);
+      FClose(f);
+    }
+
     return 0;
 }
