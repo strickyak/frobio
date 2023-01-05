@@ -145,21 +145,27 @@ const char *ElemDecode(const char *s);
 
 typedef struct { int fd; } File;
 
-// Low Level: do not invoke Malloc, Fail, Printf, etc.
+// {
+// Low Level: These do not invoke Malloc, Fail, Printf, Buf, etc.
 //
-// returns length of str, or -1 on error.
+// FPuts returns length of str, or -1 on error.
 int FPuts(const char *str, File *f);
 void PutHex(byte c, word w);
 void Panic(const char* message);
 void PC_Trace(byte c, const void* w);
-
-// Fopen mode can be "r" or "w".
-File* FOpen(const char* pathname, const char* mode);
-// FGets returns bytes_read, or 0 and sets ErrNo on error.
-word FGets(char *buf, int size, File *f);
-// returns 0, or -1 on error.
-int FClose(File *f);
+// PError prints the given str and the value of ErrNo in decimal.
 void PError(const char* str);
+// PErrorFatal is like PError but also exits 127.
+void PErrorFatal(const char* str); // exits 127.
+// }
+
+
+// FOpen mode can be "r" or "w".
+File* FOpen(const char* pathname, const char* mode);
+// FGets returns bytes_read if good, or 0 and sets ErrNo on error.
+word FGets(char *buf, int size, File *f);
+// FClose returns 0 if good, or -1 on error.
+int FClose(File *f);
 
 extern File StdIn_File;
 extern File StdOut_File;
@@ -353,6 +359,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 
 //////// Assert
 
+// Assert() logs Fatal if the cond is not met.
 #define Assert(cond) do { if (!(cond)) { \
   LogFatal("ASSERT FAILED: %s:%u\n", \
       __FILE__, __LINE__); } } while(false) 

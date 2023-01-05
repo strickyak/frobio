@@ -11,13 +11,13 @@ void DoCat(File* f) {
         LogInfo("x.cat: Calling FGets...");
         word cc = FGets(buf, 1, f);
         if (cc == 0) {
-          if (ErrNo) { PError("x.cat: FGets: "); exit(ErrNo); }
+          if (ErrNo) { PErrorFatal("x.cat: FGets"); }
           break;
         }
         buf[1] = '\0';
         LogInfo("x.cat: Calling FPuts...");
         FPuts(buf, StdOut);
-        if (ErrNo) { PError("x.cat: FPuts: "); exit(ErrNo); }
+        if (ErrNo) { PErrorFatal("x.cat: FPuts"); }
     }
 }
 int main(int argc, char *argv[]) {
@@ -30,12 +30,12 @@ int main(int argc, char *argv[]) {
       LogInfo("x.cat: Opening file %q", argv[i]);
       File* f = FOpen(argv[i], "r");
       if (!f) {
-        PError("FOpen");
-        LogFatal("Cannot open %q", argv[i]);
+        PErrorFatal("x.cat: FOpen");
       }
       DoCat(f);
       LogInfo("x.cat: Closing file %q", argv[i]);
       FClose(f);
+      if (PError) PErrorFatal("x.cat: FClose");
     }
 
     return 0;

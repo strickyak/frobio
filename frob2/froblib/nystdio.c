@@ -70,15 +70,10 @@ int FClose(File *f) {
     return 0;
 }
 
-void PError(const char* str) {
-    int e = ErrNo;
-    ErrNo = OKAY;
-    Assert(str);
-    FPuts(" ", StdErr);
-    FPuts(str, StdErr);
-    FPuts(": ErrNo ", StdErr);
-
+void PErrNum(errnum e) {
+    errnum saved = ErrNo;
     char ebuf[4];
+
     ebuf[0] = (char) (e / 100 + '0');
     e = e % 100;
     ebuf[1] = (char) (e / 10 + '0');
@@ -86,7 +81,31 @@ void PError(const char* str) {
     ebuf[2] = (char) (e + '0');
     ebuf[3] = '\0';
 
+    FPuts(" Err", StdErr);
     FPuts(ebuf, StdErr);
-    FPuts(".\n", StdErr);
+    FPuts(".", StdErr);
+    ErrNo = saved;
+}
+
+void PErrorFatal(const char* str) {
+    errnum saved = ErrNo;
+    FPuts("*** FATAL:", StdErr);
+    ErrNo = saved;
+    PError(str);
+    exit(127);
+}
+
+void PError(const char* str) {
+    errnum e = ErrNo;
+    ErrNo = OKAY;
+    Assert(str);
+    FPuts(" ", StdErr);
+    FPuts(str, StdErr);
+    FPuts(" :", StdErr);
+    PErrNum(e);
+    FPuts("\n", StdErr);
+    
+    // Printing resets ErrNo.
+    // TODO: when does <stdlib> reset errno?
     ErrNo = OKAY;
 }
