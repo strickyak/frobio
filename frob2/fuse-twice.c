@@ -61,10 +61,11 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     int cc;
+    LogInfo("DAEMON Reading...");
     CheckE(Os9Read, (Fd, (char*)&Request, sizeof Request, &cc));
     Assert(cc >= sizeof Request.header);
 
-    LogInfo("ReadLn: op=%x path=%x a=%x b=%x size=%x cc=%x",
+    LogInfo("DAEMON Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
         Request.header.operation,
         Request.header.path_num,
         Request.header.a_reg,
@@ -85,7 +86,10 @@ int main(int argc, char* argv[]) {
     }
 
     int n = Reply.header.size + sizeof Reply.header;
+    LogInfo("DAEMON Write: status=%x size=%x n=%x",
+        Reply.header.status, Reply.header.size, n);
     CheckE(Os9Write, (Fd, (char*)&Reply, n, &cc));
+    LogInfo("DAEMON Wrote OKAY");
   }
 
   LogStatus("Finished Finished Twice");
