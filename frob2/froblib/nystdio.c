@@ -35,7 +35,7 @@ File* FOpen(const char* pathname, const char* mode) {
 
     File* f = (File*) Malloc(sizeof *f);
     f->fd = fd;
-    LogDebug("FOpen returning %x with fd=%x", f, fd);
+    LogDebug("FOpen returning (File*) %x with fd=%x", f, fd);
     return f;
 }
 
