@@ -4,18 +4,18 @@
 
 #include <frob2/froblib.h>
 
-char buf[8];
+char buf[300];
 
-void DoCat(File* f) {
+void CopyLinesFromFileToStdout(File* f) {
     while (true) {
         LogInfo("x.cat: Calling FGets...");
-        word cc = FGets(buf, 1, f);
+        word cc = FGets(buf, sizeof buf, f);
         if (cc == 0) {
           if (ErrNo) { PErrorFatal("x.cat: FGets"); }
           break;
         }
-        buf[1] = '\0';
-        LogInfo("x.cat: Calling FPuts...");
+
+        LogInfo("x.cat: Calling FPuts... cc=%x strlen=%x buf=%q", cc, strlen(buf), buf);
         FPuts(buf, StdOut);
         if (ErrNo) { PErrorFatal("x.cat: FPuts"); }
     }
@@ -25,14 +25,14 @@ int main(int argc, char *argv[]) {
     Verbosity = 9;
 
     if (argc == 0) {
-        DoCat(StdIn);
+        CopyLinesFromFileToStdout(StdIn);
     } else for (int i = 0; i < argc; i++) {
       LogInfo("x.cat: Opening file %q", argv[i]);
       File* f = FOpen(argv[i], "r");
       if (!f) {
         PErrorFatal("x.cat: FOpen");
       }
-      DoCat(f);
+      CopyLinesFromFileToStdout(f);
       LogInfo("x.cat: Closing file %q", argv[i]);
       FClose(f);
       if (PError) PErrorFatal("x.cat: FClose");
