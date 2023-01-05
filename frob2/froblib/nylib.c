@@ -1,6 +1,7 @@
 // ny: NitroYak: Yak Libs for NitrOS9
 
 #include "frob2/froblib.h"
+#include "frob2/frobos9.h"
 
 // Hereafter, pp will point to a pointer to const char,
 // and will be an argument to all functions.
@@ -37,7 +38,10 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...) {
             }
         }
 
-        BufFormat(&LogBuf, "%d:%s:%d ", level, file, line);
+        byte proc_id = 0;
+        word user_id = 0;
+        (void) Os9ID(&proc_id, &user_id);
+        BufFormat(&LogBuf, "<%d>%d:%s:%d ", proc_id, level, file, line);
         if (level == LLFatal) {
             BufAppStr(&LogBuf, "FATAL: ");
         }
