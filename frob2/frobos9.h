@@ -66,6 +66,7 @@ IF_os9_THEN_asm errnum Os9Close(int path);
 IF_os9_THEN_asm errnum Os9Sleep(int secs);
 
 IF_os9_THEN_asm errnum Os9Wait(int* child_id_and_exit_status);
+errnum Os9ID(byte* proc_id_out, word* user_id_out);
 
 IF_os9_THEN_asm errnum Os9Fork(const char* program, const char* params, int paramlen, int lang_type, int mem_size, int* child_id);
 

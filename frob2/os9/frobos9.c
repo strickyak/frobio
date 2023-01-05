@@ -456,6 +456,25 @@ ClrBlkOK
     return err;
 }
 
+errnum Os9ID(byte* proc_id_out, word* user_id_out) {
+  errnum err = OKAY;
+  asm {
+        pshs Y,U
+
+        swi2
+        fcb F_ID
+
+        puls Y,U
+        sta [proc_id_out]
+        sty [user_id_out]
+
+        bcc Os9IDOK
+        stb err
+Os9IDOK
+  }
+  return err;
+}
+
 // *INDENT-ON*
 
 void Os9_print(const char* str) {
