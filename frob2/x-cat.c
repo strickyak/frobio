@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
       CopyLinesFromFileToStdout(f);
       LogInfo("x.cat: Closing file %q", argv[i]);
       FClose(f);
-      if (PError) PErrorFatal("x.cat: FClose");
+      if (ErrNo) PErrorFatal("x.cat: FClose");
     }
 
     return 0;
