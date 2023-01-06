@@ -1,5 +1,6 @@
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
+#include "frob2/os9/os9defs.h"
 
 // forward
 extern File StdIn_File;
@@ -39,13 +40,17 @@ File* FOpen(const char* pathname, const char* mode) {
     return f;
 }
 
-// FOpen returns bytes_read, or 0 and sets ErrNo on error.
+// FOpen returns bytes_read, or 0 on EOF, and sets ErrNo on error.
 word FGets(char *buf, int size, File *f) {
     Assert(buf);
     Assert(size);
     Assert(f);
     int bytes_read = 0;
     ErrNo = Os9ReadLn(f->fd, buf, size-1, &bytes_read);
+    if (ErrNo == E_EOF) {
+      ErrNo = OKAY;
+      bytes_read = 0;
+    }
     if (ErrNo) return 0;
     buf[bytes_read] = '\0';
     return bytes_read;
