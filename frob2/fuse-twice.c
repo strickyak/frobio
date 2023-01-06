@@ -22,23 +22,45 @@ struct Rep {
 } Reply;
 
 int Fd;
+int count_lines;
 
 //////////////////////////////////////////
 
 void DoOpen() {
   Reply.header.status = 0;
   Reply.header.size = 0;
+  LogInfo("FUSE Daemon does Open for client.");
+  count_lines = 0;
 }
 void DoClose() {
   Reply.header.status = 0;
   Reply.header.size = 0;
+  LogInfo("FUSE Daemon does Close for client.");
 }
 
 void DoReadLn() {
-  static int count_lines;
   Reply.header.status = 0;
   Reply.header.size = 6;
-  switch (count_lines&3) {
+
+  int option = count_lines & 3;
+  LogInfo("DoReadLn: count_lines=%x option=%x", count_lines, option);
+
+  if (count_lines > 16) {
+    Reply.header.status = E_EOF;
+    Reply.header.size = 0;
+    LogInfo("FUSE Daemon returns E_EOF to client.");
+
+    /* This version tries returning unix-style 0 bytes
+     * instead of error E_EOF to signal EOF.
+     * But that is not the OS9 convention.
+  } else if (count_lines > 16) {
+    Reply.header.status = OKAY;
+    Reply.header.size = 0;
+    LogInfo("FUSE Daemon returns 0 bytes to client.");
+    */
+
+  //////} else switch (count_lines&3) {
+  } else switch (option) {
     case 0: strcpy(Reply.payload, "Nando\r"); break;
     case 1: strcpy(Reply.payload, "Bilbo\r"); break;
     case 2: strcpy(Reply.payload, "Frodo\r"); break;
