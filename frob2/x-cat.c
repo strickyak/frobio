@@ -8,10 +8,11 @@ char buf[300];
 
 void CopyLinesFromFileToStdout(File* f) {
     while (true) {
-        LogInfo("x.cat: Calling FGets...");
+        LogInfo("x.cat: Calling FGets... buf=%x size=%x f=%x", buf, sizeof buf, f);
         word cc = FGets(buf, sizeof buf, f);
         if (cc == 0) {
           if (ErrNo) { PErrorFatal("x.cat: FGets"); }
+          LogInfo("FGets returned 0, which should be on EOF.");
           break;
         }
 
