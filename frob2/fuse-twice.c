@@ -70,7 +70,7 @@ void DoReadLn() {
 }
 
 void DoWritLn() { LogFatal("WritLn not imp"); }
-void DoRead() { LogFatal("Read not imp"); }
+void DoRead() { DoReadLn(); }
 void DoWrite() { LogFatal("Write not imp"); }
 
 //////////////////////////////////////////
