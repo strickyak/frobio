@@ -42,7 +42,7 @@ void DoClose() {
 void DoReadLn() {
   LogInfo("TWICE DoReadLn: CountLines=%x", CountLines);
 
-  if (CountLines > 2) {
+  if (CountLines >= 2) {
     Reply.header.status = E_EOF;
     Reply.header.size = 0;
     LogInfo("TWICE DoReadLn: returns E_EOF to client.");
