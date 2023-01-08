@@ -5,6 +5,7 @@
 #include <frob2/froblib.h>
 
 char buf[300];
+File* OutFile;
 
 void CopyLinesFromFileToStdout(File* f) {
     while (true) {
@@ -17,13 +18,23 @@ void CopyLinesFromFileToStdout(File* f) {
         }
 
         LogInfo("x.cat: Calling FPuts... cc=%x strlen=%x buf=%q", cc, strlen(buf), buf);
-        FPuts(buf, StdOut);
+        FPuts(buf, OutFile);
         if (ErrNo) { PErrorFatal("x.cat: FPuts"); }
     }
 }
+
 int main(int argc, char *argv[]) {
     SkipArg(&argc, &argv);
-    Verbosity = 9;
+    OutFile = StdOut; // by default
+    while (GetFlag(&argc, &argv, "o:")) {
+      // GetFlag sets FlagChar & FlagArg.
+      switch (FlagChar) {
+        case 'o':
+           OutFile = FOpen(FlagArg, "w");
+           break;
+      }
+      Verbosity = 9;
+    }
 
     if (argc == 0) {
         CopyLinesFromFileToStdout(StdIn);
@@ -39,5 +50,12 @@ int main(int argc, char *argv[]) {
       if (ErrNo) PErrorFatal("x.cat: FClose");
     }
 
+    if (OutFile != StdOut) {
+      LogInfo("x.cat: Closing output file...");
+      FClose(OutFile);
+      LogInfo("x.cat: Closed output file.");
+    }
+
+    LogInfo("x.cat: Returning from main.");
     return 0;
 }

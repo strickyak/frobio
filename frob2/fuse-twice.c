@@ -22,72 +22,106 @@ struct Rep {
 } Reply;
 
 int Fd;
-int count_lines;
+int CountLines;
+char* Message;
 
 //////////////////////////////////////////
 
 void DoOpen() {
   Reply.header.status = 0;
   Reply.header.size = 0;
-  LogInfo("FUSE Daemon does Open for client.");
-  count_lines = 0;
+  LogInfo("TWICE does Open for client.");
+  CountLines = 0;
 }
 void DoClose() {
   Reply.header.status = 0;
   Reply.header.size = 0;
-  LogInfo("FUSE Daemon does Close for client.");
+  LogInfo("TWICE does Close for client, after %x lines were read", CountLines);
 }
 
 void DoReadLn() {
-  Reply.header.status = 0;
-  Reply.header.size = 6;
+  LogInfo("TWICE DoReadLn: CountLines=%x", CountLines);
 
-  int option = count_lines & 3;
-  LogInfo("DoReadLn: count_lines=%x option=%x", count_lines, option);
-
-  if (count_lines > 16) {
+  if (CountLines > 2) {
     Reply.header.status = E_EOF;
     Reply.header.size = 0;
-    LogInfo("FUSE Daemon returns E_EOF to client.");
-
-    /* This version tries returning unix-style 0 bytes
-     * instead of error E_EOF to signal EOF.
-     * But that is not the OS9 convention.
-  } else if (count_lines > 16) {
-    Reply.header.status = OKAY;
-    Reply.header.size = 0;
-    LogInfo("FUSE Daemon returns 0 bytes to client.");
-    */
-
-  //////} else switch (count_lines&3) {
-  } else switch (option) {
-    case 0: strcpy(Reply.payload, "Nando\r"); break;
-    case 1: strcpy(Reply.payload, "Bilbo\r"); break;
-    case 2: strcpy(Reply.payload, "Frodo\r"); break;
-    case 3: strcpy(Reply.payload, ".....\r"); break;
+    LogInfo("TWICE DoReadLn: returns E_EOF to client.");
+  } else {
+    strcpy(Reply.payload, Message);
+    Reply.header.status = 0;
+    Reply.header.size = strlen(Reply.payload);
+    LogInfo("TWICE DoReadLn: returns %x bytes to client: %q", Reply.header.size, Reply.payload);
   }
-  ++count_lines;
+  ++CountLines;
 }
 
-void DoWritLn() { LogFatal("WritLn not imp"); }
+void DoWritLn() {
+  Buf buf;
+  BufInit(&buf);
+  for (word i=0; Request.payload[i]; i++) {
+    char ch = Request.payload[i];
+    BufAppC(&buf, ch & 0x7F);
+    if (ch & 0x80) break;
+    if (ch == 10 || ch == 13) break;
+  }
+  BufFinish(&buf);
+  Free(Message);
+  Message = BufTake(&buf);
+  LogInfo("TWICE DoWritLn: got new message len=%x %q", strlen(Message), Message);
+
+  Reply.header.status = 0;
+  Reply.header.size = strlen(Message);
+}
 void DoRead() { DoReadLn(); }
 void DoWrite() { LogFatal("Write not imp"); }
 
+void HexDump(char* payload, word size) {
+    if (size > 1030) {
+      LogFatal("HexDump: too big: %x", size);
+    }
+    for (word i = 0; i < size; i += 16) {
+      Buf buf;
+      BufInit(&buf);
+      BufFormat(&buf, "%04x: ", i);
+      for (word j = 0; j < 16; j++) {
+        if (i+j < size) {
+          BufFormat(&buf, "%02x ", payload[i+j]);
+        } else {
+          BufFormat(&buf, "   ");
+        }
+        if ((j&3)==3) BufAppC(&buf, ' ');
+      }
+      BufAppC(&buf, ' ');
+      for (word j = 0; j < 16 && (i+j) < size; j++) {
+        char ch = payload[i+j];
+        if (32 <= ch && ch <= 126) {
+          BufAppC(&buf, ch);
+        } else {
+          BufAppC(&buf, '.');
+        }
+      }
+      BufAppC(&buf, '\n');
+      FPuts(BufFinish(&buf), StdOut);
+      BufDel(&buf);
+    }
+    Printf("\n");
+}
 //////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
   LogStep("Hello Hello Twice");
+  Message = strdup("we might be mocked but we'll never stop");
 
   CheckE(Os9Create, (DAEMON, /*mode=*/READ_WRITE, /*attrs=*/SHARABLE_RW, &Fd));
 
   while (true) {
     int cc;
-    LogInfo("DAEMON Reading...");
+    LogInfo("TWICE Reading...");
     CheckE(Os9Read, (Fd, (char*)&Request, sizeof Request, &cc));
     Assert(cc >= sizeof Request.header);
 
-    LogInfo("DAEMON Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
+    LogInfo("TWICE Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
         Request.header.operation,
         Request.header.path_num,
         Request.header.a_reg,
@@ -95,23 +129,37 @@ int main(int argc, char* argv[]) {
         Request.header.size,
         cc);
 
+    /*
+    int m = cc - sizeof Request;
+    for (word i = 0; i < m; i += 16) {
+      Printf("\n%04x: ", i);
+      for (word j = 0; j < 16 && (i+j) < cc; j++) {
+        Printf("%02x ", Request.payload[i+j]);
+        if ((j&3)==3) Printf(" ");
+      }
+    }
+    Printf("\n");
+    */
+    HexDump(Request.payload, cc - sizeof Request.header);
+
+    int n = sizeof Reply.header;
     switch (Request.header.operation) {
       case OP_CREATE:
       case OP_OPEN: DoOpen(); break;
       case OP_CLOSE: DoClose(); break;
-      case OP_READ: DoRead(); break;
+      case OP_READ: DoRead(); n += Reply.header.size; break;
+      case OP_READLN: DoReadLn(); n += Reply.header.size; break;
       case OP_WRITE: DoWrite(); break;
-      case OP_READLN: DoReadLn(); break;
       case OP_WRITLN: DoWritLn(); break;
       default:
         LogFatal("Bad operation: %d", Request.header.operation);
     }
 
-    int n = Reply.header.size + sizeof Reply.header;
-    LogInfo("DAEMON Write: status=%x size=%x n=%x",
+    LogInfo("TWICE Write: status=%x size=%x n=%x",
         Reply.header.status, Reply.header.size, n);
+    HexDump(Reply.payload, n - sizeof Reply.header);
     CheckE(Os9Write, (Fd, (char*)&Reply, n, &cc));
-    LogInfo("DAEMON Wrote OKAY");
+    LogInfo("TWICE Wrote OKAY");
   }
 
   LogStatus("Finished Finished Twice");
