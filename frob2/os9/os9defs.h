@@ -1,12 +1,10 @@
 #ifndef _FROBIO_OS9DEFS_H_
 #define _FROBIO_OS9DEFS_H_
 
-#include "frob2/froblib.h"
-
 // These are the offsets of stacked registers during SWI.
 struct registers {
-    byte rg_cc,rg_a,rg_b,rg_dp;
-    word rg_x,rg_y,rg_u;
+    unsigned char rg_cc,rg_a,rg_b,rg_dp;
+    unsigned int rg_x,rg_y,rg_u;
 };
 
 #define F_LINK      0x00 /* Link to Module */

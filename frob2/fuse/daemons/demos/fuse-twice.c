@@ -4,7 +4,7 @@
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
 #include "frob2/os9/os9defs.h" // E_EOF
-#include "../../doing_os9/fuse1/fuse2.h"
+#include "frob2/fuse/fuse.h"
 
 #define DAEMON "/Fuse/Daemon/Twice"
 #define PAYSIZ 768 // Three 256-byte blocks.
@@ -12,12 +12,12 @@
 #define SHARABLE_RW 0133
 
 struct Req {
-  struct Fuse2Request header;
+  struct FuseRequest header;
   char payload[PAYSIZ];
 } Request;
 
 struct Rep {
-  struct Fuse2Reply header;
+  struct FuseReply header;
   char payload[PAYSIZ];
 } Reply;
 
