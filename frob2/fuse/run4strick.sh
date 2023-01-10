@@ -5,8 +5,8 @@
 
 set -ex
 
-WHAT=${WHAT:-80d}
 WHAT=${WHAT:-cocosdc}
+WHAT=${WHAT:-80d}
 
 cd $(dirname $0)
 
@@ -49,28 +49,30 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9
   os9 attr -per $T,CMDS/x.cat
 )
 
-echo 'fuse.twice & sleep 5 ; x.cat -o /fuse/twice/boo startup ; dir ; x.cat /fuse/twice > z9 ; list z9; proc; date; date > /fuse/twice; list /fuse/twice > z1; list z1 ; date > /fuse/twice; list /fuse/twice > z1; list z1 ;  ' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup
+# echo 'fuse.twice & sleep 5 ; x.cat -o /fuse/twice/boo startup ; dir ; x.cat /fuse/twice > z9 ; list z9; proc; date; date > /fuse/twice; list /fuse/twice > z1; list z1 ; date > /fuse/twice; list /fuse/twice > z1; list z1 ;  ' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup
 
-os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup <<\HERE 
--t
--p
--x
-fuse.twice >>>/w1 &
-fuse.ramfile >>>/w1 &
-date > /fuse/twice/foo
-date > /fuse/ramfile/short
-date -t > /fuse/ramfile/long
-dir > /fuse/ramfile/dir
-echo ========
-list /fuse/twice/foo
-echo ========
-list /fuse/ramfile/short
-echo ========
-list /fuse/ramfile/long
-echo ========
-list /fuse/ramfile/dir
-echo ========
-HERE
+echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup
+
+#os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup <<\HERE 
+#-t
+#-p
+#-x
+#fuse.twice >>>/w1 &
+#fuse.ramfile >>>/w1 &
+#date > /fuse/twice/foo
+#date > /fuse/ramfile/short
+#date -t > /fuse/ramfile/long
+#dir > /fuse/ramfile/dir
+#echo ========
+#list /fuse/twice/foo
+#echo ========
+#list /fuse/ramfile/short
+#echo ========
+#list /fuse/ramfile/long
+#echo ========
+#list /fuse/ramfile/dir
+#echo ========
+#HERE
 
 (
   cd $GH/strickyak/doing_os9/gomar 
