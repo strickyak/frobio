@@ -27,6 +27,10 @@ enum FuseClientOp {
   OP_WRITE = 5,
   OP_READLN = 6,
   OP_WRITLN = 7,
+  OP_MAKDIR = 8,
+  OP_CHGDIR = 9,
+  OP_DELETE = 10,
+  OP_SEEK = 11,
 };
 
 #endif // _FROB2_FUSE_FUSE_H_
