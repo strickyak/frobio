@@ -129,17 +129,6 @@ int main(int argc, char* argv[]) {
         Request.header.size,
         cc);
 
-    /*
-    int m = cc - sizeof Request;
-    for (word i = 0; i < m; i += 16) {
-      Printf("\n%04x: ", i);
-      for (word j = 0; j < 16 && (i+j) < cc; j++) {
-        Printf("%02x ", Request.payload[i+j]);
-        if ((j&3)==3) Printf(" ");
-      }
-    }
-    Printf("\n");
-    */
     HexDump(Request.payload, cc - sizeof Request.header);
 
     int n = sizeof Reply.header;

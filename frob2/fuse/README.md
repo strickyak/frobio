@@ -5,7 +5,7 @@ TODO: document.
 For now, look in subdirectory `modules` for the FUSE 
 file manager, driver, and descriptor.
 
-Look in subdirectory `daemons/demo` for two demo usermode filesystems.
+Look in subdirectory `daemons/demos` for two demo usermode filesystems.
 
 ## Quick Demo
 
