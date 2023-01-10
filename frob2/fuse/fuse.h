@@ -31,6 +31,8 @@ enum FuseClientOp {
   OP_CHGDIR = 9,
   OP_DELETE = 10,
   OP_SEEK = 11,
+  OP_GETSTAT = 12,
+  OP_SETSTAT = 13,
 };
 
 #endif // _FROB2_FUSE_FUSE_H_
