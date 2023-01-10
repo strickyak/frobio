@@ -29,8 +29,9 @@ name     fcs   /Fuser/
 start    equ   *
 
 * Dispatch Relays
-Init     bra FuserInit
-         nop
+Init     clra
+         clrb
+         rts
 Read     clrb  ; never called.
          comb
          rts
@@ -43,46 +44,9 @@ GetStat  clrb  ; never called.
 SetStat  clrb  ; never called.
          comb
          rts
-Term     bra FuserTerm
-
-
-* Driver Init: U=DeviceVars Y=DeviceDescription
-FuserInit  DAA   ; Init for Fuser
-        LDD #'A
-        SWI
-        FCB 104    ; Hyper PutChar
-        LDD #'A
-        SWI
-        FCB 104    ; Hyper PutChar
-        LDD #'A
-        SWI
-        FCB 104    ; Hyper PutChar
-        LDD #'A
-        SWI
-        FCB 104    ; Hyper PutChar
-        clrb
-        rts
-
-FuserTerm  DAA
-
-        LDD #'Z
-        SWI
-        FCB 104    ; Hyper PutChar
-        LDD #'Z
-        SWI
-        FCB 104    ; Hyper PutChar
-        LDD #'Z
-        SWI
-        FCB 104    ; Hyper PutChar
-        LDD #'Z
-        SWI
-        FCB 104    ; Hyper PutChar
-
-       SWI
-       FCB 100    ; Fatal Core Dump, just to stop the emulator.
-
+Term     clra
          clrb
-         rts
+				 rts
 
          emod
 eom      equ   *
