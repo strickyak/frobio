@@ -1151,7 +1151,7 @@ asm CreateOrOpenA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _CreateOrOpenC  ; Call C function to do the work.
+    LBSR _CreateOrOpenC  ; Call C function to do the work.
 
 ; Shared by all `asm ...A()` functions:
 ; Returning from the XxxxC() routines,
@@ -1169,7 +1169,7 @@ asm CloseA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _CloseC  ; Call C function to do the work.
+    LBSR _CloseC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
@@ -1177,7 +1177,7 @@ asm ReadLnA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _ReadLnC  ; Call C function to do the work.
+    LBSR _ReadLnC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
@@ -1185,7 +1185,7 @@ asm WritLnA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _WritLnC  ; Call C function to do the work.
+    LBSR _WritLnC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
@@ -1193,7 +1193,7 @@ asm ReadA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _ReadC  ; Call C function to do the work.
+    LBSR _ReadC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
@@ -1201,7 +1201,7 @@ asm WriteA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _WriteC  ; Call C function to do the work.
+    LBSR _WriteC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
@@ -1209,7 +1209,7 @@ asm GetStatA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _GetStatC  ; Call C function to do the work.
+    LBSR _GetStatC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
@@ -1217,7 +1217,7 @@ asm SetStatA() {
   asm {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
-    BSR _SetStatC  ; Call C function to do the work.
+    LBSR _SetStatC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
