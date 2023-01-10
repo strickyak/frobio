@@ -1,5 +1,7 @@
 // demo fuse daemon "RamFile"
 
+#define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
+
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
 #include "frob2/frobos9.h"
@@ -51,6 +53,7 @@ struct FileInfo {
 //////////////////////////////////////////
 
 void HexDump(char* payload, word size) {  // Just verbosity.
+#if MAX_VERBOSE >= LLDebug
     if (size > 1030) {
       LogFatal("HexDump: too big: %x", size);
     }
@@ -80,29 +83,30 @@ void HexDump(char* payload, word size) {  // Just verbosity.
       BufDel(&buf);
     }
     Printf("\n");
+#endif
 }
 
 void ShowFileInfo(struct FileInfo* f) {  // Just verbosity.
   if (f) {
-    LogInfo("FileInfo[%x] { name=%q contents=%x size=%x }",
+    LogDebug("FileInfo[%x] { name=%q contents=%x size=%x }",
         f-Files, f->name, f->contents, f->size);
     if (f->size) {
       HexDump(f->contents, f->size);
     }
   } else {
-    LogInfo("f=NULL");
+    LogDebug("f=NULL");
   }
 }
 
 void ShowPathInfo(struct PathInfo* p) {  // Just verbosity.
   if (p) {
-      LogInfo("PathInfo[%x] { writing:%x offset=%x file=%x }", 
+      LogDebug("PathInfo[%x] { writing:%x offset=%x file=%x }", 
           p-Paths, p->writing, p->offset, p->file);
       if (p->file) {
         ShowFileInfo(p->file);
       }
   } else {
-    LogInfo("p=NULL");
+    LogDebug("p=NULL");
   }
 }
 
