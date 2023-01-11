@@ -124,4 +124,8 @@ z2a.bin:
 	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os -fwhole-program  z2a.c 
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map  -I.. -o z2a.o z2a.s 
 	lwlink --format=decb --entry=_main -o z2a.bin --map=z2a.bin.map -s decb.script z2a.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc
-	scp z2a.bin root@yak.net:/tmp/
+	# # # scp z2a.bin root@yak.net:/tmp/
+	decb dir /media/strick/APRIL3/YDECB.DSK
+	-decb kill /media/strick/APRIL3/YDECB.DSK,Z.BIN
+	decb copy -2 -b -r z2a.bin /media/strick/APRIL3/YDECB.DSK,Z.BIN
+	decb dir /media/strick/APRIL3/YDECB.DSK
