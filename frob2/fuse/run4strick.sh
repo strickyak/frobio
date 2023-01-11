@@ -29,8 +29,8 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9
   cd $GH/n6il/nitros9/level2/coco3 
   export NITROS9DIR=$GH/n6il/nitros9 
   make clean 
-  make 
-  make NOS9_6809_L2_v030300_coco3_$WHAT.dsk
+  make PIPE="$(echo /tmp/fuse*.os9)"
+  make PIPE="$(echo /tmp/fuse*.os9)" NOS9_6809_L2_v030300_coco3_$WHAT.dsk
   cp -v NOS9_6809_L2_v030300_coco3_$WHAT.dsk $GH/strickyak/doing_os9/gomar/drive/disk2
 )
 
