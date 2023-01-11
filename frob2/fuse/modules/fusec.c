@@ -939,7 +939,8 @@ errnum ClientOperationC(struct PathDesc* cli, byte op) {
       }
       break;
     default:
-      assert(0);
+      ClearPeer(dae, cli);
+      return E_UNKSVC;  // TODO -- send to daemon.
       break;
   }
 
@@ -1131,7 +1132,11 @@ errnum GetStatC(struct PathDesc* pd, struct Regs* regs) {
   errnum z;
   PrintH("@ GetStatC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
   assert(pd->regs == regs);
-  z = 14;
+  if (pd->is_daemon) {
+    z = E_UNKSVC;
+  } else {
+    z = ClientOperationC(pd, OP_GETSTAT);
+  }
   PrintH("@ GetStatC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
 }
@@ -1140,8 +1145,64 @@ errnum SetStatC(struct PathDesc* pd, struct Regs* regs) {
   errnum z;
   PrintH("@ SetStatC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
   assert(pd->regs == regs);
-  z = 15;
+  if (pd->is_daemon) {
+    z = E_UNKSVC;
+  } else {
+    z = ClientOperationC(pd, OP_SETSTAT);
+  }
   PrintH("@ SetStatC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
+  return z;
+}
+
+errnum MakDirC(struct PathDesc* pd, struct Regs* regs) {
+  errnum z;
+  PrintH("@ MakDirC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
+  assert(pd->regs == regs);
+  if (pd->is_daemon) {
+    z = E_UNKSVC;
+  } else {
+    z = ClientOperationC(pd, OP_MAKDIR);
+  }
+  PrintH("@ MakDirC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
+  return z;
+}
+
+errnum ChgDirC(struct PathDesc* pd, struct Regs* regs) {
+  errnum z;
+  PrintH("@ ChgDirC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
+  assert(pd->regs == regs);
+  if (pd->is_daemon) {
+    z = E_UNKSVC;
+  } else {
+    z = ClientOperationC(pd, OP_CHGDIR);
+  }
+  PrintH("@ ChgDirC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
+  return z;
+}
+
+errnum DeleteC(struct PathDesc* pd, struct Regs* regs) {
+  errnum z;
+  PrintH("@ DeleteC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
+  assert(pd->regs == regs);
+  if (pd->is_daemon) {
+    z = E_UNKSVC;
+  } else {
+    z = ClientOperationC(pd, OP_DELETE);
+  }
+  PrintH("@ DeleteC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
+  return z;
+}
+
+errnum SeekC(struct PathDesc* pd, struct Regs* regs) {
+  errnum z;
+  PrintH("@ SeekC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
+  assert(pd->regs == regs);
+  if (pd->is_daemon) {
+    z = E_UNKSVC;
+  } else {
+    z = ClientOperationC(pd, OP_SEEK);
+  }
+  PrintH("@ SeekC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
 }
 
@@ -1218,6 +1279,38 @@ asm SetStatA() {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
     LBSR _SetStatC  ; Call C function to do the work.
+    LBRA BackToAssembly
+  }
+}
+asm MakDirA() {
+  asm {
+    PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
+    LDU #0   ; Terminate frame pointer chain for CMOC.
+    LBSR _MakDirC  ; Call C function to do the work.
+    LBRA BackToAssembly
+  }
+}
+asm ChgDirA() {
+  asm {
+    PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
+    LDU #0   ; Terminate frame pointer chain for CMOC.
+    LBSR _ChgDirC  ; Call C function to do the work.
+    LBRA BackToAssembly
+  }
+}
+asm DeleteA() {
+  asm {
+    PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
+    LDU #0   ; Terminate frame pointer chain for CMOC.
+    LBSR _DeleteC  ; Call C function to do the work.
+    LBRA BackToAssembly
+  }
+}
+asm SeekA() {
+  asm {
+    PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
+    LDU #0   ; Terminate frame pointer chain for CMOC.
+    LBSR _SeekC  ; Call C function to do the work.
     LBRA BackToAssembly
   }
 }
