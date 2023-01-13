@@ -1,4 +1,4 @@
-all: fuse.twice.os9 fuse.ramfile.os9
+all: fuse.twice.os9 fuse.ramfile.os9 fuse.tftp.os9
 
 FROB2DIR = ../../..
 
@@ -11,6 +11,10 @@ fuse.twice.os9 : fuse-twice.c
 fuse.ramfile.os9 : fuse-ramfile.c
 	cmoc -i --os9 -I../../../.. -DMAX_VERBOSE=9 -o fuse.ramfile fuse-ramfile.c $(SUPPORT)
 	mv fuse.ramfile fuse.ramfile.os9
+
+fuse.tftp.os9 : fuse-tftp.c
+	cmoc -i --os9 -I../../../.. -DMAX_VERBOSE=9 -o fuse.tftp fuse-tftp.c $(FROB2DIR)/wiz/*.c $(SUPPORT)
+	mv fuse.tftp fuse.tftp.os9
 
 clean:
 	rm -f *.o *.s *.list *.lst *.os9 *.map *.link

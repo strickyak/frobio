@@ -4,8 +4,6 @@
 #include "frob2/wiz/wiz5100s.h"
 #include "frob2/wiz/w5100s_defs.h"
 
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-
 // FORWARD of what-was-static:
 extern byte WizGet1(word reg);
 extern word WizGet2(word reg);

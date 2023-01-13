@@ -1,6 +1,8 @@
 // demo fuse daemon "RamFile"
 
+#ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
+#endif
 
 #include "frob2/froblib.h"
 #include "frob2/frobnet.h"
