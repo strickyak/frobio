@@ -364,7 +364,12 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
   LogFatal("ASSERT FAILED: %s:%u\n", \
       __FILE__, __LINE__); } } while(false) 
 
-#endif // _FROB2_FROBLIB_H_
+
+//////// Macros.
+
+#define MIN(a,b) ((a)<(b) ? (a) : (b))
+#define MAX(a,b) ((a)>(b) ? (a) : (b))
+
 
 //////// Notes.
 
@@ -407,3 +412,4 @@ size_t : 8
 char* : 8
 
 */
+#endif // _FROB2_FROBLIB_H_
