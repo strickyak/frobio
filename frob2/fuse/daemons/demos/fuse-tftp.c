@@ -1,4 +1,4 @@
-// demo fuse daemon "RamFile"
+// demo fuse daemon fuse.tftp ("/Fuse/TFTP")
 
 #undef MAX_VERBOSE
 #ifndef MAX_VERBOSE
@@ -174,16 +174,6 @@ END_LOOP:
   }
   LogStatus("OKAY: got $%x bytes for %q", total_len, filename);
 }
-
-/*  OLD MAIN in f-tftp.c:
-  const char* p = argv[0];
-  word server_port = DEFAULT_SERVER_PORT;
-  quad server_addy = NyParseDottedDecimalQuadAndPort(&p, &server_port); 
-  byte socknum = OpenLocalSocket();
-  TGet(socknum, server_addy, server_port, argv[1], argv[2]);
-  return 0;
-}
-*/
 
 //
 //
@@ -446,10 +436,10 @@ int main(int argc, char* argv[]) {
   LogStep("Starting.");
 
   // Open the /FUSE device in *Daemon Mode*.
-  // That is, open the path name "/Fuse/Daemon/RamFile"
+  // That is, open the path name "/Fuse/Daemon/TFTP"
   // where the second component "Daemon" means we are the daemon,
-  // and the third component "RamFile" is which fuse we will serve.
-  // Clients opening "/Fuse/RamFile/..." will send their
+  // and the third component "TFTP" is which fuse we will serve.
+  // Clients opening "/Fuse/TFTP/..." will send their
   // filesystem operations to this daemon.
   CheckE(Os9Create, (DAEMON, /*mode=*/READ_WRITE, /*attrs=*/SHARABLE_RW, &DaemonFd));
 
@@ -468,9 +458,6 @@ int main(int argc, char* argv[]) {
         Request.header.b_reg,
         Request.header.size,
         cc); // Just verbosity.
-    //if (cc > sizeof Request.header) { // Just verbosity.
-      //HexDump(Request.payload, cc - sizeof Request.header);
-    //}
 
     // What we do depends on the operation, so we have a big switch.
     // Different operations need different handling.
