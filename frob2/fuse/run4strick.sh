@@ -5,10 +5,12 @@
 
 set -ex
 
-WHAT=${WHAT:-80d}
 WHAT=${WHAT:-cocosdc}
+WHAT=${WHAT:-80d}
 
 cd $(dirname $0)
+FUSE=$(pwd)         # Fuse Dir, absolute
+FM=$FUSE/modules    # Fuse Modules, absolute
 
 GH=$HOME/go/src/github.com
 T=$GH/strickyak/doing_os9/gomar/drive/disk2
@@ -16,7 +18,6 @@ T=$GH/strickyak/doing_os9/gomar/drive/disk2
 (
   cd modules/
   make -B LWASM=lwasm-orig
-  cp -f *.os9 /tmp/
 )
 (
   cd $GH/strickyak/doing_os9/gomar/borges/
@@ -25,33 +26,48 @@ T=$GH/strickyak/doing_os9/gomar/drive/disk2
 
 $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9' .
 
+
 (
   cd $GH/n6il/nitros9/level2/coco3 
   export NITROS9DIR=$GH/n6il/nitros9 
-  make clean 
-  make PIPE="$(echo /tmp/fuse*.os9)"
-  make PIPE="$(echo /tmp/fuse*.os9)" NOS9_6809_L2_v030300_coco3_$WHAT.dsk
-  cp -v NOS9_6809_L2_v030300_coco3_$WHAT.dsk $GH/strickyak/doing_os9/gomar/drive/disk2
+  make
+  make -C bootfiles clean
+  make -C bootfiles
+  cat $FM/fuseman.os9 $FM/fuser.os9 $FM/fuse.os9 >> bootfiles/bootfile_$WHAT
+  rm -f NOS9_6809_L2_v030300_coco3_$WHAT.dsk
+  # This `make` depends on *not* re-making bootfiles.
+  make  NOS9_6809_L2_v030300_coco3_$WHAT.dsk
+  cp -v NOS9_6809_L2_v030300_coco3_$WHAT.dsk $T
 )
 
 (
   cd daemons/demos
   make -B
-  os9 copy -r fuse.ramfile.os9 $T,CMDS/fuse.ramfile
-  os9 attr -per $T,CMDS/fuse.ramfile
-  os9 copy -r fuse.twice.os9 $T,CMDS/fuse.twice
-  os9 attr -per $T,CMDS/fuse.twice
+  for x in *.os9
+  do
+    y=$(basename $x .os9)
+    os9 copy -r $x $T,CMDS/$y
+    os9 attr -per $T,CMDS/$y
+  done
 )
 (
   cd ..
-  make -B x.cat.os9
-  os9 copy -r x.cat.os9 $T,CMDS/x.cat
-  os9 attr -per $T,CMDS/x.cat
+  make -B
+  for x in [fx].*.os9
+  do
+    y=$(basename $x .os9)
+    os9 copy -r $x $T,CMDS/$y
+    os9 attr -per $T,CMDS/$y
+  done
+  for x in [fx].*.shell
+  do
+    y=$(basename $x .shell)
+    os9 copy -r -l $x $T,CMDS/$y
+    os9 attr -per $T,CMDS/$y
+  done
 )
 
-# echo 'fuse.twice & sleep 5 ; x.cat -o /fuse/twice/boo startup ; dir ; x.cat /fuse/twice > z9 ; list z9; proc; date; date > /fuse/twice; list /fuse/twice > z1; list z1 ; date > /fuse/twice; list /fuse/twice > z1; list z1 ;  ' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup
-
-os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup <<\HERE 
+os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/s.5 <<\HERE 
 -t
 -p
 -x
@@ -81,7 +97,14 @@ echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/driv
 (
   cd $GH/strickyak/doing_os9/gomar 
 
-  # go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
+  case $WHAT in
+    80d )
+      go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
+      ;;
+    cocosdc )
+      scp $T root@yak.net:/tmp/
+      ;;
+  esac
 
-  go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/gomar/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
+  # go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/gomar/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
 )

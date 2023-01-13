@@ -1,5 +1,6 @@
 // demo fuse daemon "RamFile"
 
+#undef MAX_VERBOSE
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
 #endif
@@ -10,7 +11,7 @@
 #include "frob2/os9/os9defs.h" // E_EOF
 #include "frob2/fuse/fuse.h"
 
-#define DAEMON "/Fuse/Daemon/RamFile"
+#define DAEMON "/Fuse/Daemon/TFTP"
 #define PAYSIZ 200 // Short 200 bytes, until FUSEman is fixed.
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
@@ -58,7 +59,7 @@ void SendAck(byte socknum, word block, quad addr, word tid) {
   if (ps) LogFatal("cannot UdpSend ack: %s", ps);
 }
 
-void SendRequest(byte socknum, quad host, word port, word opcode, const char* filename, bool ascii) {
+void SendTftpRequest(byte socknum, quad host, word port, word opcode, const char* filename, bool ascii) {
   char* p = (char*)packet;
   *(word*)p = opcode;
   p += 2;
@@ -105,6 +106,8 @@ void ResetFragList() {
 }
 
 void SaveBytesToFragList(char* data, word len) {
+  if (!len) return;  // Last packet can be empty.
+
   struct Fragment* frag = (struct Fragment*) Malloc(len + sizeof (struct Fragment));
   Assert(frag);
   char* fragdata = (char*)(frag + 1);
@@ -125,7 +128,7 @@ void TGet(const char* server_host_spec, const char* filename) {
   word server_port = DEFAULT_SERVER_PORT;
   quad server_addy = NyParseDottedDecimalQuadAndPort(&server_host_spec, &server_port); 
   byte socknum = OpenLocalSocket();
-  SendRequest(socknum, server_addy, server_port, TFTP_READ, filename, /*ascii=*/0);
+  SendTftpRequest(socknum, server_addy, server_port, TFTP_READ, filename, /*ascii=*/0);
 
   word expected_block = 1;
   while (1) {
@@ -193,6 +196,7 @@ void HexDump(char* payload, word size) {  // Just verbosity.
       LogFatal("HexDump: too big: %x", size);
     }
     for (word i = 0; i < size; i += 16) {
+      if (i>=32) break; ///////////////////////// STOP SHORT
       Buf buf;
       BufInit(&buf);
       BufFormat(&buf, "%04x: ", i);
@@ -260,7 +264,7 @@ word CopyBytesToBuffer(struct PathInfo* p, char* buf, word buf_size, bool linely
     struct Fragment* f = p->current;
     if (!f) break;
     if (p->off >= f->len) {
-      f = f->next;
+      p->current = f->next;
       p->off = 0;
       continue;
     }
@@ -268,10 +272,18 @@ word CopyBytesToBuffer(struct PathInfo* p, char* buf, word buf_size, bool linely
 
     if (linely) {
       char ch = pay[p->off];
-      if (ch == '\0') break;
+      /*
+      if (ch == '\0') {
+        p->off++;
+        LogDebug("CopyBToB: NUL off=%x", p->off);
+        break;
+      }
+      */
+      if (ch==0) ch='~';  // Make data NULs visible as `~`
       *b++ = ch;
       p->off++;
       --togo;
+      LogDebug("CopyBToB: ch=%x off=%x togo=%x", p->off);
       if (ch == '\n' || ch == '\r') break;
     } else {
       word span = MIN(togo, f->len - p->off);
@@ -283,6 +295,7 @@ word CopyBytesToBuffer(struct PathInfo* p, char* buf, word buf_size, bool linely
     }
   }
 
+  LogInfo("CopyBToB buf_size=%x - togo=%x = %x", buf_size, togo, buf_size - togo);
   return buf_size - togo;  // how many bytes consumed & copied.
 }
 
@@ -397,13 +410,16 @@ void DoReadLn() {
   ShowPathInfo(p);
 
   word cc = CopyBytesToBuffer(p, Reply.payload, PAYSIZ, /*linely=*/true);
+  LogInfo("DoReadLn cc=%x", cc);
 
   if (cc) {
     Reply.header.status = 0;
-    Reply.header.size = cc + sizeof Reply;
+    //? Reply.header.size = cc + sizeof Reply;
+    Reply.header.size = cc;
   } else {
     Reply.header.status = E_EOF;
-    Reply.header.size = sizeof Reply;
+    //? Reply.header.size = sizeof Reply;
+    Reply.header.size = 0;
   }
   return;
 }
@@ -452,9 +468,9 @@ int main(int argc, char* argv[]) {
         Request.header.b_reg,
         Request.header.size,
         cc); // Just verbosity.
-    if (cc > sizeof Request.header) { // Just verbosity.
-      HexDump(Request.payload, cc - sizeof Request.header);
-    }
+    //if (cc > sizeof Request.header) { // Just verbosity.
+      //HexDump(Request.payload, cc - sizeof Request.header);
+    //}
 
     // What we do depends on the operation, so we have a big switch.
     // Different operations need different handling.

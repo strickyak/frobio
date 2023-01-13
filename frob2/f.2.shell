@@ -1,7 +1,8 @@
+t
 f.config 10.1.2.3 255.0.0.0 10.2.2.2
 f.ping 1.1.1.1
 f.ntp -s 216.239.35.8
 
 fuse.tftp &
 sleep 20
-list /fuse/tftp/10.2.2.2/xxxyyyzzz >>> x.1
+list /fuse/tftp/10.2.2.2/xxxyyyzzz > x.1
