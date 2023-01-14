@@ -76,10 +76,6 @@ struct DeviceVars {
   byte v_lprc;  // Last Active Process Id (not used?)
   byte v_busy;  // Active process ID (0 == not busy)
   byte v_wake;  // Process ID to wake after command completed
-
-  // Specific to Fuse:
-  word base_of_ram64;
-
   // Actually a full page of 256 bytes will be alloc'ed.
   // So feel free to add more fields here.
 };
@@ -89,14 +85,6 @@ struct Regs {
   word rx, ry, ru, rpc;
 };  // size 12
 #define REGS_D(regs) (*(word*)(&(regs)->ra))
-
-enum FuseState {
-  FS_NONE,
-  FS_DAEMON_LISTENING,
-  FS_DAEMON_WORKING,
-  FS_CLIENT,
-  FS_CLIENT_WAITING,
-};
 
 struct PathDesc {
   byte path_num;              // PD.PD = 0
@@ -110,9 +98,9 @@ struct PathDesc {
   // offset 10 = PD.FST
   bool is_daemon;  // 10
   bool paused_proc_id;  // 11: 0 if not paused.
-  word buf_len;    // 12
+  word buf_len;    // 12: User process (C or D) buffer size, or part used.
   struct PathDesc* peer;  // 14: Daemon's client or Client's daemon.
-  bool is_poisoned;  // 16
+  bool is_poisoned;  // 16: TODO: error handling and path poisoning.
   // 17
 }; // Must be 32 bytes or under in size.
 
