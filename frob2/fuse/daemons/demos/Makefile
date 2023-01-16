@@ -1,19 +1,15 @@
-all: fuse.twice.os9 fuse.ramfile.os9 fuse.tftp.os9
+all: fuse.ramfile.os9 fuse.tftp.os9
 
 FROB2DIR = ../../..
 
 SUPPORT = $(FROB2DIR)/froblib/*.c $(FROB2DIR)/os9/*.c $(FROB2DIR)/stack300.asm
 
-fuse.twice.os9 : fuse-twice.c
-	cmoc -i --os9 -I../../../.. -DMAX_VERBOSE=9 -o fuse.twice fuse-twice.c $(SUPPORT)
-	mv fuse.twice fuse.twice.os9
-
 fuse.ramfile.os9 : fuse-ramfile.c
-	cmoc -i --os9 -I../../../.. -DMAX_VERBOSE=9 -o fuse.ramfile fuse-ramfile.c $(SUPPORT)
+	cmoc -i --os9 -I../../../.. -o fuse.ramfile fuse-ramfile.c $(SUPPORT)
 	mv fuse.ramfile fuse.ramfile.os9
 
 fuse.tftp.os9 : fuse-tftp.c
-	cmoc -i --os9 -I../../../.. -DMAX_VERBOSE=9 -o fuse.tftp fuse-tftp.c $(FROB2DIR)/wiz/*.c $(SUPPORT)
+	cmoc -i --os9 -I../../../.. -o fuse.tftp fuse-tftp.c $(FROB2DIR)/wiz/*.c $(SUPPORT)
 	mv fuse.tftp fuse.tftp.os9
 
 clean:

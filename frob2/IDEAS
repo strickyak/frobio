@@ -234,3 +234,40 @@ In file included from z2a.c:1:0:
 z2z.bin                                                                                                                                                     100% 7710   140.6KB/s   00:00
 /sy/frobio/frob2$
 ------------------------------------------------
+
+Borne Shell Ideas:
+  Postpone ENV?
+  Postpone BG?
+  Postpone $* $1 $2 $3 shift
+  Postpone case
+  Postpone read
+  Postpone Subshells
+  set only -e -x etc.
+
+Subshells need
+  * Vars
+  * Env
+  * Redirects
+  * Flag modes -e -x etc.
+
+echo "Hello; $x!"
+  -- Use "" and '' to build words, then shed.
+  -- Then just join on spaces for params to exec
+  -- Commands that want filenames get them.
+  -- the echo command gets all but quotes
+  Broken: Empty String as an argument.
+  However: if Dash Options require = (e.g. -color=red)
+    (defaulting to 1 if no =) then empty option
+    is available: -prefix=
+
+Unix Look And Feel Capabilities:
+  -- Edition Number comes after name.
+  -- Follow that with $ABCF
+  -- Followed by lowercase letters "a"=argv "e"=env
+  -- if needed, lowercase letter could be followed by decimal digits.
+               ( like for sizes of Capabilities )
+  -- followed by $00
+
+
+
+

@@ -5,8 +5,8 @@
 
 set -ex
 
-WHAT=${WHAT:-cocosdc}
 WHAT=${WHAT:-80d}
+WHAT=${WHAT:-cocosdc}
 
 cd $(dirname $0)
 FUSE=$(pwd)         # Fuse Dir, absolute
@@ -52,7 +52,7 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9
 )
 (
   cd ..
-  make -B
+  make ; # make -B
   for x in [fx].*.os9
   do
     y=$(basename $x .os9)
@@ -67,20 +67,16 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9
   done
 )
 
-os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/s.5 <<\HERE 
--t
+: os9 copy -r -l /dev/stdin $T,/s.5 <<'HERE'
+t
 -p
 -x
-* fuse.twice >>>/w1 &
 fuse.ramfile >>>/w1 &
 sleep 10
-* date > /fuse/twice/foo
 date > /fuse/ramfile/short
 date -t > /fuse/ramfile/long
 dir > /fuse/ramfile/dir
 echo ========
-* list /fuse/twice/foo
-* echo ========
 sleep 5
 list /fuse/ramfile/short
 echo ========
@@ -91,6 +87,15 @@ sleep 5
 list /fuse/ramfile/dir
 echo ========
 HERE
+os9 copy -r -l /dev/stdin $T,/s.5 <<'HERE'
+t
+fuse.ramfile &
+sleep 5
+date > /fuse/ramfile/aaa
+list /fuse/ramfile/long > zaaa
+list zaaa
+HERE
+os9 attr -per $T,s.5
 
 echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/drive/disk2,/startup
 
@@ -99,12 +104,13 @@ echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/driv
 
   case $WHAT in
     80d )
-      go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
+      # go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
+
+      go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/gomar/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
       ;;
     cocosdc )
       scp $T root@yak.net:/tmp/
       ;;
   esac
 
-  # go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/gomar/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
 )

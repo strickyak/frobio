@@ -1,4 +1,4 @@
-// demo fuse daemon "RamFile"
+// demo fuse daemon: fuse.ramfile (/FUSE/RamFile)
 
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
@@ -11,7 +11,7 @@
 #include "frob2/fuse/fuse.h"
 
 #define DAEMON "/Fuse/Daemon/RamFile"
-#define PAYSIZ 250 // Short 250 bytes, until FUSEman is fixed.
+#define PAYSIZ 2048
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
 
@@ -190,7 +190,7 @@ errnum DoOpenRead() {
   return 0;
 }
 
-void DoOpen() {
+void DoOpen(bool unused_create) {
   errnum e;
   switch (Request.header.a_reg) {
     case 1: // Read
@@ -217,12 +217,12 @@ void DoClose() {
   Reply.header.size = 0;
 }
 
-void DoReadLn() {
+void DoRead(bool linely) {
   errnum e = 0;
   struct PathInfo *p = &Paths[Request.header.path_num];
   struct FileInfo *f = p->file;
   Assert(f);
-  LogInfo("DoReadLn path=%x", Request.header.path_num);
+  LogInfo("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
   ShowPathInfo(p);
 
   if (p->writing) { e = E_BMODE; goto ERROR; }
@@ -232,15 +232,18 @@ void DoReadLn() {
     goto ERROR;
   }
 
-  // Find the end of the next line.
   word i;
-  for (i = p->offset; i < f->size; i++) {
-    char ch = f->contents[i];
-    if (ch=='\0') break;
-    if (ch=='\n' || ch=='\r') {
-      i++; // Keep the line ender.
-      break;
+  if (linely) {
+    // Find the end of the next line.
+    for (i = p->offset; i < f->size; i++) {
+      char ch = f->contents[i];
+      if (ch=='\r') {
+        i++; // Keep the CR.
+        break;
+      }
     }
+  } else {
+    i = MIN(p->offset+Request.header.size, f->size);
   }
 
   word n = i - p->offset; // num bytes to return.
@@ -255,12 +258,13 @@ ERROR:
   Reply.header.size = 0;
 }
 
-void DoWritLn() {
+
+void DoWrite(bool unused_linely) {
   errnum e = 0;
   struct PathInfo *p = &Paths[Request.header.path_num];
   struct FileInfo* f = p->file;
   Assert(f);
-  LogInfo("DoReadLn path=%x", Request.header.path_num);
+  LogInfo("DoWritLn path=%x", Request.header.path_num);
   ShowPathInfo(p);
 
   if (!p->writing) { e = E_BMODE; goto ERROR; }
@@ -281,17 +285,24 @@ ERROR:
   Reply.header.size = 0;
 }
 
-void DoRead() {
-  Reply.header.status = E_UNKSVC;
-  Reply.header.size = 0;
-}
-
-void DoWrite() {
-  Reply.header.status = E_UNKSVC;
-  Reply.header.size = 0;
-}
-
 //////////////////////////////////////////
+
+// Fixing the size for where the first Carriage Return appears
+// is the job if the daemon, becuase the FuseMan copies bytes
+// here without looking at them.
+void FixSizeForWritLn() {
+  word n = MIN(Request.header.size, sizeof Request.payload);
+  char* p = Request.payload;
+  word i;
+  for (i = 0; i < n; i++) {
+    if (*p == '\r') {
+      Request.header.size = i+1;
+      return;
+    }
+    p++;
+  }
+  Request.header.size = n;
+}
 
 int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
@@ -328,13 +339,13 @@ int main(int argc, char* argv[]) {
     // Different operations need different handling.
     int n = sizeof Reply.header;
     switch (Request.header.operation) {
-      case OP_CREATE:
-      case OP_OPEN: DoOpen(); break;
+      case OP_CREATE: DoOpen(true); break;
+      case OP_OPEN: DoOpen(false); break;
       case OP_CLOSE: DoClose(); break;
-      case OP_READ: DoRead(); n += Reply.header.size; break;
-      case OP_READLN: DoReadLn(); n += Reply.header.size; break;
-      case OP_WRITE: DoWrite(); break;
-      case OP_WRITLN: DoWritLn(); break;
+      case OP_READ: DoRead(false); n += Reply.header.size; break;
+      case OP_READLN: DoRead(true); n += Reply.header.size; break;
+      case OP_WRITE: DoWrite(false); break;
+      case OP_WRITLN: FixSizeForWritLn(); DoWrite(true); break;
       default:
         Reply.header.status = E_UNKSVC;
         Reply.header.size = 0;
