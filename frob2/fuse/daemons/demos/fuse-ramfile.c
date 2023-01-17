@@ -1,5 +1,7 @@
 // demo fuse daemon: fuse.ramfile (/FUSE/RamFile)
 
+#define MAX_VERBOSE LLDebug
+
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
 #endif
@@ -225,9 +227,10 @@ void DoRead(bool linely) {
   LogInfo("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
   ShowPathInfo(p);
 
-  if (p->writing) { e = E_BMODE; goto ERROR; }
+  if (p->writing) { LogInfo("writing?"); e = E_BMODE; goto ERROR; }
 
   if (p->offset >= f->size) {
+    LogInfo("EOF!");
     e = E_EOF;
     goto ERROR;
   }
@@ -242,8 +245,10 @@ void DoRead(bool linely) {
         break;
       }
     }
+    LogInfo("Linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
   } else {
     i = MIN(p->offset+Request.header.size, f->size);
+    LogInfo("NOT linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
   }
 
   word n = i - p->offset; // num bytes to return.
@@ -251,9 +256,11 @@ void DoRead(bool linely) {
   p->offset = i;  // Advance.
   Reply.header.status = 0;
   Reply.header.size = n;
+  LogInfo("=> Return0 n=%x", n);
   return;
 
 ERROR:
+  LogInfo("=> ERR=%x", e);
   Reply.header.status = e;
   Reply.header.size = 0;
 }
