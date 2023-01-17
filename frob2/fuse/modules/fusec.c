@@ -851,6 +851,7 @@ errnum DaemonReadC(struct PathDesc* dae) {
     case OP_READ:
     case OP_READLN:
       dae->regs->ry = sizeof req;
+      req.size = cli->regs->ry;
       break;
 
     case OP_WRITE:
