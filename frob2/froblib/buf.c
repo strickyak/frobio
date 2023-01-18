@@ -137,7 +137,7 @@ const char **BufTakeDope(Buf *p, int *lenP) {
   return (const char **) BufTake(p);
 }
 
-// Decoding elements.
+// Decoding list elements for Tcl / Picol / NCL.
 
 // Return length of decoded element.
 // Also the end of parsing.
