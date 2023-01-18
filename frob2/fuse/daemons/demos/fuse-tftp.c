@@ -1,7 +1,7 @@
 // demo fuse daemon: fuse.tftp (/Fuse/TFTP)
 
 #ifndef MAX_VERBOSE
-#define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
+#define MAX_VERBOSE 9 // LLStep /* Log one banner, then only errors. */
 #endif
 
 #include "frob2/froblib.h"
@@ -288,9 +288,11 @@ const char* StrDupRequestedFileName() {
   // Where we get the filename.
   char* pay = Request.payload;
   word n = Request.header.size;
+  LogStep("Dup: n=%x pay=%s", n, pay);
 
   // Malloc a string for the filename. 
   char* s = (char*) Malloc(n + 1);
+  Assert(s);
   memcpy(s, pay, n);
   s[n] = '\0';
 
@@ -430,7 +432,7 @@ void FixSizeForWritLn() {
 
 int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
-  LogStep("Starting.");
+  LogStep("Starting (yak).");
 
   // Open the /FUSE device in *Daemon Mode*.
   // That is, open the path name "/Fuse/Daemon/TFTP"

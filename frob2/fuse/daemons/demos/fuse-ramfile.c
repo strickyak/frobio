@@ -1,6 +1,6 @@
 // demo fuse daemon: fuse.ramfile (/FUSE/RamFile)
 
-#define MAX_VERBOSE LLDebug
+// #define MAX_VERBOSE LLDebug
 
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
