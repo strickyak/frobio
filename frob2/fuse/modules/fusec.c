@@ -823,6 +823,7 @@ errnum DaemonReadC(struct PathDesc* dae) {
   dae->paused_proc_id = Os9CurrentProcessId();
   PrintH("DaemonReadC: Pausing.\n");
   Os9Sleep(0);
+  // DAEMAN HAS WOKEN UP.
   PrintH("DaemonReadC: UnPaused.\n");
   dae->paused_proc_id = 0;
   byte dtask = Os9UserTask();
@@ -832,6 +833,8 @@ errnum DaemonReadC(struct PathDesc* dae) {
   CheckClient(cli);
   CheckPeer(cli, dae);
   struct ClientTmp *t = cli->client_tmp;
+  PrintH("ClientTmp: t-> task=%x op=%x orig_rx=%x pn_size=%x",
+       t->task_num, t->client_op, t->opening_original_rx, t->opening_pathname_size);
 
   struct FuseRequest req = {
     /*operation*/ t->client_op,
@@ -844,6 +847,19 @@ errnum DaemonReadC(struct PathDesc* dae) {
   switch (t->client_op) {
     case OP_CREATE:
     case OP_OPEN:
+      {
+        assert(dae->regs->ry > sizeof req);
+        word sz = MIN(t->opening_pathname_size, dae->regs->ry - sizeof req);
+      req.size = sz;
+      dae->regs->ry = sz + sizeof req;
+        // Copy the pathname, sz bytes.
+        err = Os9Move(sz,
+            t->opening_original_rx, t->task_num,
+            dae->regs->rx + sizeof req, dtask);
+        if (err) goto FINISH;
+      }
+      break;
+
     case OP_CLOSE:
       dae->regs->ry = sizeof req;
       break;
@@ -983,6 +999,7 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
 
   // Allocate a temporary task num.
   errnum e = Os9ReserveTask(&tmp.task_num);
+  PrintH("ReserveTask -> %x (e %x)", tmp.task_num, e);
   if (e) return e;
 
   Os9CopyCurrentUserDatMapTo(tmp.task_map);
@@ -1001,7 +1018,11 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
 
   if (opening) {
     tmp.opening_original_rx = opening->original_rx;
-    tmp.opening_pathname_size = opening->end2 - opening->original_rx;
+    tmp.opening_pathname_size = cli->regs->rx - opening->original_rx;
+    PrintH("OPENING: orig=%x cli.rx=%x size=%x",
+        opening->original_rx,
+        cli->regs->rx,
+        tmp.opening_pathname_size);
   } else {
     tmp.opening_original_rx = 0;
     tmp.opening_pathname_size = 0;

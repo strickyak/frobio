@@ -111,7 +111,9 @@ echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/driv
       go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/gomar/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
       ;;
     cocosdc )
-      scp $T root@yak.net:/tmp/
+      test -d /media/strick/APRIL3/ && cp $T /media/strick/APRIL3/z ||
+          scp $T root@yak.net:/tmp/
+      sync
       ;;
   esac
 
