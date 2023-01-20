@@ -8,7 +8,7 @@
 //    Tcl in ~ 500 lines of code by Salvatore antirez Sanfilippo.
 //    BSD licensed.
 
-#include "frobio/ncl/ncl.h"
+#include "frob2/ncl/ncl.h"
 
 // TODO: unify 9chain & 9fork.
 //- 9chain command args.... (does not return unless error)
@@ -54,7 +54,7 @@ int picolCommand9FileSize(int argc, char **argv, void *pd) {
     return ErrorNum(argv[0], e);
   if (x)
     return picolSetResult("toobig"), PICOL_ERR;
-  return picolSetResult(StaticFormatSignedInt(u)), PICOL_OK;
+  return ResultD(u);
 }
 
 //- 9wait child_id_var exit_status_var (name two variables to receive results)
@@ -144,7 +144,7 @@ int picolCommand9MakOrChgDir(int argc, char **argv, void *pd) {
   char final = SetHiBitOfLastChar(path);
   int mode = atoi(argv[2]);
 
-  error (*f)(const char *, int);  // defines `f`.
+  auto errnum (*f)(const char *, int);  // defines `f`.
   f = (CharUp(argv[0][1]) == 'M') ? Os9MakDir : Os9ChgDir;
   int e = f(path, mode);
   RestoreLastChar(path, final);

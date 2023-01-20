@@ -11,6 +11,9 @@
 // In order to get all code into a single assembly listing for the module,
 // we include these C files instead of using the linker to link the usual stuff.
 
+#ifndef _FROB2_NCL_NCL_H_
+#define _FROB2_NCL_NCL_H_
+
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
 #include "frob2/froblib/malloc.h"
@@ -19,6 +22,13 @@
 #include "frob2/match/util.h"
 
 #include <stdarg.h>
+
+#define free Free
+#define malloc Malloc
+#define realloc ReAlloc
+#define snprintf_s SnPrintf
+#define printf_s Printf
+#define printf_d Printf
 
 #undef HEAP_CHECKS             // Check heap integregity at key points.
 #define TEAR_DOWN               // Free all memory structures at the end, to check for leak.  Use `;` to exit repl.
@@ -67,10 +77,10 @@ struct picolCallFrame {
 };
 
 // Were in struct picolInterp; now are global:
-struct picolCallFrame *Callframe;
-struct picolCmd *Commands;
-struct picolArray *Arrays;
-char *Result;
+extern struct picolCallFrame *Callframe;
+extern struct picolCmd *Commands;
+extern struct picolArray *Arrays;
+extern char *Result;
 
 #define BUF_SIZE 200            /* instead of 1024 */
 
@@ -80,3 +90,14 @@ extern int ResultFormat(const char *msg, ...);
 extern int NotFound();
 
 int picolCommandCallProc(int argc, char **argv, void *pd);
+const char *JoinWithSpaces(int argc, char **argv);
+const char *AddCR(char *s);
+int picolArityErr(char *name);
+int IntOrErrorNum(int e, char **argv, int x);
+void picolSetResult(const char *s);
+int picolSetVar(const char *name, const char *val);
+int EmptyOrErrorNum(int e, char **argv);
+int picolEval(const char *t, const char *where);
+const char* StaticFormatSignedInt(int x);
+
+#endif // _FROB2_NCL_NCL_H_

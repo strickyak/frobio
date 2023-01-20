@@ -111,7 +111,7 @@ chop:
 	ls __*.c | wc -l
 
 f.ncl.os9:
-	sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc.c froblib/nylib.c froblib/nystdio.c froblib/std.c os9/frobos9.c stack300.asm
+	sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c $(LIBS) regexp/re.c match/util.c
 
 trapa.o:
 	lwasm --obj -o trapa.o trapa.asm 

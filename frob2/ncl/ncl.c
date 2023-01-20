@@ -14,6 +14,12 @@
 #include "frob2/match/util.h"
 #include "frob2/regexp/re.h"
 
+// Global Interpreter State.
+struct picolCallFrame *Callframe;
+struct picolCmd *Commands;
+struct picolArray *Arrays;
+char *Result;
+
 #ifdef HEAP_CHECKS
 void HC(void *p) {
   heap_check_block(((struct MallocHead *) p) - 1, 0);
@@ -93,6 +99,12 @@ void FreeDope(int c, const char **v) {
   for (int j = 0; j < c; j++)
     free((void *) v[j]);        // Free the strings.
   free(v);                      // Free the vector.
+}
+
+char static_scratch[24];
+const char* StaticFormatSignedInt(int x) {
+  SPrintf(static_scratch, "%d", x);
+  return static_scratch;
 }
 
 void picolInitParser(struct picolParser *p, const char *text) {
@@ -314,13 +326,15 @@ TOP:
 }
 
 const char *Explode(char *s, int n) {
+  char scratch[8];
   if (n < 0)
     n = strlen(s);
 
   struct Buf result;
   BufInit(&result);
   for (int i = 0; i < n; i++) {
-    BufAppElemS(&result, StaticFormatSignedInt(s[i]));
+    SPrintf(scratch, "%d", s[i]);
+    BufAppElemS(&result, scratch);
   }
   BufFinish(&result);
 
@@ -672,8 +686,7 @@ int picolCommandMath(int argc, char **argv, void *pd) {
     else
       return NotFound();
   }
-  picolSetResult(StaticFormatSignedInt(c));
-  return PICOL_OK;
+  return ResultD(c);
 }
 
 int NotFound() {
@@ -1441,16 +1454,12 @@ int picolCommandList(int argc, char **argv, void *pd) {
 }
 
 int ErrorNum(char *argv0, int err) {
-#if 1
-  char buf[BUF_SIZE];
-  snprintf_s(buf, BUF_SIZE, "%s: ERROR %d", argv0);
-#endif
-  picolSetResult(StaticFormatSignedInt(err));
+  ResultD(err);
   return PICOL_ERR;
 }
 
 int ResultD(int x) {
-  picolSetResult(StaticFormatSignedInt(x));
+  ResultFormat("%d", x);
   return PICOL_OK;
 }
 
@@ -1468,18 +1477,6 @@ int ResultFormat(const char *fmt, ...) {
   va_end(ap);
   return PICOL_OK;
 }
-
-#if 0
-int ResultFormatS(const char *msg, const char *x) {
-  Buf buf;
-  BufInit(&buf);
-  BufFormat(&buf, msg, x);
-  BufFinish(&buf);
-  picolMoveToResult(BufTake(&buf));
-  BufDel(&buf);
-  return PICOL_OK;
-}
-#endif
 
 //- exit ?status? (does not return.  0 is good status, 1..255 are bad)
 int picolCommand9Exit(int argc, char **argv, void *pd) {

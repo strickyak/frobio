@@ -180,6 +180,7 @@ int Printf(const char* fmt, ...);
 int EPrintf(const char* fmt, ...);
 int FPrintf(File* f, const char* fmt, ...);
 int SPrintf(char* dest, const char* fmt, ...);
+int SnPrintf(char* dest, size_t max, const char* fmt, ...);
 char* StrFormat(const char* fmt, ...);
 
 extern byte ShortStaticBuffer[24];
