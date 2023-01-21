@@ -1,7 +1,8 @@
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
 
-#if __SIZE_MAX__ == 65535U // if gcc 6809
+#if __GNUC__
+#if __M6809__
 
 char NybbleToHexDigit(byte a) {
   a &= 15;
@@ -59,4 +60,5 @@ void Os9Exit(byte status) {
   while (1) {}  // Infinite Loop.
 }
 
-#endif // gcc 6809
+#endif // __M6809__
+#endif // __GNUC__
