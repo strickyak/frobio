@@ -273,3 +273,77 @@ Unix Look And Feel Capabilities:
 git push -u origin bufferless
 ==============================================
 
+m6809_override_options() in m6809.c
+
+```
+int goose;
+__attribute__((section("hasxxx"))) int goosexxx;
+
+int gander;
+__attribute__((section("hasxxx"))) int ganderxxx;
+```
+
+YIELDS
+
+```
+	.area .bss
+	.globl	_goose
+_goose:	.blkb	2
+	.globl _goosexxx
+	.area	hasxxx
+_goosexxx:
+	.word	0	;skip space 2
+	.area .bss
+	.globl	_gander
+_gander:	.blkb	2
+	.globl _ganderxxx
+	.area	hasxxx
+_ganderxxx:
+	.word	0	;skip space 2
+```
+
+
+-- Grep section_op in m6809.c
+
+gcc6809 -S -I.. -std=gnu99 -nostdlib -dP -mcode-section=NANDO  yadd.c
+```
+;;; gcc for m6809 : Nov 22 2019 00:09:58
+;;; 4.6.4 (gcc6809lw pl6)
+;;; ABI version 1
+;;; -mint16
+        .module yadd.c
+        .area NANDO
+        .globl _hexdigit
+_hexdigit:
+; (insn/f 36 4 37 (parallel [
+```
+
+
+config/h8300/h8300.md uses SYMBOL_REF_FLAG in .md file
+```
+(define_insn "call"
+  [(call (match_operand:QI 0 "call_insn_operand" "or")
+	 (match_operand:HI 1 "general_operand" "g"))]
+  ""
+  "*
+{
+  if (GET_CODE (XEXP (operands[0], 0)) == SYMBOL_REF
+      && SYMBOL_REF_FLAG (XEXP (operands[0], 0)))
+    return \"jsr\\t@%0:8\";
+  else
+    return \"jsr\\t%0\";
+}"
+  [(set_attr "type" "call")
+   (set (attr "length")
+	(if_then_else (match_operand:QI 0 "small_call_insn_operand" "")
+		      (const_int 2)
+		      (const_int 4)))])
+```
+
+rtl.h
+```
+/* Subsequent bits are available for the target to use.  */
+#define SYMBOL_FLAG_MACH_DEP_SHIFT      9
+#define SYMBOL_FLAG_MACH_DEP            (1 << SYMBOL_FLAG_MACH_DEP_SHIFT)
+```
+

@@ -53,8 +53,14 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9
 (
   cd ..
   make
+
   make f.ncl.os9
   os9 copy -r -l ncl/nclrc.tcl $T,SYS/nclrc.tcl
+
+  make yadd.os9
+  os9 copy -r yadd.os9 $T,CMDS/yadd
+  os9 attr -per $T,CMDS/yadd
+
   for x in [fx].*.os9
   do
     y=$(basename $x .os9)

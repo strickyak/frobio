@@ -129,3 +129,14 @@ z2a.bin:
 	-decb kill /media/strick/APRIL3/YDECB.DSK,Z.BIN
 	decb copy -2 -b -r z2a.bin /media/strick/APRIL3/YDECB.DSK,Z.BIN
 	decb dir /media/strick/APRIL3/YDECB.DSK
+
+yadd.os9: yadd.c os9/frobos9_gcc.c
+	rm -f yadd
+	gcc6809 -c  -I.. -std=gnu99 -nostdlib -fpic yadd.c os9/frobos9_gcc.c
+	gcc6809 -S  -I.. -std=gnu99 -nostdlib -fpic yadd.c os9/frobos9_gcc.c
+	lwasm-orig -o yadd.o -l'yadd.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource yadd.s
+	lwasm-orig -o frobos9_gcc.o -l'frobos9_gcc.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource frobos9_gcc.s
+	ls -l yadd.o frobos9_gcc.o
+	lwlink --format=os9 --entry=_main -o yadd --map=yadd.map yadd.o frobos9_gcc.o
+	mv yadd yadd.os9
+	os9 ident yadd.os9
