@@ -17,8 +17,9 @@ int main() {
     ShowHex('c', Count);
   }
   ShowHex('C', Count);
-  ShowHex('Z', Count-5050);
-  Os9Exit(88);
+  word z = Count - 5050;
+  ShowHex('0', z);
+  Os9Exit(z ? 13 : 88);
 }
 
 int goose;

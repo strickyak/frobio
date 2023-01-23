@@ -130,9 +130,10 @@ z2a.bin:
 	decb copy -2 -b -r z2a.bin /media/strick/APRIL3/YDECB.DSK,Z.BIN
 	decb dir /media/strick/APRIL3/YDECB.DSK
 
-yadd.os9: yadd.c os9/frobos9_gcc.c
-	rm -f yadd
-	gcc6809 -c  -I.. -std=gnu99 -nostdlib -fpic yadd.c os9/frobos9_gcc.c
+FORCE:
+
+yadd.os9: yadd.c os9/frobos9_gcc.c FORCE
+	rm -f yadd.os9 yadd.o yadd.s
 	gcc6809 -S  -I.. -std=gnu99 -nostdlib -fpic yadd.c os9/frobos9_gcc.c
 	lwasm-orig -o yadd.o -l'yadd.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource yadd.s
 	lwasm-orig -o frobos9_gcc.o -l'frobos9_gcc.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource frobos9_gcc.s
@@ -140,3 +141,30 @@ yadd.os9: yadd.c os9/frobos9_gcc.c
 	lwlink --format=os9 --entry=_main -o yadd --map=yadd.map yadd.o frobos9_gcc.o
 	mv yadd yadd.os9
 	os9 ident yadd.os9
+
+yadd2.os9: yadd2.c os9/frobos9_gcc.c FORCE
+	rm -f yadd2.os9 yadd2.o yadd2.s
+	gcc6809 -O2 -S  -I.. -std=gnu99 -nostdlib -fpic -dP -fdump-unnumbered-links -fdump-unnumbered -fdump-noaddr yadd2.c os9/frobos9_gcc.c
+	sed 's/area\t[.]text[.]startup/area\t.text/' < yadd2.s > yadd2.s+ ; mv yadd2.s+ yadd2.s
+	lwasm-orig -o yadd2.o -l'yadd2.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource yadd2.s
+	lwasm-orig -o frobos9_gcc.o -l'frobos9_gcc.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource frobos9_gcc.s
+	ls -l yadd2.o frobos9_gcc.o
+	lwlink --format=os9 --entry=_main -o yadd2 --map=yadd2.map yadd2.o frobos9_gcc.o
+	mv yadd2 yadd2.os9
+	os9 ident yadd2.os9
+
+
+OPT_LEVEL_1 = -fdefer-pop -fmerge-constants -fthread-jumps -floop-optimize -fcrossjumping -fif-conversion -fif-conversion2 -fdelayed-branch -fguess-branch-probability -fcprop-registers
+OPT_LEVEL_1X = -fdefer-pop -fmerge-constants -fthread-jumps -floop-optimize -fcrossjumping -fif-conversion -fif-conversion2 -fdelayed-branch -fguess-branch-probability
+
+yadd2all.os9: yadd2.c os9/frobos9_gcc.c FORCE
+	rm -f yadd2all.os9 yadd2all.o yadd2all.s
+	cat yadd2.c os9/frobos9_gcc.c > yadd2all.c 
+	# gcc6809 -Os -S  -I.. -std=gnu99 -nostdlib -fpic -da -dP -fdump-unnumbered-links -fdump-unnumbered -fdump-noaddr -fwhole-program yadd2all.c
+	gcc6809 -O2 -S  -I.. -std=gnu99 -nostdlib -fpic -da -dP -fwhole-program yadd2all.c
+	sed 's/area\t[.]text[.]startup/area\t.text/' < yadd2all.s > yadd2all.s+ ; mv yadd2all.s+ yadd2all.s
+	lwasm-orig -o yadd2all.o -l'yadd2all.o.list' --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource yadd2all.s
+	ls -l yadd2all.o
+	lwlink --format=os9 --entry=_main -o yadd2all --map=yadd2all.map yadd2all.o
+	mv yadd2all yadd2all.os9
+	os9 ident yadd2all.os9

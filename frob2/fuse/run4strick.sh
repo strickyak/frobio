@@ -60,6 +60,12 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9
   make yadd.os9
   os9 copy -r yadd.os9 $T,CMDS/yadd
   os9 attr -per $T,CMDS/yadd
+  make yadd2.os9
+  os9 copy -r yadd2.os9 $T,CMDS/yadd2
+  os9 attr -per $T,CMDS/yadd2
+  make yadd2all.os9
+  os9 copy -r yadd2all.os9 $T,CMDS/yadd2all
+  os9 attr -per $T,CMDS/yadd2all
 
   for x in [fx].*.os9
   do
