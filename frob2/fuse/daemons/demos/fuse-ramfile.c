@@ -67,7 +67,7 @@ void HexDump(char* payload, word size) {  // Just verbosity.
       BufFormat(&buf, "%04x: ", i);
       for (word j = 0; j < 16; j++) {
         if (i+j < size) {
-          BufFormat(&buf, "%02x ", payload[i+j]);
+          BufFormat(&buf, "%02x ", 0xFF & payload[i+j]);
         } else {
           BufFormat(&buf, "   ");
         }
@@ -92,25 +92,25 @@ void HexDump(char* payload, word size) {  // Just verbosity.
 
 void ShowFileInfo(struct FileInfo* f) {  // Just verbosity.
   if (f) {
-    LogDebug("FileInfo[%x] { name=%q contents=%x size=%x }",
+    LogInfo("FileInfo[%x] { name=%q contents=%x size=%x }",
         f-Files, f->name, f->contents, f->size);
     if (f->size) {
       HexDump(f->contents, f->size);
     }
   } else {
-    LogDebug("f=NULL");
+    LogInfo("f=NULL");
   }
 }
 
 void ShowPathInfo(struct PathInfo* p) {  // Just verbosity.
   if (p) {
-      LogDebug("PathInfo[%x] { writing:%x offset=%x file=%x }", 
+      LogInfo("PathInfo[%x] { writing:%x offset=%x file=%x }", 
           p-Paths, p->writing, p->offset, p->file);
       if (p->file) {
         ShowFileInfo(p->file);
       }
   } else {
-    LogDebug("p=NULL");
+    LogInfo("p=NULL");
   }
 }
 
@@ -141,12 +141,14 @@ const char* RequestedFileName() {
   char* s = (char*) Malloc(n + 1);
   memcpy(s, pay, n);
   s[n] = '\0';
+  LogInfo("RequestedFileName    (%x) %q", strlen(s), s);
 
   // BUG WORKAROUND: I saw trailing space in filename?
   for (word i = 0; i < n; i++) {
     if (s[i] <= 32) s[i] = '\0';
   }
 
+  LogInfo("RequestedFileName -> (%x) %q", strlen(s), s);
   return (const char*)s;
 }
 

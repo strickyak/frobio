@@ -44,7 +44,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// #define HYPER_GOMAR 1
+#define HYPER_GOMAR 1
 
 typedef unsigned char bool;
 typedef unsigned char byte;
@@ -335,22 +335,30 @@ RELTSK_OK
   return err;
 }
 
+void Os9SetDatMapForTask(byte task_num, word* mapping) {
+  PrintH("SET DAT FOR TASK %x <- %x\n", task_num, mapping);
+  asm {
+    LDB task_num
+    LDX <D.TskIPt ; X -> task table
+    ABX
+    ABX           ; X -> correct task entry
+
+    LDD mapping
+    STD ,X        ; set the mapping at X
+  }
+}
+
 void Os9CopyCurrentUserDatMapTo(word* dest) {
   word* current = 0;
   asm {
     LDX <D.Proc   ; current user proc
     LDB P$Task,X  ; its task num
     LDX <D.TskIPt ; task table
-    LSLB          ; index by words
+    ABX
+    ABX
 
-    LDD B,X
+    LDD ,X       ; same MAX(B)=63 assumption as rb1773 driver.
     STD current
-
-*   LDD [B,X]     ; same MAX(B)=63 assumption as rb1773 driver.
-*   STD current
-
-
-
   }
   for (byte i = 0; i < DAT_MAP_NUM_WORDS; i++) {
     *dest++ = *current++;
@@ -396,6 +404,8 @@ StoreByteBad
 }
 
 errnum Os9Move(word count, word src, byte srcMap, word dest, byte destMap) {
+  PrintH("Os9Move c=%x s=%x/%x d=%x/%x\n", count, src, srcMap, dest, destMap);
+
   errnum err;
   word dreg = ((word)srcMap << 8) | destMap;
   asm {
@@ -687,7 +697,7 @@ void ShowParsedName(word current, word begin, word end) {
 // The other string s is an upper-case 0-terminated
 // C string, in normal memory, with no high bits.
 bool ParsedNameEquals(word begin, word end, const char*s) {
-  // PrintH("ParsedNameEquals(b=%x, e=%x, s=%x)\n", begin, end, s);
+  PrintH("ParsedNameEquals(b=%x, e=%x, s=%x)\n", begin, end, s);
   byte task = Os9UserTask();
   word p = begin;
   for (; *s && p < end; p++, s++) {
@@ -696,13 +706,16 @@ bool ParsedNameEquals(word begin, word end, const char*s) {
     assert(!err);
 
     if (ToUpper(ch) != *s) {
+      PrintH("  ->FALSE");
       return FALSE;  // does not match.
     }
   }
 
   // If both termination conditions are true,
   // strings are equal.
-  return (p==end) && ((*s)==0);
+  bool z = (p==end) && ((*s)==0);
+  PrintH("  ->%x (%x,%x)", z, (p==end) ,((*s)==0));
+  return z;
 }
 
 // FindDaemon traverses all path descriptors looking for
@@ -918,11 +931,13 @@ errnum DaemonWriteC(struct PathDesc* dae) {
 
   byte dtask = Os9UserTask();
   byte stask = Os9SystemTask();
+  PrintH("DaemonWriteC: tmp=%x dtask=%x stask=%x", t, dtask, stask);
   err = Os9Move(sizeof t->reply,
       dae->regs->rx, dtask,
       (word)(&t->reply), stask);
   assert(!err);
 
+  PrintH("DaemonWriteC: reply.status=%x client_op=%x", t->reply.status, t->client_op);
   if (t->reply.status) {
     err = t->reply.status;
 
@@ -958,6 +973,7 @@ errnum DaemonWriteC(struct PathDesc* dae) {
   Os9Awaken(cli);
   Os9AwakenIOQN(cli);
 
+  PrintH("DaemonWriteC: return OKAY");
   return OKAY;
 }
 
@@ -977,7 +993,7 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
       return E_SHARE;
     }
     assert(dae->is_daemon);
-    PrintH("COC: found daemon %x", dae);
+    PrintH("ClOp: found daemon %x", dae);
 
     SetPeer(cli, dae);  // Client links to Daemon.
   } else {
@@ -986,7 +1002,7 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
     CheckPeer(cli, dae);  // Client is already linked to Daemon.
   }
   SetPeer(dae, cli);  // Daemon links to Client during the client operation.
-  PrintH("COC op=%x cli=%x dae=%x entry\n", op, cli, dae);
+  PrintH("ClOp op=%x cli=%x dae=%x entry\n", op, cli, dae);
 
 
 
@@ -999,12 +1015,13 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
 
   // Allocate a temporary task num.
   errnum e = Os9ReserveTask(&tmp.task_num);
-  PrintH("ReserveTask -> %x (e %x)", tmp.task_num, e);
+  PrintH("\nReserveTask -> Task# %x (e %x)\n", tmp.task_num, e);
   if (e) return e;
 
   Os9CopyCurrentUserDatMapTo(tmp.task_map);
-  PrintH("COC task=%x map=%x %x  %x %x  %x %x  %x %x",
+  PrintH("ClOp Task=%x Map@%x = %x %x  %x %x  %x %x  %x %x\n",
       tmp.task_num,
+      tmp.task_map,
       tmp.task_map[0],
       tmp.task_map[1],
       tmp.task_map[2],
@@ -1013,13 +1030,14 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
       tmp.task_map[5],
       tmp.task_map[6],
       tmp.task_map[7]);
+Os9SetDatMapForTask(tmp.task_num, tmp.task_map);
 
   tmp.client_op = op;
 
   if (opening) {
     tmp.opening_original_rx = opening->original_rx;
     tmp.opening_pathname_size = cli->regs->rx - opening->original_rx;
-    PrintH("OPENING: orig=%x cli.rx=%x size=%x",
+    PrintH("OPENING: orig=%x cli.rx=%x size=%x\n",
         opening->original_rx,
         cli->regs->rx,
         tmp.opening_pathname_size);
@@ -1030,14 +1048,27 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
 
   ////////////////////////
   // Now we switch and let the daemon run.
-  PrintH("ClientOperationC switch");
+  PrintH("\nClientOperationC switch-to-daemon\n");
   SwitchProcess(cli, dae);
-  PrintH("ClientOperationC un-switch");
+  PrintH("\nClientOperationC un-switch-from-deamon\n");
+
+  PrintH("\n RETAINED task-> %x (e %x)", tmp.task_num, e);
+  PrintH(" RETAINED Task#=%x Map=%x %x  %x %x  %x %x  %x %x\n",
+      tmp.task_num,
+      tmp.task_map[0],
+      tmp.task_map[1],
+      tmp.task_map[2],
+      tmp.task_map[3],
+      tmp.task_map[4],
+      tmp.task_map[5],
+      tmp.task_map[6],
+      tmp.task_map[7]);
 
   // When we return, the daemon has given us a reply.
   ////////////////////////
 
   PrintH("ClientOperationC op=%x reply.status=%x size=%x ret\n", op, tmp.reply.status, tmp.reply.size);
+  PrintH("\nReleasingTask# %x\n", tmp.task_num);
   Os9ReleaseTask(tmp.task_num); // Free the temporary task num.
   cli->current_process_id = 0;
   return tmp.reply.status;

@@ -24,7 +24,7 @@ T=$GH/strickyak/doing_os9/gomar/drive/disk2
   go install borges.go
 )
 
-$HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/gomar/borges/" -glob '*.os9' .
+$HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/borges/" -glob '*.os9' .
 
 
 (
@@ -105,9 +105,15 @@ os9 copy -r -l /dev/stdin $T,/s.5 <<'HERE'
 t
 fuse.ramfile &
 sleep 5
-date > /fuse/ramfile/aaa
-list /fuse/ramfile/long > zaaa
+date -t > /fuse/ramfile/aaa
+list /fuse/ramfile/aaa > zaaa
 list zaaa
+date -t > /fuse/ramfile/bbb
+list /fuse/ramfile/bbb > zbbb
+list zbbb
+date -t > /fuse/ramfile/ccc
+list /fuse/ramfile/ccc > zccc
+list zccc
 HERE
 os9 attr -per $T,s.5
 
@@ -118,9 +124,9 @@ echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/driv
 
   case $WHAT in
     80d )
-      # go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
+      go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
 
-      go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/gomar/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
+      # go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
       ;;
     cocosdc )
       test -d /media/strick/APRIL3/ && cp $T /media/strick/APRIL3/z ||
