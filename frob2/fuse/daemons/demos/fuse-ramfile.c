@@ -1,7 +1,5 @@
 // demo fuse daemon: fuse.ramfile (/FUSE/RamFile)
 
-// #define MAX_VERBOSE LLDebug
-
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
 #endif
@@ -57,10 +55,8 @@ struct FileInfo {
 //////////////////////////////////////////
 
 void HexDump(char* payload, word size) {  // Just verbosity.
+#if 0
 #if MAX_VERBOSE >= LLDebug
-    if (size > 1030) {
-      LogFatal("HexDump: too big: %x", size);
-    }
     for (word i = 0; i < size; i += 16) {
       Buf buf;
       BufInit(&buf);
@@ -88,29 +84,30 @@ void HexDump(char* payload, word size) {  // Just verbosity.
     }
     Printf("\n");
 #endif
+#endif
 }
 
 void ShowFileInfo(struct FileInfo* f) {  // Just verbosity.
   if (f) {
-    LogInfo("FileInfo[%x] { name=%q contents=%x size=%x }",
+    LogDebug("FileInfo[%x] { name=%q contents=%x size=%x }",
         f-Files, f->name, f->contents, f->size);
     if (f->size) {
       HexDump(f->contents, f->size);
     }
   } else {
-    LogInfo("f=NULL");
+    LogDebug("f=NULL");
   }
 }
 
 void ShowPathInfo(struct PathInfo* p) {  // Just verbosity.
   if (p) {
-      LogInfo("PathInfo[%x] { writing:%x offset=%x file=%x }", 
+      LogDebug("PathInfo[%x] { writing:%x offset=%x file=%x }", 
           p-Paths, p->writing, p->offset, p->file);
       if (p->file) {
         ShowFileInfo(p->file);
       }
   } else {
-    LogInfo("p=NULL");
+    LogDebug("p=NULL");
   }
 }
 
@@ -141,14 +138,14 @@ const char* RequestedFileName() {
   char* s = (char*) Malloc(n + 1);
   memcpy(s, pay, n);
   s[n] = '\0';
-  LogInfo("RequestedFileName    (%x) %q", strlen(s), s);
+  LogDebug("RequestedFileName    (%x) %q", strlen(s), s);
 
-  // BUG WORKAROUND: I saw trailing space in filename?
+  // There can be trailing spaces.  Zap the first one.
   for (word i = 0; i < n; i++) {
-    if (s[i] <= 32) s[i] = '\0';
+    if (s[i] <= 32) { s[i] = '\0'; break; }
   }
 
-  LogInfo("RequestedFileName -> (%x) %q", strlen(s), s);
+  LogDebug("RequestedFileName -> (%x) %q", strlen(s), s);
   return (const char*)s;
 }
 
@@ -171,7 +168,7 @@ errnum DoOpenWrite() {
   p->offset = 0;
   p->writing = true;
 
-  LogInfo("DoOpenWrite: path=%x file=%q", Request.header.path_num, name);
+  LogDebug("DoOpenWrite: path=%x file=%q", Request.header.path_num, name);
   Free((void*)name);
   return 0;
 }
@@ -189,7 +186,7 @@ errnum DoOpenRead() {
   p->offset = 0;
   p->writing = false;
 
-  LogInfo("DoOpenRead: path=%x file=%q", Request.header.path_num, name);
+  LogDebug("DoOpenRead: path=%x file=%q", Request.header.path_num, name);
   Free((void*)name);
   return 0;
 }
@@ -212,7 +209,7 @@ void DoOpen(bool unused_create) {
 }
 void DoClose() {
   struct PathInfo *p = &Paths[Request.header.path_num];
-  LogInfo("DoClose: path=%x file=%q", Request.header.path_num, p->file->name);
+  LogDebug("DoClose: path=%x file=%q", Request.header.path_num, p->file->name);
   p->file = NULL;
   p->offset = 0;
   p->writing = false;
@@ -226,13 +223,13 @@ void DoRead(bool linely) {
   struct PathInfo *p = &Paths[Request.header.path_num];
   struct FileInfo *f = p->file;
   Assert(f);
-  LogInfo("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
+  LogDebug("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
   ShowPathInfo(p);
 
-  if (p->writing) { LogInfo("writing?"); e = E_BMODE; goto ERROR; }
+  if (p->writing) { LogDebug("writing?"); e = E_BMODE; goto ERROR; }
 
   if (p->offset >= f->size) {
-    LogInfo("EOF!");
+    LogDebug("EOF!");
     e = E_EOF;
     goto ERROR;
   }
@@ -247,10 +244,10 @@ void DoRead(bool linely) {
         break;
       }
     }
-    LogInfo("Linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
+    LogDebug("Linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
   } else {
     i = MIN(p->offset+Request.header.size, f->size);
-    LogInfo("NOT linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
+    LogDebug("NOT linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
   }
 
   word n = i - p->offset; // num bytes to return.
@@ -258,27 +255,38 @@ void DoRead(bool linely) {
   p->offset = i;  // Advance.
   Reply.header.status = 0;
   Reply.header.size = n;
-  LogInfo("=> Return0 n=%x", n);
+  LogDebug("=> Return0 n=%x", n);
   return;
 
 ERROR:
-  LogInfo("=> ERR=%x", e);
+  LogDebug("=> ERR=%x", e);
   Reply.header.status = e;
   Reply.header.size = 0;
 }
 
 
-void DoWrite(bool unused_linely) {
+void DoWrite(bool linely) {
   errnum e = 0;
   struct PathInfo *p = &Paths[Request.header.path_num];
   struct FileInfo* f = p->file;
   Assert(f);
-  LogInfo("DoWritLn path=%x", Request.header.path_num);
+  LogDebug("DoWritLn path=%x", Request.header.path_num);
   ShowPathInfo(p);
 
   if (!p->writing) { e = E_BMODE; goto ERROR; }
 
   word n = Request.header.size;
+  if (linely) {
+    // Truncate after first CR.
+    word i;
+    for (i = 0; i < n; i++) {
+      if (Request.payload[i] == '\r') {
+        i++; // Keep the CR.
+        break;
+      }
+    }
+    n = i;
+  }
 
   // Append n bytes to the contents.
   f->contents = ReAlloc((void*)f->contents, f->size + n);
@@ -329,11 +337,11 @@ int main(int argc, char* argv[]) {
   // and then Os9Write to send the reply.
   while (true) {
     int cc;
-    LogInfo("Reading...");
+    LogDebug("Reading...");
     CheckE(Os9Read, (DaemonFd, (char*)&Request, sizeof Request, &cc));
     Assert(cc >= sizeof Request.header);
 
-    LogInfo("Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
+    LogDebug("Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
         Request.header.operation,
         Request.header.path_num,
         Request.header.a_reg,
@@ -361,7 +369,7 @@ int main(int argc, char* argv[]) {
         LogError("Bad operation: %d", Request.header.operation);
     }
 
-    LogInfo("Reply: status=%x size=%x n=%x",
+    LogDebug("Reply: status=%x size=%x n=%x",
         Reply.header.status,
         Reply.header.size,
         n); // Just verbosity.
@@ -370,7 +378,7 @@ int main(int argc, char* argv[]) {
     }
 
     CheckE(Os9Write, (DaemonFd, (char*)&Reply, n, &cc));
-    LogInfo("Wrote Reply.");
+    LogDebug("Wrote Reply.");
   }
   // NOTREACHED
   return 0;
