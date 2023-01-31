@@ -2,8 +2,22 @@
 //
 // to compile with CMOC and launch with `preboot.asm`.
 
+#ifdef __GNUC__
+
+#include <stdarg.h>
+
+void memcpy(char* a, const char* b, int c);
+void memset(char* a, int b, int c) ;// {}
+void strcpy(char* a, const char*b) ;// {}
+void strncpy(char* a, const char*b, int n) ;// {}
+int strlen(const char* s) ;// {}
+
+#else
+
 #include <cmoc.h>
 #include <stdarg.h>
+
+#endif
 
 typedef unsigned char bool;
 typedef unsigned char byte;
@@ -57,6 +71,7 @@ struct vars {
     quad ip_gateway;
     quad ip_dns_server;
     word vdg_ptr;
+    word delay_counter;
     byte packet[600];
 };
 
@@ -95,8 +110,8 @@ struct UdpRecvHeader {
 /////////////////////////////////////////////////
 
 void Delay(word n) {
-  word bogus_word_for_delay = 0;
-  for (word i=0; i<n; i++) bogus_word_for_delay += i;
+  volatile word* p = &Vars->delay_counter;
+  for (word i=0; i<n; i++) *p += i;
 }
 
 void PutChar(char ch) {
@@ -110,10 +125,10 @@ void PutChar(char ch) {
         for (word i = VDG_RAM; i< VDG_END; i++) {
             if (i < VDG_END-32) {
                 // Copy the line below.
-                *(byte*)i = *(byte*)(i+32);
+                *(volatile byte*)i = *(volatile byte*)(i+32);
             } else {
                 // Clear the last line.
-                *(byte*)i = 0x40 | 32;
+                *(volatile byte*)i = 0x40 | 32;
             }
         }
         p = VDG_END-32;
@@ -738,8 +753,12 @@ L   RunDhcp();
 L   RunTftpGet();
     UdpClose();
     char* boot_me = Vars->packet + 4; // skip 4: opcode and blocknum.
+#ifdef __GNUC__
+    asm volatile ("jmp [%0]" : : "m" (boot_me) );
+#else
     asm {
         jmp [boot_me]
     }
+#endif
     return OKAY;
 }
