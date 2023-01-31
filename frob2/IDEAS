@@ -347,3 +347,51 @@ rtl.h
 #define SYMBOL_FLAG_MACH_DEP            (1 << SYMBOL_FLAG_MACH_DEP_SHIFT)
 ```
 
+-------------------------------
+
+Assembly Language Programming for the Color Computer, Tepolt, 1985:
+
+p215: POLCAT   [$A000]
+Modifies: A & CC.
+Key pressed: Z=0, A=ascii
+No key: Z=1, A=0
+
+CHROUT     [$A002]
+    Displays ascii A reg
+    DP=0
+
+p213: DISPL   $B99C
+In: DP=0 X=string
+  string starts with " and ends with " (quotes not displayed)
+  $0D causes CR/LF.
+
+CLSCRN   $A928
+   clears screen; display pointer set to $0400.
+
+Extended Color Basic Memory Usage
+    0000    Internal
+    0400    Text Screen
+    0600    Graphics Screen
+    0601+(N*600)   Basic Statements start   [0019] points to start
+            Numeric Variables               [001b] points to start
+
+    Relativey Safe Gap 2600 to 3E00 (7E00)
+
+ending:
+    3ed0 (7ed0)  Unused
+    3f36 (7f36)  S Stack ^   ( ~ 100 bytes ) 
+    3fff (7fff)  String Variables (200 bytes)
+
+CLEAR 200, &H3000    ( reserve 200 string, stop ram at 3000 )
+
+CFNBUF  01D1  RMB 9    ; cassette filename
+CASBUF  01DA  RMB 256  ; cassette buffer
+LINHDR  01DA  RMB 2    ; line input buffer header
+LINBUF  02DC  RMB LBUFMX+1  ; basic line input buffer
+
+VIDRAM  0400  RMB 200
+
+;;;; DISK BASIC ONLY:  otherwise Graphics screens?
+DBUF0   0600  RMB 100   ; i/o buffer #0
+DBUF1   0700  RMB 100   ; i/o buffer #1
+FATBL0   0800  RMB FATLEN

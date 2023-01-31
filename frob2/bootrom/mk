@@ -1,7 +1,8 @@
 set -ex
  gcc6809 -O2 -S --std=gnu99 stdlib.c
 
- gcc6809 -fwhole-program -Os -S --std=gnu99 netboot.c
+ # gcc6809 -fwhole-program -Os -S --std=gnu99 netboot.c
+ gcc6809 -Os -S --std=gnu99 netboot.c
 
  lwasm --format=obj \
     --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
