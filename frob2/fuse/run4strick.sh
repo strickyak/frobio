@@ -5,8 +5,8 @@
 
 set -ex
 
-WHAT=${WHAT:-80d}
 WHAT=${WHAT:-cocosdc}
+WHAT=${WHAT:-80d}
 
 cd $(dirname $0)
 FUSE=$(pwd)         # Fuse Dir, absolute

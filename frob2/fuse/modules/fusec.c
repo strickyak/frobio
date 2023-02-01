@@ -44,7 +44,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define HYPER_GOMAR 1
+//#define HYPER_GOMAR 1
 
 typedef unsigned char bool;
 typedef unsigned char byte;
