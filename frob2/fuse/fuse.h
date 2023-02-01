@@ -8,7 +8,7 @@ struct FuseRequest {
   unsigned char path_num; // kernel path number.
   unsigned char a_reg;    // e.g. access mode
   unsigned char b_reg;    // e.g. file attrs, Stt code
-  unsigned int size;      // size in or size out.
+  unsigned int size;      // buffer or bytes_used size, in or out.
 }; // sizeof == 6
 
 // A fuse daemon writes messages to the FUSE manager

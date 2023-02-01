@@ -1,4 +1,4 @@
-// demo fuse daemon "RamFile"
+// demo fuse daemon: fuse.ramfile (/FUSE/RamFile)
 
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
@@ -11,7 +11,7 @@
 #include "frob2/fuse/fuse.h"
 
 #define DAEMON "/Fuse/Daemon/RamFile"
-#define PAYSIZ 250 // Short 250 bytes, until FUSEman is fixed.
+#define PAYSIZ 2048
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
 
@@ -55,17 +55,15 @@ struct FileInfo {
 //////////////////////////////////////////
 
 void HexDump(char* payload, word size) {  // Just verbosity.
+#if 0
 #if MAX_VERBOSE >= LLDebug
-    if (size > 1030) {
-      LogFatal("HexDump: too big: %x", size);
-    }
     for (word i = 0; i < size; i += 16) {
       Buf buf;
       BufInit(&buf);
       BufFormat(&buf, "%04x: ", i);
       for (word j = 0; j < 16; j++) {
         if (i+j < size) {
-          BufFormat(&buf, "%02x ", payload[i+j]);
+          BufFormat(&buf, "%02x ", 0xFF & payload[i+j]);
         } else {
           BufFormat(&buf, "   ");
         }
@@ -85,6 +83,7 @@ void HexDump(char* payload, word size) {  // Just verbosity.
       BufDel(&buf);
     }
     Printf("\n");
+#endif
 #endif
 }
 
@@ -139,12 +138,14 @@ const char* RequestedFileName() {
   char* s = (char*) Malloc(n + 1);
   memcpy(s, pay, n);
   s[n] = '\0';
+  LogDebug("RequestedFileName    (%x) %q", strlen(s), s);
 
-  // BUG WORKAROUND: I saw trailing space in filename?
+  // There can be trailing spaces.  Zap the first one.
   for (word i = 0; i < n; i++) {
-    if (s[i] <= 32) s[i] = '\0';
+    if (s[i] <= 32) { s[i] = '\0'; break; }
   }
 
+  LogDebug("RequestedFileName -> (%x) %q", strlen(s), s);
   return (const char*)s;
 }
 
@@ -167,7 +168,7 @@ errnum DoOpenWrite() {
   p->offset = 0;
   p->writing = true;
 
-  LogInfo("DoOpenWrite: path=%x file=%q", Request.header.path_num, name);
+  LogDebug("DoOpenWrite: path=%x file=%q", Request.header.path_num, name);
   Free((void*)name);
   return 0;
 }
@@ -185,12 +186,12 @@ errnum DoOpenRead() {
   p->offset = 0;
   p->writing = false;
 
-  LogInfo("DoOpenRead: path=%x file=%q", Request.header.path_num, name);
+  LogDebug("DoOpenRead: path=%x file=%q", Request.header.path_num, name);
   Free((void*)name);
   return 0;
 }
 
-void DoOpen() {
+void DoOpen(bool unused_create) {
   errnum e;
   switch (Request.header.a_reg) {
     case 1: // Read
@@ -208,7 +209,7 @@ void DoOpen() {
 }
 void DoClose() {
   struct PathInfo *p = &Paths[Request.header.path_num];
-  LogInfo("DoClose: path=%x file=%q", Request.header.path_num, p->file->name);
+  LogDebug("DoClose: path=%x file=%q", Request.header.path_num, p->file->name);
   p->file = NULL;
   p->offset = 0;
   p->writing = false;
@@ -217,30 +218,36 @@ void DoClose() {
   Reply.header.size = 0;
 }
 
-void DoReadLn() {
+void DoRead(bool linely) {
   errnum e = 0;
   struct PathInfo *p = &Paths[Request.header.path_num];
   struct FileInfo *f = p->file;
   Assert(f);
-  LogInfo("DoReadLn path=%x", Request.header.path_num);
+  LogDebug("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
   ShowPathInfo(p);
 
-  if (p->writing) { e = E_BMODE; goto ERROR; }
+  if (p->writing) { LogDebug("writing?"); e = E_BMODE; goto ERROR; }
 
   if (p->offset >= f->size) {
+    LogDebug("EOF!");
     e = E_EOF;
     goto ERROR;
   }
 
-  // Find the end of the next line.
   word i;
-  for (i = p->offset; i < f->size; i++) {
-    char ch = f->contents[i];
-    if (ch=='\0') break;
-    if (ch=='\n' || ch=='\r') {
-      i++; // Keep the line ender.
-      break;
+  if (linely) {
+    // Find the end of the next line.
+    for (i = p->offset; i < f->size; i++) {
+      char ch = f->contents[i];
+      if (ch=='\r') {
+        i++; // Keep the CR.
+        break;
+      }
     }
+    LogDebug("Linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
+  } else {
+    i = MIN(p->offset+Request.header.size, f->size);
+    LogDebug("NOT linely: off=%x r.h.s=%x f->s=%x i=%x", p->offset, Request.header.size, f->size, i);
   }
 
   word n = i - p->offset; // num bytes to return.
@@ -248,24 +255,38 @@ void DoReadLn() {
   p->offset = i;  // Advance.
   Reply.header.status = 0;
   Reply.header.size = n;
+  LogDebug("=> Return0 n=%x", n);
   return;
 
 ERROR:
+  LogDebug("=> ERR=%x", e);
   Reply.header.status = e;
   Reply.header.size = 0;
 }
 
-void DoWritLn() {
+
+void DoWrite(bool linely) {
   errnum e = 0;
   struct PathInfo *p = &Paths[Request.header.path_num];
   struct FileInfo* f = p->file;
   Assert(f);
-  LogInfo("DoReadLn path=%x", Request.header.path_num);
+  LogDebug("DoWritLn path=%x", Request.header.path_num);
   ShowPathInfo(p);
 
   if (!p->writing) { e = E_BMODE; goto ERROR; }
 
   word n = Request.header.size;
+  if (linely) {
+    // Truncate after first CR.
+    word i;
+    for (i = 0; i < n; i++) {
+      if (Request.payload[i] == '\r') {
+        i++; // Keep the CR.
+        break;
+      }
+    }
+    n = i;
+  }
 
   // Append n bytes to the contents.
   f->contents = ReAlloc((void*)f->contents, f->size + n);
@@ -281,17 +302,24 @@ ERROR:
   Reply.header.size = 0;
 }
 
-void DoRead() {
-  Reply.header.status = E_UNKSVC;
-  Reply.header.size = 0;
-}
-
-void DoWrite() {
-  Reply.header.status = E_UNKSVC;
-  Reply.header.size = 0;
-}
-
 //////////////////////////////////////////
+
+// Fixing the size for where the first Carriage Return appears
+// is the job if the daemon, becuase the FuseMan copies bytes
+// here without looking at them.
+void FixSizeForWritLn() {
+  word n = MIN(Request.header.size, sizeof Request.payload);
+  char* p = Request.payload;
+  word i;
+  for (i = 0; i < n; i++) {
+    if (*p == '\r') {
+      Request.header.size = i+1;
+      return;
+    }
+    p++;
+  }
+  Request.header.size = n;
+}
 
 int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
@@ -309,11 +337,11 @@ int main(int argc, char* argv[]) {
   // and then Os9Write to send the reply.
   while (true) {
     int cc;
-    LogInfo("Reading...");
+    LogDebug("Reading...");
     CheckE(Os9Read, (DaemonFd, (char*)&Request, sizeof Request, &cc));
     Assert(cc >= sizeof Request.header);
 
-    LogInfo("Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
+    LogDebug("Read: op=%x path=%x a=%x b=%x size=%x cc=%x",
         Request.header.operation,
         Request.header.path_num,
         Request.header.a_reg,
@@ -328,20 +356,20 @@ int main(int argc, char* argv[]) {
     // Different operations need different handling.
     int n = sizeof Reply.header;
     switch (Request.header.operation) {
-      case OP_CREATE:
-      case OP_OPEN: DoOpen(); break;
+      case OP_CREATE: DoOpen(true); break;
+      case OP_OPEN: DoOpen(false); break;
       case OP_CLOSE: DoClose(); break;
-      case OP_READ: DoRead(); n += Reply.header.size; break;
-      case OP_READLN: DoReadLn(); n += Reply.header.size; break;
-      case OP_WRITE: DoWrite(); break;
-      case OP_WRITLN: DoWritLn(); break;
+      case OP_READ: DoRead(false); n += Reply.header.size; break;
+      case OP_READLN: DoRead(true); n += Reply.header.size; break;
+      case OP_WRITE: DoWrite(false); break;
+      case OP_WRITLN: FixSizeForWritLn(); DoWrite(true); break;
       default:
         Reply.header.status = E_UNKSVC;
         Reply.header.size = 0;
         LogError("Bad operation: %d", Request.header.operation);
     }
 
-    LogInfo("Reply: status=%x size=%x n=%x",
+    LogDebug("Reply: status=%x size=%x n=%x",
         Reply.header.status,
         Reply.header.size,
         n); // Just verbosity.
@@ -350,7 +378,7 @@ int main(int argc, char* argv[]) {
     }
 
     CheckE(Os9Write, (DaemonFd, (char*)&Reply, n, &cc));
-    LogInfo("Wrote Reply.");
+    LogDebug("Wrote Reply.");
   }
   // NOTREACHED
   return 0;

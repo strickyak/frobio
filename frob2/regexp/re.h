@@ -95,4 +95,4 @@ int  re_matchp(re_t pattern, const char* text);
 /* Find matches of the txt pattern inside text (will compile automatically first). */
 int  re_match(const char* pattern, const char* text);
 
-#endif _FROB2_REGEXP_RE_H_
+#endif // _FROB2_REGEXP_RE_H_

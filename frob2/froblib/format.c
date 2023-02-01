@@ -407,6 +407,24 @@ int SPrintf(char* dest, const char* fmt, ...) {
     return n;
 }
 
+int SnPrintf(char* dest, size_t max, const char* fmt, ...) {
+    Buf buf;
+    BufInit(&buf);
+
+    va_list ap;
+    va_start(ap, fmt);
+    BufFormatVA(&buf, fmt, ap);
+    va_end(ap);
+
+    size_t n = buf.n;
+    BufFinish(&buf);
+    n = MIN(n, max-1);
+    memcpy(dest, buf.s, n+1);
+    dest[max-1] = '\0';
+    BufDel(&buf);
+    return n;
+}
+
 char* StrFormat(const char* fmt, ...) {
     Buf buf;
     BufInit(&buf);

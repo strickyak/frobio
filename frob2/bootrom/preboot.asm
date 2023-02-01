@@ -20,11 +20,12 @@
 *** But it is intended that this will eventually call
 *** the main() routine for the netboot ROM.
 
-    IMPORT program_start
     IMPORT _main
 
     SECTION start
 
+    EXPORT program_start
+program_start
 preboot
     orcc #$50   ; disable interrupts
     lds #$0400  ; 1KB stack in lowest memory

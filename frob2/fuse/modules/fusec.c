@@ -44,6 +44,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+//#define HYPER_GOMAR 1
+
 typedef unsigned char bool;
 typedef unsigned char byte;
 typedef unsigned char errnum;
@@ -52,10 +54,15 @@ typedef unsigned int word;
 #include "frob2/os9/os9defs.h"
 #include "frob2/fuse/fuse.h"
 
+// Porability Warning -- This is specific to the Coco3 DAT Tables.
+#define DAT_MAP_NUM_WORDS 8 // in the mapping for one process.
+
 #define OKAY 0
 #define TRUE 1
 #define FALSE 0
 #define NULL ((void*)0)
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 #define assert(C) { if (!(C)) { PrintH(" *ASSERT* %s:%d *FAILED*\n", __FILE__,  __LINE__); HyperCoreDump(); GameOver(); } }
 
@@ -86,6 +93,26 @@ struct Regs {
 };  // size 12
 #define REGS_D(regs) (*(word*)(&(regs)->ra))
 
+// Client will store these on the kernel mode stack
+// while the Daemon is responding to its request.
+struct ClientTmp {
+  byte task_num; // Temporary num to access Client space.
+  word task_map[DAT_MAP_NUM_WORDS]; // How to access Client space.
+  byte client_op;
+  word opening_original_rx;
+  word opening_pathname_size;
+  struct FuseReply reply;
+};
+
+// Special arg for Client OP_CREATE & OP_OPEN.
+struct Opening {
+  word begin1;  // second word in pathname
+  word end1;
+  word begin2;  // third word in pathname
+  word end2;
+  word original_rx;
+};
+
 struct PathDesc {
   byte path_num;              // PD.PD = 0
   byte mode;                  // PD.MOD = 1
@@ -96,12 +123,11 @@ struct PathDesc {
   struct Regs *regs;          // PD.RGS = 6
   word daemon_buffer;         // PD.BUF = 8
   // offset 10 = PD.FST
-  bool is_daemon;  // 10
-  bool paused_proc_id;  // 11: 0 if not paused.
-  word buf_len;    // 12: User process (C or D) buffer size, or part used.
-  struct PathDesc* peer;  // 14: Daemon's client or Client's daemon.
-  bool is_poisoned;  // 16: TODO: error handling and path poisoning.
-  // 17
+  bool is_daemon;
+  bool paused_proc_id;  // 0 if not paused.
+  struct PathDesc* peer;  // Daemon's client or Client's daemon.
+  struct ClientTmp* client_tmp;  // Points into Client's kernel stack.
+  bool is_poisoned;  // TODO: error handling and path poisoning.
 }; // Must be 32 bytes or under in size.
 
 #define DAEMON_NAME_OFFSET_IN_PD 33
@@ -264,7 +290,7 @@ byte Os9CurrentProcessId() {
 byte Os9UserTask() {
   byte task = 0;
   asm {
-    LDX D.Proc
+    LDX <D.Proc
     LDA P$Task,X
     STA task
   }
@@ -274,11 +300,69 @@ byte Os9UserTask() {
 byte Os9SystemTask() {
   byte task = 0;
   asm {
-    LDX D.SysPrc
+    LDX <D.SysPrc
     LDA P$Task,X
     STA task
   }
   return task;
+}
+
+errnum Os9ReserveTask(byte* task_num_out) {
+  errnum err = 0;
+  asm {
+    os9 F$ResTsk
+    bcc RESTSK_OK
+
+    stb err
+    bra RESTSK_END
+
+RESTSK_OK
+    stb [task_num_out]
+RESTSK_END
+  }
+  return err;
+}
+
+errnum Os9ReleaseTask(byte task_num) {
+  errnum err = 0;
+  asm {
+      ldb task_num
+      os9 F$RelTsk
+      bcc RELTSK_OK
+      stb err
+RELTSK_OK
+  }
+  return err;
+}
+
+void Os9SetDatMapForTask(byte task_num, word* mapping) {
+  PrintH("SET DAT FOR TASK %x <- %x\n", task_num, mapping);
+  asm {
+    LDB task_num
+    LDX <D.TskIPt ; X -> task table
+    ABX
+    ABX           ; X -> correct task entry
+
+    LDD mapping
+    STD ,X        ; set the mapping at X
+  }
+}
+
+void Os9CopyCurrentUserDatMapTo(word* dest) {
+  word* current = 0;
+  asm {
+    LDX <D.Proc   ; current user proc
+    LDB P$Task,X  ; its task num
+    LDX <D.TskIPt ; task table
+    ABX
+    ABX
+
+    LDD ,X       ; same MAX(B)=63 assumption as rb1773 driver.
+    STD current
+  }
+  for (byte i = 0; i < DAT_MAP_NUM_WORDS; i++) {
+    *dest++ = *current++;
+  }
 }
 
 errnum Os9LoadByteFromTask(byte task, word addr, byte* out) {
@@ -320,6 +404,8 @@ StoreByteBad
 }
 
 errnum Os9Move(word count, word src, byte srcMap, word dest, byte destMap) {
+  PrintH("Os9Move c=%x s=%x/%x d=%x/%x\n", count, src, srcMap, dest, destMap);
+
   errnum err;
   word dreg = ((word)srcMap << 8) | destMap;
   asm {
@@ -576,28 +662,6 @@ PrsNamBad
 
 ////////////////////////////////////////////////
 
-void MoveToKernel(struct PathDesc* dae, word addr, word size, word header_skip_size) {
-  PrintH("MoveToKernel: addr=%x size=%x @@", addr, size);
-  assert(dae);
-  assert(dae->is_daemon);
-  assert(addr);
-  assert(size);
-  errnum e = Os9Move(size, addr, Os9UserTask(), dae->daemon_buffer + header_skip_size, Os9SystemTask());
-  assert(!e);
-}
-
-void MoveToUser(struct PathDesc* dae, word addr, word size, word header_skip_size) {
-  PrintH("MoveToUser: addr=%x size=%x @@", addr, size);
-  assert(dae);
-  assert(dae->is_daemon);
-  assert(addr);
-  assert(size);
-  errnum e = Os9Move(size, dae->daemon_buffer + header_skip_size, Os9SystemTask(), addr, Os9UserTask());
-  assert(!e);
-}
-
-////////////////////////////////////////////////
-
 errnum CopyParsedName(word begin, word end, char* dest, word max_len) {
   // max_len counts null termination.
   assert (end-begin < max_len-1);
@@ -633,7 +697,7 @@ void ShowParsedName(word current, word begin, word end) {
 // The other string s is an upper-case 0-terminated
 // C string, in normal memory, with no high bits.
 bool ParsedNameEquals(word begin, word end, const char*s) {
-  // PrintH("ParsedNameEquals(b=%x, e=%x, s=%x)\n", begin, end, s);
+  PrintH("ParsedNameEquals(b=%x, e=%x, s=%x)\n", begin, end, s);
   byte task = Os9UserTask();
   word p = begin;
   for (; *s && p < end; p++, s++) {
@@ -642,13 +706,16 @@ bool ParsedNameEquals(word begin, word end, const char*s) {
     assert(!err);
 
     if (ToUpper(ch) != *s) {
+      PrintH("  ->FALSE");
       return FALSE;  // does not match.
     }
   }
 
   // If both termination conditions are true,
   // strings are equal.
-  return (p==end) && ((*s)==0);
+  bool z = (p==end) && ((*s)==0);
+  PrintH("  ->%x (%x,%x)", z, (p==end) ,((*s)==0));
+  return z;
 }
 
 // FindDaemon traverses all path descriptors looking for
@@ -753,7 +820,7 @@ errnum OpenDaemon(struct PathDesc* dae, word begin2, word end2) {
 
   CopyParsedName(begin2, end2, (char*)dae + DAEMON_NAME_OFFSET_IN_PD, DAEMON_NAME_MAX);
 
-  PrintH("OpenDaemon OK: dae=%x %q\n", dae, (char*)dae + DAEMON_NAME_OFFSET_IN_PD);
+  PrintH("OpenDaemon OK: dae=%x %s\n", dae, (char*)dae + DAEMON_NAME_OFFSET_IN_PD);
   dae->current_process_id = 0; // PD.CPR: Nobody owns me.
   return OKAY;
 }
@@ -769,19 +836,76 @@ errnum DaemonReadC(struct PathDesc* dae) {
   dae->paused_proc_id = Os9CurrentProcessId();
   PrintH("DaemonReadC: Pausing.\n");
   Os9Sleep(0);
+  // DAEMAN HAS WOKEN UP.
   PrintH("DaemonReadC: UnPaused.\n");
   dae->paused_proc_id = 0;
+  byte dtask = Os9UserTask();
+  byte stask = Os9SystemTask();
 
   struct PathDesc* cli = dae->peer;
   CheckClient(cli);
   CheckPeer(cli, dae);
+  struct ClientTmp *t = cli->client_tmp;
+  PrintH("ClientTmp: t-> task=%x op=%x orig_rx=%x pn_size=%x",
+       t->task_num, t->client_op, t->opening_original_rx, t->opening_pathname_size);
 
-  struct Regs* regs = dae->regs;
-  if (cli->buf_len) {
-    MoveToUser(dae, regs->rx, cli->buf_len, 0);
+  struct FuseRequest req = {
+    /*operation*/ t->client_op,
+    /*path_num*/ cli->path_num,
+    /*a_reg*/ cli->regs->ra,
+    /*b_reg*/ cli->regs->rb,
+    /*size*/ 0,
+  };
+
+  switch (t->client_op) {
+    case OP_CREATE:
+    case OP_OPEN:
+      {
+        assert(dae->regs->ry > sizeof req);
+        word sz = MIN(t->opening_pathname_size, dae->regs->ry - sizeof req);
+      req.size = sz;
+      dae->regs->ry = sz + sizeof req;
+        // Copy the pathname, sz bytes.
+        err = Os9Move(sz,
+            t->opening_original_rx, t->task_num,
+            dae->regs->rx + sizeof req, dtask);
+        if (err) goto FINISH;
+      }
+      break;
+
+    case OP_CLOSE:
+      dae->regs->ry = sizeof req;
+      break;
+
+    case OP_READ:
+    case OP_READLN:
+      dae->regs->ry = sizeof req;
+      req.size = cli->regs->ry;
+      break;
+
+    case OP_WRITE:
+    case OP_WRITLN:
+      {
+        assert(dae->regs->ry > sizeof req);
+        word sz = MIN(cli->regs->ry, dae->regs->ry - sizeof req);
+        req.size = sz;
+        dae->regs->ry = req.size + sizeof req;
+        // Copy the payload, sz bytes.
+        err = Os9Move(sz, cli->regs->rx, t->task_num,
+            dae->regs->rx + sizeof req, dtask);
+        if (err) goto FINISH;
+      }
+      break;
+    default:
+      dae->regs->ry = sizeof req;
+      break;
   }
-  regs->ry = cli->buf_len;
 
+  // Copy the request.
+  err = Os9Move(sizeof req, (word)(&req), stask,
+            dae->regs->rx, dtask);
+
+FINISH:
   dae->current_process_id = 0; // PD.CPR: Nobody owns me.
   PrintH("DaemonReadC returns");
   return err;
@@ -795,6 +919,7 @@ errnum DaemonWriteC(struct PathDesc* dae) {
   struct PathDesc* cli = dae->peer;
   CheckClient(cli);
   dae->current_process_id = Os9CurrentProcessId();
+  CheckPeer(cli, dae);
 
   errnum err = OKAY;
   // TODO: Poison on failure, and check for poison.
@@ -802,9 +927,42 @@ errnum DaemonWriteC(struct PathDesc* dae) {
   // to make sure neither has died and been recycled,
   // or else poison the device.
 
-  struct Regs* regs = dae->regs;
-  MoveToKernel(dae, regs->rx, regs->ry, 0);
-  dae->buf_len = regs->ry;
+  struct ClientTmp *t = cli->client_tmp;
+
+  byte dtask = Os9UserTask();
+  byte stask = Os9SystemTask();
+  PrintH("DaemonWriteC: tmp=%x dtask=%x stask=%x", t, dtask, stask);
+  err = Os9Move(sizeof t->reply,
+      dae->regs->rx, dtask,
+      (word)(&t->reply), stask);
+  assert(!err);
+
+  PrintH("DaemonWriteC: reply.status=%x client_op=%x", t->reply.status, t->client_op);
+  if (t->reply.status) {
+    err = t->reply.status;
+
+  } else switch (t->client_op) {
+
+    case OP_CREATE:
+    case OP_OPEN:
+    case OP_CLOSE:
+      break;
+
+    case OP_READ:
+    case OP_READLN:
+      word sz = MIN(t->reply.size, cli->regs->ry);
+      cli->regs->ry = sz;
+      dae->regs->ry = sz;
+      err = Os9Move(sz,
+          dae->regs->rx + sizeof t->reply, dtask,
+          cli->regs->rx, t->task_num);
+      break;
+
+    case OP_WRITE:
+    case OP_WRITLN:
+      cli->regs->ry = t->reply.size;
+      break;
+  };
 
   // Allow other clients to use the daemon.
   // But the client still remembers its daemon.
@@ -815,167 +973,105 @@ errnum DaemonWriteC(struct PathDesc* dae) {
   Os9Awaken(cli);
   Os9AwakenIOQN(cli);
 
+  PrintH("DaemonWriteC: return OKAY");
   return OKAY;
 }
 
 /////////// CLIENT ////////////////////////
 
-errnum OpenClient(
-    struct PathDesc* cli,
-    word begin1,
-    word end1,
-    word begin2,
-    word end2,
-    word original_rx) {
-  PrintH("OpenClient cli=%x entry", cli);
+errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) {
+  cli->current_process_id = Os9CurrentProcessId();
   cli->is_daemon = 0;
-  cli->current_process_id = Os9CurrentProcessId();
 
-  // Daemon must already be open.
-  struct PathDesc *dae = FindDaemon(cli->device_table_entry, begin1, end1);
-  if (!dae) {
-    PrintH("BAD: daemon not open yet => err %x\n", E_SHARE);
-    return E_SHARE;
-  }
-  assert(dae->is_daemon);
+  struct PathDesc *dae = NULL;
 
-  SetPeer(cli, dae);  // Client links to Daemon.
-  SetPeer(dae, cli);  // Daemon links to Client.
-
-  struct FuseRequest* request = (struct FuseRequest*)(dae->daemon_buffer);
-  char* payload = (char*)(request+1);
-
-  request->operation = OP_OPEN; // TODO: distinguish OP_CREATE.
-  request->path_num = cli->path_num;
-  request->a_reg = cli->regs->ra;
-  request->b_reg = cli->regs->rb;
-  request->size = cli->regs->rx - original_rx;
-  cli->buf_len = request->size + sizeof *request;
-
-  assert(cli->buf_len <= 256);
-  MoveToKernel(dae, original_rx, request->size, sizeof *request);
-
-  ////////////////////////
-  // Now we switch and let the daemon run.
-  SwitchProcess(cli, dae);
-  // When we return, the daemon has given us a reply.
-  ////////////////////////
-
-  // When we wake up, our regs should be modified
-  // by the Daemon if necessary, and our result status.
-  struct FuseReply* reply = (struct FuseReply*)(dae->daemon_buffer);
-
-  // Client keeps link to Daemon, until Client is closed.
-  cli->current_process_id = 0;
-
-  PrintH("OpenClient: z=%x ret\n", reply->status);
-  return reply->status;
-}
-
-errnum ClientOperationC(struct PathDesc* cli, byte op) {
-  struct PathDesc* dae = cli->peer;
-  PrintH("ClientOperationC op=%x cli=%x dae=%x entry\n", op, cli, dae);
-  CheckClient(cli);
-  CheckDaemon(dae);
-  cli->current_process_id = Os9CurrentProcessId();
-
-  CheckPeer(cli, dae);  // Client is already linked to Daemon.
-  SetPeer(dae, cli);  // Daemon links to Client during the client operation.
-
-  struct FuseRequest* request = (struct FuseRequest*)(dae->daemon_buffer);
-  char* payload = (char*)(request+1);
-
-  request->operation = op;
-  request->path_num = cli->path_num;
-  request->a_reg = cli->regs->ra;
-  request->b_reg = cli->regs->rb;
-  request->size = cli->regs->ry;
-  cli->buf_len = sizeof *request;
-
-  switch (op) {
-    case OP_CLOSE:
-      break;
-
-    case OP_READ:
-    case OP_READLN:
-      break;
-    case OP_WRITE:
-      if (cli->buf_len) {
-        cli->buf_len += cli->regs->ry;
-        MoveToKernel(dae, cli->regs->rx, cli->buf_len, sizeof *request);
-      }
-      break;
-    case OP_WRITLN:
-      if (cli->buf_len) {
-        // We will move the entire user process buffer into the kernel buffer,
-        // because it will be hard to find terminating characters in user space.
-        MoveToKernel(dae, cli->regs->rx, cli->regs->ry + sizeof *request, sizeof *request);
-
-        // WritLn should stop at \r or \n or if we encounter \0.
-        word i;
-        for (i = 0; i < cli->regs->ry; i++) {
-          char ch = payload[i];
-          if (ch=='\0') break;
-          if (ch=='\n' || ch=='\r') {
-            i++;  // Keep the \n or \r
-            break;
-          }
-        }
-        // Now adjust the requested size and buf_len to stop at i.
-        request->size = i;
-        cli->buf_len = i + sizeof *request;
-      }
-      break;
-    default:
-      ClearPeer(dae, cli);
-      return E_UNKSVC;  // TODO -- send to daemon.
-      break;
-  }
-
-  PrintH("ClientOperationC: REQUEST op=%x path=%x a=%x b=%x size=%x buf=%x",
-      request->operation,
-      request->path_num,
-      request->a_reg,
-      request->b_reg,
-      request->size,
-      cli->buf_len);
-
-  ////////////////////////
-  // Now we switch and let the daemon run.
-  SwitchProcess(cli, dae);
-  // When we return, the daemon has given us a reply.
-  ////////////////////////
-
-  struct FuseReply* reply = (struct FuseReply*)(dae->daemon_buffer);
-  payload = (char*)(reply+1);
-  // When we wake up:
-  if (reply->status == OKAY) {
-    switch (op) {
-      case OP_CLOSE:
-        break;
-
-      case OP_READ:
-      case OP_READLN:
-        // Copy buffer if non-empty.
-        if (reply->size) {
-          MoveToUser(dae, cli->regs->rx, reply->size, sizeof *reply);
-        }
-        cli->regs->ry = reply->size;
-        break;
-
-      case OP_WRITE:
-      case OP_WRITLN:
-        cli->regs->ry = reply->size;
-        break;
-
-      default:
-        assert(0);
-        break;
+  if (opening) {
+    // Daemon must already be open.
+    dae = FindDaemon(cli->device_table_entry, opening->begin1, opening->end1);
+    if (!dae) {
+      PrintH("BAD: daemon not open yet => err %x\n", E_SHARE);
+      return E_SHARE;
     }
+    assert(dae->is_daemon);
+    PrintH("ClOp: found daemon %x", dae);
+
+    SetPeer(cli, dae);  // Client links to Daemon.
+  } else {
+    dae = cli->peer;
+    CheckDaemon(dae);
+    CheckPeer(cli, dae);  // Client is already linked to Daemon.
+  }
+  SetPeer(dae, cli);  // Daemon links to Client during the client operation.
+  PrintH("ClOp op=%x cli=%x dae=%x entry\n", op, cli, dae);
+
+
+
+  // We are counting on this variable being on the Client's stack
+  // throughout the operation.  It will hold a copy of the Client's
+  // DAT MAP in a temporary task, and be used for communicating
+  // requests and replies to the deamon process.
+  struct ClientTmp tmp;
+  cli->client_tmp = &tmp;  // so daemon can find it.
+
+  // Allocate a temporary task num.
+  errnum e = Os9ReserveTask(&tmp.task_num);
+  PrintH("\nReserveTask -> Task# %x (e %x)\n", tmp.task_num, e);
+  if (e) return e;
+
+  Os9CopyCurrentUserDatMapTo(tmp.task_map);
+  PrintH("ClOp Task=%x Map@%x = %x %x  %x %x  %x %x  %x %x\n",
+      tmp.task_num,
+      tmp.task_map,
+      tmp.task_map[0],
+      tmp.task_map[1],
+      tmp.task_map[2],
+      tmp.task_map[3],
+      tmp.task_map[4],
+      tmp.task_map[5],
+      tmp.task_map[6],
+      tmp.task_map[7]);
+Os9SetDatMapForTask(tmp.task_num, tmp.task_map);
+
+  tmp.client_op = op;
+
+  if (opening) {
+    tmp.opening_original_rx = opening->original_rx;
+    tmp.opening_pathname_size = cli->regs->rx - opening->original_rx;
+    PrintH("OPENING: orig=%x cli.rx=%x size=%x\n",
+        opening->original_rx,
+        cli->regs->rx,
+        tmp.opening_pathname_size);
+  } else {
+    tmp.opening_original_rx = 0;
+    tmp.opening_pathname_size = 0;
   }
 
+  ////////////////////////
+  // Now we switch and let the daemon run.
+  PrintH("\nClientOperationC switch-to-daemon\n");
+  SwitchProcess(cli, dae);
+  PrintH("\nClientOperationC un-switch-from-deamon\n");
+
+  PrintH("\n RETAINED task-> %x (e %x)", tmp.task_num, e);
+  PrintH(" RETAINED Task#=%x Map=%x %x  %x %x  %x %x  %x %x\n",
+      tmp.task_num,
+      tmp.task_map[0],
+      tmp.task_map[1],
+      tmp.task_map[2],
+      tmp.task_map[3],
+      tmp.task_map[4],
+      tmp.task_map[5],
+      tmp.task_map[6],
+      tmp.task_map[7]);
+
+  // When we return, the daemon has given us a reply.
+  ////////////////////////
+
+  PrintH("ClientOperationC op=%x reply.status=%x size=%x ret\n", op, tmp.reply.status, tmp.reply.size);
+  PrintH("\nReleasingTask# %x\n", tmp.task_num);
+  Os9ReleaseTask(tmp.task_num); // Free the temporary task num.
   cli->current_process_id = 0;
-  return reply->status;
+  return tmp.reply.status;
 }
 
 ////////////////////////////////////////////////
@@ -986,7 +1082,7 @@ errnum CreateOrOpenC(struct PathDesc* pd, struct Regs* regs) {
   pd->device_table_entry->dt_num_users = 16; // ARTIFICIALLY KEEP THIS OPEN.
   assert(pd->regs == regs);
   word original_rx = regs->rx;
-  pd->buf_len = 0;
+
   PrintH("CreateOrOpenC: pd=%x regs=%x\n", pd, regs);
   PrintH("@ CreateOrOpenC/ent pd=%x links=%x cpr=%x\n", pd, pd->link_count, pd->current_process_id);
 
@@ -1027,7 +1123,14 @@ errnum CreateOrOpenC(struct PathDesc* pd, struct Regs* regs) {
   if (i==3 && ParsedNameEquals(begin1, end1, "DAEMON")) {
     z = OpenDaemon(pd, begin2, end2);
   } else if (i > 1) {
-    z = OpenClient(pd, begin1, end1, begin2, end2, original_rx);
+    struct Opening o = {
+      /*begin1*/ begin1,
+      /*end1*/ end1,
+      /*begin2*/ begin2,
+      /*end2*/ end2,
+      /*original_rx*/ original_rx,
+    };
+    z = ClientOperationC(pd, OP_OPEN, &o);
   } else {
     PrintH("\nFATAL: CreateOrOpenC: BAD NAME\n");
     z = E_BNAM;
@@ -1057,7 +1160,7 @@ errnum CloseC(struct PathDesc* pd, struct Regs* regs) {
   } else {
     struct PathDesc* cli = pd;
     CheckClient(cli);
-    z = ClientOperationC(cli, OP_CLOSE);
+    z = ClientOperationC(cli, OP_CLOSE, NULL);
     ClearPeer(cli, cli->peer); // Finally unlink the daemon when client is closed.
   }
   PrintH("@ CloseC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
@@ -1071,7 +1174,7 @@ errnum ReadLnC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_BMODE;  // Daemon must use Read not ReadLn.
   } else {
-    z = ClientOperationC(pd, OP_READLN);
+    z = ClientOperationC(pd, OP_READLN, NULL);
   }
   PrintH("@ ReadLnC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1084,7 +1187,7 @@ errnum WritLnC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_BMODE; // Daemon must use Write not WritLn.
   } else {
-    z = ClientOperationC(pd, OP_WRITLN);
+    z = ClientOperationC(pd, OP_WRITLN, NULL);
   }
   PrintH("@ WritLnC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1097,7 +1200,7 @@ errnum ReadC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = DaemonReadC(pd);
   } else {
-    z = ClientOperationC(pd, OP_READ);
+    z = ClientOperationC(pd, OP_READ, NULL);
   }
   PrintH("@ ReadC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1110,7 +1213,7 @@ errnum WriteC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = DaemonWriteC(pd);
   } else {
-    z = ClientOperationC(pd, OP_WRITE);
+    z = ClientOperationC(pd, OP_WRITE, NULL);
   }
   PrintH("@ WriteC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1123,7 +1226,7 @@ errnum GetStatC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_UNKSVC;
   } else {
-    z = ClientOperationC(pd, OP_GETSTAT);
+    z = ClientOperationC(pd, OP_GETSTAT, NULL);
   }
   PrintH("@ GetStatC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1136,7 +1239,7 @@ errnum SetStatC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_UNKSVC;
   } else {
-    z = ClientOperationC(pd, OP_SETSTAT);
+    z = ClientOperationC(pd, OP_SETSTAT, NULL);
   }
   PrintH("@ SetStatC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1149,7 +1252,7 @@ errnum MakDirC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_UNKSVC;
   } else {
-    z = ClientOperationC(pd, OP_MAKDIR);
+    z = ClientOperationC(pd, OP_MAKDIR, NULL);
   }
   PrintH("@ MakDirC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1162,7 +1265,7 @@ errnum ChgDirC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_UNKSVC;
   } else {
-    z = ClientOperationC(pd, OP_CHGDIR);
+    z = ClientOperationC(pd, OP_CHGDIR, NULL);
   }
   PrintH("@ ChgDirC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1175,7 +1278,7 @@ errnum DeleteC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_UNKSVC;
   } else {
-    z = ClientOperationC(pd, OP_DELETE);
+    z = ClientOperationC(pd, OP_DELETE, NULL);
   }
   PrintH("@ DeleteC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;
@@ -1188,7 +1291,7 @@ errnum SeekC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     z = E_UNKSVC;
   } else {
-    z = ClientOperationC(pd, OP_SEEK);
+    z = ClientOperationC(pd, OP_SEEK, NULL);
   }
   PrintH("@ SeekC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;

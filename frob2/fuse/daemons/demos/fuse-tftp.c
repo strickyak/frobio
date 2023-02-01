@@ -1,6 +1,5 @@
-// demo fuse daemon fuse.tftp ("/Fuse/TFTP")
+// demo fuse daemon: fuse.tftp (/Fuse/TFTP)
 
-#undef MAX_VERBOSE
 #ifndef MAX_VERBOSE
 #define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
 #endif
@@ -12,9 +11,10 @@
 #include "frob2/fuse/fuse.h"
 
 #define DAEMON "/Fuse/Daemon/TFTP"
-#define PAYSIZ 200 // Short 200 bytes, until FUSEman is fixed.
+#define PAYSIZ 2048
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
+
 
 struct Req {
   struct FuseRequest header;
@@ -118,8 +118,8 @@ void SaveBytesToFragList(char* data, word len) {
   AppendToFragList(frag);
 }
 
-// For now, TGet fatals on errors.
-void TGet(const char* server_host_spec, const char* filename) {
+// For now, TftpGet fatals on errors.
+void TftpGet(const char* server_host_spec, const char* filename) {
   errnum err;
   prob ps;
   word total_len = 0;
@@ -164,7 +164,7 @@ void TGet(const char* server_host_spec, const char* filename) {
       LogFatal("*** Server error %d: %s", arg, packet+4);
       break;
     default:
-      LogFatal("TGet() did not expect to recv type %d", type);
+      LogFatal("TftpGet() did not expect to recv type %d", type);
     }
   }  // while(1)
 END_LOOP:
@@ -183,7 +183,8 @@ END_LOOP:
 void HexDump(char* payload, word size) {  // Just verbosity.
 #if MAX_VERBOSE >= LLDebug
     if (size > 1030) {
-      LogFatal("HexDump: too big: %x", size);
+      LogStep("HexDump: too big: %x", size);
+      return;
     }
     for (word i = 0; i < size; i += 16) {
       if (i>=32) break; ///////////////////////// STOP SHORT
@@ -262,19 +263,11 @@ word CopyBytesToBuffer(struct PathInfo* p, char* buf, word buf_size, bool linely
 
     if (linely) {
       char ch = pay[p->off];
-      /*
-      if (ch == '\0') {
-        p->off++;
-        LogDebug("CopyBToB: NUL off=%x", p->off);
-        break;
-      }
-      */
-      if (ch==0) ch='~';  // Make data NULs visible as `~`
       *b++ = ch;
       p->off++;
       --togo;
       LogDebug("CopyBToB: ch=%x off=%x togo=%x", p->off);
-      if (ch == '\n' || ch == '\r') break;
+      if (ch == '\r') break;
     } else {
       word span = MIN(togo, f->len - p->off);
       Assert(span);
@@ -282,6 +275,7 @@ word CopyBytesToBuffer(struct PathInfo* p, char* buf, word buf_size, bool linely
       b += span;
       p->off += span;
       togo -= span;
+      break;
     }
   }
 
@@ -295,9 +289,11 @@ const char* StrDupRequestedFileName() {
   // Where we get the filename.
   char* pay = Request.payload;
   word n = Request.header.size;
+  LogStep("Dup: n=%x pay=%s", n, pay);
 
   // Malloc a string for the filename. 
   char* s = (char*) Malloc(n + 1);
+  Assert(s);
   memcpy(s, pay, n);
   s[n] = '\0';
 
@@ -352,7 +348,7 @@ errnum DoOpenRead() {
   const char* rest = NULL;
   bool ok = SplitThirdAndRest(name, &third, &rest);
 
-  TGet(third, rest); // for now, TGet fatals on errors.
+  TftpGet(third, rest); // for now, TftpGet fatals on errors.
   // Result is returned in FragRoot list.
 
   struct PathInfo *p = &Paths[Request.header.path_num];
@@ -365,14 +361,14 @@ errnum DoOpenRead() {
   return 0;
 }
 
-void DoOpen() {
+void DoOpen(bool unused_create) {
   errnum e;
   switch (Request.header.a_reg) {
     case 1: // Read
         e = DoOpenRead();
         break;
     case 2: // Write
-        e = E_UNKSVC;  // Write not supported.
+        e = E_BMODE; // "Bad Mode"
         break;
     default:
         e = E_BMODE; // "Bad Mode"
@@ -393,47 +389,51 @@ void DoClose() {
   Reply.header.size = 0;
 }
 
-void DoReadLn() {
+void DoRead(bool linely) {
   errnum e = 0;
   struct PathInfo *p = &Paths[Request.header.path_num];
-  LogInfo("DoReadLn path=%x", Request.header.path_num);
+  LogInfo("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
   ShowPathInfo(p);
 
-  word cc = CopyBytesToBuffer(p, Reply.payload, PAYSIZ, /*linely=*/true);
+  word cc = CopyBytesToBuffer(p, Reply.payload, PAYSIZ, linely);
   LogInfo("DoReadLn cc=%x", cc);
 
   if (cc) {
     Reply.header.status = 0;
-    //? Reply.header.size = cc + sizeof Reply;
     Reply.header.size = cc;
   } else {
     Reply.header.status = E_EOF;
-    //? Reply.header.size = sizeof Reply;
     Reply.header.size = 0;
   }
-  return;
 }
 
-void DoWritLn() {
-  Reply.header.status = E_UNKSVC;
-  Reply.header.size = 0;
-}
-
-void DoRead() {
-  Reply.header.status = E_UNKSVC;
-  Reply.header.size = 0;
-}
-
-void DoWrite() {
+void DoWrite(bool unused_linely) {
   Reply.header.status = E_UNKSVC;
   Reply.header.size = 0;
 }
 
 //////////////////////////////////////////
 
+// Fixing the size for where the first Carriage Return appears
+// is the job if the daemon, becuase the FuseMan copies bytes
+// here without looking at them.
+void FixSizeForWritLn() {
+  word n = MIN(Request.header.size, sizeof Request.payload);
+  char* p = Request.payload;
+  word i;
+  for (i = 0; i < n; i++) {
+    if (*p == '\r') {
+      Request.header.size = i+1;
+      return;
+    }
+    p++;
+  }
+  Request.header.size = n;
+}
+
 int main(int argc, char* argv[]) {
   // We can ignore argc, argv.
-  LogStep("Starting.");
+  LogStep("Starting (yak).");
 
   // Open the /FUSE device in *Daemon Mode*.
   // That is, open the path name "/Fuse/Daemon/TFTP"
@@ -458,18 +458,21 @@ int main(int argc, char* argv[]) {
         Request.header.b_reg,
         Request.header.size,
         cc); // Just verbosity.
+    if (cc > sizeof Request.header) { // Just verbosity.
+      HexDump(Request.payload, cc - sizeof Request.header);
+    }
 
     // What we do depends on the operation, so we have a big switch.
     // Different operations need different handling.
     int n = sizeof Reply.header;
     switch (Request.header.operation) {
-      case OP_CREATE:
-      case OP_OPEN: DoOpen(); break;
+      case OP_CREATE: DoOpen(true); break;
+      case OP_OPEN: DoOpen(false); break;
       case OP_CLOSE: DoClose(); break;
-      case OP_READ: DoRead(); n += Reply.header.size; break;
-      case OP_READLN: DoReadLn(); n += Reply.header.size; break;
-      case OP_WRITE: DoWrite(); break;
-      case OP_WRITLN: DoWritLn(); break;
+      case OP_READ: DoRead(false); n += Reply.header.size; break;
+      case OP_READLN: DoRead(true); n += Reply.header.size; break;
+      case OP_WRITE: DoWrite(false); break;
+      case OP_WRITLN: FixSizeForWritLn(); DoWrite(true); break;
       default:
         Reply.header.status = E_UNKSVC;
         Reply.header.size = 0;

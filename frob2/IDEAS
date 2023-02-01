@@ -234,3 +234,164 @@ In file included from z2a.c:1:0:
 z2z.bin                                                                                                                                                     100% 7710   140.6KB/s   00:00
 /sy/frobio/frob2$
 ------------------------------------------------
+
+Borne Shell Ideas:
+  Postpone ENV?
+  Postpone BG?
+  Postpone $* $1 $2 $3 shift
+  Postpone case
+  Postpone read
+  Postpone Subshells
+  set only -e -x etc.
+
+Subshells need
+  * Vars
+  * Env
+  * Redirects
+  * Flag modes -e -x etc.
+
+echo "Hello; $x!"
+  -- Use "" and '' to build words, then shed.
+  -- Then just join on spaces for params to exec
+  -- Commands that want filenames get them.
+  -- the echo command gets all but quotes
+  Broken: Empty String as an argument.
+  However: if Dash Options require = (e.g. -color=red)
+    (defaulting to 1 if no =) then empty option
+    is available: -prefix=
+
+Unix Look And Feel Capabilities:
+  -- Edition Number comes after name.
+  -- Follow that with $ABCF
+  -- Followed by lowercase letters "a"=argv "e"=env
+  -- if needed, lowercase letter could be followed by decimal digits.
+               ( like for sizes of Capabilities )
+  -- followed by $00
+
+
+==============================================
+git push -u origin bufferless
+==============================================
+
+m6809_override_options() in m6809.c
+
+```
+int goose;
+__attribute__((section("hasxxx"))) int goosexxx;
+
+int gander;
+__attribute__((section("hasxxx"))) int ganderxxx;
+```
+
+YIELDS
+
+```
+	.area .bss
+	.globl	_goose
+_goose:	.blkb	2
+	.globl _goosexxx
+	.area	hasxxx
+_goosexxx:
+	.word	0	;skip space 2
+	.area .bss
+	.globl	_gander
+_gander:	.blkb	2
+	.globl _ganderxxx
+	.area	hasxxx
+_ganderxxx:
+	.word	0	;skip space 2
+```
+
+
+-- Grep section_op in m6809.c
+
+gcc6809 -S -I.. -std=gnu99 -nostdlib -dP -mcode-section=NANDO  yadd.c
+```
+;;; gcc for m6809 : Nov 22 2019 00:09:58
+;;; 4.6.4 (gcc6809lw pl6)
+;;; ABI version 1
+;;; -mint16
+        .module yadd.c
+        .area NANDO
+        .globl _hexdigit
+_hexdigit:
+; (insn/f 36 4 37 (parallel [
+```
+
+
+config/h8300/h8300.md uses SYMBOL_REF_FLAG in .md file
+```
+(define_insn "call"
+  [(call (match_operand:QI 0 "call_insn_operand" "or")
+	 (match_operand:HI 1 "general_operand" "g"))]
+  ""
+  "*
+{
+  if (GET_CODE (XEXP (operands[0], 0)) == SYMBOL_REF
+      && SYMBOL_REF_FLAG (XEXP (operands[0], 0)))
+    return \"jsr\\t@%0:8\";
+  else
+    return \"jsr\\t%0\";
+}"
+  [(set_attr "type" "call")
+   (set (attr "length")
+	(if_then_else (match_operand:QI 0 "small_call_insn_operand" "")
+		      (const_int 2)
+		      (const_int 4)))])
+```
+
+rtl.h
+```
+/* Subsequent bits are available for the target to use.  */
+#define SYMBOL_FLAG_MACH_DEP_SHIFT      9
+#define SYMBOL_FLAG_MACH_DEP            (1 << SYMBOL_FLAG_MACH_DEP_SHIFT)
+```
+
+-------------------------------
+
+Assembly Language Programming for the Color Computer, Tepolt, 1985:
+
+p215: POLCAT   [$A000]
+Modifies: A & CC.
+Key pressed: Z=0, A=ascii
+No key: Z=1, A=0
+
+CHROUT     [$A002]
+    Displays ascii A reg
+    DP=0
+
+p213: DISPL   $B99C
+In: DP=0 X=string
+  string starts with " and ends with " (quotes not displayed)
+  $0D causes CR/LF.
+
+CLSCRN   $A928
+   clears screen; display pointer set to $0400.
+
+Extended Color Basic Memory Usage
+    0000    Internal
+    0400    Text Screen
+    0600    Graphics Screen
+    0601+(N*600)   Basic Statements start   [0019] points to start
+            Numeric Variables               [001b] points to start
+
+    Relativey Safe Gap 2600 to 3E00 (7E00)
+
+ending:
+    3ed0 (7ed0)  Unused
+    3f36 (7f36)  S Stack ^   ( ~ 100 bytes ) 
+    3fff (7fff)  String Variables (200 bytes)
+
+CLEAR 200, &H3000    ( reserve 200 string, stop ram at 3000 )
+
+CFNBUF  01D1  RMB 9    ; cassette filename
+CASBUF  01DA  RMB 256  ; cassette buffer
+LINHDR  01DA  RMB 2    ; line input buffer header
+LINBUF  02DC  RMB LBUFMX+1  ; basic line input buffer
+
+VIDRAM  0400  RMB 200
+
+;;;; DISK BASIC ONLY:  otherwise Graphics screens?
+DBUF0   0600  RMB 100   ; i/o buffer #0
+DBUF1   0700  RMB 100   ; i/o buffer #1
+FATBL0   0800  RMB FATLEN

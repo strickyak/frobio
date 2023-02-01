@@ -8,7 +8,7 @@
 //    Tcl in ~ 500 lines of code by Salvatore antirez Sanfilippo.
 //    BSD licensed.
 
-#include "frobio/ncl/ncl.h"
+#include "frob2/ncl/ncl.h"
 
 // TODO: unify 9chain & 9fork.
 //- 9chain command args.... (does not return unless error)
@@ -54,7 +54,7 @@ int picolCommand9FileSize(int argc, char **argv, void *pd) {
     return ErrorNum(argv[0], e);
   if (x)
     return picolSetResult("toobig"), PICOL_ERR;
-  return picolSetResult(StaticFormatSignedInt(u)), PICOL_OK;
+  return ResultD(u);
 }
 
 //- 9wait child_id_var exit_status_var (name two variables to receive results)
@@ -100,40 +100,24 @@ int picolCommand9Sleep(int argc, char **argv, void *pd) {
   return EmptyOrErrorNum(e, argv);
 }
 
-char SetHiBitOfLastChar(char *s) {
-  int n = strlen(s);
-  char z = s[n - 1];
-  s[n - 1] |= 0x80;
-  return z;
-}
-
-void RestoreLastChar(char *s, char c) {
-  int n = strlen(s);
-  s[n - 1] = c;
-}
-
 //- 9create filepath access_mode attrs -> fd (access_mode: 2=write 3=update)
 int picolCommand9Create(int argc, char **argv, void *pd) {
   char *path = argv[1];
-  char final = SetHiBitOfLastChar(path);
   int mode = atoi(argv[2]);
   int attrs = atoi(argv[3]);
   int fd = 0;
 
   int e = Os9Create(path, mode, attrs, &fd);
-  RestoreLastChar(path, final);
   return IntOrErrorNum(e, argv, fd);
 }
 
 //- 9open filepath access_mode -> fd (access_mode: 1=read 2=write 3=update)
 int picolCommand9Open(int argc, char **argv, void *pd) {
   char *path = argv[1];
-  char final = SetHiBitOfLastChar(path);
   int mode = atoi(argv[2]);
   int fd = 0;
 
   int e = Os9Open(path, mode, &fd);
-  RestoreLastChar(path, final);
   return IntOrErrorNum(e, argv, fd);
 }
 
@@ -141,23 +125,19 @@ int picolCommand9Open(int argc, char **argv, void *pd) {
 //- 9chgdir filepath which_dir (which_dir: 1=working, 4=execute)
 int picolCommand9MakOrChgDir(int argc, char **argv, void *pd) {
   char *path = argv[1];
-  char final = SetHiBitOfLastChar(path);
   int mode = atoi(argv[2]);
 
-  error (*f)(const char *, int);  // defines `f`.
+  auto errnum (*f)(const char *, int);  // defines `f`.
   f = (CharUp(argv[0][1]) == 'M') ? Os9MakDir : Os9ChgDir;
   int e = f(path, mode);
-  RestoreLastChar(path, final);
   return EmptyOrErrorNum(e, argv);
 }
 
 //- 9delete filepath
 int picolCommand9Delete(int argc, char **argv, void *pd) {
   char *path = argv[1];
-  char final = SetHiBitOfLastChar(path);
 
   int e = Os9Delete(path);
-  RestoreLastChar(path, final);
   return EmptyOrErrorNum(e, argv);
 }
 
@@ -166,10 +146,8 @@ int picolCommandSource(int argc, char **argv, void *pd) {
   // Open.
 
   char *path = argv[argc - 1];
-  char final = SetHiBitOfLastChar(path);
   int fd = 0;
   int e = Os9Open(path, 1 /*read mode */ , &fd);
-  RestoreLastChar(path, final);
   if (e)
     return ErrorNum(path, e);
 

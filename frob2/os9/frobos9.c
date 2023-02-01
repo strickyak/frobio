@@ -8,7 +8,7 @@
 
 byte disable_irq_count;
 
-#if __SIZE_MAX__ != 65535U // if NOT GCC
+#if !defined(__GNUC__)
 
 
 void DisableIrqsCounting() {
@@ -569,4 +569,4 @@ RET64OK
 }
 #endif // ONLY_IN_KERNEL_MODE
 
-#endif // NOT GCC
+#endif // !defined(__GNUC__)
