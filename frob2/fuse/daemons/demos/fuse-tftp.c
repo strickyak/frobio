@@ -1,7 +1,7 @@
 // demo fuse daemon: fuse.tftp (/Fuse/TFTP)
 
 #ifndef MAX_VERBOSE
-#define MAX_VERBOSE 9 // LLStep /* Log one banner, then only errors. */
+#define MAX_VERBOSE LLStep /* Log one banner, then only errors. */
 #endif
 
 #include "frob2/froblib.h"
@@ -183,7 +183,8 @@ END_LOOP:
 void HexDump(char* payload, word size) {  // Just verbosity.
 #if MAX_VERBOSE >= LLDebug
     if (size > 1030) {
-      LogFatal("HexDump: too big: %x", size);
+      LogStep("HexDump: too big: %x", size);
+      return;
     }
     for (word i = 0; i < size; i += 16) {
       if (i>=32) break; ///////////////////////// STOP SHORT
