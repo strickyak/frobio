@@ -74,8 +74,8 @@ nullboot.wav: nullboot.coco
 floppy.dsk: netboot.coco nullboot.coco
 	rm -f floppy.dsk
 	decb dskini floppy.dsk -4
-	decb copy -2 -b nullboot.coco floppy.dsk,NULLBOOT
-	decb copy -2 -b netboot.coco floppy.dsk,NETBOOT
+	decb copy -2 -b nullboot.coco floppy.dsk,NULLBOOT.DEC
+	decb copy -2 -b netboot.coco floppy.dsk,NETBOOT.DEC
 	decb dir floppy.dsk
 	ls -l floppy.dsk
 z: floppy.dsk

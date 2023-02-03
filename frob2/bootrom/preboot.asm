@@ -68,4 +68,16 @@ di_stuck
 
 id_string  fcs / -- STRICKYAK FROBIO PREBOOT -- /
 
+* Why do I need some padding before more code?
+* Without this, my delay() in nullboot doesn't delay!?.
+
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+    fcs / Nando nando nando nando NANDO. /
+
     ENDSECTION
