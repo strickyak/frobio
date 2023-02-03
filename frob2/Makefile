@@ -61,8 +61,9 @@ netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
 	ls -l netboot.wav
 nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
-	cmoc -i -c bootrom/nullboot.c
-	sed 's/program_start/program_unused/g' < nullboot.s > nullboot.tmp
+	cmoc -i -S bootrom/nullboot.c
+	cp nullboot.s nullboot.pre.tmp
+	sed '/SECTION[\t]start/,/ENDSECTION/d' < nullboot.s > nullboot.tmp
 	mv nullboot.tmp nullboot.s
 	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
 	dd bs=1 skip=5 if=nullboot.coco of=/tmp/cocoio.boot
@@ -91,8 +92,7 @@ ci:
 
 clean:
 	rm -f ./*.list ./*.map ./*.asmap ./*.sym ./*.o ./*.s ./*.os9 ./*.lst ./*.s-orig ./*.link *.bin *.raw *.wav *.coco
-	rm -f */*.list */*.map */*.asmap */*.sym */*.o */*.s */*.os9 */*.lst */*.s-orig */*.link
-	rm -f __*_.*
+	rm -f __*_.* *.tmp
 	rm -f lib*.a _*.a # object archives
 	rm -f *.c.[0-9][0-9][0-9]r.* # for gcc6809 debug
 	sync; sync

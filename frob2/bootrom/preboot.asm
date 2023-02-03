@@ -23,18 +23,18 @@
     IMPORT _main
 
     SECTION start
+		fcb 'D'
+		fcb 'K'
 
     EXPORT program_start
 program_start
 preboot
     orcc #$50   ; disable interrupts
     lds #$0400  ; 1KB stack in lowest memory
+    tfr s,u
 
     clrb
     tfr b,dp    ; dp=0
-
-    ldy #$0000  ; no global vars
-    ldu #$0000  ; no previous frame
 
 *** Display an ID at top of screen, to show preboot is running.
     leax id_string,pcr
@@ -46,6 +46,8 @@ id_loop
     lda ,x+
     bpl id_loop  ; while no N bit
 
+    ldy #$0000  ; no global vars
+    tfr y,u     ; no previous frame
     pshs y,u    ; 8 bytes of zeros onto stack
     pshs y,u
     lbsr _main  ; and call main with no args, which never returns.
