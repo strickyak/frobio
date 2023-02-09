@@ -17,20 +17,7 @@
 #ifndef _FROB2_FROBLIB_H_
 #define _FROB2_FROBLIB_H_
 
-#include <stdarg.h>
-
-typedef char* mstring;  // a Malloc'ed string
-typedef unsigned char errnum;     // for OS error numbers.
-
-// `prob`: High-Level Error Strings.
-//   Use literal const char* for errors.
-//   Use NotYet to mean try again later, because an asynchronous event hasn't happened yet.
-//   Use GOOD (i.e. NULL) for good status.
-// To communicate better error messages, application can LogError, or LogFatal.
-typedef const char* prob;
-#define GOOD ((const char*)NULL)
-extern const char NotYet[]; // defined as "NotYet"
-
+#include "frob2/frobtype.h"
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -57,16 +44,6 @@ typedef unsigned long quad;  // quad is 8 bytes, unsigned, 4 bytes used.
 ////////////////////////////////////////////////////////////////
 #else
 
-// Fundamental type definitions for nylib & frobio.
-#define true 1
-#define false 0
-typedef unsigned char bool;  // use a byte for a bool.
-typedef unsigned char byte;  // byte is 1 byte, unsigned.
-typedef unsigned int word;   // word is 2 bytes, unsigned.
-typedef unsigned long quad;  // quad is 4 bytes, unsigned.
-typedef unsigned int size_t;
-
-#define NULL ((void*)0)
 #define EOF (-1)        // TODO not use this?
 
 #include "frob2/decb/std4gcc.h"
@@ -74,7 +51,7 @@ typedef unsigned int size_t;
 //@ size_t strlen(const char*);
 //@ void memcpy(void*, const void*, size_t n);
 //@ void memset(void*, byte b, size_t n);
-void strcat(char* dest, const char* src);
+char* strcat(char* dest, const char* src);
 //@ void strcpy(char* dest, const char* src);
 //@ void strncpy(char* dest, const char* src, size_t n);
 int strcmp(const char* left, const char* right);

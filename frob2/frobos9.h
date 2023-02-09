@@ -15,7 +15,7 @@
 
 #include "frob2/froblib.h"
 
-#if defined(unix) || defined(FROB_DECB_CMOC)
+#if defined(unix) || defined(FOR_DECB)
 // Can emulate OS9 calls?
 #define IF_os9_THEN_asm /**/
 #else
