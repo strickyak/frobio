@@ -71,7 +71,7 @@ struct vars {
     quad ip_gateway;
     quad ip_dns_server;
     word vdg_ptr;
-    word delay_counter;
+    word bogus_side_effect;
     byte packet[600];
 };
 
@@ -110,7 +110,7 @@ struct UdpRecvHeader {
 /////////////////////////////////////////////////
 
 void Delay(word n) {
-  volatile word* p = &Vars->delay_counter;
+  volatile word* p = &Vars->bogus_side_effect;
   for (word i=0; i<n; i++) *p += i;
 }
 
