@@ -30,6 +30,17 @@ void* memset(void* dest, int ch, size_t n) {
    return d;
 }
 
+char* strcat(char* dest, const char* src) {
+   char* d = dest;
+   const char* s = src;
+   while (*d) d++;
+   while (*s) {
+     *d++ = *s++;
+   }
+   *d = '\0';
+   return dest;
+}
+
 char *strcpy(char *dest, const char *src) {
    char* d = dest;
    const char* s = src;
@@ -60,6 +71,20 @@ size_t strlen(const char *str) {
     return s - str;
 }
 
+int strcmp(const char* a, const char* b) {
+  while (*a == *b) a++, b++;
+  if (*a < *b) return -1;
+  if (*a > *b) return +1;
+  return 0;
+}
+
+int atoi(const char* s) {
+  int z = 0;
+  while ('0' <= *s && *s <= '9') {
+    z = 10*z + (*s - '0');
+  }
+  return z;
+}
 
 void decb_putchar(int c) {
     char ch = (char)c;

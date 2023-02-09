@@ -81,7 +81,7 @@ void decb_putstr(const char* s) {
     }
 }
 
-#ifdef FROB_DECB_CMOC
+#ifdef FOR_DECB
 extern char* readline();
 char* decb_readline() {
   return readline();
