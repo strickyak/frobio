@@ -1,0 +1,166 @@
+call Create
+  x: const char* path
+  a: mode
+  b: attrs
+  os9 0x83
+  out a: char fd
+
+call Open
+  x: const char* path
+  a: mode
+  os9 0x84
+  out a: char fd
+
+call Delete
+  x: const char* path
+  os9 0x87
+
+call ChgDir
+  x: const char* path
+  os9 0x87
+
+call MakDir
+  x: const char* path
+  b: attrs
+  os9 0x87
+
+call GetStt
+  a: path
+  b: func
+  os9 I_GETSTT
+  out d: dOut
+  in/out x: xInOut
+  in/out x: uInOut
+
+call SetStt
+  a: byte path
+  b: byte func
+  os9 I_GETSTT
+  out d: dOut
+  in/out x: xInOut
+  in/out x: uInOut
+
+call Read
+  a: path
+  x: buf
+  y: bufLen
+  os9 I_READ
+  out y: bytes_read
+
+call ReadLn
+  a: path
+  x: buf
+  y: bufLen
+  os9 I_READLN
+  out y: bytes_read
+
+call Write
+  a: path
+  x: buf
+  y: bufLen
+  os9 I_WRITE
+  out y: bytes_written
+
+call WritLn
+  a: path
+  x: buf
+  y: bufLen
+  os9 I_WRITLN
+  out y: bytes_written
+
+call Dup
+  a: path
+  os9 I_DUP
+  out a: newPath
+
+call Close
+  a: path
+  os9 I_CLOSE
+
+call Sleep
+  x: ticks
+  os9 F_SLEEP
+
+call Wait
+  out a: childId
+  out b: exitStatus
+  os9 F_WAIT
+
+call Fork
+  x: program
+  u: params
+  y: paramsLen
+  a: langAndType
+  b: mem_size
+  os9 F_FORK
+  out a: newProcID
+
+call Chain
+  x: program
+  u: params
+  y: paramsLen
+  a: langAndType
+  b: mem_size
+  os9 F_FORK
+
+call Send
+  a: processID
+  b: signalCode
+  os9 F_SEND
+
+call STime
+  x: byte* timePacket
+
+call Mem
+  in/out d: newMemorySizeInOut
+  os9 F_MEM
+  out y: endOfNewMemOut
+
+call AllRam
+  b: numBlocks
+  os9 F_ALLRAM
+  out d: startBlockOut
+
+call DelRam
+  b: numBlocks
+  x: startBlock
+  os9 F_DELRAM
+
+call MapBlk
+  x: startingBlock
+  b: numBlocks
+  os9 F_MAPBLK
+  out u: firstAddressOut
+
+call ClrBlk
+  x: firstAddress
+  b: numBlocks
+  os9 F_CLRBLK
+
+call ID
+  os9 F_ID
+  out a: procIdOut
+  out y: userIdOut
+
+hyper Exit
+  b: exitStatus
+  gomar 107
+
+kernel All64
+  x: base
+  os9 F_ALL64
+  out x: baseOut
+  out y: blockAddrOut
+  out a: blockNum
+
+kernel Find64
+  a: blockNum
+  x: base
+  os9 F_FIND64
+  out y: blockAddr
+
+kernel Ret64
+  a: blockNum
+  x: base
+  os9 F_RET64
+
