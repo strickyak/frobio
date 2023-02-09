@@ -113,6 +113,10 @@ chop:
 f.ncl.os9:
 	sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c $(LIBS) regexp/re.c match/util.c
 
+g.ncl.os9:
+	HOW=gcc sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c $(LIBS) regexp/re.c match/util.c os9/frobos9_gcc.c platform/std_gcc.c 
+	lwlink --format=os9 buf.o flag.o format.o frobos9_gcc.o frobos9.o malloc.o ncl.o ncl_os9.o nylib.o nystdio.o re.o stack300.o std_gcc.o std.o util.o wiz5100s.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4 -lgcc
+
 trapa.o:
 	lwasm --obj -o trapa.o trapa.asm 
 trapc.o:
