@@ -44,6 +44,8 @@ x.logging.os9 : x-logging.c
 	sh Compile.sh $@ $< $(LIBS)
 x.fputs.os9 : x-fputs.c
 	sh Compile.sh $@ $< $(LIBS)
+x.trynewcaller.os9 : os9/try_new_caller.c
+	sh Compile.sh $@ $< os9/new_caller.c os9/new_caller_asm.asm $(LIBS)
 x.decb0.decb : x-decb0.c
 	HOW=$${HOW:-decb-cmoc} sh Compile.sh $@ $< $(LIBS)
 
