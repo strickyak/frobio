@@ -2,7 +2,7 @@ all: fuse.ramfile.os9 fuse.tftp.os9
 
 FROB2DIR = ../../..
 
-SUPPORT = $(FROB2DIR)/froblib/*.c $(FROB2DIR)/os9/*.c $(FROB2DIR)/stack300.asm
+SUPPORT = $(FROB2DIR)/froblib/*.c $(FROB2DIR)/os9/frobos9.c $(FROB2DIR)/stack300.asm
 
 fuse.ramfile.os9 : fuse-ramfile.c
 	cmoc -DMAX_VERBOSE=9 -i --os9 -I../../../.. -o fuse.ramfile fuse-ramfile.c $(SUPPORT)

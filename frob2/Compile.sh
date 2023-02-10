@@ -31,7 +31,7 @@ case $HOW in
         echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/f.ticks.decb /media/strick/APRIL3/YDECB.DSK,TICKS.BIN ; sync' -- HINT
         ;;
     "" | cmoc )
-        cmoc -i --os9 -I.. -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" "$@"
+        cmoc $CMOC_PRE -i --os9 -I.. -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" "$@"
         mv "$OBJECT" "$OBJECT.os9"
         os9 ident "$OBJECT.os9"
         ;;

@@ -1,3 +1,5 @@
+#if USE_FROBOS9_GCC
+
 #include "frob2/froblib.h"
 #include "frob2/frobos9.h"
 
@@ -125,3 +127,7 @@ void Os9_print(const char* str) {
 
 #endif // __M6809__
 #endif // __GNUC__
+
+#else
+int something_bogus;
+#endif

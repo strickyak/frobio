@@ -7,9 +7,10 @@ int main() {
 
   nc.os9num = 0x84;  // I$Open
   nc.dab.ab.a = 0x1; // read access
-  nc.x = "startup";
+  nc.x = (word)"startup";
 
   NewCall(&nc);
 
   LogStatus("  => err=%d  a=%d  b=%d", nc.err, nc.dab.ab.a, nc.dab.ab.b);
+  return 0;
 }

@@ -3,6 +3,8 @@
 // I want it to work with both CMOC and gcc6809.
 // Wrapper macros will be machine-generated.
 
+#if USE_NEW_CALLER
+
 #include "frob2/os9/new_caller.h"
 
 // From new_caller_asm.asm:
@@ -20,3 +22,5 @@ void NewCall(struct new_caller *nc) {
   nc->err = 0;
   MakeNewCall(nc);
 }
+
+#endif

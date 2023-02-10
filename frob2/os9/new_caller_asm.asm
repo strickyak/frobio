@@ -35,24 +35,4 @@ OkNewCall
 
   puls y,u,pc  ; RESTORE STASHED Y,U and RETURN.
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-_XXXFinishNewCall
-  pshs d,x,y,u
-  ldu 6,s      ; struct new_caller*
-  bcc OkNewCall
-
-  stb 15,u     ; & .err
-
-XXXOkNewCall
-  puls x       ; was U
-  stx 12,u     ; saves to .u
-
-  puls d,x,y
-  leau 12,u    ; points to .u which is after .y
-  pshu d,x,y   ; saves to .y, .x, .d
-
-  puls y,u     ; RESTORE STASHED Y,U
-
-
   ENDSECTION code
