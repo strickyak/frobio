@@ -1,0 +1,72 @@
+set -eux
+
+NOSTDLIB=-nostdlib
+NOSTDLIB=
+
+cmoc --decb -i --org=2800 -I../.. zzone.c
+ls -l zzone.bin
+decb copy -2 -b -r zzone.bin /media/strick/APRIL3/z,ZZONE.DEC
+
+cmoc --decb -i --org=2800 -I../.. zztwo.c ../frobjot/jot.c
+ls -l zztwo.bin
+decb copy -2 -b -r zztwo.bin /media/strick/APRIL3/z,ZZTWO.DEC
+
+:
+gcc6809 -std=gnu99 -o zzone.s -I../.. $NOSTDLIB -S zzone.c
+:
+lwasm --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+      --obj -lzzone.list -o zzone.o zzone.s
+:
+lwlink --entry=_main --script=../decb.script --format=decb --map=zzone.map -o zzone.gnu zzone.o
+:
+decb copy -2 -b -r zzone.gnu /media/strick/APRIL3/z,ZZONE.GNU
+
+:
+gcc6809 -std=gnu99 -o zztwo.s -I../.. $NOSTDLIB -S zztwo.c
+gcc6809 -std=gnu99 -o jot.s -I../.. $NOSTDLIB -S ../frobjot/jot.c
+gcc6809 -std=gnu99 -o std_gcc.s -I../.. $NOSTDLIB -S ../platform/std_gcc.c
+gcc6809 -std=gnu99 -o decb_basicputchar.s -I../.. $NOSTDLIB -S ../platform/decb_basicputchar.c
+:
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -lzztwo.list -o zztwo.o zztwo.s
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -ljot.list -o jot.o jot.s
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -lstd_gcc.list -o std_gcc.o std_gcc.s
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -ldecb_basicputchar.list -o decb_basicputchar.o decb_basicputchar.s
+:
+lwlink --entry=_main --script=../decb.script --format=decb --map=zztwo.map \
+    -o zztwo.gnu zztwo.o jot.o std_gcc.o decb_basicputchar.o \
+    --library-path=/opt/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+    --library=gcc
+:
+decb copy -2 -b -r zztwo.gnu /media/strick/APRIL3/z,ZZTWO.GNU
+
+: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+cat zztwo.c ../frobjot/jot.c ../platform/std_gcc.c > __wptwo.c
+gcc6809 -std=gnu99 -fwhole-program -I../.. $NOSTDLIB -S __wptwo.c
+gcc6809 -std=gnu99 -I../.. $NOSTDLIB -S ../platform/decb_abort.c
+gcc6809 -std=gnu99 -I../.. $NOSTDLIB -S ../platform/decb_basicputchar.c
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -lstd_gcc.list -o wptwo.o __wptwo.s
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -ldecb_abort.list -o decb_abort.o decb_abort.s
+lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    --obj -ldecb_basicputchar.list -o decb_basicputchar.o decb_basicputchar.s
+:
+lwlink --entry=_main --script=../decb.script --format=decb --map=wptwo.map \
+    -o wptwo.gnu wptwo.o decb_abort.o decb_basicputchar.o \
+    --library-path=/opt/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+    --library=gcc
+
+decb copy -2 -b -r wptwo.gnu /media/strick/APRIL3/z,WPTWO.GNU
+
+decb dir /media/strick/APRIL3/z
+
+# --library-path=/opt/fuzix/bin/../lib/gcc/m6809-unknown/4.6.4 --library-path=/opt/fuzix/bin/../lib/gcc --library-path=/opt/fuzix/bin/../lib/gcc/m6809-unknown/4.6.4/../../../../m6809-unknown/lib --library=gcc --library=c --library=gcc
+
+sync 
+sync 
+sync 

@@ -3,6 +3,18 @@ typedef unsigned int size_t;
 #include "frob2/frobtype.h"
 #include "frob2/platform/std_gcc.h"
 
+void BasicPutChar(char ch);
+void abort() {
+  BasicPutChar('#');
+  BasicPutChar('A');
+  BasicPutChar('B');
+  BasicPutChar('O');
+  BasicPutChar('R');
+  BasicPutChar('T');
+  BasicPutChar('#');
+  while (1) {}
+}
+
 void* memcpy(void* dest, const void* src, size_t n) {
    char* d = dest;
    const char* s = src;
@@ -72,11 +84,16 @@ int strcmp(const char* a, const char* b) {
   return 0;
 }
 
+static char UPPERCHAR(char ch) {
+    if ('a' <= ch && ch <= 'z') return ch + 'A' - 'a';
+    return ch;
+}
+
 int strcasecmp(const char *a, const char *b) {
   while (*a && *b) {
-    if ((byte) CharUp(*a) < (byte) CharUp(*b))
+    if ((byte) UPPERCHAR(*a) < (byte) UPPERCHAR(*b))
       return -1;
-    if ((byte) CharUp(*a) > (byte) CharUp(*b))
+    if ((byte) UPPERCHAR(*a) > (byte) UPPERCHAR(*b))
       return +1;
     a++;
     b++;

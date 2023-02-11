@@ -12,14 +12,9 @@
 // If other characters are appended, they turn
 // into \ooo octal escapes strings.
 
-#include "frob2/froblib.h"
-
-#define JOT_MAX 62
-
-typedef struct jot {
-  byte len; 
-  char s[JOT_MAX+1];
-} Jot;
+#include "frob2/frobtype.h"
+//#include "frob2/froblib.h"
+#include "frob2/frobjot/frobjot.h"
 
 const byte HexAlphabet[] = "0123456789ABCDEF";
 
@@ -27,19 +22,7 @@ bool JotNiceCharP(char c) {
     return (' ' <= c && c <= '~' || c=='\r');
 }
 
-#if 0
-void JotCheck(Jot* p) {
-  Assert(p->len <= JOT_MAX);
-  Assert(p->s[p->len] == '\0');
-  for (byte i=0; i<p->len; i++) {
-    char c = p->s[i];
-    Assert(JotNiceCharP(c));
-  }
-}
-#endif
-
 // To initialize a Jot: struct j62 = {0};
-//
 
 void JotAppC(Jot* j, char c) {
   if (c=='\n') c='\r';
@@ -98,6 +81,7 @@ void JotFormatVA(Jot* j, const char* format, va_list ap) {
                
         break;
 
+      case 'd': 
       case 'u': 
         // word u = va_arg(ap, word);
         JotAppU(j, va_arg(ap, word));
@@ -109,6 +93,9 @@ void JotFormatVA(Jot* j, const char* format, va_list ap) {
         JotAppS(j, va_arg(ap, const char*));
                
         break;
+
+      default:
+        JotAppC(j, *s);
     }
   }
 }

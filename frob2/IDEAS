@@ -395,3 +395,10 @@ VIDRAM  0400  RMB 200
 DBUF0   0600  RMB 100   ; i/o buffer #0
 DBUF1   0700  RMB 100   ; i/o buffer #1
 FATBL0   0800  RMB FATLEN
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ctrl=189 up=94=^ left=8 right=9 down=10 alt=64=@  clear=12
+shift-ctrl=1 s-up=95=_ s-left=21 s-right=93=] sdown=91 s-alt=19  s-@=19 shift-clr=92=\
+f1=103=g f2=4   shift-f1=52=4 shift-f2=214    s-enter=enter=13  s-break=break=3
+

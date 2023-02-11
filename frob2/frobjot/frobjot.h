@@ -1,3 +1,6 @@
+#ifndef _FROB2_FROBJOT_FROBJOT_H_
+#define _FROB2_FROBJOT_FROBJOT_H_
+
 // Jot: small (62 bytes max) ASCII strings.
 //
 // Jots require exactly 64 bytes, because they
@@ -12,7 +15,7 @@
 // If other characters are appended, they turn
 // into \ooo octal escapes strings.
 
-#include "frob2/froblib.h"
+#include "frob2/frobtype.h"
 
 #define JOT_MAX 62
 
@@ -21,101 +24,19 @@ typedef struct jot {
   char s[JOT_MAX+1];
 } Jot;
 
-const byte HexAlphabet[] = "0123456789ABCDEF";
+extern const byte HexAlphabet[];
 
-bool JotNiceCharP(char c) {
-    return (' ' <= c && c <= '~' || c=='\r');
-}
-
-#if 0
-void JotCheck(Jot* p) {
-  Assert(p->len <= JOT_MAX);
-  Assert(p->s[p->len] == '\0');
-  for (byte i=0; i<p->len; i++) {
-    char c = p->s[i];
-    Assert(JotNiceCharP(c));
-  }
-}
-#endif
+bool JotNiceCharP(char c);
 
 // To initialize a Jot: struct j62 = {0};
-//
 
-void JotAppC(Jot* j, char c) {
-  if (c=='\n') c='\r';
-  if (JotNiceCharP(c)) {
-    if (j->len < JOT_MAX) {
-      j->s[j->len++] = c;
-      j->s[j->len] = '\0';
-    } else {
-      j->s[JOT_MAX-1] = '#'; // Overflow char.
-    }
-  } else {
-    JotAppC(j, '\\');
-    byte b = (byte)c;
-    byte b3 = b>>3;
-    JotAppC(j, '0'+ (7 & (b3>>3)));
-    JotAppC(j, '0'+ (7 & (b3)));
-    JotAppC(j, '0'+ (7 & b));
-  }
-}
 
-void JotAppU(Jot* j, word x) {
-  if (x > 9) {
-    JotAppU(j, x/10);
-  }
-  JotAppC(j, '0' + (char)(x % 10));
-}
+void JotAppC(Jot* j, char c);
+void JotAppU(Jot* j, word x);
+void JotAppX(Jot* j, word x);
+void JotAppS(Jot* j, const char* x);
+void JotAppJot(Jot* j, const Jot* x);
+void JotFormatVA(Jot* j, const char* format, va_list ap);
+void JotPrintf(Jot* j, const char* format, ...);
 
-void JotAppX(Jot* j, word x) {
-  if (x > 15) {
-    JotAppX(j, x>>4);
-  }
-  JotAppC(j,  HexAlphabet[ x & 15 ]);
-}
-
-void JotAppS(Jot* j, const char* x) {
-  while (*x)
-    JotAppC(j, *x++);
-}
-
-void JotAppJot(Jot* j, const Jot* x) {
-  for (byte i = 0; i < x->len; i++)
-    JotAppC(j, x->s[i]);
-}
-
-void JotFormatVA(Jot* j, const char* format, va_list ap) {
-  for (const char* s = format; *s; s++) {
-    if (*s != '%') {
-      JotAppC(j, *s);
-      continue;
-    }
-    s++;
-    switch (*s) {
-      case 'x': 
-        // word x = va_arg(ap, word);
-        JotAppX(j, va_arg(ap, word));
-               
-        break;
-
-      case 'u': 
-        // word u = va_arg(ap, word);
-        JotAppU(j, va_arg(ap, word));
-               
-        break;
-
-      case 's': 
-        // const char* s = va_arg(ap, const char*);
-        JotAppS(j, va_arg(ap, const char*));
-               
-        break;
-    }
-  }
-}
-
-void JotPrintf(Jot* j, const char* format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    JotFormatVA(j, format, ap);
-    va_end(ap);
-}
+#endif // _FROB2_FROBJOT_FROBJOT_H_
