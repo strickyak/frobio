@@ -59,11 +59,11 @@ Jot j;
 int main() {
   do {
     BasicClearScreen();
-    for (char ch = '0'; ch <= '9'; ch++) ZZPutChar(ch);
+    for (small ch = '0'; ch <= '9'; ch++) ZZPutChar(ch);
     ZZPutChar('\r');
-    for (char ch = 'A'; ch <= 'Z'; ch++) ZZPutChar(ch);
+    for (small ch = 'A'; ch <= 'Z'; ch++) ZZPutChar(ch);
     ZZPutChar(' ');
-    for (char ch = 'a'; ch <= 'z'; ch++) ZZPutChar(ch);
+    for (small ch = 'a'; ch <= 'z'; ch++) ZZPutChar(ch);
     ZZPutChar('.');
     ZZPutChar('\r');
     for (word ch = 128; ch <= 255; ch++) ZZPutChar((char)ch);
@@ -75,7 +75,7 @@ int main() {
     if (ch) {
       memset(&j, 0, sizeof j);
       JotPrintf(&j, "(%u) ", 255&ch);
-      for (byte i=0; i<j.len; i++) ZZPutChar(j.s[i]);
+      for (small i=0; i<j.len; i++) ZZPutChar(j.s[i]);
     }
   }
 

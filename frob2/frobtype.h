@@ -48,12 +48,21 @@ extern const char NotYet[]; // defined as "NotYet"
 
 #ifdef unix
 
+typedef unsigned char small;  // byte is 1 byte, unsigned.
 typedef unsigned char byte;  // byte is 1 byte, unsigned.
 typedef unsigned long word;  // word is 8 bytes, unsigned.
 typedef unsigned long quad;  // quad is 8 bytes, unsigned, 4 bytes used.
 
 #else // unix
 
+// Iteration variables over small ranges (under 255 loops) can use small.
+// gcc6809 can run out of byte-sized registers if it uses bytes for
+// iterations variables, so we offer small which is 2 bytes on gcc6809.
+#ifdef __GNUC__
+typedef unsigned int small;  // gcc: small is 2 bytes, unsigned.
+#else
+typedef unsigned char small;  // CMOC: small is 1 byte, unsigned.
+#endif
 
 typedef unsigned char byte;  // byte is 1 byte, unsigned.
 typedef unsigned int word;   // word is 2 bytes, unsigned.
