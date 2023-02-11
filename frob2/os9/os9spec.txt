@@ -1,101 +1,105 @@
-call Create
+def Create
   x: const char* path
   a: mode
   b: attrs
   os9 0x83
-  out a: char fd
+  *a: char fd_out
 
-call Open
+def Open
   x: const char* path
   a: mode
   os9 0x84
-  out a: char fd
+  *a: char fd_out
 
-call Delete
+def Delete
   x: const char* path
-  os9 0x87
+  os9 I_DELETE
 
-call ChgDir
+def ChgDir
   x: const char* path
-  os9 0x87
+  os9 I_CHGDIR
 
-call MakDir
+def MakDir
   x: const char* path
   b: attrs
-  os9 0x87
+  os9 I_MAKDIR
 
-call GetStt
+def GetStt
   a: path
   b: func
+  x: x_in
+  u: u_in
   os9 I_GETSTT
-  out d: dOut
-  in/out x: xInOut
-  in/out x: uInOut
+  *d: d_out
+  *x: x_out
+  *u: u_out
 
-call SetStt
+def SetStt
   a: byte path
   b: byte func
+  x: x_in
+  u: u_in
   os9 I_GETSTT
-  out d: dOut
-  in/out x: xInOut
-  in/out x: uInOut
+  *d: d_out
+  *x: x_out
+  *u: u_out
 
-call Read
+def Read
   a: path
   x: buf
   y: bufLen
   os9 I_READ
-  out y: bytes_read
+  *y: bytes_read_out
 
-call ReadLn
+def ReadLn
   a: path
   x: buf
   y: bufLen
   os9 I_READLN
-  out y: bytes_read
+  *y: bytes_read_out
 
-call Write
+def Write
   a: path
   x: buf
   y: bufLen
   os9 I_WRITE
-  out y: bytes_written
+  *y: bytes_written_out
 
-call WritLn
+def WritLn
   a: path
   x: buf
   y: bufLen
   os9 I_WRITLN
-  out y: bytes_written
+  *y: bytes_written_out
 
-call Dup
+def Dup
   a: path
   os9 I_DUP
-  out a: newPath
+  *a: newPath_out
 
-call Close
+def Close
   a: path
   os9 I_CLOSE
 
-call Sleep
+def Sleep
   x: ticks
   os9 F_SLEEP
 
-call Wait
-  out a: childId
-  out b: exitStatus
+def Wait
   os9 F_WAIT
+  *a: childId_out
+  *b: exitStatus_out
 
-call Fork
+def Fork
   x: program
   u: params
   y: paramsLen
   a: langAndType
   b: mem_size
   os9 F_FORK
-  out a: newProcID
+  *a: newProcID_out
 
-call Chain
+def Chain
   x: program
   u: params
   y: paramsLen
@@ -103,63 +107,61 @@ call Chain
   b: mem_size
   os9 F_FORK
 
-call Send
+def Send
   a: processID
   b: signalCode
   os9 F_SEND
 
-call STime
+def STime
   x: byte* timePacket
+  os9 F_STIME
 
-call Mem
-  in/out d: newMemorySizeInOut
+def Mem
+  d: desiredMemorySize
   os9 F_MEM
-  out y: endOfNewMemOut
+  *y: endOfNewMem_out
+  *d: actualMemorySize_out
 
-call AllRam
+def AllRam
   b: numBlocks
   os9 F_ALLRAM
-  out d: startBlockOut
+  *d: startBlock_out
 
-call DelRam
+def DelRam
   b: numBlocks
   x: startBlock
   os9 F_DELRAM
 
-call MapBlk
+def MapBlk
   x: startingBlock
   b: numBlocks
   os9 F_MAPBLK
-  out u: firstAddressOut
+  *u: firstAddress_out
 
-call ClrBlk
+def ClrBlk
   x: firstAddress
   b: numBlocks
   os9 F_CLRBLK
 
-call ID
+def ID
   os9 F_ID
-  out a: procIdOut
-  out y: userIdOut
+  *a: procId_out
+  *y: userId_out
 
-hyper Exit
-  b: exitStatus
-  gomar 107
-
-kernel All64
+def All64 -krn
   x: base
   os9 F_ALL64
-  out x: baseOut
-  out y: blockAddrOut
-  out a: blockNum
+  *x: base_out
+  *y: blockAddr_out
+  *a: blockNum_out
 
-kernel Find64
+def Find64 -krn
   a: blockNum
   x: base
   os9 F_FIND64
-  out y: blockAddr
+  *y: blockAddr_out
 
-kernel Ret64
+def Ret64 -krn
   a: blockNum
   x: base
   os9 F_RET64
