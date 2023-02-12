@@ -162,7 +162,7 @@ prob UdpClose(byte socknum) {
   if (socknum > 3) return "NoAvailableSocket";
 
   word base = ((word)socknum + 4) << 8;
-  WizPut1(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  WizPut1(base+SockInterrupt/*_IR*/, 0x1F); // Clear all interrupts.
   WizPut1(base+SockCommand, 0x10/*CLOSE*/);
   (void) Wiz__wait(base+SockCommand, 0, 500);
   WizPut1(base+SockMode, 0x00/*Protocol: Socket Closed*/);
@@ -357,7 +357,7 @@ prob UdpOpen(word src_port, byte* socknum_out) {
 
   WizPut1(base+SockMode, 2); // Set UDP Protocol mode.
   WizPut2(base+SockSourcePort, src_port);
-  WizPut1(base+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  WizPut1(base+SockInterrupt/*_IR*/, 0x1F); // Clear all interrupts.
   WizPut1(base+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
   WizPut2(base+0x002d/*_FRAGR*/, 0); // don't fragment.
 
