@@ -43,7 +43,7 @@ do
     :
     lwlink --entry=_main --script=../decb.script --format=decb --map=zztwo.map \
         -o zztwo.$3 zztwo.o jot.o std_gcc.o decb_basicputchar.o \
-        --library-path=/opt/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+        --library-path=/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
         --library=gcc
     :
     decb copy -2 -b -r zztwo.$3 /media/strick/APRIL3/z,ZZTWO.$3
@@ -64,14 +64,14 @@ lwasm  --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragm
 :
 lwlink --entry=_main --script=../decb.script --format=decb --map=wptwo.map \
     -o wptwo.gnu wptwo.o decb_abort.o decb_basicputchar.o \
-    --library-path=/opt/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+    --library-path=/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
     --library=gcc
 
 decb copy -2 -b -r wptwo.gnu /media/strick/APRIL3/z,WPTWO.GNU
 
 decb dir /media/strick/APRIL3/z
 
-# --library-path=/opt/fuzix/bin/../lib/gcc/m6809-unknown/4.6.4 --library-path=/opt/fuzix/bin/../lib/gcc --library-path=/opt/fuzix/bin/../lib/gcc/m6809-unknown/4.6.4/../../../../m6809-unknown/lib --library=gcc --library=c --library=gcc
+# --library-path=/opt/yak/fuzix/bin/../lib/gcc/m6809-unknown/4.6.4 --library-path=/opt/yak/fuzix/bin/../lib/gcc --library-path=/opt/yak/fuzix/bin/../lib/gcc/m6809-unknown/4.6.4/../../../../m6809-unknown/lib --library=gcc --library=c --library=gcc
 
 sync 
 sync 
