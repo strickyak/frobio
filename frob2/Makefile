@@ -53,15 +53,18 @@ f.b-unix:
 	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c
 	./a.out -a tweb/testdata/index.fm
 
+netboot.cart: netboot.coco
 netboot.coco: bootrom/netboot.c bootrom/preboot.asm
 	cmoc -i -c bootrom/netboot.c
 	sed 's/program_start/program_unused/g' < netboot.s > netboot.tmp
 	mv netboot.tmp netboot.s
 	cmoc -i --org=2600 --coco -o netboot.coco bootrom/preboot.asm netboot.s
 	ls -l netboot.coco
+	cmoc -i --org=C000 --raw -o netboot.cart bootrom/preboot.asm netboot.s
 netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
 	ls -l netboot.wav
+nullboot.cart: nullboot.coco
 nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
 	cmoc -i -S bootrom/nullboot.c
 	cp nullboot.s nullboot.pre.tmp
@@ -70,6 +73,7 @@ nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
 	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
 	dd bs=1 skip=5 if=nullboot.coco of=/tmp/cocoio.boot
 	ls -l nullboot.coco
+	cmoc -i --org=C000 --raw -o nullboot.cart bootrom/preboot.asm nullboot.s
 nullboot.wav: nullboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NULLBOOT' -o'nullboot.wav' -v nullboot.coco
 	ls -l nullboot.wav
