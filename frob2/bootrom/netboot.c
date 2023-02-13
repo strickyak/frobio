@@ -31,8 +31,7 @@ typedef unsigned long quad;
 #define WIZ_PORT 0xFF68
 #define DHCP_HOSTNAME "coco"
 
-#define DHCP_CLIENT_PORT 68
-#define DHCP_SERVER_PORT 67
+#define DHCP_CLIENT_PORT 10068 /* 68 */
 
 #define VARS_RAM 0x1000
 
@@ -331,7 +330,7 @@ void WizReconfigureForDhcp(quad ip_addr, quad ip_mask, quad ip_gateway) {
 void UdpClose() {
   printk("CLOSE");
 
-  poke(BASE+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  poke(BASE+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
   poke(BASE+SockCommand, 0x10/*CLOSE*/);
   wait(BASE+SockCommand, 0, 500);
   poke(BASE+SockMode, 0x00/*Protocol: Socket Closed*/);
@@ -341,7 +340,7 @@ errnum UdpOpen(word src_port) {
   printk("UdpOpen %u....", src_port);
   poke(BASE+SockMode, 2); // Set UDP Protocol mode.
   poke_word(BASE+SockSourcePort, src_port);
-  poke(BASE+0x0001/*_IR*/, 0x1F); // Clear all interrupts.
+  poke(BASE+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
   poke(BASE+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
   poke_word(BASE+0x002d/*_FRAGR*/, 0); // don't fragment.
 
