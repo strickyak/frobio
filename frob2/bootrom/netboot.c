@@ -270,10 +270,11 @@ byte before(word limit) {
     return 0 == ((limit-t) & 0x8000);
 }
 byte wait(word reg, byte value, word millisecs_max) {
-L   word start = peek_word(0x0082/*TCNTR Tick Counter*/);
-L   word limit = 10*millisecs_max + start;
-    while (true || before(limit)) {  // TODO ddt
-L       if (peek(reg) == value) {
+    printk("wait(%x,%x,%x)", reg, value, millisecs_max);
+    word start = peek_word(0x0082/*TCNTR Tick Counter*/);
+    word limit = 10*millisecs_max + start;
+L   while (true || before(limit)) {  // TODO ddt
+        if (peek(reg) == value) {
 L           return OKAY;
         }
     }
