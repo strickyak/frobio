@@ -31,7 +31,8 @@ typedef unsigned long quad;
 #define WIZ_PORT 0xFF68
 #define DHCP_HOSTNAME "coco"
 
-#define DHCP_CLIENT_PORT 10068 /* 68 */
+#define DHCP_SERVER_PORT 67
+#define DHCP_CLIENT_PORT 68
 
 #define VARS_RAM 0x1000
 
@@ -110,7 +111,7 @@ struct UdpRecvHeader {
 
 void Delay(word n) {
   volatile word* p = &Vars->bogus_side_effect;
-  for (word i=0; i<n; i++) *p += i;
+  while (n--) *p += n;
 }
 
 void PutChar(char ch) {
@@ -118,7 +119,7 @@ void PutChar(char ch) {
     if (96 <= ch && ch <= 126) ch -= 32;
     if (ch < 32 || ch >= 127) ch = '?';
     byte codepoint = (byte)ch;
-    *(byte*)p = 0x40 | (0x3f & codepoint);
+    *(byte*)p = (0x3f & codepoint);
     p++;
     if (p>=VDG_END) {
         for (word i = VDG_RAM; i< VDG_END; i++) {
@@ -127,7 +128,7 @@ void PutChar(char ch) {
                 *(volatile byte*)i = *(volatile byte*)(i+32);
             } else {
                 // Clear the last line.
-                *(volatile byte*)i = 0x40 | 32;
+                *(volatile byte*)i = 32;
             }
         }
         p = VDG_END-32;
@@ -218,7 +219,7 @@ static byte peek(word reg) {
   wiz[1] = (byte)(reg >> 8);
   wiz[2] = (byte)(reg);
   byte z = wiz[3];
-  //printk("[%x->%x]", reg, z);
+  // if (reg < 0xFFF && reg != 0x403) printk("%x->%x", reg, z);
   return z;
 }
 static word peek_word(word reg) {
@@ -228,7 +229,7 @@ static word peek_word(word reg) {
   byte hi = wiz[3];
   byte lo = wiz[3];
   word z = ((word)(hi) << 8) + (word)lo;
-  //printk("[%x=>%x]", reg, z);
+  // if (reg < 0xFFF) printk("%x=>%x", reg, z);
   return z;
 }
 static void poke(word reg, byte value) {
@@ -236,7 +237,7 @@ static void poke(word reg, byte value) {
   wiz[1] = (byte)(reg >> 8);
   wiz[2] = (byte)(reg);
   wiz[3] = value;
-  //printk("[%x<-%x]", reg, value);
+  if (reg < 0xFFF) printk("%x<-%x", reg, value);
 }
 static void poke_word(word reg, word value) {
   byte* wiz = (byte*)WIZ_PORT;
@@ -244,11 +245,11 @@ static void poke_word(word reg, word value) {
   wiz[2] = (byte)(reg);
   wiz[3] = (byte)(value >> 8);
   wiz[3] = (byte)(value);
-  //printk("[%x<=%x]", reg, value);
+  if (reg < 0xFFF) printk("%x<=%x", reg, value);
 }
 static void poke_n(word reg, const void* data, word size) {
   byte* wiz = (byte*)WIZ_PORT;
-  //printk("[%x<<%x]", reg, size);
+  printk("[%x<<%x]", reg, size);
   const byte* from = (const byte*) data;
   wiz[1] = (byte)(reg >> 8);
   wiz[2] = (byte)(reg);
@@ -271,6 +272,10 @@ byte before(word limit) {
 }
 byte wait(word reg, byte value, word millisecs_max) {
     printk("wait(%x,%x,%x)", reg, value, millisecs_max);
+//    if (reg == 0x403) {
+//      printk("no wait");  // WUT don't wait on status
+//      return OKAY;
+//    }
     word start = peek_word(0x0082/*TCNTR Tick Counter*/);
     word limit = 10*millisecs_max + start;
 L   while (true || before(limit)) {  // TODO ddt
@@ -284,9 +289,11 @@ L   return 5; // TIMEOUT
 void WizReset() {
   byte* wiz = (byte*)WIZ_PORT;
   wiz[0] = 128; // Reset
-L Delay(99);
+L Delay(5000);
+L Delay(5000);
+L Delay(5000);
   wiz[0] = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-L Delay(99);
+L Delay(5000);
 }
 
 void WizConfigure(quad ip_addr, quad ip_mask, quad ip_gateway) {
@@ -343,16 +350,19 @@ errnum UdpOpen(word src_port) {
   poke_word(BASE+SockSourcePort, src_port);
   poke(BASE+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
   poke(BASE+0x002c/*_IMR*/, 0xFF); // mask all interrupts.
-  poke_word(BASE+0x002d/*_FRAGR*/, 0); // don't fragment.
-
-  poke(BASE+0x002f/*_MR2*/, 0x00); // no blocks.
+  // notneeded // poke_word(BASE+0x002d/*_FRAGR*/, 0); // don't fragment.
+L
+  // notneeded // poke(BASE+0x002f/*_MR2*/, 0x00); // no blocks.
   poke(BASE+SockCommand, 1/*=OPEN*/);  // OPEN IT!
   errnum err = wait(BASE+SockCommand, 0, 500);
   if (err) {L; Fatal();}
-
-  err = wait(BASE+SockStatus, 0x22/*SOCK_UDP*/, 500);
-  if (err) {L; Fatal();}
-
+L
+  printk("status %x", peek(BASE+SockStatus));
+  printk("status %x", peek(BASE+SockStatus));
+  printk("status %x", peek(BASE+SockStatus));
+L  err = wait(BASE+SockStatus, 0x22/*SOCK_UDP*/, 500);
+L  if (err) {L; Fatal();}
+L
   word tx_r = peek_word(BASE+TxReadPtr);
   poke_word(BASE+TxWritePtr, tx_r);
   word rx_w = peek_word(BASE+0x002A/*_RX_WR*/);
@@ -430,6 +440,9 @@ errnum UdpSend(byte* payload, word size, quad dest_ip, word dest_port) {
 errnum UdpRecv(byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
   word buf = RX_BUF_0;
 
+  printk("status %x", peek(BASE+SockStatus));
+  printk("status %x", peek(BASE+SockStatus));
+  printk("status %x", peek(BASE+SockStatus));
   byte status = peek(BASE+SockStatus);
   if (status != 0x22/*SOCK_UDP*/) return 0xf6 /*E_NOTRDY*/;
 
@@ -555,7 +568,7 @@ void RunDhcp() {
         printk("cannot UdpOpen: e=%x.", e);
         Fatal();
     }
-    e = UdpSend((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
+    e = UdpSend((byte*)p, sizeof *p, 0xFFFFFFFFL, DHCP_SERVER_PORT);
     if (e) {
         printk("cannot UdpSend: e=%x.", e);
         Fatal();
@@ -627,7 +640,7 @@ void RunDhcp() {
     *w++ = 0;  // length 0 bytes
     printk("Request");
 
-    e = UdpSend((byte*)p, sizeof *p, 0xFFFFFFFFL, 67);
+    e = UdpSend((byte*)p, sizeof *p, 0xFFFFFFFFL, DHCP_SERVER_PORT);
     if (e) {
         printk("cannot UdpSend: e=%x.\n", e);
         Fatal();
@@ -749,6 +762,8 @@ L   wiz_configure_for_DHCP(DHCP_HOSTNAME, Vars->mac_addr);
 L   PutStr("wiz_configure_for_DHCP ");
 
 L   RunDhcp();
+    printk("OK");
+    while (1) {}
 
 L   RunTftpGet();
     UdpClose();
