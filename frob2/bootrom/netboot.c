@@ -749,7 +749,7 @@ L           word* w = (word*)Vars->packet;
 }
 
 // TODO: Load more than one block, at somewhere like $2600.
-int main() {
+int RomMain() {
     memset(VARS_RAM, 0, sizeof (struct vars));
     memset(VDG_RAM+32, '.', VDG_LEN-32);
     Vars->vdg_ptr = 0x0420;

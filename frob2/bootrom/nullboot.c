@@ -22,7 +22,7 @@ unsigned delay(unsigned n) {
   }
   return sum;
 }
-int main () {
+int RomMain () {
     // Poke alphabet over the screen, with stride 3,
     // skipping the first screen line of 32 bytes.
     for (unsigned p = 0x0420; p < 0x0600; p++) {

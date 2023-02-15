@@ -402,3 +402,35 @@ ctrl=189 up=94=^ left=8 right=9 down=10 alt=64=@  clear=12
 shift-ctrl=1 s-up=95=_ s-left=21 s-right=93=] sdown=91 s-alt=19  s-@=19 shift-clr=92=\
 f1=103=g f2=4   shift-f1=52=4 shift-f2=214    s-enter=enter=13  s-break=break=3
 
+;;;;;;;;;;;;;;;;;;;;
+
+How to load flash rom in CocoSDC:
+
+LOADM "NETBOOT.DEC"
+KILL MEM @4
+WRITE MEM @4, &H2600, &HC000, 8190
+RUN @4
+
+;;;;;;;;;;;;;;;;
+
+How can I avoid the $63 bytes of crt.ecb_o ?
+
+This is my script:
+$ cat -n netboot.link.PLAIN
+     1	define basesympat s_%s
+     2	define lensympat l_%s
+     3	section start load 2600
+     4	section code
+     5	section rodata
+     6	section bss,bss
+     7	entry program_start
+
+lwlink-orig --map=netboot.coco.map --format=raw --output=netboot.coco --script=netboot.link.PLAIN  --map=netboot.map -L/opt/yak/cmoc/share/cmoc/lib -L/tmp -lcmoc-crt-zap -lcmoc-std-ecb /opt/yak/cmoc/share/cmoc/lib/float-ctor.ecb_o -lcmoc-float-ecb preboot.o netboot.o
+
+I can remove the float:
+
+lwlink-orig --map=netboot.coco.map --format=raw --output=netboot.coco --script=netboot.link.PLAIN  --map=netboot.map -L/opt/yak/cmoc/share/cmoc/lib -L/tmp -lcmoc-crt-zap -lcmoc-std-ecb  preboot.o netboot.o
+
+/tmp/libcmoc-crt-zap.a is libcmoc-crt-ecb.a with crt.ecb_o removed.
+
+Otherwise crt.ecb_o gets included, and cannot find program_end or INITGL.

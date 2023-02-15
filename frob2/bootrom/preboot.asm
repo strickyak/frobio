@@ -1,7 +1,7 @@
 *** frob2/netboot/preboot.asm
 ***
 *** The purpose of this code is to disable interrupts,
-*** choose a Stack region, and call the C main() function.
+*** choose a Stack region, and call the C RomMain() function.
 *** It replaces the ordinary "cstart" code,
 *** for use in a Boot ROM.
 ***
@@ -11,16 +11,16 @@
 *** jump to (or Basic `EXEC`) its first byte to execute it.
 ***
 *** First prints a banner at the top of the screen.
-*** Then calls _main.
-*** It is not intended that the main function ever returns.
-*** But if _main returns, print the banner backwards across the
+*** Then calls _RomMain.
+*** It is not intended that the _RomMain function ever returns.
+*** But if _RomMain returns, print the banner backwards across the
 *** middle of the screen, and get stuck.
 ***
 *** You can CLOADM and EXEC a binary to test it.
 *** But it is intended that this will eventually call
-*** the main() routine for the netboot ROM.
+*** the RomMain() routine for the netboot ROM.
 
-    IMPORT _main
+    IMPORT _RomMain
 
     SECTION start
 		fcb 'D'
@@ -50,9 +50,9 @@ id_loop
     tfr y,u     ; no previous frame
     pshs y,u    ; 8 bytes of zeros onto stack
     pshs y,u
-    lbsr _main  ; and call main with no args, which never returns.
+    lbsr _RomMain  ; and call RomMain with no args, which never returns.
 
-*** Show id backwards if main returns, and get stuck.
+*** Show id backwards if RomMain returns, and get stuck.
 not_reached
     orcc #$50   ; disable interrupts
     leax id_string,pcr
