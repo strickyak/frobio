@@ -55,10 +55,10 @@ f.b-unix:
 
 netboot.coco: bootrom/netboot.c bootrom/preboot.asm
 	cmoc -i -S bootrom/netboot.c
-	cmoc -i --org=2600 --decb -o netboot.coco bootrom/preboot.asm netboot.s
+	cmoc -i --org=2600 --decb -o netboot.coco bootrom/preboot.asm netboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=decb --output=netboot.coco --script=netboot.link --map=netboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
 	ls -l netboot.coco
 netboot.cart: netboot.coco
-	cmoc -i --org=C000 --raw -o netboot.cart bootrom/preboot.asm netboot.s
+	cmoc -i --org=C000 --raw -o netboot.cart bootrom/preboot.asm netboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=raw --output=netboot.cart --script=netboot.link --map=netboot.cart.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
 	ls -l netboot.cart
 netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
