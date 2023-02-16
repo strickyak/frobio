@@ -1,0 +1,13 @@
+8413 :: cmoc -O0
+7951 :: cmoc -O1
+7040 :: cmoc -O2
+7258 :: gcc -O0
+5209 :: gcc -O1
+5598 :: gcc -O2
+5021 :: gcc -Os
+5450 :: gcc -O2 -fomit-frame-pointer
+4855 :: gcc -Os -fomit-frame-pointer
+4767 :: gcc -O2 -fwhole-program
+4690 :: gcc -O2 -fomit-frame-pointer -fwhole-program
+4389 :: gcc -Os -fwhole-program
+4288 :: gcc -Os -fomit-frame-pointer -fwhole-program
