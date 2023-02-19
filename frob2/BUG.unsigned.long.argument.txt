@@ -1,3 +1,14 @@
+Bug compiling netboot.c with gcc -O1 for 6809.
+The only #include is <stdarg.h> from gcc.
+(This is a bare-metal compile for a boot rom.)
+
+See all these files in this same directory:
+  BUG.unsigned.long.argument.netboot.c
+  BUG.unsigned.long.argument.netboot.map
+  BUG.unsigned.long.argument.netboot.o.list
+
+-------------------------------------------------
+
 `quad` is defined to be unsigned long:
 
 84    typedef unsigned long quad;
@@ -15,7 +26,8 @@ Inside RomMain(), BR_WAITER is passed to RunTftpGet:
 
 884    L   RunTftpGet(BR_WAITER);
 
-Here is that call, storing $7f00 at ,s (which is $03ee) and $0001 at 2,s (which is $03f0):
+Here is that call, storing $7f00 at ,s (which is $03ee) and $0001 at 2,s (which is $03f0).
+(Remember $03ee and $03f0, we will need them in a minute.)
 
 
 "(rom)"+d091 N d091:327c     {leas  -4,s             }  a=00 b=00 x=0000:0000 y=0001:0000 u=03f2:0000 s=03ee:03f2,d091 cc=eFHInZvc dp=00 #744062 {{}} 
@@ -63,5 +75,3 @@ It should have copied from $12,u instead of $16,u.
 
 Later when it wants to use quad waiter,
 it gets it from ,u and 2,u but it gets $00010000 instead of $7f000001.
-
-
