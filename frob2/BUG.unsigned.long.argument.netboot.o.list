@@ -1,0 +1,1645 @@
+                      (        netboot.s):00001         
+                      (        netboot.s):00002         ;;; gcc for m6809 : Nov 22 2019 00:09:58
+                      (        netboot.s):00003         ;;; 4.6.4 (gcc6809lw pl6)
+                      (        netboot.s):00004         ;;; ABI version 1
+                      (        netboot.s):00005         ;;; -mint16
+                      (        netboot.s):00006                 .module netboot.c
+                      (        netboot.s):00007                 .area .text
+                      (        netboot.s):00008                 .globl _Delay
+0000                  (        netboot.s):00009         _Delay:
+0000 3440             (        netboot.s):00010                 pshs    u
+0002 33E4             (        netboot.s):00011                 leau    ,s
+0004 8C0000           (        netboot.s):00012                 cmpx    #0      ;cmphi:
+0007 2708             (        netboot.s):00013                 beq     L1
+0009                  (        netboot.s):00014         L4:
+                      (        netboot.s):00015         ;----- asm -----
+                      (        netboot.s):00016         ;  168 "bootrom/netboot.c" 1
+0009 3D               (        netboot.s):00017                 mul
+                      (        netboot.s):00018         ;  0 "" 2
+                      (        netboot.s):00019         ;--- end asm ---
+000A 301F             (        netboot.s):00020                 leax    -1,x
+000C 8C0000           (        netboot.s):00021                 cmpx    #0      ;cmphi:
+000F 26F8             (        netboot.s):00022                 bne     L4
+0011                  (        netboot.s):00023         L1:
+0011 35C0             (        netboot.s):00024                 puls    u,pc
+                      (        netboot.s):00025                 .globl _PutChar
+0013                  (        netboot.s):00026         _PutChar:
+0013 3460             (        netboot.s):00027                 pshs    y,u
+0015 327E             (        netboot.s):00028                 leas    -2,s
+0017 33E4             (        netboot.s):00029                 leau    ,s
+0019 E7C4             (        netboot.s):00030                 stb     ,u
+001B BE701A           (        netboot.s):00031                 ldx     28698
+001E CBA0             (        netboot.s):00032                 addb    #-96
+0020 C11E             (        netboot.s):00033                 cmpb    #30     ;cmpqi:
+0022 2206             (        netboot.s):00034                 bhi     L7
+0024 E6C4             (        netboot.s):00035                 ldb     ,u
+0026 CBE0             (        netboot.s):00036                 addb    #-32
+0028 E7C4             (        netboot.s):00037                 stb     ,u
+002A                  (        netboot.s):00038         L7:
+002A E6C4             (        netboot.s):00039                 ldb     ,u
+002C CBE0             (        netboot.s):00040                 addb    #-32
+002E C15E             (        netboot.s):00041                 cmpb    #94     ;cmpqi:
+0030 2304             (        netboot.s):00042                 bls     L8
+0032 C63F             (        netboot.s):00043                 ldb     #63
+0034 E7C4             (        netboot.s):00044                 stb     ,u
+0036                  (        netboot.s):00045         L8:
+0036 E6C4             (        netboot.s):00046                 ldb     ,u
+0038 C43F             (        netboot.s):00047                 andb #63
+003A E741             (        netboot.s):00048                 stb     1,u
+003C E780             (        netboot.s):00049                 stb     ,x+
+003E 8C05FF           (        netboot.s):00050                 cmpx    #1535   ;cmphi:
+0041 231F             (        netboot.s):00051                 bls     L9
+0043 8E0400           (        netboot.s):00052                 ldx     #1024
+0046                  (        netboot.s):00053         L12:
+0046 8C05DF           (        netboot.s):00054                 cmpx    #1503   ;cmphi:
+0049 2209             (        netboot.s):00055                 bhi     L10
+004B 318820           (        netboot.s):00056                 leay    32,x
+004E E6A4             (        netboot.s):00057                 ldb     ,y
+0050 E784             (        netboot.s):00058                 stb     ,x
+0052 2004             (        netboot.s):00059                 bra     L11
+0054                  (        netboot.s):00060         L10:
+0054 C620             (        netboot.s):00061                 ldb     #32
+0056 E784             (        netboot.s):00062                 stb     ,x
+0058                  (        netboot.s):00063         L11:
+0058 3001             (        netboot.s):00064                 leax    1,x
+005A 8C0600           (        netboot.s):00065                 cmpx    #1536   ;cmphi:
+005D 26E7             (        netboot.s):00066                 bne     L12
+005F 8E05E0           (        netboot.s):00067                 ldx     #1504
+0062                  (        netboot.s):00068         L9:
+0062 BF701A           (        netboot.s):00069                 stx     28698
+0065 8E0064           (        netboot.s):00070                 ldx     #100
+0068 BD0000           (        netboot.s):00071                 jsr     _Delay
+006B 3262             (        netboot.s):00072                 leas    2,s
+006D 35E0             (        netboot.s):00073                 puls    y,u,pc
+                      (        netboot.s):00074                 .globl _PutStr
+006F                  (        netboot.s):00075         _PutStr:
+006F 3460             (        netboot.s):00076                 pshs    y,u
+0071 33E4             (        netboot.s):00077                 leau    ,s
+0073 E684             (        netboot.s):00078                 ldb     ,x
+0075 2709             (        netboot.s):00079                 beq     L15
+0077 3101             (        netboot.s):00080                 leay    1,x
+0079                  (        netboot.s):00081         L17:
+0079 BD0000           (        netboot.s):00082                 jsr     _PutChar
+007C E6A0             (        netboot.s):00083                 ldb     ,y+
+007E 26F9             (        netboot.s):00084                 bne     L17
+0080                  (        netboot.s):00085         L15:
+0080 35E0             (        netboot.s):00086                 puls    y,u,pc
+                      (        netboot.s):00087                 .globl _PutHex
+0082                  (        netboot.s):00088         _PutHex:
+0082 3460             (        netboot.s):00089                 pshs    y,u
+0084 327C             (        netboot.s):00090                 leas    -4,s
+0086 33E4             (        netboot.s):00091                 leau    ,s
+0088 AE4A             (        netboot.s):00092                 ldx     10,u
+008A 10AE4C           (        netboot.s):00093                 ldy     12,u
+008D 8C0000           (        netboot.s):00094                 cmpx    #0      ;cmphi:
+0090 2608             (        netboot.s):00095                 bne     L22
+0092 263C             (        netboot.s):00096                 bne     L20
+0094 108C000F         (        netboot.s):00097                 cmpy    #15     ;cmphi:
+0098 2336             (        netboot.s):00098                 bls     L20
+009A                  (        netboot.s):00099         L22:
+009A 1F10             (        netboot.s):00100                 tfr     x,d
+009C 1F98             (        netboot.s):00101                 tfr     b,a
+009E 5F               (        netboot.s):00102                 clrb
+009F 48               (        netboot.s):00103                 asla
+00A0 48               (        netboot.s):00104                 asla
+00A1 48               (        netboot.s):00105                 asla
+00A2 48               (        netboot.s):00106                 asla
+00A3 EDC4             (        netboot.s):00107                 std     ,u
+00A5 1F20             (        netboot.s):00108                 tfr     y,d
+00A7 44               (        netboot.s):00109                 lsra
+00A8 56               (        netboot.s):00110                 rorb
+00A9 44               (        netboot.s):00111                 lsra
+00AA 56               (        netboot.s):00112                 rorb
+00AB 44               (        netboot.s):00113                 lsra
+00AC 56               (        netboot.s):00114                 rorb
+00AD 44               (        netboot.s):00115                 lsra
+00AE 56               (        netboot.s):00116                 rorb
+00AF ED42             (        netboot.s):00117                 std     2,u
+00B1 ECC4             (        netboot.s):00118                 ldd     ,u
+00B3 AA42             (        netboot.s):00119                 ora     2,u
+00B5 EA43             (        netboot.s):00120                 orb     3,u
+00B7 ED42             (        netboot.s):00121                 std     2,u
+00B9 327C             (        netboot.s):00122                 leas    -4,s
+00BB 1F10             (        netboot.s):00123                 tfr     x,d
+00BD 44               (        netboot.s):00124                 lsra
+00BE 56               (        netboot.s):00125                 rorb
+00BF 44               (        netboot.s):00126                 lsra
+00C0 56               (        netboot.s):00127                 rorb
+00C1 44               (        netboot.s):00128                 lsra
+00C2 56               (        netboot.s):00129                 rorb
+00C3 44               (        netboot.s):00130                 lsra
+00C4 56               (        netboot.s):00131                 rorb
+00C5 EDE4             (        netboot.s):00132                 std     ,s
+00C7 EC42             (        netboot.s):00133                 ldd     2,u
+00C9 ED62             (        netboot.s):00134                 std     2,s
+00CB BD0000           (        netboot.s):00135                 jsr     _PutHex
+00CE 3264             (        netboot.s):00136                 leas    4,s
+00D0                  (        netboot.s):00137         L20:
+00D0 1F20             (        netboot.s):00138                 tfr     y,d
+00D2 8400             (        netboot.s):00139                 anda #0
+00D4 C40F             (        netboot.s):00140                 andb #15
+00D6 1F02             (        netboot.s):00141                 tfr     d,y
+00D8 E6A90000         (        netboot.s):00142                 ldb     _HexAlphabet,y
+00DC BD0000           (        netboot.s):00143                 jsr     _PutChar
+00DF 3264             (        netboot.s):00144                 leas    4,s
+00E1 35E0             (        netboot.s):00145                 puls    y,u,pc
+                      (        netboot.s):00146                 .globl _PutDec
+00E3                  (        netboot.s):00147         _PutDec:
+00E3 3460             (        netboot.s):00148                 pshs    y,u
+00E5 33E4             (        netboot.s):00149                 leau    ,s
+00E7 3184             (        netboot.s):00150                 leay    ,x
+00E9 8C0009           (        netboot.s):00151                 cmpx    #9      ;cmphi:
+00EC 230D             (        netboot.s):00152                 bls     L24
+00EE CC000A           (        netboot.s):00153                 ldd     #10
+00F1 EDE3             (        netboot.s):00154                 std     ,--s
+00F3 BD0000           (        netboot.s):00155                 jsr     _udivhi3
+00F6 3262             (        netboot.s):00156                 leas    2,s
+00F8 BD0000           (        netboot.s):00157                 jsr     _PutDec
+00FB                  (        netboot.s):00158         L24:
+00FB CC000A           (        netboot.s):00159                 ldd     #10
+00FE EDE3             (        netboot.s):00160                 std     ,--s
+0100 30A4             (        netboot.s):00161                 leax    ,y
+0102 BD0000           (        netboot.s):00162                 jsr     _umodhi3
+0105 3262             (        netboot.s):00163                 leas    2,s
+0107 1F10             (        netboot.s):00164                 tfr     x,d     ;movlsbqihi: R:x -> R:b
+0109 CB30             (        netboot.s):00165                 addb    #48
+010B BD0000           (        netboot.s):00166                 jsr     _PutChar
+010E 35E0             (        netboot.s):00167                 puls    y,u,pc
+                      (        netboot.s):00168                 .globl _printk
+0110                  (        netboot.s):00169         _printk:
+0110 3460             (        netboot.s):00170                 pshs    y,u
+0112 3279             (        netboot.s):00171                 leas    -7,s
+0114 33E4             (        netboot.s):00172                 leau    ,s
+0116 AE4D             (        netboot.s):00173                 ldx     13,u
+0118 314F             (        netboot.s):00174                 leay    15,u
+011A 10AF43           (        netboot.s):00175                 sty     3,u
+011D E684             (        netboot.s):00176                 ldb     ,x
+011F 102700B3         (        netboot.s):00177                 lbeq    L26
+0123 3184             (        netboot.s):00178                 leay    ,x
+0125 E742             (        netboot.s):00179                 stb     2,u
+0127                  (        netboot.s):00180         L38:
+0127 E642             (        netboot.s):00181                 ldb     2,u
+0129 C125             (        netboot.s):00182                 cmpb    #37     ;cmpqi:
+012B 10260087         (        netboot.s):00183                 lbne    L27
+012F 3121             (        netboot.s):00184                 leay    1,y
+0131 6F42             (        netboot.s):00185                 clr     2,u
+0133 2004             (        netboot.s):00186                 bra     L28
+0135                  (        netboot.s):00187         L42:
+0135 C601             (        netboot.s):00188                 ldb     #1
+0137 E742             (        netboot.s):00189                 stb     2,u
+0139                  (        netboot.s):00190         L28:
+0139 10AF45           (        netboot.s):00191                 sty     5,u
+013C E6A0             (        netboot.s):00192                 ldb     ,y+
+013E C173             (        netboot.s):00193                 cmpb    #115    ;cmpqi:
+0140 2757             (        netboot.s):00194                 beq     L30
+0142 2208             (        netboot.s):00195                 bhi     L33
+0144 C16C             (        netboot.s):00196                 cmpb    #108    ;cmpqi:
+0146 10260067         (        netboot.s):00197                 lbne    L29
+014A 20E9             (        netboot.s):00198                 bra     L42
+014C                  (        netboot.s):00199         L33:
+014C C175             (        netboot.s):00200                 cmpb    #117    ;cmpqi:
+014E 2731             (        netboot.s):00201                 beq     L31
+0150 C178             (        netboot.s):00202                 cmpb    #120    ;cmpqi:
+0152 1026005B         (        netboot.s):00203                 lbne    L29
+0156 E642             (        netboot.s):00204                 ldb     2,u
+0158 270D             (        netboot.s):00205                 beq     L34
+015A AE43             (        netboot.s):00206                 ldx     3,u
+015C 3104             (        netboot.s):00207                 leay    4,x
+015E 10AF43           (        netboot.s):00208                 sty     3,u
+0161 EC84             (        netboot.s):00209                 ldd     ,x
+0163 AE02             (        netboot.s):00210                 ldx     2,x
+0165 200D             (        netboot.s):00211                 bra     L35
+0167                  (        netboot.s):00212         L34:
+0167 10AE43           (        netboot.s):00213                 ldy     3,u
+016A AEA4             (        netboot.s):00214                 ldx     ,y
+016C CC0000           (        netboot.s):00215                 ldd     #0
+016F 3122             (        netboot.s):00216                 leay    2,y
+0171 10AF43           (        netboot.s):00217                 sty     3,u
+0174                  (        netboot.s):00218         L35:
+0174 327C             (        netboot.s):00219                 leas    -4,s
+0176 EDE4             (        netboot.s):00220                 std     ,s
+0178 AF62             (        netboot.s):00221                 stx     2,s
+017A BD0000           (        netboot.s):00222                 jsr     _PutHex
+017D 3264             (        netboot.s):00223                 leas    4,s
+017F 2049             (        netboot.s):00224                 bra     L36
+0181                  (        netboot.s):00225         L31:
+0181 10AE43           (        netboot.s):00226                 ldy     3,u
+0184 3122             (        netboot.s):00227                 leay    2,y
+0186 10AFC4           (        netboot.s):00228                 sty     ,u
+0189 10AE43           (        netboot.s):00229                 ldy     3,u
+018C AEA4             (        netboot.s):00230                 ldx     ,y
+018E BD0000           (        netboot.s):00231                 jsr     _PutDec
+0191 10AEC4           (        netboot.s):00232                 ldy     ,u
+0194 10AF43           (        netboot.s):00233                 sty     3,u
+0197 2031             (        netboot.s):00234                 bra     L36
+0199                  (        netboot.s):00235         L30:
+0199 10AE43           (        netboot.s):00236                 ldy     3,u
+019C 3122             (        netboot.s):00237                 leay    2,y
+019E 10AFC4           (        netboot.s):00238                 sty     ,u
+01A1 10AE43           (        netboot.s):00239                 ldy     3,u
+01A4 AEA4             (        netboot.s):00240                 ldx     ,y
+01A6 BD0000           (        netboot.s):00241                 jsr     _PutStr
+01A9 10AEC4           (        netboot.s):00242                 ldy     ,u
+01AC 10AF43           (        netboot.s):00243                 sty     3,u
+01AF 2019             (        netboot.s):00244                 bra     L36
+01B1                  (        netboot.s):00245         L29:
+01B1 BD0000           (        netboot.s):00246                 jsr     _PutChar
+01B4 2014             (        netboot.s):00247                 bra     L36
+01B6                  (        netboot.s):00248         L27:
+01B6 E642             (        netboot.s):00249                 ldb     2,u
+01B8 CBE0             (        netboot.s):00250                 addb    #-32
+01BA C15E             (        netboot.s):00251                 cmpb    #94     ;cmpqi:
+01BC 2304             (        netboot.s):00252                 bls     L37
+01BE C63F             (        netboot.s):00253                 ldb     #63
+01C0 E742             (        netboot.s):00254                 stb     2,u
+01C2                  (        netboot.s):00255         L37:
+01C2 E642             (        netboot.s):00256                 ldb     2,u
+01C4 BD0000           (        netboot.s):00257                 jsr     _PutChar
+01C7 10AF45           (        netboot.s):00258                 sty     5,u
+01CA                  (        netboot.s):00259         L36:
+01CA AE45             (        netboot.s):00260                 ldx     5,u
+01CC 3101             (        netboot.s):00261                 leay    1,x
+01CE E601             (        netboot.s):00262                 ldb     1,x
+01D0 E742             (        netboot.s):00263                 stb     2,u
+01D2 1026FF51         (        netboot.s):00264                 lbne    L38
+01D6                  (        netboot.s):00265         L26:
+01D6 C63B             (        netboot.s):00266                 ldb     #59
+01D8 BD0000           (        netboot.s):00267                 jsr     _PutChar
+01DB 8E03E8           (        netboot.s):00268                 ldx     #1000
+01DE BD0000           (        netboot.s):00269                 jsr     _Delay
+01E1 3267             (        netboot.s):00270                 leas    7,s
+01E3 35E0             (        netboot.s):00271                 puls    y,u,pc
+01E5                  (        netboot.s):00272         LC0:
+01E5 25783C2D257800   (        netboot.s):00273                 .ascii "%x<-%x\0"
+01EC                  (        netboot.s):00274         _poke:
+01EC 3460             (        netboot.s):00275                 pshs    y,u
+01EE 327D             (        netboot.s):00276                 leas    -3,s
+01F0 33E4             (        netboot.s):00277                 leau    ,s
+01F2 E7C4             (        netboot.s):00278                 stb     ,u
+01F4 1F10             (        netboot.s):00279                 tfr     x,d
+01F6 1F89             (        netboot.s):00280                 tfr     a,b
+01F8 4F               (        netboot.s):00281                 clra            ;zero_extendqihi: R:b -> R:d
+01F9 F7FF69           (        netboot.s):00282                 stb     -151    ;movlsbqihi: R:d -> -151
+01FC 1F10             (        netboot.s):00283                 tfr     x,d
+01FE F7FF6A           (        netboot.s):00284                 stb     -150    ;movlsbqihi: R:d -> -150
+0201 E6C4             (        netboot.s):00285                 ldb     ,u
+0203 F7FF6B           (        netboot.s):00286                 stb     -149
+0206 8C0FFF           (        netboot.s):00287                 cmpx    #4095   ;cmphi:
+0209 2211             (        netboot.s):00288                 bhi     L43
+020B 4F               (        netboot.s):00289                 clra            ;zero_extendqihi: R:b -> R:d
+020C 1F02             (        netboot.s):00290                 tfr     d,y
+020E 3406             (        netboot.s):00291                 pshs    d
+0210 3410             (        netboot.s):00292                 pshs    x
+0212 8E0000           (        netboot.s):00293                 ldx     #LC0
+0215 AFE3             (        netboot.s):00294                 stx     ,--s
+0217 BD0000           (        netboot.s):00295                 jsr     _printk
+021A 3266             (        netboot.s):00296                 leas    6,s
+021C                  (        netboot.s):00297         L43:
+021C 3263             (        netboot.s):00298                 leas    3,s
+021E 35E0             (        netboot.s):00299                 puls    y,u,pc
+0220                  (        netboot.s):00300         LC1:
+0220 25783D3E257800   (        netboot.s):00301                 .ascii "%x=>%x\0"
+0227                  (        netboot.s):00302         _peek_word:
+0227 3460             (        netboot.s):00303                 pshs    y,u
+0229 327D             (        netboot.s):00304                 leas    -3,s
+022B 33E4             (        netboot.s):00305                 leau    ,s
+022D 3184             (        netboot.s):00306                 leay    ,x
+022F 1F10             (        netboot.s):00307                 tfr     x,d
+0231 1F89             (        netboot.s):00308                 tfr     a,b
+0233 4F               (        netboot.s):00309                 clra            ;zero_extendqihi: R:b -> R:d
+0234 F7FF69           (        netboot.s):00310                 stb     -151    ;movlsbqihi: R:d -> -151
+0237 1F10             (        netboot.s):00311                 tfr     x,d
+0239 F7FF6A           (        netboot.s):00312                 stb     -150    ;movlsbqihi: R:d -> -150
+023C F6FF6B           (        netboot.s):00313                 ldb     -149
+023F E742             (        netboot.s):00314                 stb     2,u
+0241 F6FF6B           (        netboot.s):00315                 ldb     -149
+0244 E7C4             (        netboot.s):00316                 stb     ,u
+0246 E642             (        netboot.s):00317                 ldb     2,u
+0248 1F98             (        netboot.s):00318                 tfr     b,a
+024A 5F               (        netboot.s):00319                 clrb
+024B 1F01             (        netboot.s):00320                 tfr     d,x
+024D E6C4             (        netboot.s):00321                 ldb     ,u
+024F 3A               (        netboot.s):00322                 abx
+0250 AF41             (        netboot.s):00323                 stx     1,u
+0252 108C0FFF         (        netboot.s):00324                 cmpy    #4095   ;cmphi:
+0256 220E             (        netboot.s):00325                 bhi     L46
+0258 3410             (        netboot.s):00326                 pshs    x
+025A 3420             (        netboot.s):00327                 pshs    y
+025C 8E0000           (        netboot.s):00328                 ldx     #LC1
+025F AFE3             (        netboot.s):00329                 stx     ,--s
+0261 BD0000           (        netboot.s):00330                 jsr     _printk
+0264 3266             (        netboot.s):00331                 leas    6,s
+0266                  (        netboot.s):00332         L46:
+0266 AE41             (        netboot.s):00333                 ldx     1,u
+0268 3263             (        netboot.s):00334                 leas    3,s
+026A 35E0             (        netboot.s):00335                 puls    y,u,pc
+026C                  (        netboot.s):00336         LC2:
+026C 25782D3E257800   (        netboot.s):00337                 .ascii "%x->%x\0"
+0273                  (        netboot.s):00338         _peek:
+0273 3460             (        netboot.s):00339                 pshs    y,u
+0275 327F             (        netboot.s):00340                 leas    -1,s
+0277 33E4             (        netboot.s):00341                 leau    ,s
+0279 1F10             (        netboot.s):00342                 tfr     x,d
+027B 1F89             (        netboot.s):00343                 tfr     a,b
+027D 4F               (        netboot.s):00344                 clra            ;zero_extendqihi: R:b -> R:d
+027E F7FF69           (        netboot.s):00345                 stb     -151    ;movlsbqihi: R:d -> -151
+0281 1F10             (        netboot.s):00346                 tfr     x,d
+0283 F7FF6A           (        netboot.s):00347                 stb     -150    ;movlsbqihi: R:d -> -150
+0286 F6FF6B           (        netboot.s):00348                 ldb     -149
+0289 E7C4             (        netboot.s):00349                 stb     ,u
+028B 8C0FFF           (        netboot.s):00350                 cmpx    #4095   ;cmphi:
+028E 2211             (        netboot.s):00351                 bhi     L48
+0290 4F               (        netboot.s):00352                 clra            ;zero_extendqihi: R:b -> R:d
+0291 1F02             (        netboot.s):00353                 tfr     d,y
+0293 3406             (        netboot.s):00354                 pshs    d
+0295 3410             (        netboot.s):00355                 pshs    x
+0297 8E0000           (        netboot.s):00356                 ldx     #LC2
+029A AFE3             (        netboot.s):00357                 stx     ,--s
+029C BD0000           (        netboot.s):00358                 jsr     _printk
+029F 3266             (        netboot.s):00359                 leas    6,s
+02A1                  (        netboot.s):00360         L48:
+02A1 E6C4             (        netboot.s):00361                 ldb     ,u
+02A3 3261             (        netboot.s):00362                 leas    1,s
+02A5 35E0             (        netboot.s):00363                 puls    y,u,pc
+02A7                  (        netboot.s):00364         LC3:
+02A7 25783C3D257800   (        netboot.s):00365                 .ascii "%x<=%x\0"
+02AE                  (        netboot.s):00366         _poke_word:
+02AE 3460             (        netboot.s):00367                 pshs    y,u
+02B0 327E             (        netboot.s):00368                 leas    -2,s
+02B2 33E4             (        netboot.s):00369                 leau    ,s
+02B4 3184             (        netboot.s):00370                 leay    ,x
+02B6 1F10             (        netboot.s):00371                 tfr     x,d
+02B8 1F89             (        netboot.s):00372                 tfr     a,b
+02BA 4F               (        netboot.s):00373                 clra            ;zero_extendqihi: R:b -> R:d
+02BB F7FF69           (        netboot.s):00374                 stb     -151    ;movlsbqihi: R:d -> -151
+02BE 1F10             (        netboot.s):00375                 tfr     x,d
+02C0 F7FF6A           (        netboot.s):00376                 stb     -150    ;movlsbqihi: R:d -> -150
+02C3 EC48             (        netboot.s):00377                 ldd     8,u
+02C5 1F89             (        netboot.s):00378                 tfr     a,b
+02C7 4F               (        netboot.s):00379                 clra            ;zero_extendqihi: R:b -> R:d
+02C8 F7FF6B           (        netboot.s):00380                 stb     -149    ;movlsbqihi: R:d -> -149
+02CB EC48             (        netboot.s):00381                 ldd     8,u
+02CD F7FF6B           (        netboot.s):00382                 stb     -149    ;movlsbqihi: R:d -> -149
+02D0 8C0FFF           (        netboot.s):00383                 cmpx    #4095   ;cmphi:
+02D3 220E             (        netboot.s):00384                 bhi     L49
+02D5 3406             (        netboot.s):00385                 pshs    d
+02D7 3410             (        netboot.s):00386                 pshs    x
+02D9 8E0000           (        netboot.s):00387                 ldx     #LC3
+02DC AFE3             (        netboot.s):00388                 stx     ,--s
+02DE BD0000           (        netboot.s):00389                 jsr     _printk
+02E1 3266             (        netboot.s):00390                 leas    6,s
+02E3                  (        netboot.s):00391         L49:
+02E3 3262             (        netboot.s):00392                 leas    2,s
+02E5 35E0             (        netboot.s):00393                 puls    y,u,pc
+02E7                  (        netboot.s):00394         LC4:
+02E7 5B25783C3C25785D (        netboot.s):00395                 .ascii "[%x<<%x]\0"
+     00
+02F0                  (        netboot.s):00396         _poke_n:
+02F0 3460             (        netboot.s):00397                 pshs    y,u
+02F2 33E4             (        netboot.s):00398                 leau    ,s
+02F4 3184             (        netboot.s):00399                 leay    ,x
+02F6 AE48             (        netboot.s):00400                 ldx     8,u
+02F8 3410             (        netboot.s):00401                 pshs    x
+02FA 3420             (        netboot.s):00402                 pshs    y
+02FC 8E0000           (        netboot.s):00403                 ldx     #LC4
+02FF AFE3             (        netboot.s):00404                 stx     ,--s
+0301 BD0000           (        netboot.s):00405                 jsr     _printk
+0304 1F20             (        netboot.s):00406                 tfr     y,d
+0306 1F89             (        netboot.s):00407                 tfr     a,b
+0308 4F               (        netboot.s):00408                 clra            ;zero_extendqihi: R:b -> R:d
+0309 F7FF69           (        netboot.s):00409                 stb     -151    ;movlsbqihi: R:d -> -151
+030C 1F20             (        netboot.s):00410                 tfr     y,d
+030E F7FF6A           (        netboot.s):00411                 stb     -150    ;movlsbqihi: R:d -> -150
+0311 3266             (        netboot.s):00412                 leas    6,s
+0313 AE48             (        netboot.s):00413                 ldx     8,u
+0315 2711             (        netboot.s):00414                 beq     L51
+0317 10AE46           (        netboot.s):00415                 ldy     6,u
+031A 8E0000           (        netboot.s):00416                 ldx     #0
+031D                  (        netboot.s):00417         L53:
+031D E6A0             (        netboot.s):00418                 ldb     ,y+
+031F F7FF6B           (        netboot.s):00419                 stb     -149
+0322 3001             (        netboot.s):00420                 leax    1,x
+0324 AC48             (        netboot.s):00421                 cmpx    8,u     ;cmphi:
+0326 26F5             (        netboot.s):00422                 bne     L53
+0328                  (        netboot.s):00423         L51:
+0328 35E0             (        netboot.s):00424                 puls    y,u,pc
+032A                  (        netboot.s):00425         LC5:
+032A 257500           (        netboot.s):00426                 .ascii "%u\0"
+                      (        netboot.s):00427                 .globl _ShowLine
+032D                  (        netboot.s):00428         _ShowLine:
+032D 3440             (        netboot.s):00429                 pshs    u
+032F 33E4             (        netboot.s):00430                 leau    ,s
+0331 3410             (        netboot.s):00431                 pshs    x
+0333 8E0000           (        netboot.s):00432                 ldx     #LC5
+0336 AFE3             (        netboot.s):00433                 stx     ,--s
+0338 BD0000           (        netboot.s):00434                 jsr     _printk
+033B 3264             (        netboot.s):00435                 leas    4,s
+033D 35C0             (        netboot.s):00436                 puls    u,pc
+033F                  (        netboot.s):00437         LC6:
+033F 202A464154414C2A (        netboot.s):00438                 .ascii " *FATAL* <\0"
+     203C00
+034A                  (        netboot.s):00439         LC7:
+034A 3E202A2A2A00     (        netboot.s):00440                 .ascii "> ***\0"
+                      (        netboot.s):00441                 .globl _Fatal
+0350                  (        netboot.s):00442         _Fatal:
+0350 3440             (        netboot.s):00443                 pshs    u
+0352 327E             (        netboot.s):00444                 leas    -2,s
+0354 33E4             (        netboot.s):00445                 leau    ,s
+0356 AFC4             (        netboot.s):00446                 stx     ,u
+0358 8E0000           (        netboot.s):00447                 ldx     #LC6
+035B BD0000           (        netboot.s):00448                 jsr     _PutStr
+035E AEC4             (        netboot.s):00449                 ldx     ,u
+0360 BD0000           (        netboot.s):00450                 jsr     _PutStr
+0363 8E0000           (        netboot.s):00451                 ldx     #LC7
+0366 BD0000           (        netboot.s):00452                 jsr     _PutStr
+0369                  (        netboot.s):00453         L57:
+0369 20FE             (        netboot.s):00454                 bra     L57
+036B                  (        netboot.s):00455         LC8:
+036B 743D257800       (        netboot.s):00456                 .ascii "t=%x\0"
+0370                  (        netboot.s):00457         LC9:
+0370 305400           (        netboot.s):00458                 .ascii "0T\0"
+                      (        netboot.s):00459                 .globl _WizTicks
+0373                  (        netboot.s):00460         _WizTicks:
+0373 3460             (        netboot.s):00461                 pshs    y,u
+0375 33E4             (        netboot.s):00462                 leau    ,s
+0377 8E0082           (        netboot.s):00463                 ldx     #130
+037A BD0000           (        netboot.s):00464                 jsr     _peek_word
+037D 3184             (        netboot.s):00465                 leay    ,x
+037F 3410             (        netboot.s):00466                 pshs    x
+0381 8E0000           (        netboot.s):00467                 ldx     #LC8
+0384 AFE3             (        netboot.s):00468                 stx     ,--s
+0386 BD0000           (        netboot.s):00469                 jsr     _printk
+0389 3264             (        netboot.s):00470                 leas    4,s
+038B 108C0000         (        netboot.s):00471                 cmpy    #0      ;cmphi:
+038F 2606             (        netboot.s):00472                 bne     L59
+0391 8E0000           (        netboot.s):00473                 ldx     #LC9
+0394 7E0000           (        netboot.s):00474                 jmp     _Fatal
+0397                  (        netboot.s):00475         L59:
+0397 30A4             (        netboot.s):00476                 leax    ,y
+0399 35E0             (        netboot.s):00477                 puls    y,u,pc
+039B                  (        netboot.s):00478         LC10:
+039B 3257616974282578 (        netboot.s):00479                 .ascii "2Wait(%x,%x,%s)\0"
+     2C25782C25732900
+03AB                  (        netboot.s):00480         LC11:
+03AB 257800           (        netboot.s):00481                 .ascii "%x\0"
+03AE                  (        netboot.s):00482         LC12:
+03AE 59455300         (        netboot.s):00483                 .ascii "YES\0"
+03B2                  (        netboot.s):00484         LC13:
+03B2 325741495400     (        netboot.s):00485                 .ascii "2WAIT\0"
+                      (        netboot.s):00486                 .globl _Wait
+03B8                  (        netboot.s):00487         _Wait:
+03B8 3460             (        netboot.s):00488                 pshs    y,u
+03BA 327B             (        netboot.s):00489                 leas    -5,s
+03BC 33E4             (        netboot.s):00490                 leau    ,s
+03BE AF41             (        netboot.s):00491                 stx     1,u
+03C0 E7C4             (        netboot.s):00492                 stb     ,u
+03C2 AE4B             (        netboot.s):00493                 ldx     11,u
+03C4 AFE3             (        netboot.s):00494                 stx     ,--s
+03C6 4F               (        netboot.s):00495                 clra            ;zero_extendqihi: R:b -> R:d
+03C7 3406             (        netboot.s):00496                 pshs    d
+03C9 AE41             (        netboot.s):00497                 ldx     1,u
+03CB 3410             (        netboot.s):00498                 pshs    x
+03CD 8E0000           (        netboot.s):00499                 ldx     #LC10
+03D0 AFE3             (        netboot.s):00500                 stx     ,--s
+03D2 BD0000           (        netboot.s):00501                 jsr     _printk
+03D5 3268             (        netboot.s):00502                 leas    8,s
+03D7 C632             (        netboot.s):00503                 ldb     #50
+03D9 E743             (        netboot.s):00504                 stb     3,u
+03DB                  (        netboot.s):00505         L62:
+03DB 8E00C8           (        netboot.s):00506                 ldx     #200
+03DE BD0000           (        netboot.s):00507                 jsr     _Delay
+03E1 AE41             (        netboot.s):00508                 ldx     1,u
+03E3 BD0000           (        netboot.s):00509                 jsr     _peek
+03E6 E744             (        netboot.s):00510                 stb     4,u
+03E8 4F               (        netboot.s):00511                 clra            ;zero_extendqihi: R:b -> R:d
+03E9 1F02             (        netboot.s):00512                 tfr     d,y
+03EB 3406             (        netboot.s):00513                 pshs    d
+03ED 8E0000           (        netboot.s):00514                 ldx     #LC11
+03F0 AFE3             (        netboot.s):00515                 stx     ,--s
+03F2 BD0000           (        netboot.s):00516                 jsr     _printk
+03F5 3264             (        netboot.s):00517                 leas    4,s
+03F7 E644             (        netboot.s):00518                 ldb     4,u
+03F9 E1C4             (        netboot.s):00519                 cmpb    ,u      ;cmpqi:
+03FB 260E             (        netboot.s):00520                 bne     L61
+03FD 8E0000           (        netboot.s):00521                 ldx     #LC12
+0400 AFE3             (        netboot.s):00522                 stx     ,--s
+0402 BD0000           (        netboot.s):00523                 jsr     _printk
+0405 C601             (        netboot.s):00524                 ldb     #1
+0407 3267             (        netboot.s):00525                 leas    7,s
+0409 35E0             (        netboot.s):00526                 puls    y,u,pc
+040B                  (        netboot.s):00527         L61:
+040B 6A43             (        netboot.s):00528                 dec     3,u
+040D E643             (        netboot.s):00529                 ldb     3,u
+040F 26CA             (        netboot.s):00530                 bne     L62
+0411 8E0000           (        netboot.s):00531                 ldx     #LC13
+0414 7E0000           (        netboot.s):00532                 jmp     _Fatal
+0417                  (        netboot.s):00533         LC14:
+0417 576169742825782C (        netboot.s):00534                 .ascii "Wait(%x,%x,%s)\0"
+     25782C25732900
+0426                  (        netboot.s):00535         LC15:
+0426 707265676F742025 (        netboot.s):00536                 .ascii "pregot %x\0"
+     7800
+0430                  (        netboot.s):00537         LC16:
+0430 25782D25783D6475 (        netboot.s):00538                 .ascii "%x-%x=dur=%x\0"
+     723D257800
+043D                  (        netboot.s):00539         LC17:
+043D 676F7420257800   (        netboot.s):00540                 .ascii "got %x\0"
+                      (        netboot.s):00541                 .globl _BadWait
+0444                  (        netboot.s):00542         _BadWait:
+0444 3460             (        netboot.s):00543                 pshs    y,u
+0446 3278             (        netboot.s):00544                 leas    -8,s
+0448 33E4             (        netboot.s):00545                 leau    ,s
+044A AF41             (        netboot.s):00546                 stx     1,u
+044C E7C4             (        netboot.s):00547                 stb     ,u
+044E AE4E             (        netboot.s):00548                 ldx     14,u
+0450 AFE3             (        netboot.s):00549                 stx     ,--s
+0452 4F               (        netboot.s):00550                 clra            ;zero_extendqihi: R:b -> R:d
+0453 3406             (        netboot.s):00551                 pshs    d
+0455 AE41             (        netboot.s):00552                 ldx     1,u
+0457 3410             (        netboot.s):00553                 pshs    x
+0459 8E0000           (        netboot.s):00554                 ldx     #LC14
+045C AFE3             (        netboot.s):00555                 stx     ,--s
+045E BD0000           (        netboot.s):00556                 jsr     _printk
+0461 3268             (        netboot.s):00557                 leas    8,s
+0463 BD0000           (        netboot.s):00558                 jsr     _WizTicks
+0466 AF43             (        netboot.s):00559                 stx     3,u
+0468 AE41             (        netboot.s):00560                 ldx     1,u
+046A BD0000           (        netboot.s):00561                 jsr     _peek
+046D 4F               (        netboot.s):00562                 clra            ;zero_extendqihi: R:b -> R:d
+046E 1F02             (        netboot.s):00563                 tfr     d,y
+0470 3406             (        netboot.s):00564                 pshs    d
+0472 8E0000           (        netboot.s):00565                 ldx     #LC15
+0475 AFE3             (        netboot.s):00566                 stx     ,--s
+0477 BD0000           (        netboot.s):00567                 jsr     _printk
+047A 3264             (        netboot.s):00568                 leas    4,s
+047C                  (        netboot.s):00569         L66:
+047C 8E000A           (        netboot.s):00570                 ldx     #10
+047F BD0000           (        netboot.s):00571                 jsr     _Delay
+0482 AE41             (        netboot.s):00572                 ldx     1,u
+0484 BD0000           (        netboot.s):00573                 jsr     _peek
+0487 E745             (        netboot.s):00574                 stb     5,u
+0489 E1C4             (        netboot.s):00575                 cmpb    ,u      ;cmpqi:
+048B 2737             (        netboot.s):00576                 beq     L67
+048D BD0000           (        netboot.s):00577                 jsr     _WizTicks
+0490 3184             (        netboot.s):00578                 leay    ,x
+0492 1F10             (        netboot.s):00579                 tfr     x,d
+0494 A343             (        netboot.s):00580                 subd    3,u     ;subhi: R:d -= 3,u
+0496 ED46             (        netboot.s):00581                 std     6,u
+0498 3406             (        netboot.s):00582                 pshs    d
+049A AE43             (        netboot.s):00583                 ldx     3,u
+049C 3410             (        netboot.s):00584                 pshs    x
+049E 3420             (        netboot.s):00585                 pshs    y
+04A0 8E0000           (        netboot.s):00586                 ldx     #LC16
+04A3 AFE3             (        netboot.s):00587                 stx     ,--s
+04A5 BD0000           (        netboot.s):00588                 jsr     _printk
+04A8 3268             (        netboot.s):00589                 leas    8,s
+04AA EC46             (        netboot.s):00590                 ldd     6,u
+04AC 1083C350         (        netboot.s):00591                 cmpd    #-15536 ;cmphi:
+04B0 23CA             (        netboot.s):00592                 bls     L66
+04B2 E645             (        netboot.s):00593                 ldb     5,u
+04B4 4F               (        netboot.s):00594                 clra            ;zero_extendqihi: R:b -> R:d
+04B5 3406             (        netboot.s):00595                 pshs    d
+04B7 8E0000           (        netboot.s):00596                 ldx     #LC17
+04BA AFE3             (        netboot.s):00597                 stx     ,--s
+04BC BD0000           (        netboot.s):00598                 jsr     _printk
+04BF 3264             (        netboot.s):00599                 leas    4,s
+04C1 5F               (        netboot.s):00600                 clrb
+04C2 2002             (        netboot.s):00601                 bra     L65
+04C4                  (        netboot.s):00602         L67:
+04C4 C601             (        netboot.s):00603                 ldb     #1
+04C6                  (        netboot.s):00604         L65:
+04C6 3268             (        netboot.s):00605                 leas    8,s
+04C8 35E0             (        netboot.s):00606                 puls    y,u,pc
+04CA                  (        netboot.s):00607         LC18:
+04CA 574F463A25782C25 (        netboot.s):00608                 .ascii "WOF:%x,%x,%s\0"
+     782C257300
+04D7                  (        netboot.s):00609         LC19:
+04D7 574F46323A25782C (        netboot.s):00610                 .ascii "WOF2:%x,%x,%s\0"
+     25782C257300
+                      (        netboot.s):00611                 .globl _WaitOrFatal
+04E5                  (        netboot.s):00612         _WaitOrFatal:
+04E5 3460             (        netboot.s):00613                 pshs    y,u
+04E7 327D             (        netboot.s):00614                 leas    -3,s
+04E9 33E4             (        netboot.s):00615                 leau    ,s
+04EB 3184             (        netboot.s):00616                 leay    ,x
+04ED E742             (        netboot.s):00617                 stb     2,u
+04EF 4F               (        netboot.s):00618                 clra            ;zero_extendqihi: R:b -> R:d
+04F0 EDC4             (        netboot.s):00619                 std     ,u
+04F2 AE49             (        netboot.s):00620                 ldx     9,u
+04F4 3410             (        netboot.s):00621                 pshs    x
+04F6 3406             (        netboot.s):00622                 pshs    d
+04F8 3420             (        netboot.s):00623                 pshs    y
+04FA 8E0000           (        netboot.s):00624                 ldx     #LC18
+04FD AFE3             (        netboot.s):00625                 stx     ,--s
+04FF BD0000           (        netboot.s):00626                 jsr     _printk
+0502 3268             (        netboot.s):00627                 leas    8,s
+0504 AE49             (        netboot.s):00628                 ldx     9,u
+0506 3410             (        netboot.s):00629                 pshs    x
+0508 E642             (        netboot.s):00630                 ldb     2,u
+050A 30A4             (        netboot.s):00631                 leax    ,y
+050C BD0000           (        netboot.s):00632                 jsr     _Wait
+050F 3262             (        netboot.s):00633                 leas    2,s
+0511 5D               (        netboot.s):00634                 tstb    ;cmpqi:(ZERO)
+0512 2619             (        netboot.s):00635                 bne     L69
+0514 AE49             (        netboot.s):00636                 ldx     9,u
+0516 3410             (        netboot.s):00637                 pshs    x
+0518 ECC4             (        netboot.s):00638                 ldd     ,u
+051A 3406             (        netboot.s):00639                 pshs    d
+051C 3420             (        netboot.s):00640                 pshs    y
+051E 8E0000           (        netboot.s):00641                 ldx     #LC19
+0521 AFE3             (        netboot.s):00642                 stx     ,--s
+0523 BD0000           (        netboot.s):00643                 jsr     _printk
+0526 3268             (        netboot.s):00644                 leas    8,s
+0528 AE49             (        netboot.s):00645                 ldx     9,u
+052A 7E0000           (        netboot.s):00646                 jmp     _Fatal
+052D                  (        netboot.s):00647         L69:
+052D 3263             (        netboot.s):00648                 leas    3,s
+052F 35E0             (        netboot.s):00649                 puls    y,u,pc
+0531                  (        netboot.s):00650         LC20:
+0531 494300           (        netboot.s):00651                 .ascii "IC\0"
+                      (        netboot.s):00652                 .globl _IssueCommandAtBase
+0534                  (        netboot.s):00653         _IssueCommandAtBase:
+0534 3460             (        netboot.s):00654                 pshs    y,u
+0536 327F             (        netboot.s):00655                 leas    -1,s
+0538 33E4             (        netboot.s):00656                 leau    ,s
+053A 3101             (        netboot.s):00657                 leay    1,x
+053C 30A4             (        netboot.s):00658                 leax    ,y
+053E BD0000           (        netboot.s):00659                 jsr     _poke
+0541 C6FA             (        netboot.s):00660                 ldb     #-6
+0543 E7C4             (        netboot.s):00661                 stb     ,u
+0545                  (        netboot.s):00662         L73:
+0545 30A4             (        netboot.s):00663                 leax    ,y
+0547 BD0000           (        netboot.s):00664                 jsr     _peek
+054A 5D               (        netboot.s):00665                 tstb    ;cmpqi:(ZERO)
+054B 270C             (        netboot.s):00666                 beq     L71
+054D 6AC4             (        netboot.s):00667                 dec     ,u
+054F E6C4             (        netboot.s):00668                 ldb     ,u
+0551 26F2             (        netboot.s):00669                 bne     L73
+0553 8E0000           (        netboot.s):00670                 ldx     #LC20
+0556 7E0000           (        netboot.s):00671                 jmp     _Fatal
+0559                  (        netboot.s):00672         L71:
+0559 3261             (        netboot.s):00673                 leas    1,s
+055B 35E0             (        netboot.s):00674                 puls    y,u,pc
+                      (        netboot.s):00675                 .globl _IssueCommand
+055D                  (        netboot.s):00676         _IssueCommand:
+055D 3440             (        netboot.s):00677                 pshs    u
+055F 327F             (        netboot.s):00678                 leas    -1,s
+0561 33E4             (        netboot.s):00679                 leau    ,s
+0563 8E0401           (        netboot.s):00680                 ldx     #1025
+0566 BD0000           (        netboot.s):00681                 jsr     _poke
+0569 C6FA             (        netboot.s):00682                 ldb     #-6
+056B E7C4             (        netboot.s):00683                 stb     ,u
+056D                  (        netboot.s):00684         L77:
+056D 8E0401           (        netboot.s):00685                 ldx     #1025
+0570 BD0000           (        netboot.s):00686                 jsr     _peek
+0573 5D               (        netboot.s):00687                 tstb    ;cmpqi:(ZERO)
+0574 270C             (        netboot.s):00688                 beq     L75
+0576 6AC4             (        netboot.s):00689                 dec     ,u
+0578 E6C4             (        netboot.s):00690                 ldb     ,u
+057A 26F1             (        netboot.s):00691                 bne     L77
+057C 8E0000           (        netboot.s):00692                 ldx     #LC20
+057F 7E0000           (        netboot.s):00693                 jmp     _Fatal
+0582                  (        netboot.s):00694         L75:
+0582 3261             (        netboot.s):00695                 leas    1,s
+0584 35C0             (        netboot.s):00696                 puls    u,pc
+0586                  (        netboot.s):00697         LC21:
+0586 57697A5265736574 (        netboot.s):00698                 .ascii "WizReset \0"
+     2000
+                      (        netboot.s):00699                 .globl _WizReset
+0590                  (        netboot.s):00700         _WizReset:
+0590 3460             (        netboot.s):00701                 pshs    y,u
+0592 33E4             (        netboot.s):00702                 leau    ,s
+0594 8E0000           (        netboot.s):00703                 ldx     #LC21
+0597 BD0000           (        netboot.s):00704                 jsr     _PutStr
+059A 108EFF68         (        netboot.s):00705                 ldy     #-152
+059E C680             (        netboot.s):00706                 ldb     #-128
+05A0 E7A4             (        netboot.s):00707                 stb     ,y
+05A2 8E018F           (        netboot.s):00708                 ldx     #399
+05A5 BD0000           (        netboot.s):00709                 jsr     _ShowLine
+05A8 8E2328           (        netboot.s):00710                 ldx     #9000
+05AB BD0000           (        netboot.s):00711                 jsr     _Delay
+05AE 8E0190           (        netboot.s):00712                 ldx     #400
+05B1 BD0000           (        netboot.s):00713                 jsr     _ShowLine
+05B4 8E2328           (        netboot.s):00714                 ldx     #9000
+05B7 BD0000           (        netboot.s):00715                 jsr     _Delay
+05BA 8E0191           (        netboot.s):00716                 ldx     #401
+05BD BD0000           (        netboot.s):00717                 jsr     _ShowLine
+05C0 8E2328           (        netboot.s):00718                 ldx     #9000
+05C3 BD0000           (        netboot.s):00719                 jsr     _Delay
+05C6 C603             (        netboot.s):00720                 ldb     #3
+05C8 E7A4             (        netboot.s):00721                 stb     ,y
+05CA 8E0193           (        netboot.s):00722                 ldx     #403
+05CD BD0000           (        netboot.s):00723                 jsr     _ShowLine
+05D0 8E2328           (        netboot.s):00724                 ldx     #9000
+05D3 BD0000           (        netboot.s):00725                 jsr     _Delay
+05D6 8E0194           (        netboot.s):00726                 ldx     #404
+05D9 BD0000           (        netboot.s):00727                 jsr     _ShowLine
+05DC 8E2328           (        netboot.s):00728                 ldx     #9000
+05DF BD0000           (        netboot.s):00729                 jsr     _Delay
+05E2 35E0             (        netboot.s):00730                 puls    y,u,pc
+                      (        netboot.s):00731                 .globl _WizConfigure
+05E4                  (        netboot.s):00732         _WizConfigure:
+05E4 3460             (        netboot.s):00733                 pshs    y,u
+05E6 327C             (        netboot.s):00734                 leas    -4,s
+05E8 33E4             (        netboot.s):00735                 leau    ,s
+05EA 8E019A           (        netboot.s):00736                 ldx     #410
+05ED BD0000           (        netboot.s):00737                 jsr     _ShowLine
+05F0 108E0004         (        netboot.s):00738                 ldy     #4
+05F4 3420             (        netboot.s):00739                 pshs    y
+05F6 3048             (        netboot.s):00740                 leax    8,u
+05F8 AF42             (        netboot.s):00741                 stx     2,u
+05FA 304A             (        netboot.s):00742                 leax    10,u
+05FC AFC4             (        netboot.s):00743                 stx     ,u
+05FE AE42             (        netboot.s):00744                 ldx     2,u
+0600 300A             (        netboot.s):00745                 leax    10,x
+0602 3410             (        netboot.s):00746                 pshs    x
+0604 8E0001           (        netboot.s):00747                 ldx     #1
+0607 BD0000           (        netboot.s):00748                 jsr     _poke_n
+060A 8E019B           (        netboot.s):00749                 ldx     #411
+060D BD0000           (        netboot.s):00750                 jsr     _ShowLine
+0610 3420             (        netboot.s):00751                 pshs    y
+0612 AE42             (        netboot.s):00752                 ldx     2,u
+0614 3006             (        netboot.s):00753                 leax    6,x
+0616 3410             (        netboot.s):00754                 pshs    x
+0618 8E0005           (        netboot.s):00755                 ldx     #5
+061B BD0000           (        netboot.s):00756                 jsr     _poke_n
+061E 3268             (        netboot.s):00757                 leas    8,s
+0620 8E019C           (        netboot.s):00758                 ldx     #412
+0623 BD0000           (        netboot.s):00759                 jsr     _ShowLine
+0626 3420             (        netboot.s):00760                 pshs    y
+0628 AEC4             (        netboot.s):00761                 ldx     ,u
+062A 3410             (        netboot.s):00762                 pshs    x
+062C 8E000F           (        netboot.s):00763                 ldx     #15
+062F BD0000           (        netboot.s):00764                 jsr     _poke_n
+0632 8E019F           (        netboot.s):00765                 ldx     #415
+0635 BD0000           (        netboot.s):00766                 jsr     _ShowLine
+0638 CC0006           (        netboot.s):00767                 ldd     #6
+063B EDE3             (        netboot.s):00768                 std     ,--s
+063D 8E7000           (        netboot.s):00769                 ldx     #28672
+0640 AFE3             (        netboot.s):00770                 stx     ,--s
+0642 8E0009           (        netboot.s):00771                 ldx     #9
+0645 BD0000           (        netboot.s):00772                 jsr     _poke_n
+0648 3268             (        netboot.s):00773                 leas    8,s
+064A 8E01A1           (        netboot.s):00774                 ldx     #417
+064D BD0000           (        netboot.s):00775                 jsr     _ShowLine
+0650 C655             (        netboot.s):00776                 ldb     #85
+0652 8E001A           (        netboot.s):00777                 ldx     #26
+0655 BD0000           (        netboot.s):00778                 jsr     _poke
+0658 8E01A2           (        netboot.s):00779                 ldx     #418
+065B BD0000           (        netboot.s):00780                 jsr     _ShowLine
+065E C655             (        netboot.s):00781                 ldb     #85
+0660 8E001B           (        netboot.s):00782                 ldx     #27
+0663 BD0000           (        netboot.s):00783                 jsr     _poke
+0666 108E0400         (        netboot.s):00784                 ldy     #1024
+066A                  (        netboot.s):00785         L81:
+066A 8E01A7           (        netboot.s):00786                 ldx     #423
+066D BD0000           (        netboot.s):00787                 jsr     _ShowLine
+0670 30A4             (        netboot.s):00788                 leax    ,y
+0672 C610             (        netboot.s):00789                 ldb     #16
+0674 BD0000           (        netboot.s):00790                 jsr     _IssueCommandAtBase
+0677 8E01A8           (        netboot.s):00791                 ldx     #424
+067A BD0000           (        netboot.s):00792                 jsr     _ShowLine
+067D 5F               (        netboot.s):00793                 clrb
+067E 30A4             (        netboot.s):00794                 leax    ,y
+0680 BD0000           (        netboot.s):00795                 jsr     _poke
+0683 31A90100         (        netboot.s):00796                 leay    256,y
+0687 108C0800         (        netboot.s):00797                 cmpy    #2048   ;cmphi:
+068B 26DD             (        netboot.s):00798                 bne     L81
+068D 3264             (        netboot.s):00799                 leas    4,s
+068F 35E0             (        netboot.s):00800                 puls    y,u,pc
+0691                  (        netboot.s):00801         LC22:
+0691 434C4F534500     (        netboot.s):00802                 .ascii "CLOSE\0"
+                      (        netboot.s):00803                 .globl _UdpClose
+0697                  (        netboot.s):00804         _UdpClose:
+0697 3440             (        netboot.s):00805                 pshs    u
+0699 33E4             (        netboot.s):00806                 leau    ,s
+069B 8E0000           (        netboot.s):00807                 ldx     #LC22
+069E AFE3             (        netboot.s):00808                 stx     ,--s
+06A0 BD0000           (        netboot.s):00809                 jsr     _printk
+06A3 C61F             (        netboot.s):00810                 ldb     #31
+06A5 8E0402           (        netboot.s):00811                 ldx     #1026
+06A8 BD0000           (        netboot.s):00812                 jsr     _poke
+06AB C610             (        netboot.s):00813                 ldb     #16
+06AD BD0000           (        netboot.s):00814                 jsr     _IssueCommand
+06B0 5F               (        netboot.s):00815                 clrb
+06B1 8E0400           (        netboot.s):00816                 ldx     #1024
+06B4 BD0000           (        netboot.s):00817                 jsr     _poke
+06B7 3262             (        netboot.s):00818                 leas    2,s
+06B9 35C0             (        netboot.s):00819                 puls    u,pc
+06BB                  (        netboot.s):00820         LC23:
+06BB 5564704F70656E20 (        netboot.s):00821                 .ascii "UdpOpen %u....\0"
+     25752E2E2E2E00
+06CA                  (        netboot.s):00822         LC24:
+06CA 554F00           (        netboot.s):00823                 .ascii "UO\0"
+06CD                  (        netboot.s):00824         LC25:
+06CD 5564704F70656E20 (        netboot.s):00825                 .ascii "UdpOpen %x OKAY\0"
+     2578204F4B415900
+                      (        netboot.s):00826                 .globl _UdpOpen
+06DD                  (        netboot.s):00827         _UdpOpen:
+06DD 3460             (        netboot.s):00828                 pshs    y,u
+06DF 33E4             (        netboot.s):00829                 leau    ,s
+06E1 3184             (        netboot.s):00830                 leay    ,x
+06E3 3410             (        netboot.s):00831                 pshs    x
+06E5 8E0000           (        netboot.s):00832                 ldx     #LC23
+06E8 AFE3             (        netboot.s):00833                 stx     ,--s
+06EA BD0000           (        netboot.s):00834                 jsr     _printk
+06ED C602             (        netboot.s):00835                 ldb     #2
+06EF 8E0400           (        netboot.s):00836                 ldx     #1024
+06F2 BD0000           (        netboot.s):00837                 jsr     _poke
+06F5 3420             (        netboot.s):00838                 pshs    y
+06F7 8E0404           (        netboot.s):00839                 ldx     #1028
+06FA BD0000           (        netboot.s):00840                 jsr     _poke_word
+06FD C61F             (        netboot.s):00841                 ldb     #31
+06FF 8E0402           (        netboot.s):00842                 ldx     #1026
+0702 BD0000           (        netboot.s):00843                 jsr     _poke
+0705 C6FF             (        netboot.s):00844                 ldb     #-1
+0707 8E042C           (        netboot.s):00845                 ldx     #1068
+070A BD0000           (        netboot.s):00846                 jsr     _poke
+070D C601             (        netboot.s):00847                 ldb     #1
+070F BD0000           (        netboot.s):00848                 jsr     _IssueCommand
+0712 8E01D0           (        netboot.s):00849                 ldx     #464
+0715 BD0000           (        netboot.s):00850                 jsr     _ShowLine
+0718 8E0064           (        netboot.s):00851                 ldx     #100
+071B BD0000           (        netboot.s):00852                 jsr     _Delay
+071E 8E0000           (        netboot.s):00853                 ldx     #LC24
+0721 AFE3             (        netboot.s):00854                 stx     ,--s
+0723 C622             (        netboot.s):00855                 ldb     #34
+0725 8E0403           (        netboot.s):00856                 ldx     #1027
+0728 BD0000           (        netboot.s):00857                 jsr     _WaitOrFatal
+072B 3268             (        netboot.s):00858                 leas    8,s
+072D 8E01D3           (        netboot.s):00859                 ldx     #467
+0730 BD0000           (        netboot.s):00860                 jsr     _ShowLine
+0733 8E0422           (        netboot.s):00861                 ldx     #1058
+0736 BD0000           (        netboot.s):00862                 jsr     _peek_word
+0739 3410             (        netboot.s):00863                 pshs    x
+073B 8E0424           (        netboot.s):00864                 ldx     #1060
+073E BD0000           (        netboot.s):00865                 jsr     _poke_word
+0741 8E042A           (        netboot.s):00866                 ldx     #1066
+0744 BD0000           (        netboot.s):00867                 jsr     _peek_word
+0747 3410             (        netboot.s):00868                 pshs    x
+0749 8E0428           (        netboot.s):00869                 ldx     #1064
+074C BD0000           (        netboot.s):00870                 jsr     _poke_word
+074F 3420             (        netboot.s):00871                 pshs    y
+0751 8E0000           (        netboot.s):00872                 ldx     #LC25
+0754 AFE3             (        netboot.s):00873                 stx     ,--s
+0756 BD0000           (        netboot.s):00874                 jsr     _printk
+0759 3268             (        netboot.s):00875                 leas    8,s
+075B 5F               (        netboot.s):00876                 clrb
+075C 35E0             (        netboot.s):00877                 puls    y,u,pc
+075E                  (        netboot.s):00878         LC26:
+075E 53454E443A207061 (        netboot.s):00879                 .ascii "SEND: payload=%x size=%x \0"
+     796C6F61643D2578
+     2073697A653D2578
+     2000
+0778                  (        netboot.s):00880         LC27:
+0778 20646573743D2575 (        netboot.s):00881                 .ascii " dest=%u.%u.%u.%u:%u. \0"
+     2E25752E25752E25
+     753A25752E2000
+078F                  (        netboot.s):00882         LC28:
+078F 6261642073746174 (        netboot.s):00883                 .ascii "bad status $%x\0"
+     75732024257800
+079E                  (        netboot.s):00884         LC29:
+079E 646573745F697020 (        netboot.s):00885                 .ascii "dest_ip \0"
+     00
+07A7                  (        netboot.s):00886         LC30:
+07A7 646573745F702000 (        netboot.s):00887                 .ascii "dest_p \0"
+07AF                  (        netboot.s):00888         LC31:
+07AF FF               (        netboot.s):00889                 .byte   0xFF
+07B0 FF               (        netboot.s):00890                 .byte   0xFF
+07B1 FF               (        netboot.s):00891                 .byte   0xFF
+07B2 FF               (        netboot.s):00892                 .byte   0xFF
+07B3 FF               (        netboot.s):00893                 .byte   0xFF
+07B4 FF               (        netboot.s):00894                 .byte   0xFF
+07B5 00               (        netboot.s):00895                 .byte   0x00
+07B6                  (        netboot.s):00896         LC32:
+07B6 53454E443A206275 (        netboot.s):00897                 .ascii "SEND: buf=%x free=%x \0"
+     663D257820667265
+     653D25782000
+07CC                  (        netboot.s):00898         LC33:
+07CC 74785F723D257820 (        netboot.s):00899                 .ascii "tx_r=%x \0"
+     00
+07D5                  (        netboot.s):00900         LC34:
+07D5 73697A653D257820 (        netboot.s):00901                 .ascii "size=%x \0"
+     00
+07DE                  (        netboot.s):00902         LC35:
+07DE 74785F722B73697A (        netboot.s):00903                 .ascii "tx_r+size=%x \0"
+     653D25782000
+07EC                  (        netboot.s):00904         LC36:
+07EC 54585F53495A453D (        netboot.s):00905                 .ascii "TX_SIZE=%x \0"
+     25782000
+07F8                  (        netboot.s):00906         LC37:
+07F8 73697A652000     (        netboot.s):00907                 .ascii "size \0"
+07FE                  (        netboot.s):00908         LC38:
+07FE 7374617475732D3E (        netboot.s):00909                 .ascii "status->%x \0"
+     25782000
+080A                  (        netboot.s):00910         LC39:
+080A 636D643A53454E44 (        netboot.s):00911                 .ascii "cmd:SEND \0"
+     2000
+0814                  (        netboot.s):00912         LC40:
+0814 555300           (        netboot.s):00913                 .ascii "US\0"
+                      (        netboot.s):00914                 .globl _UdpSend
+0817                  (        netboot.s):00915         _UdpSend:
+0817 3460             (        netboot.s):00916                 pshs    y,u
+0819 327B             (        netboot.s):00917                 leas    -5,s
+081B 33E4             (        netboot.s):00918                 leau    ,s
+081D AF42             (        netboot.s):00919                 stx     2,u
+081F EC4B             (        netboot.s):00920                 ldd     11,u
+0821 3406             (        netboot.s):00921                 pshs    d
+0823 3410             (        netboot.s):00922                 pshs    x
+0825 8E0000           (        netboot.s):00923                 ldx     #LC26
+0828 AFE3             (        netboot.s):00924                 stx     ,--s
+082A BD0000           (        netboot.s):00925                 jsr     _printk
+082D 10AEC811         (        netboot.s):00926                 ldy     17,u
+0831 3420             (        netboot.s):00927                 pshs    y
+0833 314D             (        netboot.s):00928                 leay    13,u
+0835 E6C810           (        netboot.s):00929                 ldb     16,u
+0838 4F               (        netboot.s):00930                 clra            ;zero_extendqihi: R:b -> R:d
+0839 3406             (        netboot.s):00931                 pshs    d
+083B E622             (        netboot.s):00932                 ldb     2,y
+083D 4F               (        netboot.s):00933                 clra            ;zero_extendqihi: R:b -> R:d
+083E 3406             (        netboot.s):00934                 pshs    d
+0840 E621             (        netboot.s):00935                 ldb     1,y
+0842 4F               (        netboot.s):00936                 clra            ;zero_extendqihi: R:b -> R:d
+0843 3406             (        netboot.s):00937                 pshs    d
+0845 E6A4             (        netboot.s):00938                 ldb     ,y
+0847 4F               (        netboot.s):00939                 clra            ;zero_extendqihi: R:b -> R:d
+0848 3406             (        netboot.s):00940                 pshs    d
+084A 8E0000           (        netboot.s):00941                 ldx     #LC27
+084D AFE3             (        netboot.s):00942                 stx     ,--s
+084F BD0000           (        netboot.s):00943                 jsr     _printk
+0852 32E812           (        netboot.s):00944                 leas    18,s
+0855 8E0403           (        netboot.s):00945                 ldx     #1027
+0858 BD0000           (        netboot.s):00946                 jsr     _peek
+085B C122             (        netboot.s):00947                 cmpb    #34     ;cmpqi:
+085D 2714             (        netboot.s):00948                 beq     L86
+085F 4F               (        netboot.s):00949                 clra            ;zero_extendqihi: R:b -> R:d
+0860 3406             (        netboot.s):00950                 pshs    d
+0862 108E0000         (        netboot.s):00951                 ldy     #LC28
+0866 10AFE3           (        netboot.s):00952                 sty     ,--s
+0869 BD0000           (        netboot.s):00953                 jsr     _printk
+086C 3264             (        netboot.s):00954                 leas    4,s
+086E C6F6             (        netboot.s):00955                 ldb     #-10
+0870 7E0000           (        netboot.s):00956                 jmp     L87
+0873                  (        netboot.s):00957         L86:
+0873 8E0000           (        netboot.s):00958                 ldx     #LC29
+0876 AFE3             (        netboot.s):00959                 stx     ,--s
+0878 BD0000           (        netboot.s):00960                 jsr     _printk
+087B CC0004           (        netboot.s):00961                 ldd     #4
+087E EDE3             (        netboot.s):00962                 std     ,--s
+0880 3149             (        netboot.s):00963                 leay    9,u
+0882 31AB             (        netboot.s):00964                 leay    d,y
+0884 3420             (        netboot.s):00965                 pshs    y
+0886 8E040C           (        netboot.s):00966                 ldx     #1036
+0889 BD0000           (        netboot.s):00967                 jsr     _poke_n
+088C 8E0000           (        netboot.s):00968                 ldx     #LC30
+088F AFE3             (        netboot.s):00969                 stx     ,--s
+0891 BD0000           (        netboot.s):00970                 jsr     _printk
+0894 3268             (        netboot.s):00971                 leas    8,s
+0896 10AEC811         (        netboot.s):00972                 ldy     17,u
+089A 3420             (        netboot.s):00973                 pshs    y
+089C 8E0410           (        netboot.s):00974                 ldx     #1040
+089F BD0000           (        netboot.s):00975                 jsr     _poke_word
+08A2 3262             (        netboot.s):00976                 leas    2,s
+08A4 EC4D             (        netboot.s):00977                 ldd     13,u
+08A6 1083FFFF         (        netboot.s):00978                 cmpd    #-1     ;cmphi:
+08AA 261F             (        netboot.s):00979                 bne     L92
+08AC AE4F             (        netboot.s):00980                 ldx     15,u
+08AE 8CFFFF           (        netboot.s):00981                 cmpx    #-1     ;cmphi:
+08B1 2618             (        netboot.s):00982                 bne     L92
+08B3 CC0006           (        netboot.s):00983                 ldd     #6
+08B6 EDE3             (        netboot.s):00984                 std     ,--s
+08B8 8E0000           (        netboot.s):00985                 ldx     #LC31
+08BB AFE3             (        netboot.s):00986                 stx     ,--s
+08BD 8E0406           (        netboot.s):00987                 ldx     #1030
+08C0 BD0000           (        netboot.s):00988                 jsr     _poke_n
+08C3 3264             (        netboot.s):00989                 leas    4,s
+08C5 C621             (        netboot.s):00990                 ldb     #33
+08C7 E744             (        netboot.s):00991                 stb     4,u
+08C9 2004             (        netboot.s):00992                 bra     L88
+08CB                  (        netboot.s):00993         L92:
+08CB C620             (        netboot.s):00994                 ldb     #32
+08CD E744             (        netboot.s):00995                 stb     4,u
+08CF                  (        netboot.s):00996         L88:
+08CF 8E0420           (        netboot.s):00997                 ldx     #1056
+08D2 BD0000           (        netboot.s):00998                 jsr     _peek_word
+08D5 3184             (        netboot.s):00999                 leay    ,x
+08D7 3410             (        netboot.s):01000                 pshs    x
+08D9 8E4000           (        netboot.s):01001                 ldx     #16384
+08DC AFE3             (        netboot.s):01002                 stx     ,--s
+08DE 8E0000           (        netboot.s):01003                 ldx     #LC32
+08E1 AFE3             (        netboot.s):01004                 stx     ,--s
+08E3 BD0000           (        netboot.s):01005                 jsr     _printk
+08E6 3266             (        netboot.s):01006                 leas    6,s
+08E8 C6FF             (        netboot.s):01007                 ldb     #-1
+08EA 10AC4B           (        netboot.s):01008                 cmpy    11,u    ;cmphi:(R)
+08ED 10250119         (        netboot.s):01009                 lblo    L87
+08F1 8E0422           (        netboot.s):01010                 ldx     #1058
+08F4 BD0000           (        netboot.s):01011                 jsr     _peek_word
+08F7 AFC4             (        netboot.s):01012                 stx     ,u
+08F9 3410             (        netboot.s):01013                 pshs    x
+08FB 108E0000         (        netboot.s):01014                 ldy     #LC33
+08FF 10AFE3           (        netboot.s):01015                 sty     ,--s
+0902 BD0000           (        netboot.s):01016                 jsr     _printk
+0905 EC4B             (        netboot.s):01017                 ldd     11,u
+0907 3406             (        netboot.s):01018                 pshs    d
+0909 8E0000           (        netboot.s):01019                 ldx     #LC34
+090C AFE3             (        netboot.s):01020                 stx     ,--s
+090E BD0000           (        netboot.s):01021                 jsr     _printk
+0911 3268             (        netboot.s):01022                 leas    8,s
+0913 ECC4             (        netboot.s):01023                 ldd     ,u
+0915 E34B             (        netboot.s):01024                 addd    11,u
+0917 3406             (        netboot.s):01025                 pshs    d
+0919 8E0000           (        netboot.s):01026                 ldx     #LC35
+091C AFE3             (        netboot.s):01027                 stx     ,--s
+091E BD0000           (        netboot.s):01028                 jsr     _printk
+0921 108E0800         (        netboot.s):01029                 ldy     #2048
+0925 10AFE3           (        netboot.s):01030                 sty     ,--s
+0928 8E0000           (        netboot.s):01031                 ldx     #LC36
+092B AFE3             (        netboot.s):01032                 stx     ,--s
+092D BD0000           (        netboot.s):01033                 jsr     _printk
+0930 ECC4             (        netboot.s):01034                 ldd     ,u
+0932 8407             (        netboot.s):01035                 anda #7
+0934 C4FF             (        netboot.s):01036                 andb #255
+0936 1F01             (        netboot.s):01037                 tfr     d,x
+0938 EC4B             (        netboot.s):01038                 ldd     11,u
+093A 318B             (        netboot.s):01039                 leay    d,x
+093C 3268             (        netboot.s):01040                 leas    8,s
+093E 108C07FF         (        netboot.s):01041                 cmpy    #2047   ;cmphi:
+0942 2335             (        netboot.s):01042                 bls     L89
+0944 108E0800         (        netboot.s):01043                 ldy     #2048
+0948 1F20             (        netboot.s):01044                 tfr     y,d
+094A 3410             (        netboot.s):01045                 pshs    x       ;subhi: R:d -= R:x
+094C A3E1             (        netboot.s):01046                 subd    ,s++
+094E 1F02             (        netboot.s):01047                 tfr     d,y
+0950 EC4B             (        netboot.s):01048                 ldd     11,u
+0952 3420             (        netboot.s):01049                 pshs    y       ;subhi: R:d -= R:y
+0954 A3E1             (        netboot.s):01050                 subd    ,s++
+0956 EDC4             (        netboot.s):01051                 std     ,u
+0958 30894000         (        netboot.s):01052                 leax    16384,x
+095C 3420             (        netboot.s):01053                 pshs    y
+095E EC42             (        netboot.s):01054                 ldd     2,u
+0960 3406             (        netboot.s):01055                 pshs    d
+0962 BD0000           (        netboot.s):01056                 jsr     _poke_n
+0965 ECC4             (        netboot.s):01057                 ldd     ,u
+0967 3406             (        netboot.s):01058                 pshs    d
+0969 EC42             (        netboot.s):01059                 ldd     2,u
+096B 31AB             (        netboot.s):01060                 leay    d,y
+096D 3420             (        netboot.s):01061                 pshs    y
+096F 8E4000           (        netboot.s):01062                 ldx     #16384
+0972 BD0000           (        netboot.s):01063                 jsr     _poke_n
+0975 3268             (        netboot.s):01064                 leas    8,s
+0977 2015             (        netboot.s):01065                 bra     L90
+0979                  (        netboot.s):01066         L89:
+0979 10AEC4           (        netboot.s):01067                 ldy     ,u
+097C 30A94000         (        netboot.s):01068                 leax    16384,y
+0980 EC4B             (        netboot.s):01069                 ldd     11,u
+0982 3406             (        netboot.s):01070                 pshs    d
+0984 10AE42           (        netboot.s):01071                 ldy     2,u
+0987 3420             (        netboot.s):01072                 pshs    y
+0989 BD0000           (        netboot.s):01073                 jsr     _poke_n
+098C 3264             (        netboot.s):01074                 leas    4,s
+098E                  (        netboot.s):01075         L90:
+098E 8E0000           (        netboot.s):01076                 ldx     #LC37
+0991 AFE3             (        netboot.s):01077                 stx     ,--s
+0993 BD0000           (        netboot.s):01078                 jsr     _printk
+0996 8E0424           (        netboot.s):01079                 ldx     #1060
+0999 BD0000           (        netboot.s):01080                 jsr     _peek_word
+099C EC4B             (        netboot.s):01081                 ldd     11,u
+099E 308B             (        netboot.s):01082                 leax    d,x
+09A0 3410             (        netboot.s):01083                 pshs    x
+09A2 8E0424           (        netboot.s):01084                 ldx     #1060
+09A5 BD0000           (        netboot.s):01085                 jsr     _poke_word
+09A8 8E0403           (        netboot.s):01086                 ldx     #1027
+09AB BD0000           (        netboot.s):01087                 jsr     _peek
+09AE 4F               (        netboot.s):01088                 clra            ;zero_extendqihi: R:b -> R:d
+09AF 3406             (        netboot.s):01089                 pshs    d
+09B1 108E0000         (        netboot.s):01090                 ldy     #LC38
+09B5 3420             (        netboot.s):01091                 pshs    y
+09B7 BD0000           (        netboot.s):01092                 jsr     _printk
+09BA 3268             (        netboot.s):01093                 leas    8,s
+09BC 8E0000           (        netboot.s):01094                 ldx     #LC39
+09BF AFE3             (        netboot.s):01095                 stx     ,--s
+09C1 BD0000           (        netboot.s):01096                 jsr     _printk
+09C4 C61F             (        netboot.s):01097                 ldb     #31
+09C6 8E0402           (        netboot.s):01098                 ldx     #1026
+09C9 BD0000           (        netboot.s):01099                 jsr     _poke
+09CC E644             (        netboot.s):01100                 ldb     4,u
+09CE 8E0401           (        netboot.s):01101                 ldx     #1025
+09D1 BD0000           (        netboot.s):01102                 jsr     _poke
+09D4 8E0000           (        netboot.s):01103                 ldx     #LC40
+09D7 AFE3             (        netboot.s):01104                 stx     ,--s
+09D9 5F               (        netboot.s):01105                 clrb
+09DA 8E0401           (        netboot.s):01106                 ldx     #1025
+09DD BD0000           (        netboot.s):01107                 jsr     _WaitOrFatal
+09E0 8E0403           (        netboot.s):01108                 ldx     #1027
+09E3 BD0000           (        netboot.s):01109                 jsr     _peek
+09E6 4F               (        netboot.s):01110                 clra            ;zero_extendqihi: R:b -> R:d
+09E7 3406             (        netboot.s):01111                 pshs    d
+09E9 3420             (        netboot.s):01112                 pshs    y
+09EB BD0000           (        netboot.s):01113                 jsr     _printk
+09EE 3268             (        netboot.s):01114                 leas    8,s
+09F0                  (        netboot.s):01115         L91:
+09F0 8E0402           (        netboot.s):01116                 ldx     #1026
+09F3 BD0000           (        netboot.s):01117                 jsr     _peek
+09F6 4F               (        netboot.s):01118                 clra            ;zero_extendqihi: R:b -> R:d
+09F7 8400             (        netboot.s):01119                 anda #0
+09F9 C410             (        netboot.s):01120                 andb #16
+09FB 10830000         (        netboot.s):01121                 cmpd    #0      ;cmphi:
+09FF 27EF             (        netboot.s):01122                 beq     L91
+0A01 C610             (        netboot.s):01123                 ldb     #16
+0A03 8E0402           (        netboot.s):01124                 ldx     #1026
+0A06 BD0000           (        netboot.s):01125                 jsr     _poke
+0A09 5F               (        netboot.s):01126                 clrb
+0A0A                  (        netboot.s):01127         L87:
+0A0A 3265             (        netboot.s):01128                 leas    5,s
+0A0C 35E0             (        netboot.s):01129                 puls    y,u,pc
+0A0E                  (        netboot.s):01130         LC41:
+0A0E 7374617475732025 (        netboot.s):01131                 .ascii "status %x\0"
+     7800
+0A18                  (        netboot.s):01132         LC42:
+0A18 203C205245435620 (        netboot.s):01133                 .ascii " < RECV > \0"
+     3E2000
+0A23                  (        netboot.s):01134         LC43:
+0A23 55525100         (        netboot.s):01135                 .ascii "URQ\0"
+0A27                  (        netboot.s):01136         LC44:
+0A27 3242494700       (        netboot.s):01137                 .ascii "2BIG\0"
+                      (        netboot.s):01138                 .globl _UdpRecv
+0A2C                  (        netboot.s):01139         _UdpRecv:
+0A2C 3460             (        netboot.s):01140                 pshs    y,u
+0A2E 32E8EC           (        netboot.s):01141                 leas    -20,s
+0A31 33E4             (        netboot.s):01142                 leau    ,s
+0A33 AF48             (        netboot.s):01143                 stx     8,u
+0A35 8E0403           (        netboot.s):01144                 ldx     #1027
+0A38 BD0000           (        netboot.s):01145                 jsr     _peek
+0A3B 4F               (        netboot.s):01146                 clra            ;zero_extendqihi: R:b -> R:d
+0A3C 3406             (        netboot.s):01147                 pshs    d
+0A3E 108E0000         (        netboot.s):01148                 ldy     #LC41
+0A42 3420             (        netboot.s):01149                 pshs    y
+0A44 BD0000           (        netboot.s):01150                 jsr     _printk
+0A47 8E0403           (        netboot.s):01151                 ldx     #1027
+0A4A BD0000           (        netboot.s):01152                 jsr     _peek
+0A4D 4F               (        netboot.s):01153                 clra            ;zero_extendqihi: R:b -> R:d
+0A4E 3406             (        netboot.s):01154                 pshs    d
+0A50 3420             (        netboot.s):01155                 pshs    y
+0A52 BD0000           (        netboot.s):01156                 jsr     _printk
+0A55 3268             (        netboot.s):01157                 leas    8,s
+0A57 8E0403           (        netboot.s):01158                 ldx     #1027
+0A5A BD0000           (        netboot.s):01159                 jsr     _peek
+0A5D 4F               (        netboot.s):01160                 clra            ;zero_extendqihi: R:b -> R:d
+0A5E 3406             (        netboot.s):01161                 pshs    d
+0A60 3420             (        netboot.s):01162                 pshs    y
+0A62 BD0000           (        netboot.s):01163                 jsr     _printk
+0A65 8E0403           (        netboot.s):01164                 ldx     #1027
+0A68 BD0000           (        netboot.s):01165                 jsr     _peek
+0A6B E746             (        netboot.s):01166                 stb     6,u
+0A6D 3264             (        netboot.s):01167                 leas    4,s
+0A6F C6F6             (        netboot.s):01168                 ldb     #-10
+0A71 E74A             (        netboot.s):01169                 stb     10,u
+0A73 E646             (        netboot.s):01170                 ldb     6,u
+0A75 C122             (        netboot.s):01171                 cmpb    #34     ;cmpqi:
+0A77 10260139         (        netboot.s):01172                 lbne    L96
+0A7B CC0000           (        netboot.s):01173                 ldd     #0
+0A7E EDE3             (        netboot.s):01174                 std     ,--s
+0A80 8E040C           (        netboot.s):01175                 ldx     #1036
+0A83 BD0000           (        netboot.s):01176                 jsr     _poke_word
+0A86 CC0000           (        netboot.s):01177                 ldd     #0
+0A89 EDE3             (        netboot.s):01178                 std     ,--s
+0A8B 8E040E           (        netboot.s):01179                 ldx     #1038
+0A8E BD0000           (        netboot.s):01180                 jsr     _poke_word
+0A91 CC0000           (        netboot.s):01181                 ldd     #0
+0A94 EDE3             (        netboot.s):01182                 std     ,--s
+0A96 8E0410           (        netboot.s):01183                 ldx     #1040
+0A99 BD0000           (        netboot.s):01184                 jsr     _poke_word
+0A9C C61F             (        netboot.s):01185                 ldb     #31
+0A9E 8E0402           (        netboot.s):01186                 ldx     #1026
+0AA1 BD0000           (        netboot.s):01187                 jsr     _poke
+0AA4 C640             (        netboot.s):01188                 ldb     #64
+0AA6 BD0000           (        netboot.s):01189                 jsr     _IssueCommand
+0AA9 8E0403           (        netboot.s):01190                 ldx     #1027
+0AAC BD0000           (        netboot.s):01191                 jsr     _peek
+0AAF 4F               (        netboot.s):01192                 clra            ;zero_extendqihi: R:b -> R:d
+0AB0 3406             (        netboot.s):01193                 pshs    d
+0AB2 8E0000           (        netboot.s):01194                 ldx     #LC38
+0AB5 AFE3             (        netboot.s):01195                 stx     ,--s
+0AB7 BD0000           (        netboot.s):01196                 jsr     _printk
+0ABA 326A             (        netboot.s):01197                 leas    10,s
+0ABC 108E0000         (        netboot.s):01198                 ldy     #LC42
+0AC0 10AFE3           (        netboot.s):01199                 sty     ,--s
+0AC3 BD0000           (        netboot.s):01200                 jsr     _printk
+0AC6 3262             (        netboot.s):01201                 leas    2,s
+0AC8                  (        netboot.s):01202         L97:
+0AC8 8E0402           (        netboot.s):01203                 ldx     #1026
+0ACB BD0000           (        netboot.s):01204                 jsr     _peek
+0ACE 5D               (        netboot.s):01205                 tstb    ;cmpqi:(ZERO)
+0ACF 27F7             (        netboot.s):01206                 beq     L97
+0AD1 E74A             (        netboot.s):01207                 stb     10,u
+0AD3 C61F             (        netboot.s):01208                 ldb     #31
+0AD5 8E0402           (        netboot.s):01209                 ldx     #1026
+0AD8 BD0000           (        netboot.s):01210                 jsr     _poke
+0ADB E64A             (        netboot.s):01211                 ldb     10,u
+0ADD C104             (        netboot.s):01212                 cmpb    #4      ;cmpqi:
+0ADF 2706             (        netboot.s):01213                 beq     L98
+0AE1 8E0000           (        netboot.s):01214                 ldx     #LC43
+0AE4 7E0000           (        netboot.s):01215                 jmp     _Fatal
+0AE7                  (        netboot.s):01216         L98:
+0AE7 8E0426           (        netboot.s):01217                 ldx     #1062
+0AEA BD0000           (        netboot.s):01218                 jsr     _peek_word
+0AED AF42             (        netboot.s):01219                 stx     2,u
+0AEF 8E0428           (        netboot.s):01220                 ldx     #1064
+0AF2 BD0000           (        netboot.s):01221                 jsr     _peek_word
+0AF5 AF44             (        netboot.s):01222                 stx     4,u
+0AF7 8E042A           (        netboot.s):01223                 ldx     #1066
+0AFA BD0000           (        netboot.s):01224                 jsr     _peek_word
+0AFD EC44             (        netboot.s):01225                 ldd     4,u
+0AFF 8407             (        netboot.s):01226                 anda #7
+0B01 C4FF             (        netboot.s):01227                 andb #255
+0B03 ED4A             (        netboot.s):01228                 std     10,u
+0B05 108E0000         (        netboot.s):01229                 ldy     #0
+0B09 10AFC4           (        netboot.s):01230                 sty     ,u
+0B0C                  (        netboot.s):01231         L99:
+0B0C 10AE4A           (        netboot.s):01232                 ldy     10,u
+0B0F 30A96000         (        netboot.s):01233                 leax    24576,y
+0B13 BD0000           (        netboot.s):01234                 jsr     _peek
+0B16 30C814           (        netboot.s):01235                 leax    20,u
+0B19 1E01             (        netboot.s):01236                 exg     d,x
+0B1B E3C4             (        netboot.s):01237                 addd    ,u
+0B1D 1E01             (        netboot.s):01238                 exg     d,x
+0B1F E718             (        netboot.s):01239                 stb     -8,x
+0B21 EC4A             (        netboot.s):01240                 ldd     10,u
+0B23 C30001           (        netboot.s):01241                 addd    #1
+0B26 8407             (        netboot.s):01242                 anda #7
+0B28 C4FF             (        netboot.s):01243                 andb #255
+0B2A ED4A             (        netboot.s):01244                 std     10,u
+0B2C ECC4             (        netboot.s):01245                 ldd     ,u
+0B2E C30001           (        netboot.s):01246                 addd    #1
+0B31 EDC4             (        netboot.s):01247                 std     ,u
+0B33 10830008         (        netboot.s):01248                 cmpd    #8      ;cmphi:
+0B37 26D3             (        netboot.s):01249                 bne     L99
+0B39 10AEC812         (        netboot.s):01250                 ldy     18,u
+0B3D 10AF46           (        netboot.s):01251                 sty     6,u
+0B40 AEC81A           (        netboot.s):01252                 ldx     26,u
+0B43 10AC84           (        netboot.s):01253                 cmpy    ,x      ;cmphi:
+0B46 2208             (        netboot.s):01254                 bhi     L100
+0B48 108C0000         (        netboot.s):01255                 cmpy    #0      ;cmphi:
+0B4C 2608             (        netboot.s):01256                 bne     L101
+0B4E 2038             (        netboot.s):01257                 bra     L102
+0B50                  (        netboot.s):01258         L100:
+0B50 8E0000           (        netboot.s):01259                 ldx     #LC44
+0B53 7E0000           (        netboot.s):01260                 jmp     _Fatal
+0B56                  (        netboot.s):01261         L101:
+0B56 108E0000         (        netboot.s):01262                 ldy     #0
+0B5A 10AFC4           (        netboot.s):01263                 sty     ,u
+0B5D                  (        netboot.s):01264         L103:
+0B5D 10AE4A           (        netboot.s):01265                 ldy     10,u
+0B60 30A96000         (        netboot.s):01266                 leax    24576,y
+0B64 BD0000           (        netboot.s):01267                 jsr     _peek
+0B67 AE48             (        netboot.s):01268                 ldx     8,u
+0B69 3001             (        netboot.s):01269                 leax    1,x
+0B6B AF48             (        netboot.s):01270                 stx     8,u
+0B6D 301F             (        netboot.s):01271                 leax    -1,x
+0B6F E780             (        netboot.s):01272                 stb     ,x+
+0B71 EC4A             (        netboot.s):01273                 ldd     10,u
+0B73 C30001           (        netboot.s):01274                 addd    #1
+0B76 8407             (        netboot.s):01275                 anda #7
+0B78 C4FF             (        netboot.s):01276                 andb #255
+0B7A ED4A             (        netboot.s):01277                 std     10,u
+0B7C ECC4             (        netboot.s):01278                 ldd     ,u
+0B7E C30001           (        netboot.s):01279                 addd    #1
+0B81 EDC4             (        netboot.s):01280                 std     ,u
+0B83 10A346           (        netboot.s):01281                 cmpd    6,u     ;cmphi:
+0B86 26D5             (        netboot.s):01282                 bne     L103
+0B88                  (        netboot.s):01283         L102:
+0B88 EC46             (        netboot.s):01284                 ldd     6,u
+0B8A 10AEC81A         (        netboot.s):01285                 ldy     26,u
+0B8E EDA4             (        netboot.s):01286                 std     ,y
+0B90 EC4C             (        netboot.s):01287                 ldd     12,u
+0B92 10AEC81C         (        netboot.s):01288                 ldy     28,u
+0B96 EDA4             (        netboot.s):01289                 std     ,y
+0B98 AE4E             (        netboot.s):01290                 ldx     14,u
+0B9A AF22             (        netboot.s):01291                 stx     2,y
+0B9C 10AEC810         (        netboot.s):01292                 ldy     16,u
+0BA0 10AFD81E         (        netboot.s):01293                 sty     [30,u]
+0BA4 EC44             (        netboot.s):01294                 ldd     4,u
+0BA6 E342             (        netboot.s):01295                 addd    2,u
+0BA8 3406             (        netboot.s):01296                 pshs    d
+0BAA 8E0428           (        netboot.s):01297                 ldx     #1064
+0BAD BD0000           (        netboot.s):01298                 jsr     _poke_word
+0BB0 3262             (        netboot.s):01299                 leas    2,s
+0BB2 6F4A             (        netboot.s):01300                 clr     10,u
+0BB4                  (        netboot.s):01301         L96:
+0BB4 E64A             (        netboot.s):01302                 ldb     10,u
+0BB6 32E814           (        netboot.s):01303                 leas    20,s
+0BB9 35E0             (        netboot.s):01304                 puls    y,u,pc
+0BBB                  (        netboot.s):01305         LC45:
+0BBB 6F6374657400     (        netboot.s):01306                 .ascii "octet\0"
+0BC1                  (        netboot.s):01307         LC46:
+0BC1 63616E6E6F742055 (        netboot.s):01308                 .ascii "cannot UdpSend request: errnum %x\0"
+     647053656E642072
+     6571756573743A20
+     6572726E756D2025
+     7800
+0BE3                  (        netboot.s):01309         LC47:
+0BE3 54555300         (        netboot.s):01310                 .ascii "TUS\0"
+                      (        netboot.s):01311                 .globl _TftpRequest
+0BE7                  (        netboot.s):01312         _TftpRequest:
+0BE7 3460             (        netboot.s):01313                 pshs    y,u
+0BE9 327A             (        netboot.s):01314                 leas    -6,s
+0BEB 33E4             (        netboot.s):01315                 leau    ,s
+0BED 10AE4C           (        netboot.s):01316                 ldy     12,u
+0BF0 10AF42           (        netboot.s):01317                 sty     2,u
+0BF3 10AE4E           (        netboot.s):01318                 ldy     14,u
+0BF6 10AFC4           (        netboot.s):01319                 sty     ,u
+0BF9 AF44             (        netboot.s):01320                 stx     4,u
+0BFB 10AEC810         (        netboot.s):01321                 ldy     16,u
+0BFF 8E701C           (        netboot.s):01322                 ldx     #28700
+0C02 10AF84           (        netboot.s):01323                 sty     ,x
+0C05 AEC812           (        netboot.s):01324                 ldx     18,u
+0C08 BD0000           (        netboot.s):01325                 jsr     _strlen
+0C0B 3184             (        netboot.s):01326                 leay    ,x
+0C0D AEC812           (        netboot.s):01327                 ldx     18,u
+0C10 3410             (        netboot.s):01328                 pshs    x
+0C12 8E701E           (        netboot.s):01329                 ldx     #28702
+0C15 BD0000           (        netboot.s):01330                 jsr     _strcpy
+0C18 31A9701F         (        netboot.s):01331                 leay    28703,y
+0C1C 8E0000           (        netboot.s):01332                 ldx     #LC45
+0C1F AFE3             (        netboot.s):01333                 stx     ,--s
+0C21 30A4             (        netboot.s):01334                 leax    ,y
+0C23 BD0000           (        netboot.s):01335                 jsr     _strcpy
+0C26 AE44             (        netboot.s):01336                 ldx     4,u
+0C28 3410             (        netboot.s):01337                 pshs    x
+0C2A 327C             (        netboot.s):01338                 leas    -4,s
+0C2C AE42             (        netboot.s):01339                 ldx     2,u
+0C2E AFE4             (        netboot.s):01340                 stx     ,s
+0C30 AEC4             (        netboot.s):01341                 ldx     ,u
+0C32 AF62             (        netboot.s):01342                 stx     2,s
+0C34 31A98FEA         (        netboot.s):01343                 leay    -28694,y
+0C38 3420             (        netboot.s):01344                 pshs    y
+0C3A 8E701C           (        netboot.s):01345                 ldx     #28700
+0C3D BD0000           (        netboot.s):01346                 jsr     _UdpSend
+0C40 326C             (        netboot.s):01347                 leas    12,s
+0C42 5D               (        netboot.s):01348                 tstb    ;cmpqi:(ZERO)
+0C43 2713             (        netboot.s):01349                 beq     L108
+0C45 4F               (        netboot.s):01350                 clra            ;zero_extendqihi: R:b -> R:d
+0C46 3406             (        netboot.s):01351                 pshs    d
+0C48 108E0000         (        netboot.s):01352                 ldy     #LC46
+0C4C 10AFE3           (        netboot.s):01353                 sty     ,--s
+0C4F BD0000           (        netboot.s):01354                 jsr     _printk
+0C52 8E0000           (        netboot.s):01355                 ldx     #LC47
+0C55 7E0000           (        netboot.s):01356                 jmp     _Fatal
+0C58                  (        netboot.s):01357         L108:
+0C58 3266             (        netboot.s):01358                 leas    6,s
+0C5A 35E0             (        netboot.s):01359                 puls    y,u,pc
+0C5C                  (        netboot.s):01360         LC48:
+0C5C 636C69656E745F70 (        netboot.s):01361                 .ascii "client_port = $%x\0"
+     6F7274203D202425
+     7800
+0C6E                  (        netboot.s):01362         LC49:
+0C6E 6572726F72202575 (        netboot.s):01363                 .ascii "error %u.\0"
+     2E00
+0C78                  (        netboot.s):01364         LC50:
+0C78 542D554F00       (        netboot.s):01365                 .ascii "T-UO\0"
+0C7D                  (        netboot.s):01366         LC51:
+0C7D 5446545000       (        netboot.s):01367                 .ascii "TFTP\0"
+0C82                  (        netboot.s):01368         LC52:
+0C82 434F434F494F2E42 (        netboot.s):01369                 .ascii "COCOIO.BOOT\0"
+     4F4F5400
+0C8E                  (        netboot.s):01370         LC53:
+0C8E 7265637600       (        netboot.s):01371                 .ascii "recv\0"
+0C93                  (        netboot.s):01372         LC54:
+0C93 676F742073697A65 (        netboot.s):01373                 .ascii "got size $%x\0"
+     2024257800
+0CA0                  (        netboot.s):01374         LC55:
+0CA0 6F70636F64652025 (        netboot.s):01375                 .ascii "opcode %u.\0"
+     752E00
+0CAB                  (        netboot.s):01376         LC56:
+0CAB 474F542054465450 (        netboot.s):01377                 .ascii "GOT TFTP ERROR\0"
+     204552524F5200
+0CBA                  (        netboot.s):01378         LC57:
+0CBA 27257800         (        netboot.s):01379                 .ascii "'%x\0"
+0CBE                  (        netboot.s):01380         LC58:
+0CBE 474F542054465450 (        netboot.s):01381                 .ascii "GOT TFTP -O1 DATA\0"
+     202D4F3120444154
+     4100
+                      (        netboot.s):01382                 .globl _RunTftpGet
+0CD0                  (        netboot.s):01383         _RunTftpGet:
+0CD0 3460             (        netboot.s):01384                 pshs    y,u
+0CD2 3272             (        netboot.s):01385                 leas    -14,s
+0CD4 33E4             (        netboot.s):01386                 leau    ,s
+0CD6 10AEC814         (        netboot.s):01387                 ldy     20,u
+0CDA 10AF42           (        netboot.s):01388                 sty     2,u
+0CDD 10AEC816         (        netboot.s):01389                 ldy     22,u
+0CE1 10AFC4           (        netboot.s):01390                 sty     ,u
+0CE4 BD0000           (        netboot.s):01391                 jsr     _UdpClose
+0CE7 8E01F4           (        netboot.s):01392                 ldx     #500
+0CEA BD0000           (        netboot.s):01393                 jsr     _Delay
+0CED BD0000           (        netboot.s):01394                 jsr     _WizTicks
+0CF0 1F10             (        netboot.s):01395                 tfr     x,d
+0CF2 8A80             (        netboot.s):01396                 ora     #-128
+                      (        netboot.s):01397                         ;iorqi(ZERO)
+0CF4 1F01             (        netboot.s):01398                 tfr     d,x
+0CF6 3189FF00         (        netboot.s):01399                 leay    -256,x
+0CFA 3420             (        netboot.s):01400                 pshs    y
+0CFC 8E0000           (        netboot.s):01401                 ldx     #LC48
+0CFF AFE3             (        netboot.s):01402                 stx     ,--s
+0D01 BD0000           (        netboot.s):01403                 jsr     _printk
+0D04 30A4             (        netboot.s):01404                 leax    ,y
+0D06 BD0000           (        netboot.s):01405                 jsr     _UdpOpen
+0D09 3264             (        netboot.s):01406                 leas    4,s
+0D0B 5D               (        netboot.s):01407                 tstb    ;cmpqi:(ZERO)
+0D0C 2713             (        netboot.s):01408                 beq     L111
+0D0E 4F               (        netboot.s):01409                 clra            ;zero_extendqihi: R:b -> R:d
+0D0F 3406             (        netboot.s):01410                 pshs    d
+0D11 108E0000         (        netboot.s):01411                 ldy     #LC49
+0D15 10AFE3           (        netboot.s):01412                 sty     ,--s
+0D18 BD0000           (        netboot.s):01413                 jsr     _printk
+0D1B 8E0000           (        netboot.s):01414                 ldx     #LC50
+0D1E 7E0000           (        netboot.s):01415                 jmp     _Fatal
+0D21                  (        netboot.s):01416         L111:
+0D21 8E033C           (        netboot.s):01417                 ldx     #828
+0D24 BD0000           (        netboot.s):01418                 jsr     _ShowLine
+0D27                  (        netboot.s):01419         L118:
+0D27 8E0000           (        netboot.s):01420                 ldx     #LC51
+0D2A AFE3             (        netboot.s):01421                 stx     ,--s
+0D2C BD0000           (        netboot.s):01422                 jsr     _printk
+0D2F 3262             (        netboot.s):01423                 leas    2,s
+0D31 EC42             (        netboot.s):01424                 ldd     2,u
+0D33 AAC4             (        netboot.s):01425                 ora     ,u
+0D35 EA41             (        netboot.s):01426                 orb     1,u
+0D37 1F01             (        netboot.s):01427                 tfr     d,x
+0D39 8C0000           (        netboot.s):01428                 cmpx    #0      ;cmphi:
+0D3C 2607             (        netboot.s):01429                 bne     L119
+0D3E 8EFFFF           (        netboot.s):01430                 ldx     #-1
+0D41 AF44             (        netboot.s):01431                 stx     4,u
+0D43 2008             (        netboot.s):01432                 bra     L112
+0D45                  (        netboot.s):01433         L119:
+0D45 AE42             (        netboot.s):01434                 ldx     2,u
+0D47 10AEC4           (        netboot.s):01435                 ldy     ,u
+0D4A 10AF44           (        netboot.s):01436                 sty     4,u
+0D4D                  (        netboot.s):01437         L112:
+0D4D 108E0000         (        netboot.s):01438                 ldy     #LC52
+0D51 10AFE3           (        netboot.s):01439                 sty     ,--s
+0D54 CC0001           (        netboot.s):01440                 ldd     #1
+0D57 EDE3             (        netboot.s):01441                 std     ,--s
+0D59 327C             (        netboot.s):01442                 leas    -4,s
+0D5B AFE4             (        netboot.s):01443                 stx     ,s
+0D5D AE44             (        netboot.s):01444                 ldx     4,u
+0D5F AF62             (        netboot.s):01445                 stx     2,s
+0D61 8E0045           (        netboot.s):01446                 ldx     #69
+0D64 BD0000           (        netboot.s):01447                 jsr     _TftpRequest
+0D67 108E0258         (        netboot.s):01448                 ldy     #600
+0D6B 10AF4A           (        netboot.s):01449                 sty     10,u
+0D6E CC0000           (        netboot.s):01450                 ldd     #0
+0D71 ED46             (        netboot.s):01451                 std     6,u
+0D73 ED48             (        netboot.s):01452                 std     8,u
+0D75 314E             (        netboot.s):01453                 leay    14,u
+0D77 EDA3             (        netboot.s):01454                 std     ,--y
+0D79 3268             (        netboot.s):01455                 leas    8,s
+0D7B 8E0345           (        netboot.s):01456                 ldx     #837
+0D7E BD0000           (        netboot.s):01457                 jsr     _ShowLine
+0D81 8E0000           (        netboot.s):01458                 ldx     #LC53
+0D84 AFE3             (        netboot.s):01459                 stx     ,--s
+0D86 BD0000           (        netboot.s):01460                 jsr     _printk
+0D89 3420             (        netboot.s):01461                 pshs    y
+0D8B CC0006           (        netboot.s):01462                 ldd     #6
+0D8E 3440             (        netboot.s):01463                 pshs    u       ;addhi: R:d += R:u
+0D90 E3E1             (        netboot.s):01464                 addd    ,s++
+0D92 3406             (        netboot.s):01465                 pshs    d
+0D94 CC000A           (        netboot.s):01466                 ldd     #10
+0D97 3440             (        netboot.s):01467                 pshs    u       ;addhi: R:d += R:u
+0D99 E3E1             (        netboot.s):01468                 addd    ,s++
+0D9B 3406             (        netboot.s):01469                 pshs    d
+0D9D 8E7274           (        netboot.s):01470                 ldx     #29300
+0DA0 BD0000           (        netboot.s):01471                 jsr     _UdpRecv
+0DA3 E744             (        netboot.s):01472                 stb     4,u
+0DA5 3268             (        netboot.s):01473                 leas    8,s
+0DA7 8E0348           (        netboot.s):01474                 ldx     #840
+0DAA BD0000           (        netboot.s):01475                 jsr     _ShowLine
+0DAD AE4A             (        netboot.s):01476                 ldx     10,u
+0DAF AFE3             (        netboot.s):01477                 stx     ,--s
+0DB1 108E0000         (        netboot.s):01478                 ldy     #LC54
+0DB5 10AFE3           (        netboot.s):01479                 sty     ,--s
+0DB8 BD0000           (        netboot.s):01480                 jsr     _printk
+0DBB 3264             (        netboot.s):01481                 leas    4,s
+0DBD E644             (        netboot.s):01482                 ldb     4,u
+0DBF 2718             (        netboot.s):01483                 beq     L113
+0DC1 8E034A           (        netboot.s):01484                 ldx     #842
+0DC4 BD0000           (        netboot.s):01485                 jsr     _ShowLine
+0DC7 E644             (        netboot.s):01486                 ldb     4,u
+0DC9 4F               (        netboot.s):01487                 clra            ;zero_extendqihi: R:b -> R:d
+0DCA 3406             (        netboot.s):01488                 pshs    d
+0DCC 8E0000           (        netboot.s):01489                 ldx     #LC49
+0DCF AFE3             (        netboot.s):01490                 stx     ,--s
+0DD1 BD0000           (        netboot.s):01491                 jsr     _printk
+0DD4 3264             (        netboot.s):01492                 leas    4,s
+0DD6 7E0000           (        netboot.s):01493                 jmp     L117
+0DD9                  (        netboot.s):01494         L113:
+0DD9 8E034D           (        netboot.s):01495                 ldx     #845
+0DDC BD0000           (        netboot.s):01496                 jsr     _ShowLine
+0DDF 10BE7274         (        netboot.s):01497                 ldy     29300
+0DE3 3420             (        netboot.s):01498                 pshs    y
+0DE5 8E0000           (        netboot.s):01499                 ldx     #LC55
+0DE8 AFE3             (        netboot.s):01500                 stx     ,--s
+0DEA BD0000           (        netboot.s):01501                 jsr     _printk
+0DED 3264             (        netboot.s):01502                 leas    4,s
+0DEF 108C0005         (        netboot.s):01503                 cmpy    #5      ;cmphi:
+0DF3 263B             (        netboot.s):01504                 bne     L115
+0DF5 108E0000         (        netboot.s):01505                 ldy     #LC56
+0DF9 10AFE3           (        netboot.s):01506                 sty     ,--s
+0DFC BD0000           (        netboot.s):01507                 jsr     _printk
+0DFF 3262             (        netboot.s):01508                 leas    2,s
+0E01 EC4A             (        netboot.s):01509                 ldd     10,u
+0E03 108E7274         (        netboot.s):01510                 ldy     #29300
+0E07 10830000         (        netboot.s):01511                 cmpd    #0      ;cmphi:
+0E0B 2605             (        netboot.s):01512                 bne     L116
+0E0D 2033             (        netboot.s):01513                 bra     L117
+0E0F                  (        netboot.s):01514         L120:
+0E0F 10AE44           (        netboot.s):01515                 ldy     4,u
+0E12                  (        netboot.s):01516         L116:
+0E12 3021             (        netboot.s):01517                 leax    1,y
+0E14 AF44             (        netboot.s):01518                 stx     4,u
+0E16 E6A4             (        netboot.s):01519                 ldb     ,y
+0E18 4F               (        netboot.s):01520                 clra            ;zero_extendqihi: R:b -> R:d
+0E19 3406             (        netboot.s):01521                 pshs    d
+0E1B 8E0000           (        netboot.s):01522                 ldx     #LC57
+0E1E AFE3             (        netboot.s):01523                 stx     ,--s
+0E20 BD0000           (        netboot.s):01524                 jsr     _printk
+0E23 31A98D8D         (        netboot.s):01525                 leay    -29299,y
+0E27 3264             (        netboot.s):01526                 leas    4,s
+0E29 10AC4A           (        netboot.s):01527                 cmpy    10,u    ;cmphi:(R)
+0E2C 25E1             (        netboot.s):01528                 blo     L120
+0E2E 2012             (        netboot.s):01529                 bra     L117
+0E30                  (        netboot.s):01530         L115:
+0E30 108C0003         (        netboot.s):01531                 cmpy    #3      ;cmphi:
+0E34 260C             (        netboot.s):01532                 bne     L117
+0E36 108E0000         (        netboot.s):01533                 ldy     #LC58
+0E3A 10AFE3           (        netboot.s):01534                 sty     ,--s
+0E3D BD0000           (        netboot.s):01535                 jsr     _printk
+0E40 3262             (        netboot.s):01536                 leas    2,s
+0E42                  (        netboot.s):01537         L117:
+0E42 8EEA60           (        netboot.s):01538                 ldx     #-5536
+0E45 BD0000           (        netboot.s):01539                 jsr     _Delay
+0E48 7E0000           (        netboot.s):01540                 jmp     L118
+0E4B                  (        netboot.s):01541         LC59:
+0E4B 48656C6C6F20426F (        netboot.s):01542                 .ascii "Hello BootRom \0"
+     6F74526F6D2000
+0E5A                  (        netboot.s):01543         LC60:
+0E5A 434F434F00       (        netboot.s):01544                 .ascii "COCO\0"
+                      (        netboot.s):01545                 .globl _RomMain
+0E5F                  (        netboot.s):01546         _RomMain:
+0E5F 3460             (        netboot.s):01547                 pshs    y,u
+0E61 33E4             (        netboot.s):01548                 leau    ,s
+0E63 8E04CC           (        netboot.s):01549                 ldx     #1228
+0E66 AFE3             (        netboot.s):01550                 stx     ,--s
+0E68 CC0000           (        netboot.s):01551                 ldd     #0
+0E6B EDE3             (        netboot.s):01552                 std     ,--s
+0E6D 8E7000           (        netboot.s):01553                 ldx     #28672
+0E70 BD0000           (        netboot.s):01554                 jsr     _memset
+0E73 8E01E0           (        netboot.s):01555                 ldx     #480
+0E76 AFE3             (        netboot.s):01556                 stx     ,--s
+0E78 CC002E           (        netboot.s):01557                 ldd     #46
+0E7B EDE3             (        netboot.s):01558                 std     ,--s
+0E7D 8E0420           (        netboot.s):01559                 ldx     #1056
+0E80 BD0000           (        netboot.s):01560                 jsr     _memset
+0E83 8E0420           (        netboot.s):01561                 ldx     #1056
+0E86 BF701A           (        netboot.s):01562                 stx     28698
+0E89 3268             (        netboot.s):01563                 leas    8,s
+0E8B 8E0000           (        netboot.s):01564                 ldx     #LC59
+0E8E BD0000           (        netboot.s):01565                 jsr     _PutStr
+0E91 8E0369           (        netboot.s):01566                 ldx     #873
+0E94 BD0000           (        netboot.s):01567                 jsr     _ShowLine
+0E97 BD0000           (        netboot.s):01568                 jsr     _WizReset
+0E9A 8E036A           (        netboot.s):01569                 ldx     #874
+0E9D BD0000           (        netboot.s):01570                 jsr     _ShowLine
+0EA0 CC0004           (        netboot.s):01571                 ldd     #4
+0EA3 EDE3             (        netboot.s):01572                 std     ,--s
+0EA5 8E0000           (        netboot.s):01573                 ldx     #LC60
+0EA8 AFE3             (        netboot.s):01574                 stx     ,--s
+0EAA 8E7006           (        netboot.s):01575                 ldx     #28678
+0EAD BD0000           (        netboot.s):01576                 jsr     _memcpy
+0EB0 3274             (        netboot.s):01577                 leas    -12,s
+0EB2 8E7F00           (        netboot.s):01578                 ldx     #32512
+0EB5 AF68             (        netboot.s):01579                 stx     8,s
+0EB7 108E0001         (        netboot.s):01580                 ldy     #1
+0EBB 10AF6A           (        netboot.s):01581                 sty     10,s
+0EBE 8EFF00           (        netboot.s):01582                 ldx     #-256
+0EC1 AF64             (        netboot.s):01583                 stx     4,s
+0EC3 CC0000           (        netboot.s):01584                 ldd     #0
+0EC6 ED66             (        netboot.s):01585                 std     6,s
+0EC8 8E0A01           (        netboot.s):01586                 ldx     #2561
+0ECB AFE4             (        netboot.s):01587                 stx     ,s
+0ECD 8E0203           (        netboot.s):01588                 ldx     #515
+0ED0 AF62             (        netboot.s):01589                 stx     2,s
+0ED2 BD0000           (        netboot.s):01590                 jsr     _WizConfigure
+0ED5 32E810           (        netboot.s):01591                 leas    16,s
+0ED8 8E0374           (        netboot.s):01592                 ldx     #884
+0EDB BD0000           (        netboot.s):01593                 jsr     _ShowLine
+0EDE 327C             (        netboot.s):01594                 leas    -4,s
+0EE0 8E7F00           (        netboot.s):01595                 ldx     #32512
+0EE3 AFE4             (        netboot.s):01596                 stx     ,s
+0EE5 10AF62           (        netboot.s):01597                 sty     2,s
+0EE8 7E0000           (        netboot.s):01598                 jmp     _RunTftpGet
+                      (        netboot.s):01599                 .globl _HexAlphabet
+0EEB                  (        netboot.s):01600         _HexAlphabet:
+0EEB 3031323334353637 (        netboot.s):01601                 .ascii "0123456789abcdef\0"
+     3839616263646566
+     00

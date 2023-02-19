@@ -13,35 +13,40 @@
 //   Coco:
 //     EXEC &H2600
 
-unsigned delay(unsigned n) {
-  unsigned sum;
-  for (unsigned k = 0; k < n; k++) {
-      for (unsigned i = 0; i < 0x80; i++) {
-        sum += (int)i;
-      }
+typedef unsigned int word;
+
+void Delay(word n) {
+  while (n--) {
+#ifdef __GNUC__
+    asm volatile ("mul" : : : "d", "b", "a");
+#else
+    asm {
+      mul
+    }
+#endif
   }
-  return sum;
 }
+
 int RomMain () {
     // Poke alphabet over the screen, with stride 3,
     // skipping the first screen line of 32 bytes.
     for (unsigned p = 0x0420; p < 0x0600; p++) {
         *(char*)p = 0x40 | (0x3f & '$');
-        delay(1);
+        Delay(100);
     }
     for (unsigned p = 0x0420; p < 0x0600; p++) {
         // Use 64-char alphabet. Use inverted colors.
         *(char*)p = 0x40 | (0x3f & (char)(p+p+p));
-        delay(1);
+        Delay(100);
     }
     for (unsigned p = 0x0420; p < 0x0600; p++) {
         *(char*)p = 0x40 | (0x3f & '!');
-        delay(1);
+        Delay(100);
     }
     for (unsigned p = 0x0420; p < 0x0600; p++) {
         // Use 64-char alphabet. Use inverted colors.
         *(char*)p = 0x40 | (0x3f & (char)(p+p+p));
-        delay(1);
+        Delay(100);
     }
     return 0;
 }

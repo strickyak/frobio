@@ -63,12 +63,57 @@ netboot.cart: netboot.coco
 netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
 	ls -l netboot.wav
+
+netboot.gcc.coco: bootrom/netboot.c bootrom/preboot.asm
+	lwasm --format=obj -l preboot.list -o preboot.o bootrom/preboot.asm
+	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
+	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/netboot.c
+	lwasm --format=obj \
+    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    -l'stdlib.list' -o'stdlib.o' \
+    stdlib.s
+	lwasm --format=obj \
+    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    -l"netboot.list" -o"netboot.o" \
+    netboot.s
+	lwlink --decb --entry=program_start --output=netboot.decb --map=netboot.map \
+    --script=bootrom/bootrom-c000.script \
+    preboot.o netboot.o stdlib.o \
+    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+    -lgcc
+	hd netboot.decb | head -1
+	wc -c netboot.decb
+	dd bs=1 skip=5 if=netboot.decb of=netboot.cart
+
+nullboot.gcc.coco: bootrom/nullboot.c bootrom/preboot.asm
+	lwasm --format=obj -l preboot.list -o preboot.o bootrom/preboot.asm
+	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
+	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/nullboot.c
+	lwasm --format=obj \
+    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    -l'stdlib.list' -o'stdlib.o' \
+    stdlib.s
+	lwasm --format=obj \
+    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+    -l"nullboot.list" -o"nullboot.o" \
+    nullboot.s
+	lwlink --decb --entry=program_start --output=nullboot.decb --map=nullboot.map \
+    --script=bootrom/bootrom-c000.script \
+    preboot.o nullboot.o stdlib.o \
+    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+    -lgcc
+	hd nullboot.decb | head -1
+	wc -c nullboot.decb
+	dd bs=1 skip=5 if=nullboot.decb of=nullboot.cart
+
 nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
 	cmoc -i -S bootrom/nullboot.c
-	cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
+	cmoc -i --org=2600 --decb -o nullboot.coco bootrom/preboot.asm nullboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=decb --output=nullboot.coco --script=nullboot.link --map=nullboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o nullboot.o
+	#cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
 	ls -l nullboot.coco
 nullboot.cart: nullboot.coco
-	cmoc -i --org=C000 --raw -o nullboot.cart bootrom/preboot.asm nullboot.s
+	cmoc -i --org=C000 --raw -o nullboot.cart bootrom/preboot.asm nullboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=raw --output=nullboot.cart --script=nullboot.link --map=nullboot.cart.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o nullboot.o
+	# cmoc -i --org=C000 --raw -o nullboot.cart bootrom/preboot.asm nullboot.s
 	ls -l nullboot.cart
 nullboot.wav: nullboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NULLBOOT' -o'nullboot.wav' -v nullboot.coco

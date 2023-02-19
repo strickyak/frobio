@@ -1,0 +1,67 @@
+`quad` is defined to be unsigned long:
+
+84    typedef unsigned long quad;
+
+BR_WAITER is defined as unsigned long meaning 127.0.0.1
+
+21    #define BR_WAITER  0x7F000001uL  // Long Hex instead of dotted quad: 127.0.0.1
+
+That works, BTW.
+
+Symbol: _RomMain (netboot.o) = D012
+Symbol: _RunTftpGet (netboot.o) = CE83
+
+Inside RomMain(), BR_WAITER is passed to RunTftpGet:
+
+884    L   RunTftpGet(BR_WAITER);
+
+Here is that call, storing $7f00 at ,s (which is $03ee) and $0001 at 2,s (which is $03f0):
+
+
+"(rom)"+d091 N d091:327c     {leas  -4,s             }  a=00 b=00 x=0000:0000 y=0001:0000 u=03f2:0000 s=03ee:03f2,d091 cc=eFHInZvc dp=00 #744062 {{}} 
+
+"(rom)"+d093 N d093:8e7f00   {ldx   #$7f00           }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03f2:0000 s=03ee:03f2,d091 cc=eFHInzvc dp=00 #744063 {{}}  d094:7f00
+
+"(rom)"+d096 N d096:afe4     {stx   ,s               }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03f2:0000 s=03ee:7f00,d091 cc=eFHInzvc dp=00 #744064 {{}}  03ee:7f00
+
+"(rom)"+d098 N d098:10af62   {sty   2,s              }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03f2:0000 s=03ee:7f00,0001 cc=eFHInzvc dp=00 #744065 {{}}  03f0:0001
+
+"(rom)"+d09b N d09b:7ece83   {jmp   $ce83            }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03f2:0000 s=03ee:7f00,0001 cc=eFHInzvc dp=00 #744066 {{}} 
+
+
+RunTftpGet:
+
+"(rom)"+ce83 N ce83:3460     {pshs  u,y              }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03f2:0000 s=03ea:0001,03f2 cc=eFHInzvc dp=00 #744067 {{}} 
+
+"(rom)"+ce85 N ce85:3272     {leas  -14,s            }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03f2:0000 s=03dc:9403,ee00 cc=eFHInzvc dp=00 #744068 {{}} 
+
+"(rom)"+ce87 N ce87:33e4     {leau  ,s               }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03dc:9403 s=03dc:9403,ee00 cc=eFHInzvc dp=00 #744069 {{}} 
+
+"(rom)"+ce89 N ce89:10aec814 {ldy   $14,u            }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03dc:9403 s=03dc:9403,ee00 cc=eFHInzvc dp=00 #744070 {{}}  03f0:0001
+
+"(rom)"+ce8d N ce8d:10af42   {sty   2,u              }  a=00 b=00 x=7f00:2020 y=0001:0000 u=03dc:9403 s=03dc:9403,0001 cc=eFHInzvc dp=00 #744071 {{}}  03de:0001
+
+"(rom)"+ce90 N ce90:10aec816 {ldy   $16,u            }  a=00 b=00 x=7f00:2020 y=0000:0000 u=03dc:9403 s=03dc:9403,0001 cc=eFHInZvc dp=00 #744072 {{}}  03f2:0000
+
+"(rom)"+ce94 N ce94:10afc4   {sty   ,u               }  a=00 b=00 x=7f00:2020 y=0000:0000 u=03dc:0000 s=03dc:0000,0001 cc=eFHInZvc dp=00 #744073 {{}}  03dc:0000
+
+"(rom)"+ce97 N ce97:bdc84a   {jsr   $c84a            }  a=00 b=00 x=7f00:2020 y=0000:0000 u=03dc:0000 s=03da:ce9a,0000 cc=eFHInZvc dp=00 #744074 {{}} 
+
+
+But look what RunTftpGet did.
+It thinks it copied its only agrument, quad waiter,
+from where it was passed into a local variable at ,u and 2,u.
+
+But it got something wrong:
+
+  (2,u which is $03de) := ($14,u which is $03f0)    value is $0001
+  (,u which is $03dc) := ($16,u which is $03f2)     value is $0000
+
+The first assignment, from $14,u to 2,u is correct.
+But the second one is wrong.  
+It should have copied from $12,u instead of $16,u.
+
+Later when it wants to use quad waiter,
+it gets it from ,u and 2,u but it gets $00010000 instead of $7f000001.
+
+

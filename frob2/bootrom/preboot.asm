@@ -27,8 +27,9 @@
 		fcb 'K'
 
     EXPORT program_start
+    EXPORT _preboot
 program_start
-preboot
+_preboot
     orcc #$50   ; disable interrupts
     lds #$0400  ; 1KB stack in lowest memory
     tfr s,u
