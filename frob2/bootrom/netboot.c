@@ -20,7 +20,7 @@ typedef unsigned long quad;
 
 #define BR_STATIC 1 // 1 to use Static Net Config, else 0.
 
-#if 0
+#if 1
 // For my coco3 with ethernet wired to a laptop.
 const byte BR_ADDR    [4] = { 10, 1, 2, 3 };
 const byte BR_MASK    [4] = { 255, 0, 0, 0 };
@@ -177,8 +177,16 @@ void Delay(word n) {
   while (n--) {
 #ifdef __GNUC__
     asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
 #else
     asm {
+      mul
+      mul
+      mul
+      mul
       mul
     }
 #endif
@@ -852,10 +860,10 @@ L   word opcode;
         word from_port = 0;
 L       printk("recv");
         // TODO: Timeouts in UdpRecv
-        errnum e = UdpRecv(Vars->packin, &size, from_addr, &from_port);
-L       printk("got %x", size);
-        if (e) {
-            Fatal("TRE", e);
+        errnum eee = UdpRecv(Vars->packin, &size, from_addr, &from_port);
+L       printk("got %x,%d", size, eee);
+        if (eee) {
+            Fatal("TRE", eee);
         }
 L
         word* w = (word*)Vars->packin;
