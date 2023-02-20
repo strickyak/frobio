@@ -27,6 +27,9 @@ void Delay(word n) {
   }
 }
 
+#if WHOLE_PROGRAM
+#define RomMain main  // Whole Program Optimization requires 'main' instead of 'RomMain'.
+#endif
 int RomMain () {
     // Poke alphabet over the screen, with stride 3,
     // skipping the first screen line of 32 bytes.

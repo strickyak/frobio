@@ -20,7 +20,11 @@
 *** But it is intended that this will eventually call
 *** the RomMain() routine for the netboot ROM.
 
+		IFNE WHOLE_PROGRAM
+    IMPORT _main
+		ELSE
     IMPORT _RomMain
+		ENDC
 
     SECTION start
 		fcb 'D'
@@ -51,7 +55,12 @@ id_loop
     tfr y,u     ; no previous frame
     pshs y,u    ; 8 bytes of zeros onto stack
     pshs y,u
-    lbsr _RomMain  ; and call RomMain with no args, which never returns.
+
+		IFNE WHOLE_PROGRAM
+    lbsr _main  ; and call main with no args, which probably never returns.
+		ELSE
+    lbsr _RomMain  ; and call RomMain with no args, which probably never returns.
+		ENDC
 
 *** Show id backwards if RomMain returns, and get stuck.
 not_reached

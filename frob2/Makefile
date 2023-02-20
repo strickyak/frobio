@@ -53,19 +53,29 @@ f.b-unix:
 	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c
 	./a.out -a tweb/testdata/index.fm
 
+
+WHOLE_PROGRAM=0
+
 netboot.coco: bootrom/netboot.c bootrom/preboot.asm
 	cmoc -i -S bootrom/netboot.c
-	cmoc -i --org=2600 --decb -o netboot.coco bootrom/preboot.asm netboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=decb --output=netboot.coco --script=netboot.link --map=netboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
+	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lnetboot.list -onetboot.o netboot.s
+	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
+	### cmoc -i --org=2600 --decb -o netboot.coco bootrom/preboot.asm netboot.s || echo IGNORE THOSE ERRORS
+	lwlink --entry=program_start --format=decb --output=netboot.coco --script=bootrom/bootrom.script --map=netboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
 	ls -l netboot.coco
-netboot.cart: netboot.coco
-	cmoc -i --org=C000 --raw -o netboot.cart bootrom/preboot.asm netboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=raw --output=netboot.cart --script=netboot.link --map=netboot.cart.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
+netboot.cart: bootrom/netboot.c bootrom/preboot.asm
+	cmoc -i -S bootrom/netboot.c
+	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lnetboot.list -onetboot.o netboot.s
+	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
+	### cmoc -i --org=C000 --raw -o netboot.cart bootrom/preboot.asm netboot.s || echo IGNORE THOSE ERRORS
+	lwlink --entry=program_start --format=raw --output=netboot.cart --script=bootrom/bootrom.script --map=netboot.cart.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
 	ls -l netboot.cart
 netboot.wav: netboot.coco
 	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
 	ls -l netboot.wav
 
 netboot.gcc.coco: bootrom/netboot.c bootrom/preboot.asm
-	lwasm --format=obj -l preboot.list -o preboot.o bootrom/preboot.asm
+	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --format=obj -lpreboot.list -o preboot.o bootrom/preboot.asm
 	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
 	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/netboot.c
 	lwasm --format=obj \
@@ -86,7 +96,7 @@ netboot.gcc.coco: bootrom/netboot.c bootrom/preboot.asm
 	dd bs=1 skip=5 if=netboot.decb of=netboot.cart
 
 nullboot.gcc.coco: bootrom/nullboot.c bootrom/preboot.asm
-	lwasm --format=obj -l preboot.list -o preboot.o bootrom/preboot.asm
+	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --format=obj -lpreboot.list -o preboot.o bootrom/preboot.asm
 	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
 	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/nullboot.c
 	lwasm --format=obj \
