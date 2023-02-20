@@ -461,7 +461,7 @@ prob UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_por
   return GOOD;
 }
 
-prob UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
+prob UdpRecvCommon(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out, bool wait) {
   if (socknum > 3) return "NoAvailableSocket";
 
   word base = ((word)socknum + 4) << 8;
@@ -489,6 +489,7 @@ prob UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out
       }
       break;
     }
+    if (!wait) return NotYet;
   }
 
   word recv_size = WizGet2(base+0x0026/*_RX_RSR*/);
@@ -524,6 +525,12 @@ prob UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out
   WizPut2(base+0x0028/*_RX_RD*/, RX_MASK & (rx_rd + recv_size));
 
   return GOOD;
+}
+prob UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
+  return UdpRecvCommon(socknum, payload, size_in_out, from_addr_out, from_port_out, /*wait=*/true);
+}
+prob UdpRecvNotYet(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out) {
+  return UdpRecvCommon(socknum, payload, size_in_out, from_addr_out, from_port_out, /*wait=*/false);
 }
 
 ///// ===== TCP =====

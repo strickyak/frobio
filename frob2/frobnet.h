@@ -23,8 +23,16 @@ byte find_available_socket(word* base_out);
 
 // Socket commands return GOOD or prob.
 prob UdpOpen(word src_port, byte* socknum_out);
+
 prob UdpSend(byte socknum, byte* payload, word size, quad dest_ip, word dest_port);
 prob UdpRecv(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out);
+prob UdpRecvOrNotYet(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out);
+
+// TODO:
+prob UdpSendAndRecvOrRepeat(byte socknum, word millis_until_retry, word num_tries,
+    byte* send_payload, word send_size, quad send_addr, word send_port,
+    byte* recv_payload, word* recv_size_in_out, quad* recv_addr_out, word* recv_port_out);
+
 prob UdpClose(byte socknum);
 
 prob MacRawOpen(byte* socknum_out);
