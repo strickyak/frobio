@@ -19,8 +19,16 @@ void Delay(word n) {
   while (n--) {
 #ifdef __GNUC__
     asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
+    asm volatile ("mul" : : : "d", "b", "a");
 #else
     asm {
+      mul
+      mul
+      mul
+      mul
       mul
     }
 #endif

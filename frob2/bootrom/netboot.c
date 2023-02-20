@@ -171,7 +171,10 @@ struct UdpRecvHeader {
     word port;
     word len;
 };
+
 /////////////////////////////////////////////////
+
+void Checksum();
 
 void Delay(word n) {
   while (n--) {
@@ -900,6 +903,9 @@ int RomMain() {
     Vars->vdg_ptr = 0x0420;
     // Don't be a boor.
     PutStr("Hello BootRom ");
+
+L   Checksum();
+L   Fatal("okay", 250);
 
 L   WizReset();
 L   memcpy(Vars->hostname, BR_NAME, 4);
