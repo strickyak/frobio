@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOC=${LOC:-C0}
+LOC=${LOC:-C000}
 COMPILER=${COMPILER:-cmoc}
 OPT=${OPT:--O0}
 WHOLE=${WHOLE:-0}
@@ -77,7 +77,7 @@ case $COMPILER in
       -l"$p.o.list" -o"$p.o" \
       $p.s
 	  lwlink --decb --entry=program_start --output=$p.decb --map=$p.map \
-      --script=bootrom/bootrom-c000.script \
+      --script=$p.decb.script \
       preboot.o $p.o stdlib.o $cs \
       -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
       -lgcc
@@ -88,9 +88,13 @@ hd $p.decb | head -1
 ls -l $p.decb
 dd bs=1 skip=5 if=$p.decb of=$p.cart
 
-# Change the loading address to $3000.
-bootrom/decb-reposition-3000 $p.decb 
 # Expand it to 2KB and add checksums at the end.
 bootrom/expand2000 < $p.decb > $p.exp
+# Change the loading address to $3000.
+bootrom/decb-reposition-3000 $p.exp
+# Result in in $p.exp
+hd $p.exp | head -1
+ls -l $p.exp
 
 # END
+      # --script=bootrom/bootrom-c000.script \
