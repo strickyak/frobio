@@ -78,16 +78,7 @@ di_stuck
 
 id_string  fcs / -- STRICKYAK FROBIO PREBOOT -- /
 
-* Why do I need some padding before more code?
-* Without this, my delay() in nullboot doesn't delay!?.
-
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
-    fcs / Nando nando nando nando NANDO. /
+*** Thanks https://github.com/beretta42/sdboot/blob/master/rom.asm
+    fill    $ff,9*256	; this is area that Super Basic trashes
 
     ENDSECTION
