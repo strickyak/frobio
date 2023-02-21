@@ -904,8 +904,19 @@ int RomMain() {
     // Don't be a boor.
     PutStr("Hello BootRom ");
 
+#if 0
+   printk("(MMU");
+     for (word p = 0xFFA0; p < 0xFFB0; p++) {
+       printk("%x", 0x3F & *(byte*)p);
+     }
+   printk(")");
+
+   // volatile byte* ramrom = (byte*) 0xFFDE;
+   // *ramrom = 255;
+#endif
+
 L   Checksum();
-L   Fatal("okay", 250);
+//   Fatal("okay", 250);
 
 L   WizReset();
 L   memcpy(Vars->hostname, BR_NAME, 4);
