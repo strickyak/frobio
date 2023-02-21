@@ -457,3 +457,16 @@ scp root@yak.net:/tmp/netboot.exp .  && decb copy -2 -b -r netboot.exp /media/st
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+[cmoc]
+$ sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-reposition-3000 netboot.decb && bootrom/expand2000 < netboot.decb > netboot.exp && scp netboot.exp root@yak.net:/tmp/
+
+[gcc -O0]
+$ COMPILER=gcc sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-reposition-3000 netboot.decb && bootrom/expand2000 < netboot.decb > netboot.exp && scp netboot.exp root@yak.net:/tmp/
+
+[gcc -O1]
+$ OPT=-O1 COMPILER=gcc sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-reposition-3000 netboot.decb && bootrom/expand2000 < netboot.decb > netboot.exp && scp netboot.exp root@yak.net:/tmp/
+
+[gcc -Os]
+$ OPT=-Os COMPILER=gcc sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-reposition-3000 netboot.decb && bootrom/expand2000 < netboot.decb > netboot.exp && scp netboot.exp root@yak.n
+
+

@@ -2,9 +2,10 @@
 
 LOC=${LOC:-C0}
 COMPILER=${COMPILER:-cmoc}
-OPT=${OPT:-0}
+OPT=${OPT:--O0}
 WHOLE=${WHOLE:-0}
 NOFP=${NOFP:-0}
+EXTRA=${EXTRA:-}
 
 SRC=$1
 P=$(basename $SRC .c)
@@ -42,9 +43,22 @@ case $COMPILER in
     ;;
 
   gcc)
-    false
-
-
+	  gcc6809 -O2 -S --std=gnu99 bootrom/checksum.c
+	  gcc6809 -O2 -S --std=gnu99 bootrom/stdlib.c
+	  gcc6809 $OPT -S --std=gnu99 $EXTRA $SRC
+	  lwasm --format=obj \
+      --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+      -l'stdlib.list' -o'stdlib.o' \
+      stdlib.s
+	  lwasm --format=obj \
+      --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+      -l"$P.o.list" -o"$P.o" \
+      $P.s
+	  lwlink --decb --entry=program_start --output=$P.decb --map=$P.map \
+      --script=bootrom/bootrom-c000.script \
+      preboot.o $P.o stdlib.o checksum.o \
+      -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+      -lgcc
     ;;
 esac
 
