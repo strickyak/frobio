@@ -434,3 +434,16 @@ lwlink-orig --map=netboot.coco.map --format=raw --output=netboot.coco --script=n
 /tmp/libcmoc-crt-zap.a is libcmoc-crt-ecb.a with crt.ecb_o removed.
 
 Otherwise crt.ecb_o gets included, and cannot find program_end or INITGL.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+MMU set up by BASIC on coco3/cocoSDC seems to be:
+    38  39  3a  8b  3c  3d  3e  3f
+    38  30  31  32  33  3d  35  3f
+    ^^                  ^^      ^^  (same)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+scp root@yak.net:/tmp/netboot.exp .  && decb copy -2 -b -r netboot.exp /media/strick/APRIL3/z,NETBOOT.DEC ; decb dir /media/strick/APRIL3/z ; sync ; bat
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
