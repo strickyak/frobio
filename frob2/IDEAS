@@ -447,3 +447,13 @@ MMU set up by BASIC on coco3/cocoSDC seems to be:
 scp root@yak.net:/tmp/netboot.exp .  && decb copy -2 -b -r netboot.exp /media/strick/APRIL3/z,NETBOOT.DEC ; decb dir /media/strick/APRIL3/z ; sync ; bat
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[bootrom/GO.BAS]
+
+10 KILL MEM24
+20 LOADM "NETBOOT.DEC"
+30 WRITE MEM@4, &H3000, &HC000, 8192
+40 RUN @4
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
