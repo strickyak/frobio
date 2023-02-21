@@ -915,8 +915,9 @@ int RomMain() {
    // *ramrom = 255;
 #endif
 
-L   Checksum();
-//   Fatal("okay", 250);
+#if ! WHOLE_PROGRAM
+L   Checksum();  // Cannot call external if WHOLE_PROGRAM
+#endif
 
 L   WizReset();
 L   memcpy(Vars->hostname, BR_NAME, 4);
