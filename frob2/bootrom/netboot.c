@@ -12,11 +12,13 @@ typedef unsigned long quad;
 #define false (bool)0
 #define OKAY (errnum)0
 
+typedef void (*func)();
+
 //////////////////////////////////////////////////
 //
 //  Network Configuration:
 
-#define BR_DHCP 0 // 1 to use DHCP, else 0.
+#define BR_DHCP 1 // 1 to use DHCP, else 0.
 
 #define BR_STATIC 1 // 1 to use Static Net Config, else 0.
 
@@ -130,9 +132,17 @@ struct vars {
     byte ip_addr[4];
     byte ip_mask[4];
     byte ip_gateway[4];
-    byte ip_dns_server[4];
+    byte ip_resolver[4];
 
     word vdg_ptr;
+
+    struct loader {
+      byte state;
+      byte op;
+      word counter;
+      word addr;
+    } loader;
+
     byte packout[600];
     byte packin[600];
 };
@@ -461,8 +471,11 @@ L     poke(base+SockMode, 0x00/*Protocol: Socket Closed*/);
 }
 
 #if BR_DHCP
+const byte BroadcastAddr[4] = {255, 255, 255, 255};
+const byte ZeroAddr[4] = {0, 0, 0, 0};
+const byte ClassA[4] = {255, 0, 0, 0};
 void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
-  WizConfigure(0L, 0xFFFFFF00, 0L);
+  WizConfigure(ZeroAddr, ClassA, ZeroAddr);
 
   // Create locally assigned mac_addr from name4.
   byte mac_addr[6] = {2, 32, 0, 0, 0, 0};  // local prefix.
@@ -471,11 +484,11 @@ void wiz_configure_for_DHCP(const char* name4, byte* hw6_out) {
   memcpy(hw6_out, mac_addr, 6);
 }
 
-void WizReconfigureForDhcp(quad ip_addr, quad ip_mask, quad ip_gateway) {
+void WizReconfigureForDhcp(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway) {
   printk("reconfigure");
-  poke_n(0x0001/*gateway*/, &ip_gateway, 4);
-  poke_n(0x0005/*mask*/, &ip_mask, 4);
-  poke_n(0x000f/*ip_addr*/, &ip_addr, 4);
+  poke_n(0x0001/*gateway*/, ip_gateway, 4);
+  poke_n(0x0005/*mask*/, ip_mask, 4);
+  poke_n(0x000f/*ip_addr*/, ip_addr, 4);
   // Keep the same mac_addr.
 }
 #endif
@@ -639,7 +652,7 @@ errnum UdpRecv(byte* payload, word* size_in_out, byte* from_addr_out, word* from
 #if BR_DHCP
 void UseOptions(byte* o) {
     if (o[0]!=99 || o[1]!=130 || o[2]!=83 || o[3]!=99) {
-        printk("bad magic: %a", *(quad*)o);
+        printk("bad magic: %a", o);
         Fatal("DM", o[0]);
     }
     byte* p = o+4;
@@ -648,16 +661,16 @@ void UseOptions(byte* o) {
         byte len = *p++;
         switch (opt) {
             case 1: // subnet mask
-                Vars->ip_mask = *(quad*)p;
-                printk("ip_mask %a ", Vars->ip_mask);
+                memcpy(Vars->ip_mask, p, 4);
+                printk("ip_mask %a ", p);
                 break;
             case 3: // Gateway
-                Vars->ip_gateway = *(quad*)p;
+                memcpy(Vars->ip_gateway, p, 4);
                 printk("ip_gateway %a ", Vars->ip_gateway);
                 break;
             case 6: // DNS Server
-                Vars->ip_dns_server = *(quad*)p;
-                printk("ip_dns_server %a ", Vars->ip_dns_server);
+                memcpy(Vars->ip_resolver, p, 4);
+                printk("ip_resolver %a ", p);
                 break;
             default:
                 printk("(opt %x len %x) ", opt, len);
@@ -704,34 +717,31 @@ void RunDhcp() {
     if (e) {
         Fatal("DO", e);
     }
-    e = UdpSend((byte*)out, sizeof *out, 0xFFFFFFFFL, DHCP_SERVER_PORT);
+    e = UdpSend((byte*)out, sizeof *out, BroadcastAddr, DHCP_SERVER_PORT);
     if (e) {
         Fatal("DS1", e);
     }
+
     struct dhcp* in = (struct dhcp*) Vars->packin;
     memset(Vars->packin, 0, 600);
+
     word size = 600;
-    byte* recv_from[4];
+    byte recv_from[4];
     memset(recv_from, 0, 4);
     word recv_port = 0;
-    e = UdpRecv(Vars->packin, &size, &recv_from, &recv_port);
+    e = UdpRecv(Vars->packin, &size, recv_from, &recv_port);
     if (e) {
         Fatal("DR1", e);
     }
     printk("Offer");
-    quad yiaddr = in->yiaddr;
-    quad siaddr = in->siaddr;
 
     byte* yi = (byte*)&in->yiaddr;
     byte* si = (byte*)&in->siaddr;
-    printk("you=%u.%u.%u.%u  server=%u.%u.%u.%u",
-        yi[0], yi[1], yi[2], yi[3],
-        si[0], si[1], si[2], si[3]
-        );
+    printk("you=%a  server=%a", yi, si);
 
     UseOptions(in->options);
 
-    WizReconfigureForDhcp(yiaddr, Vars->ip_mask, Vars->ip_gateway);
+    WizReconfigureForDhcp(in->yiaddr, Vars->ip_mask, Vars->ip_gateway);
 
     memset(Vars->packout, 0, 600);
     out->opcode = 1; // request
@@ -740,15 +750,15 @@ void RunDhcp() {
     out->hops = 0;
     memcpy(out->xid, Vars->hostname, 4);
     out->flags = 0x80; // broadcast
-    out->ciaddr = yiaddr;
-    out->yiaddr = yiaddr;
-    out->siaddr = siaddr;
+    memcpy( out->ciaddr , in->yiaddr, 4);
+    memcpy( out->yiaddr , in->yiaddr, 4);
+    memcpy( out->siaddr , in->siaddr, 4);
     memcpy(out->chaddr, Vars->mac_addr, 6);
     strcpy((char*)out->bname, BR_BOOTFILE);
 
     // The first four octets of the 'options' field of the DHCP message
     // contain the (decimal) values 99, 130, 83 and 99, respectively
-    w = p->options;
+    w = out->options;
     *w++ = 99;  // magic cookie for DHCP
     *w++ = 130;
     *w++ = 83;
@@ -767,16 +777,16 @@ void RunDhcp() {
 
     *w++ = 12;  // 12 = Hostname
     *w++ = 4;  // length 4 chars
-    *w++ = p->xid[0];
-    *w++ = p->xid[1];
-    *w++ = p->xid[2];
-    *w++ = p->xid[3];
+    *w++ = out->xid[0];
+    *w++ = out->xid[1];
+    *w++ = out->xid[2];
+    *w++ = out->xid[3];
 
     *w++ = 255;  // 255 = End
     *w++ = 0;  // length 0 bytes
     printk("Request");
 
-    e = UdpSend((byte*)p, sizeof *p, recv_from, DHCP_SERVER_PORT);
+    e = UdpSend((byte*)out, sizeof *out, recv_from, DHCP_SERVER_PORT);
     if (e) {
         Fatal("DS2", e);
     }
@@ -785,7 +795,7 @@ void RunDhcp() {
     size = 600;
     memset(recv_from, 0, 4);
     recv_port = 0;
-    e = UdpRecv(Vars->packin, &size, &recv_from, &recv_port);
+    e = UdpRecv(Vars->packin, &size, recv_from, &recv_port);
     if (e) {
         Fatal("DRs", e);
     }
@@ -793,26 +803,79 @@ void RunDhcp() {
 
     // TODO: check for Ack option.
 
-    yiaddr = p->yiaddr;
-    siaddr = p->siaddr;
+    yi = in->yiaddr;
+    si = in->siaddr;
+    byte* ma = Vars->ip_mask;
+    byte* ga = Vars->ip_gateway;
+    byte* dn = Vars->ip_resolver;
 
-    yi = (byte*)&p->yiaddr;
-    si = (byte*)&p->siaddr;
-    byte* ma = (byte*)&Vars->ip_mask;
-    byte* ga = (byte*)&Vars->ip_gateway;
-    byte* dn = (byte*)&Vars->ip_dns_server;
-
-    printk("you=%u.%u.%u.%u server=%u.%u.%u.%u ",
-        yi[0], yi[1], yi[2], yi[3],
-        si[0], si[1], si[2], si[3]);
-
-    printk("mask=%u.%u.%u.%u gateway=%u.%u.%u.%u dns=%u.%u.%u.%u",
-        ma[0], ma[1], ma[2], ma[3],
-        ga[0], ga[1], ga[2], ga[3],
-        dn[0], dn[1], dn[2], dn[3]);
+    printk("you=%a server=%a ", yi, si);
+    printk("mask=%a gateway=%a dns=%a", ma, ga, dn);
 }
 #endif
 
+
+/*
+ * Implement the DECB LOADM format for loading bytes,
+ * getting one byte pushed at a time.
+ *
+ * State 0 -> 1 -> 2 -> 3 -> 4 -> 5 (stay while countdown)
+ * State 6 is the illegal state.
+ *
+ * op 0: load 1 or more bytes at given address.
+ * op 255: Call given address like a function.
+ *
+ */
+
+void LoadByte(byte b) {
+  struct loader *p = &Vars->loader;
+
+  switch (p->state) {
+    case 0:
+        p->op = b;
+        break;
+    case 1:
+        p->counter = (word)b << 8;
+        break;
+    case 2:
+        p->counter |= (word)b;
+        break;
+    case 3:
+        p->addr = (word)b << 8;
+        break;
+    case 4:
+        p->addr |= (word)b;
+        break;
+    case 5:
+        switch (p->op) {
+          case 0:
+            *((byte*)p->addr++) = b;
+            -- p->counter;
+
+            if (p->counter == 0) {
+              p->state = 0;
+              return; // Don't let state increment this time.
+            }
+            break;
+          default:
+            p->state = 6;  // Becomes illegal state.
+            break;
+        }
+        break;
+    default:
+        break;  // Illegal state -- get stuck here.
+  }
+
+  if (p->state < 5) {
+    ++ p->state;
+  }
+
+  if (p->state == 5 && p->op == 255) {
+    func f = (func)p->addr;
+    f();
+    p->state = 0;
+  }
+}
 // Operations defined by TFTP protocol:
 #define OP_READ 1
 #define OP_WRITE 2
@@ -927,6 +990,7 @@ L   wiz_configure_for_DHCP(BR_NAME, Vars->mac_addr);
 L   PutStr("wiz_configure_for_DHCP ");
 L   RunDhcp();
 #endif
+
 #if BR_STATIC
 L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif

@@ -469,4 +469,31 @@ $ OPT=-O1 COMPILER=gcc sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-repos
 [gcc -Os]
 $ OPT=-Os COMPILER=gcc sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-reposition-3000 netboot.decb && bootrom/expand2000 < netboot.decb > netboot.exp && scp netboot.exp root@yak.n
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+For coco2 with 64K RAM?  Poke any to $FFDE Normal (ROM), $FFDF No Rom.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+PXE Boot
+DHCP options 66 & 67
+NBP (Network Boot Program) (Windows Preinstallation Environment)
+proxyDHCP
+
+RFC1918
+https://en.wikipedia.org/wiki/Private_network
+A) 10/8
+B) 172.16/12
+C) 192.168/16
+
+Proposal:
+Try the following boots in sequence, then repeat the sequence:
+1. DHCP + (DHCP-provided resolver or 8.8.8.8) + nekot.yak.net
+2. 10.68.9.99/8    talking to .11 as gateway, resolver, and waiter.
+3. 172.16.89.99/12 talking to .11 as gateway, resolver, and waiter.
+4. 192.168.9.99/16 talking to .11 as gateway, resolver, and waiter.
+Then things work on either a public internet or on any of 3 private nets,
+hoping at least one of them doesn't conflict with other private nets
+you are on (VPN or Home Wifi Masquarade).
+
+If it jumps on Nekot too soon, no big deal, use Nekot to go elsewhere.
+
+[END]
