@@ -472,6 +472,18 @@ $ OPT=-Os COMPILER=gcc sh RomCompile.sh bootrom/netboot.c  && bootrom/decb-repos
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 For coco2 with 64K RAM?  Poke any to $FFDE Normal (ROM), $FFDF No Rom.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+from Color Basic Unravelled:
+
+01DA : CASBUF RMB 256    (Cassette File Data Buffer)
+
+02DC : LINBUF RMBUF  LBUFMX+1  (Basic Line Input Buffer)
+
+03D7 : STRBUF RMB 41       ( string buffer )
+
+0400 : VIDRAM RMB $200
+
+                 LBUFMX EQU 250
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 PXE Boot
 DHCP options 66 & 67

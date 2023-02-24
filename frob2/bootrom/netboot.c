@@ -7,7 +7,6 @@ typedef unsigned char bool;
 typedef unsigned char byte;
 typedef unsigned char errnum;
 typedef unsigned int word;
-typedef unsigned long quad;
 #define true (bool)1
 #define false (bool)0
 #define OKAY (errnum)0
@@ -18,7 +17,7 @@ typedef void (*func)();
 //
 //  Network Configuration:
 
-#define BR_DHCP 1 // 1 to use DHCP, else 0.
+#define BR_DHCP 0 // 1 to use DHCP, else 0.
 
 #define BR_STATIC 1 // 1 to use Static Net Config, else 0.
 
@@ -256,7 +255,7 @@ void printk(const char* format, ...) {
         if (*s == '%') {
             ++s;
             switch (*s) {
-                case 'a': {  // "%a" -> IPv4 address as dotted quad
+                case 'a': {  // "%a" -> IPv4 address as Dotted Quad.
                     byte* x;
                     x = va_arg(ap, byte*);
                     PutDec(x[0]);
@@ -966,6 +965,7 @@ int RomMain() {
     Vars->vdg_ptr = 0x0420;
     // Don't be a boor.
     PutStr("Hello BootRom ");
+    PutStr("Wed Feb 22 ");
 
 #if 0
    printk("(MMU");
