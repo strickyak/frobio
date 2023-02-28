@@ -2,151 +2,9 @@
 //
 // to compile with CMOC and launch with `preboot.asm`.
 
-// Conventional types and consants for Frobio
-typedef unsigned char bool;
-typedef unsigned char byte;
-typedef unsigned char errnum;
-typedef unsigned int word;
-#define true (bool)1
-#define false (bool)0
-#define OKAY (errnum)0
+#define WANT_PACKIN_PACKOUT 1
 
-typedef void (*func)();
-
-//////////////////////////////////////////////////
-//
-//  Network Configuration:
-
-#define BR_DHCP 0 // 1 to use DHCP, else 0.
-
-#define BR_STATIC 1 // 1 to use Static Net Config, else 0.
-
-#if 1
-// For my coco3 with ethernet wired to a laptop.
-const byte BR_ADDR    [4] = { 10, 1, 2, 3 };
-const byte BR_MASK    [4] = { 255, 0, 0, 0 };
-const byte BR_GATEWAY [4] = { 10, 2, 2, 2 };
-const byte BR_WAITER  [4] = { 10, 2, 2, 2 };
-const byte BR_RESOLV  [4] = { 8, 8, 8, 8 };
-#else
-// For my emulator, which opens a port for TFTP services on localhost.
-const byte BR_ADDR    [4] = { 127, 0, 0, 1 };
-const byte BR_MASK    [4] = { 255, 0, 0, 0 };
-const byte BR_GATEWAY [4] = { 127, 0, 0, 1 };
-const byte BR_WAITER  [4] = { 127, 0, 0, 1 };
-const byte BR_RESOLV  [4] = { 127, 0, 0, 1 };
-#endif
-
-#define BR_NAME "COCO" // 4-letter name is used for MAC and DHCP
-#define BR_BOOTFILE "COCOIO.BOOT"  // in DECB LOADM format
-
-#define DHCP_SERVER_PORT 67
-#define DHCP_CLIENT_PORT 68
-#define TFTPD_SERVER_PORT 69
-
-const byte BROADCAST_ADDR  [4] = { 255, 255, 255, 255 };
-
-//  END Network Configuration.
-//
-//////////////////////////////////////////////////
-
-
-//////////////////////////////////////////////////
-//
-//  Memory Configuration
-
-#define WIZ_PORT ((struct wiz_port*)0xFF68)
-
-#define VARS_RAM 0x7000  // around 1300 scratchpad bytes
-
-#define VDG_RAM  0x0400  // default 32x16 64-char screen
-#define VDG_LEN  0x0200
-#define VDG_END  0x0600
-
-//  END Network Configuration.
-//
-//////////////////////////////////////////////////
-
-
-//////////////////////////////////////////////////
-//
-//  Compiler Specific:
-
-#ifdef __GNUC__
-
-#include <stdarg.h>
-
-extern void memcpy(char* a, const char* b, int c);
-extern void memset(char* a, int b, int c);
-extern void strcpy(char* a, const char*b);
-extern void strncpy(char* a, const char*b, int n);
-extern int strlen(const char* s);
-
-#else
-
-#include <cmoc.h>
-#include <stdarg.h>
-
-#define volatile /* not supported by cmoc */
-
-#endif
-
-//  END Compiler Specific.
-//
-//////////////////////////////////////////////////
-
-struct wiz_port {
-  byte command;
-  byte addr_hi;
-  byte addr_lo;
-  byte data;
-};
-
-struct dhcp {
-    byte opcode; // 1=request 2=response
-    byte htype;  // 1=ethernet
-    byte hlen;   // == 6 bytes
-    byte hops;   // 1 or 0, on a LAN
-
-    byte xid[4];  // transaction id
-    word secs;
-    word flags;  // $80 broadcast, $00 unicast.
-
-    byte ciaddr[4];      // Client IP addr
-    byte yiaddr[4];      // Your IP addr
-    byte siaddr[4];      // Server IP addr
-    byte giaddr[4];      // Gateway IP addr
-                         //
-    byte chaddr[16];  // client hardware addr
-    byte sname[64];   // server name
-    byte bname[128];  // boot file name
-
-    byte options[300];
-};
-
-struct vars {
-    byte mac_addr[6];
-    byte hostname[4];
-
-    byte ip_addr[4];
-    byte ip_mask[4];
-    byte ip_gateway[4];
-    byte ip_resolver[4];
-
-    word vdg_ptr;
-
-    struct loader {
-      byte state;
-      byte op;
-      word counter;
-      word addr;
-    } loader;
-
-    byte packout[600];
-    byte packin[600];
-};
-
-#define Vars ((struct vars*)VARS_RAM)
+#include "frob2/bootrom/bootrom.h"
 
 /////////////////////////////////////////////////
 //   Copied & modified from frob2/wiz/wiz5100s.h
@@ -183,7 +41,6 @@ struct UdpRecvHeader {
 
 /////////////////////////////////////////////////
 
-void Checksum();
 
 void Delay(word n) {
   while (n--) {
@@ -203,112 +60,6 @@ void Delay(word n) {
     }
 #endif
   }
-}
-
-void PutChar(char ch) {
-    word p = Vars->vdg_ptr;
-    if (96 <= ch && ch <= 126) ch -= 32;
-    if (ch < 32 || ch >= 127) ch = '?';
-    byte codepoint = (byte)ch;
-    *(byte*)p = (0x3f & codepoint);
-    p++;
-    if (p>=VDG_END) {
-        for (word i = VDG_RAM; i< VDG_END; i++) {
-            if (i < VDG_END-32) {
-                // Copy the line below.
-                *(volatile byte*)i = *(volatile byte*)(i+32);
-            } else {
-                // Clear the last line.
-                *(volatile byte*)i = 32;
-            }
-        }
-        p = VDG_END-32;
-    }
-    Vars->vdg_ptr = p;
-    Delay(100);  // don't print too fast
-}
-
-void PutStr(const char* s) {
-    while (*s) PutChar(*s++);
-}
-
-const byte HexAlphabet[] = "0123456789abcdef";
-
-void PutHex(word x) {
-  if (x > 15u) {
-    PutHex(x >> 4u);
-  }
-  PutChar( HexAlphabet[ 15u & x ] );
-}
-void PutDec(word x) {
-  if (x > 9u) {
-    PutDec(x / 10u);
-  }
-  PutChar('0' + (byte)(x % 10u));
-}
-
-void printk(const char* format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    const char* s = format;
-    while (*s) {
-        if (*s == '%') {
-            ++s;
-            switch (*s) {
-                case 'a': {  // "%a" -> IPv4 address as Dotted Quad.
-                    byte* x;
-                    x = va_arg(ap, byte*);
-                    PutDec(x[0]);
-                    PutChar('.');
-                    PutDec(x[1]);
-                    PutChar('.');
-                    PutDec(x[2]);
-                    PutChar('.');
-                    PutDec(x[3]);
-                }
-                break;
-                case 'x': {
-                    word x;
-                    x = va_arg(ap, word);
-                    PutHex(x);
-                }
-                break;
-                case 'u': {
-                    word x = va_arg(ap, word);
-                    PutDec(x);
-                }
-                break;
-                case 's': {
-                    const char* x = va_arg(ap, const char*);
-                    PutStr(x);
-                }
-                break;
-                default:
-                    PutChar(*s);
-            }
-        } else {
-            PutChar((*s < ' ' || *s > 126) ? '?' : *s);
-        }
-        s++;
-    }
-    va_end(ap);
-    PutChar(';');
-    Delay(1000);
-}
-
-// Debug Trace by Line Number
-void ShowLine(word line) {
-    printk("%u", line);
-}
-#define L ShowLine(__LINE__);
-
-void Fatal(const char* wut, word arg) {
-    PutStr(" *FATAL* <");
-    PutStr(wut);
-    PutChar('$');
-    PutHex(arg);
-    PutStr("> ");
-    while (1) continue;
 }
 
 bool IsBroadcast(const byte* ip) {
@@ -440,10 +191,7 @@ void WizReset() {
   volatile struct wiz_port* wiz = WIZ_PORT;
   wiz->command = 128; // Reset
 L Delay(9000);
-L Delay(9000);
-L Delay(9000);
   wiz->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-L Delay(9000);
 L Delay(9000);
   //want// poke_word(0x0017, 10000);  // 1 sec retransmission time.
 
@@ -964,8 +712,8 @@ int RomMain() {
     // Next things printed go on that second line.
     Vars->vdg_ptr = 0x0420;
     // Don't be a boor.
-    PutStr("Hello BootRom ");
-    PutStr("Wed Feb 22 ");
+    PutStr("HELO");
+    PutStr(__TIME__);
 
 #if 0
    printk("(MMU");
@@ -978,7 +726,7 @@ int RomMain() {
    // *ramrom = 255;
 #endif
 
-#if ! WHOLE_PROGRAM
+#if CHECKSUMS
 L   Checksum();  // Cannot call external if WHOLE_PROGRAM
 #endif
 
@@ -987,7 +735,7 @@ L   memcpy(Vars->hostname, BR_NAME, 4);
 
 #if BR_DHCP
 L   wiz_configure_for_DHCP(BR_NAME, Vars->mac_addr);
-L   PutStr("wiz_configure_for_DHCP ");
+L   PutStr("wc4DHCP ");
 L   RunDhcp();
 #endif
 
@@ -999,7 +747,7 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 L   RunTftpGet(BR_WAITER);
 
     // TODO: currently NOT REACHED
-L   Fatal("okay", 250);
+L   Fatal("OK", 250);
 
 #if 0
     UdpClose();
