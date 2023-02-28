@@ -136,6 +136,7 @@ bool Wait(word reg, byte value, const char* wut) {
 // Wait up to 5 seconds for reg to have value.
 // Return true if it got the value.
 // Return false if it timed out.
+#if 0
 bool BadWait(word reg, byte value, const char* wut) {
     printk("Wait(%x,%x,%s)", reg, value, wut);
 
@@ -157,6 +158,7 @@ bool BadWait(word reg, byte value, const char* wut) {
       }
     }
 }
+#endif
 void WaitOrFatal(word reg, byte value, const char* wut) {
   printk("WOF:%x,%x,%s", reg, value, wut);
   if (!Wait(reg, value, wut)) {
