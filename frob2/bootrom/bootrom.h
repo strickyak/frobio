@@ -4,6 +4,9 @@
 #define X220NET 1
 #define LOCALNET 0
 
+#define BR_STATIC 1
+#define BR_DHCP 0
+
 #define MULTI_SOCK 1
 #define CHECKSUMS 0
 
