@@ -78,7 +78,7 @@ case $COMPILER in
 	  gcc6809 -I.. $OPT $frame -S --std=gnu99 $EXTRA -D"WHOLE_PROGRAM=0" $src
     ofiles="$p.o"
 
-    for x in $others ; do
+    for x in $others bootrom/abort.c ; do
 	    gcc6809 -I.. -Os  $frame -S --std=gnu99 $x
     done
     for x in $others ; do
@@ -119,6 +119,10 @@ case $COMPILER in
       --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
       -l'stdlib.list' -o'stdlib.o' \
       stdlib.s
+	  lwasm --format=obj \
+      --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+      -l'abort.list' -o'abort.o' \
+      abort.s
 
 	  lwasm --format=obj \
       --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \

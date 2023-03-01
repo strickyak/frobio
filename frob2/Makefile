@@ -172,7 +172,7 @@ ci:
 
 clean:
 	rm -f ./*.list ./*.map ./*.asmap ./*.sym ./*.o ./*.s ./*.lst ./*.s-orig ./*.link *.bin *.raw *.wav *.coco
-	rm -f __*_.* *.tmp *.decb *.rom *.os9
+	rm -f __*_.* *.tmp *.decb *.rom *.os9 *.exp
 	rm -f lib*.a _*.a # object archives
 	rm -f *.c.[0-9][0-9][0-9]r.* # for gcc6809 debug
 	sync; sync
