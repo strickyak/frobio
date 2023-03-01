@@ -5,7 +5,7 @@
 #define LOCALNET 0
 
 #define MULTI_SOCK 1
-#define CHECKSUMS 0
+#define CHECKSUMS 1
 
 #define PRINTK 1
 

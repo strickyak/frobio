@@ -1,3 +1,4 @@
+#if 0
 void abort() {
   // Assume text screen is still at 0x0400,
   // and splash the middle of it with Xs.
@@ -6,6 +7,7 @@ void abort() {
   }
   while (1) {}
 }
+#endif
 
 void memcpy(char* a, const char* b, int c) {
   for (int i = 0; i < c; i++) *a++ = *b++;

@@ -3,7 +3,7 @@
 LOC=${LOC:-C000}
 COMPILER=${COMPILER:-cmoc}
 OPT=${OPT:--O0}
-WHOLE=${WHOLE:-0}
+# WHOLE=${WHOLE:-0}
 FRAME=${FRAME:-1}
 EXTRA=${EXTRA:-}
 
@@ -14,15 +14,15 @@ entry=$(python3 -c "print('%x' % ((0x${LOC}) + 2))")
 
 set -eux
 
-case $WHOLE in
-  0)
-    lwasm --define="WHOLE_PROGRAM=$WHOLE" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
-    ;;
-  *)
-    sed s/RomMain/main/g <bootrom/preboot.asm >/tmp/prebootmain.asm
-    lwasm --define="WHOLE_PROGRAM=$WHOLE" --obj -lpreboot.list -opreboot.o /tmp/prebootmain.asm
-    ;;
-esac
+# case $WHOLE in
+#   0)
+#     lwasm --define="WHOLE_PROGRAM=$WHOLE" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
+#     ;;
+#   *)
+#     sed s/RomMain/main/g <bootrom/preboot.asm >/tmp/prebootmain.asm
+#     lwasm --define="WHOLE_PROGRAM=$WHOLE" --obj -lpreboot.list -opreboot.o /tmp/prebootmain.asm
+#     ;;
+# esac
 
 cat >$p.decb.script <<HERE
 define basesympat s_%s
@@ -35,12 +35,12 @@ section *,bss
 entry $entry
 HERE
 
-case $WHOLE in
-  0) wp=
-    ;;
-  *) wp=-fwhole-program
-    ;;
-esac
+#case $WHOLE in
+#  0) wp=
+#    ;;
+#  *) wp=-fwhole-program
+#    ;;
+#esac
 
 case $FRAME in
   0) frame=-fomit-frame-pointer ;;
@@ -49,13 +49,15 @@ esac
 
 case $COMPILER in
   cmoc)
-	  cmoc -i -S $wp -I.. -o $p.s $src
+    lwasm --obj -lpreboot.list -opreboot.o   bootrom/preboot.asm
+
+	  cmoc -i -S -I.. -o $p.s $src
 	  lwasm --obj -l$p.o.list -o $p.o $p.s
     ofiles=$p.o
 
     for x in $others ; do
       y=$(basename $x .c)
-	    cmoc -i -S $wp -I.. -o $y.o $x
+	    cmoc -i -S -I.. -o $y.o $x
 	    lwasm --obj -l$y.o.list -o $y.o $y.s
       ofiles="$ofiles $y.o"
     done
@@ -70,9 +72,11 @@ case $COMPILER in
     ;;
 
   gcc)
-	  gcc6809 -I.. -O2  $frame -S --std=gnu99 bootrom/stdlib.c
-	  gcc6809 -I.. $OPT $frame -S --std=gnu99 $EXTRA -D"WHOLE_PROGRAM=$WHOLE" $wp $src
-    ofiles="$p.o stdlib.o"
+    lwasm --obj -lpreboot.list -opreboot.o   bootrom/preboot.asm
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/stdlib.c
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/abort.c
+	  gcc6809 -I.. $OPT $frame -S --std=gnu99 $EXTRA -D"WHOLE_PROGRAM=0" $src
+    ofiles="$p.o"
 
     for x in $others ; do
 	    gcc6809 -I.. -Os  $frame -S --std=gnu99 $x
@@ -95,9 +99,37 @@ case $COMPILER in
       $p.s
 	  lwlink --decb --entry=program_start --output=$p.decb --map=$p.map \
       --script=$p.decb.script \
-      preboot.o $ofiles \
+      preboot.o $ofiles stdlib.o \
       -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
-      -lgcc
+      -lgcc abort.o
+    ;;
+
+  whole-gcc)
+    sed s/RomMain/main/g <bootrom/preboot.asm >__prebootmain.s
+    lwasm --obj -lpreboot.list -opreboot.o __prebootmain.s
+
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/stdlib.c
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/abort.c
+
+    cat $src $others > __whole.c
+
+	  gcc6809 -fwhole-program -I.. $OPT $frame -S --std=gnu99 $EXTRA -D"WHOLE_PROGRAM=1" __whole.c
+
+	  lwasm --format=obj \
+      --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+      -l'stdlib.list' -o'stdlib.o' \
+      stdlib.s
+
+	  lwasm --format=obj \
+      --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+      -l"__whole.o.list" -o"__whole.o" \
+      __whole.s
+
+	  lwlink --decb --entry=program_start --output=$p.decb --map=$p.map \
+      --script=$p.decb.script \
+      preboot.o __whole.o stdlib.o \
+      -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+      -lgcc abort.o
     ;;
 esac
 

@@ -47,8 +47,6 @@ void PutStr(const char* s) {
     while (*s) PutChar(*s++);
 }
 
-const byte HexAlphabet[] = "0123456789abcdef";
-
 void PutHex(word x) {
   if (x > 15u) {
     PutHex(x >> 4u);

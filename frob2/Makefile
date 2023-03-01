@@ -54,91 +54,116 @@ f.b-unix:
 	./a.out -a tweb/testdata/index.fm
 
 
-WHOLE_PROGRAM=0
+netboots: netboot.cmoc.exp netboot.gcc.exp netboot.smallest.exp
 
-netboot.coco: bootrom/netboot.c bootrom/preboot.asm
-	cmoc -i -S bootrom/netboot.c
-	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lnetboot.list -onetboot.o netboot.s
-	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
-	lwlink --entry=program_start --format=decb --output=netboot.coco --script=bootrom/bootrom.script --map=netboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
-	ls -l netboot.coco
-	dd bs=1 skip=5 if=netboot.coco of=netboot.cart
-netboot.wav: netboot.coco
-	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
-	ls -l netboot.wav
+netboot.cmoc.exp:
+	sh RomCompile.sh bootrom/netboot.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot.exp netboot.cmoc.exp
+netboot.gcc.exp:
+	sh RomCompile.sh bootrom/netboot.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot.exp netboot.gcc.exp
+netboot.smallest.exp:
+	FRAME=0 OPT=-Os COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot.exp netboot.smallest.exp
 
-netboot.gcc.coco: bootrom/netboot.c bootrom/preboot.asm
-	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --format=obj -lpreboot.list -o preboot.o bootrom/preboot.asm
-	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
-	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/netboot.c
-	lwasm --format=obj \
-    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
-    -l'stdlib.list' -o'stdlib.o' \
-    stdlib.s
-	lwasm --format=obj \
-    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
-    -l"netboot.list" -o"netboot.o" \
-    netboot.s
-	lwlink --decb --entry=program_start --output=netboot.decb --map=netboot.map \
-    --script=bootrom/bootrom-c000.script \
-    preboot.o netboot.o stdlib.o \
-    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
-    -lgcc
-	hd netboot.decb | head -1
-	wc -c netboot.decb
-	dd bs=1 skip=5 if=netboot.decb of=netboot.cart
 
-nullboot.gcc.coco: bootrom/nullboot.c bootrom/preboot.asm
-	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --format=obj -lpreboot.list -o preboot.o bootrom/preboot.asm
-	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
-	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/nullboot.c
-	lwasm --format=obj \
-    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
-    -l'stdlib.list' -o'stdlib.o' \
-    stdlib.s
-	lwasm --format=obj \
-    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
-    -l"nullboot.list" -o"nullboot.o" \
-    nullboot.s
-	lwlink --decb --entry=program_start --output=nullboot.decb --map=nullboot.map \
-    --script=bootrom/bootrom-c000.script \
-    preboot.o nullboot.o stdlib.o \
-    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
-    -lgcc
-	hd nullboot.decb | head -1
-	wc -c nullboot.decb
-	dd bs=1 skip=5 if=nullboot.decb of=nullboot.cart
+netboot2s: netboot2.cmoc.exp netboot2.gcc.exp netboot2.smallest.exp
 
-nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
-	cmoc -i -S bootrom/nullboot.c
-	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lnullboot.list -onullboot.o nullboot.s
-	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
-	lwlink --entry=program_start --format=decb --output=nullboot.coco --script=bootrom/bootrom-c000.script --map=nullboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o nullboot.o
-	hd nullboot.coco | head -1
-	ls -l nullboot.coco
-	dd bs=1 skip=5 if=nullboot.coco of=nullboot.cart
+netboot2.cmoc.exp:
+	sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot2.exp netboot2.cmoc.exp
+netboot2.gcc.exp:
+	sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot2.exp netboot2.gcc.exp
+netboot2.smallest.exp:
+	FRAME=0 OPT=-Os COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot2.exp netboot2.smallest.exp
 
+#WHOLE_PROGRAM=0
+#
+#netboot.coco: bootrom/netboot.c bootrom/preboot.asm
+#	cmoc -i -S bootrom/netboot.c
+#	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lnetboot.list -onetboot.o netboot.s
+#	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
+#	lwlink --entry=program_start --format=decb --output=netboot.coco --script=bootrom/bootrom.script --map=netboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o netboot.o
+#	ls -l netboot.coco
+#	dd bs=1 skip=5 if=netboot.coco of=netboot.cart
+#netboot.wav: netboot.coco
+#	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NETBOOT ' -o'netboot.wav' -v netboot.coco
+#	ls -l netboot.wav
+#
+#netboot.gcc.coco: bootrom/netboot.c bootrom/preboot.asm
+#	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --format=obj -lpreboot.list -o preboot.o bootrom/preboot.asm
+#	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
+#	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/netboot.c
+#	lwasm --format=obj \
+#    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+#    -l'stdlib.list' -o'stdlib.o' \
+#    stdlib.s
+#	lwasm --format=obj \
+#    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+#    -l"netboot.list" -o"netboot.o" \
+#    netboot.s
+#	lwlink --decb --entry=program_start --output=netboot.decb --map=netboot.map \
+#    --script=bootrom/bootrom-c000.script \
+#    preboot.o netboot.o stdlib.o \
+#    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+#    -lgcc
+#	hd netboot.decb | head -1
+#	wc -c netboot.decb
+#	dd bs=1 skip=5 if=netboot.decb of=netboot.cart
+#
+#nullboot.gcc.coco: bootrom/nullboot.c bootrom/preboot.asm
+#	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --format=obj -lpreboot.list -o preboot.o bootrom/preboot.asm
+#	gcc6809 $(OPT) -S --std=gnu99 bootrom/stdlib.c
+#	gcc6809 $(OPT) -S --std=gnu99 $(EXTRA) bootrom/nullboot.c
+#	lwasm --format=obj \
+#    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+#    -l'stdlib.list' -o'stdlib.o' \
+#    stdlib.s
+#	lwasm --format=obj \
+#    --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
+#    -l"nullboot.list" -o"nullboot.o" \
+#    nullboot.s
+#	lwlink --decb --entry=program_start --output=nullboot.decb --map=nullboot.map \
+#    --script=bootrom/bootrom-c000.script \
+#    preboot.o nullboot.o stdlib.o \
+#    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ \
+#    -lgcc
+#	hd nullboot.decb | head -1
+#	wc -c nullboot.decb
+#	dd bs=1 skip=5 if=nullboot.decb of=nullboot.cart
+#
+#nullboot.coco: bootrom/nullboot.c bootrom/preboot.asm
 #	cmoc -i -S bootrom/nullboot.c
-#	cmoc -i --org=2600 --decb -o nullboot.coco bootrom/preboot.asm nullboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=decb --output=nullboot.coco --script=nullboot.link --map=nullboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o nullboot.o
-#	#cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
+#	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lnullboot.list -onullboot.o nullboot.s
+#	lwasm -D"WHOLE_PROGRAM=$(WHOLE_PROGRAM)" --obj -lpreboot.list -opreboot.o bootrom/preboot.asm
+#	lwlink --entry=program_start --format=decb --output=nullboot.coco --script=bootrom/bootrom-c000.script --map=nullboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o nullboot.o
+#	hd nullboot.coco | head -1
 #	ls -l nullboot.coco
-
-nullboot.wav: nullboot.coco
-	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NULLBOOT' -o'nullboot.wav' -v nullboot.coco
-	ls -l nullboot.wav
-floppy.dsk: netboot.coco nullboot.coco
-	rm -f floppy.dsk
-	decb dskini floppy.dsk -4
-	decb copy -2 -b nullboot.coco floppy.dsk,NULLBOOT.DEC
-	decb copy -2 -b netboot.coco floppy.dsk,NETBOOT.DEC
-	decb dir floppy.dsk
-	ls -l floppy.dsk
-z: floppy.dsk
-	dd if=floppy.dsk of=/media/strick/APRIL3/z
-	sync ; sync
-z2:
-	DISK=/tmp/disk2 sh Install.sh *.os9
-	os9 dir /tmp/disk2,CMDS
+#	dd bs=1 skip=5 if=nullboot.coco of=nullboot.cart
+#
+##	cmoc -i -S bootrom/nullboot.c
+##	cmoc -i --org=2600 --decb -o nullboot.coco bootrom/preboot.asm nullboot.s || echo IGNORE THOSE ERRORS && lwlink --entry=program_start --format=decb --output=nullboot.coco --script=nullboot.link --map=nullboot.coco.map -L/opt/yak/cmoc-0.1.80/share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb preboot.o nullboot.o
+##	#cmoc -i --org=2600 --coco -o nullboot.coco bootrom/preboot.asm nullboot.s
+##	ls -l nullboot.coco
+#
+#nullboot.wav: nullboot.coco
+#	makewav -r -s'48000' -d'0x2600' -e'0x2600' -n'NULLBOOT' -o'nullboot.wav' -v nullboot.coco
+#	ls -l nullboot.wav
+#floppy.dsk: netboot.coco nullboot.coco
+#	rm -f floppy.dsk
+#	decb dskini floppy.dsk -4
+#	decb copy -2 -b nullboot.coco floppy.dsk,NULLBOOT.DEC
+#	decb copy -2 -b netboot.coco floppy.dsk,NETBOOT.DEC
+#	decb dir floppy.dsk
+#	ls -l floppy.dsk
+#z: floppy.dsk
+#	dd if=floppy.dsk of=/media/strick/APRIL3/z
+#	sync ; sync
+#z2:
+#	DISK=/tmp/disk2 sh Install.sh *.os9
+#	os9 dir /tmp/disk2,CMDS
 
 
 ci:
