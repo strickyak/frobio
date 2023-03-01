@@ -66,7 +66,7 @@ case $COMPILER in
       --output=$p.decb \
       --script=$p.decb.script \
       --map=$p.decb.map \
-      -L/opt/yak/cmoc-0.1.80/share/cmoc/lib \
+      -L/opt/yak/cmoc/share/cmoc/lib \
       -lcmoc-crt-ecb -lcmoc-std-ecb \
       preboot.o $ofiles
     ;;

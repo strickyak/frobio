@@ -170,7 +170,8 @@ void TcpPoll(PARAM_JUST_SOCK) {
       byte sr = WizGet1(B+SK_SR); // Socket Status Register
 
       if (sr != SK_SR_ESTB) { // No longer established?
-        Fatal("TNE", sr);
+        return;
+        // Fatal("TNE", sr);
       }
       if (ir & SK_IR_TOUT) { // Timeout?
         Fatal("TTO", ir);
