@@ -151,7 +151,7 @@ extern const struct sock Socks[4];
   #define T    0x4800
   #define R    0x6800
   #define N    1
-  #define SS   (VARS_RAM+sizeof(struct vars)+sizeof(struct sock)*N)
+  #define SS   ((struct SockState*)(VARS_RAM+sizeof(struct vars)+sizeof(struct SockState)*N))
 
 #endif
 
