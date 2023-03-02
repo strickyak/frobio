@@ -29,5 +29,5 @@ void Checksum() {
     }
     Delay(1000);
   }
-  Delay(50000);
+  Delay(5000);
 }
