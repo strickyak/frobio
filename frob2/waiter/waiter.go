@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 )
 
 var Format = fmt.Sprintf
@@ -51,8 +52,13 @@ func ReadFive(conn net.Conn) []byte {
 }
 
 func Serve(conn net.Conn) {
+    log.Printf("Serving: Poke to 0x500");
 	PokeRam(conn, 0x500, []byte("IT'S A UNIX SYSTEM!  I KNOW THIS!"))
+    log.Printf("Serving: Did it.");
 	// buf := ReadFive(conn)
+    time.Sleep(600 * time.Second)
+    conn.Close()
+    log.Printf("Serving: Closed.");
 }
 
 func Listen() {
@@ -61,12 +67,14 @@ func Listen() {
 		log.Fatalf("Cannot Listen(): %v", err)
 	}
 	defer l.Close()
+    log.Printf("Listening on port %d", *PORT)
 
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			log.Fatalf("Cannot Accept() connection: %v", err)
 		}
+        log.Printf("Accepted.")
 		go Serve(conn)
 	}
 }
