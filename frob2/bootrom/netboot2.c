@@ -126,8 +126,9 @@ byte WizNextStatus(PARAM_SOCK_AND byte old_status) {
 }
 
 
-void TcpOpen(PARAM_JUST_SOCK) {
+void TcpOpen(PARAM_SOCK_AND word local_port ) {
   WizPut1(B+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
+  WizPut2(B+SK_PORTR0, local_port); // Set TCP local port.
   WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
   WizIssueCommand(SOCK_AND SK_CR_OPEN);
 
@@ -184,6 +185,7 @@ void TcpPoll(PARAM_JUST_SOCK) {
         if (WizGet2(B+SK_TX_RD0) != WizGet2(B+SK_TX_WR0)) {  // some bytes to send?
           WizPut1(B+SK_IR, SK_IR_TXOK);  // clear TXOK bit.
           WizIssueCommand(SOCK_AND  SK_CR_SEND);
+          Line("SEND!");
         }
       }
 }
@@ -216,10 +218,13 @@ void TcpRecvData(PARAM_SOCK_AND char* buf, size_t n) {
 
 void TcpReserveToSend(PARAM_SOCK_AND  size_t n) {
   word free_size;
+  Line("<D");
   do {
+  Line("D");
     TcpPoll(JUST_SOCK);
     free_size = WizGet2(B+SK_TX_FSR0);
   } while (free_size < n);
+  Line("D>");
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
   SS->tx_to_go = n;
 }
@@ -243,9 +248,34 @@ void TcpDataToSend(PARAM_SOCK_AND char* data, size_t n) {
 }
 
 void TcpFinalizeSend(PARAM_JUST_SOCK) {
+  Line("DF");
   WizPut2(B+SK_TX_WR0, T + SS->tx_ptr);
   AssertEQ(SS->tx_to_go, 0);
-  TcpPoll(JUST_SOCK);
+  TcpPoll(JUST_SOCK); // Issues the SEND command, when it can.
+}
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+void Waitee(PARAM_JUST_SOCK) {
+  char buf[5];
+  while (true) {
+    printk("<W");
+    TcpRecvData(SOCK_AND buf, 5);
+    printk("W>");
+    switch (buf[0]) {
+      case 0: // case POKE
+        {
+          word n = *(word*)(buf+1);
+          word p = *(word*)(buf+3);
+          printk("POKE(%x@%x)", n, p);
+          TcpRecvData(SOCK_AND (char*)p, n);
+        }
+        break;
+      default:
+        Fatal("WUT?", buf[0]);
+        break;
+    }
+  }
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -274,15 +304,19 @@ L   WizReset();
 #if BR_STATIC
 L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif
-    TcpOpen(JUST_SOCK1);
+    word local_port = 0x8000 | 0xFFFE & WizTicks();
+    TcpOpen(SOCK1_AND local_port);
     TcpDial(SOCK1_AND BR_GATEWAY, 14511);
 
-    char message[5] = { 1, 2, 4, 8, 16 };
+#if 1
+    char *message = "NANDO";
     TcpReserveToSend(SOCK1_AND  5);
     TcpDataToSend(SOCK1_AND  message, 5);
     TcpFinalizeSend(JUST_SOCK1);
+#endif
+L
+    Waitee(JUST_SOCK1);
 
-L   Fatal("okay", 250);
-
-  return 0;
+    // NOTREACHED
+    return 0;
 }
