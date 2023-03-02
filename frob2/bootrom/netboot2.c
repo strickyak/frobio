@@ -152,6 +152,8 @@ void TcpEstablishOrNotYet(PARAM_JUST_SOCK) {
   Line("<E");
   while(1) {
     Line("E");
+    // Or we could wait for the connected interrupt bit,
+    // and not the disconnected nor the timeout bit.
     byte status = WizGet1(B+SK_SR);
     if (!--stuck) Fatal("TEZ", status);
 
@@ -163,6 +165,7 @@ void TcpEstablishOrNotYet(PARAM_JUST_SOCK) {
 
   };
   Line("E>");
+  // TODO -- why does this bit continue to show up?
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
 }
 
