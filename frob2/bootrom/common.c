@@ -1,5 +1,18 @@
 #include "frob2/bootrom/bootrom.h"
 
+word StackPointer() {
+  word result;
+#ifdef __GNUC__
+    asm ("tfr s,%0" : "=g" (result));
+#else
+    asm {
+      tfr s,x
+      stx result
+    }
+#endif
+    return result;
+}
+
 void Delay(word n) {
   while (n--) {
 #ifdef __GNUC__
