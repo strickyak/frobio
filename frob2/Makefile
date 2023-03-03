@@ -73,7 +73,7 @@ netboot2.cmoc.exp:
 	sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
 	mv netboot2.exp netboot2.cmoc.exp
 netboot2.gcc.exp:
-	sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	OPT=-Os COMPILER=gcc sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
 	mv netboot2.exp netboot2.gcc.exp
 netboot2.smallest.exp:
 	FRAME=0 OPT=-Os COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
