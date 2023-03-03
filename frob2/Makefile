@@ -167,7 +167,7 @@ netboot2.smallest.exp:
 
 
 ci:
-	set -x; ci-l */*.asm ` find . -name '*.[ch]' `
+	set -x; ci-l */*.asm ` find . -name '*.[ch]' ` *.sh Makefile
 	sync; sync
 
 clean:
