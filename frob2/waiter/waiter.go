@@ -52,6 +52,11 @@ func ReadFive(conn net.Conn) []byte {
 }
 
 func Serve(conn net.Conn) {
+    log.Printf("gonna ReadFive");
+    buf := ReadFive(conn);
+    log.Printf("ReadFive: %q", buf);
+    time.Sleep(600 * time.Second)
+
     log.Printf("Serving: Poke to 0x500");
 	PokeRam(conn, 0x500, []byte("IT'S A UNIX SYSTEM!  I KNOW THIS!"))
     log.Printf("Serving: Did it.");
