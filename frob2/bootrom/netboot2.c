@@ -149,20 +149,19 @@ void WizOpen(PARAM_SOCK_AND struct proto* proto, word local_port ) {
 
 // Only called for TCP Client.
 void TcpDial(PARAM_SOCK_AND const byte* host, word port) {
+  printk("tcp dial %a $x", host, port);
   WizPutN(B+SK_DIPR0, host, 4);
   WizPut2(B+SK_DPORTR0, port);
+  WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
   WizIssueCommand(SOCK_AND SK_CR_CONN);
 }
 
 // For Server or Client to accept/establish connection.
 void TcpEstablish(PARAM_JUST_SOCK) {
-  WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
-
   byte stuck = 250;
-  byte status;
-  Line("<E");
   while(1) {
-    Line("E");
+    Delay(1000);
+    printk("");
     // Or we could wait for the connected interrupt bit,
     // and not the disconnected nor the timeout bit.
     byte status = WizGet1(B+SK_SR);
@@ -175,7 +174,6 @@ void TcpEstablish(PARAM_JUST_SOCK) {
     Fatal("TE", status);
 
   };
-  Line("E>");
 
   print4("est:q=%x", WizGet1(B+SK_IR));
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
@@ -338,7 +336,14 @@ void LemmaClientS1() {
         case CMD_POKE:
           {
             print3("POKE(%x@%x)", n, p);
-            TcpRecvData(SOCK1_AND (char*)p, n);
+            while (n) {
+              word chunk = (n < 256) ? n : 256;
+              printk("#$%x", chunk);
+              TcpRecvData(SOCK1_AND (char*)p, chunk);
+              n -= chunk;
+              p += chunk;
+            }
+            print3(".");
           }
           break;
         case CMD_PUTCHARS:
@@ -392,12 +397,15 @@ int RomMain() {
 #if CHECKSUMS
     Checksum();
 #endif
+    word ticks = WizTicks();
+    word local_port = 0x8000 | ticks;
+    printk("  TICKS *%x* PORT *%x*  ", ticks, local_port);
 
 L   WizReset();
 #if BR_STATIC
 L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif
-    word local_port = 0x8000 | 0xFFFE & WizTicks();
+    // word local_port = 0x8000 | 0xFFFE & WizTicks();
     WizOpen(SOCK1_AND &TcpProto, local_port);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);

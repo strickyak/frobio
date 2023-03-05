@@ -50,12 +50,31 @@ void Delay(word n) {
 }
 
 void PutChar(char ch) {
-    word p = Vars->vdg_ptr;
+    if (ch == 13) { // Carriage Return
+      do {
+        PutChar(' ');
+      } while ((Vars->vdg_ptr & 31));
+      return;
+    }
+
+    if (ch == 8) { // Backspace
+      if (Vars->vdg_ptr > VDG_RAM+32) {
+        *(byte*)(Vars->vdg_ptr) = 32;
+        -- Vars->vdg_ptr;
+      }
+      return;
+    }
+
+    if (ch < 32) return;  // Ignore other control chars.
+
+    // Only use 64-char ASCII.
     if (96 <= ch && ch <= 126) ch -= 32;
-    if (ch < 32 || ch >= 127) ch = '?';
     byte codepoint = (byte)ch;
+
+    word p = Vars->vdg_ptr;
     *(byte*)p = (0x3f & codepoint);
     p++;
+
     if (p>=VDG_END) {
         for (word i = VDG_RAM+32; i< VDG_END; i++) {
             if (i < VDG_END-32) {
@@ -69,7 +88,8 @@ void PutChar(char ch) {
         p = VDG_END-32;
     }
     Vars->vdg_ptr = p;
-    Delay(100);  // don't print too fast
+    *(byte*)p = 0xEF;  // display Blue Box cursor.
+    // Delay(100);  // don't print too fast
 }
 
 void PutStr(const char* s) {
