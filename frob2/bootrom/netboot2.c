@@ -127,13 +127,17 @@ byte WizNextStatus(PARAM_SOCK_AND byte old_status) {
 
 
 void TcpOpen(PARAM_SOCK_AND word local_port ) {
-  WizPut1(B+SK_MR, SK_MR_TCP); // Set TCP Protocol mode.
+  WizPut1(B+SK_MR, SK_MR_TCP+SK_MR_ND); // Set TCP Protocol mode with No Delayed Ack.
   WizPut2(B+SK_PORTR0, local_port); // Set TCP local port.
   WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
   WizIssueCommand(SOCK_AND SK_CR_OPEN);
 
   WizWaitStatus(SOCK_AND SK_SR_INIT);
-  WizPut2(B+SK_TX_WR0, 0); // Does this help?
+
+  // Does this help?
+  word tx_rd = WizGet2(B+SK_TX_RD0);
+  WizPut2(B+SK_TX_WR0, tx_rd); // Does this help?
+  printk("0tx.rd=%x", tx_rd);
 }
 
 // Only called for TCP Client.
@@ -144,7 +148,7 @@ void TcpDial(PARAM_SOCK_AND const byte* host, word port) {
 }
 
 // For Server or Client to accept/establish connection.
-void TcpEstablishOrNotYet(PARAM_JUST_SOCK) {
+void TcpEstablish(PARAM_JUST_SOCK) {
   WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
 
   byte stuck = 250;
@@ -166,7 +170,9 @@ void TcpEstablishOrNotYet(PARAM_JUST_SOCK) {
   };
   Line("E>");
   // TODO -- why does this bit continue to show up?
+  printk("est:q=%x", WizGet1(B+SK_IR));
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
+  printk("..:q=%x", WizGet1(B+SK_IR));
 }
 
 void TcpPoll(PARAM_JUST_SOCK) {
@@ -230,6 +236,7 @@ void TcpReserveToSend(PARAM_SOCK_AND  size_t n) {
   Line("D>");
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
   SS->tx_to_go = n;
+  printk("1tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
 void TcpDataToSend(PARAM_SOCK_AND char* data, size_t n) {
@@ -248,13 +255,18 @@ void TcpDataToSend(PARAM_SOCK_AND char* data, size_t n) {
   }
   SS->tx_to_go -= n;
   SS->tx_ptr = (n + SS->tx_ptr) & RING_MASK;
+  printk("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
-void TcpFinalizeSend(PARAM_JUST_SOCK) {
-  Line("DF");
-  WizPut2(B+SK_TX_WR0, T + SS->tx_ptr);
+void TcpFinalizeSend(PARAM_SOCK_AND size_t n) {
+  printk("FSend %x", n);
+  word tx_wr = WizGet2(B+SK_TX_WR0);  
+  printk("3tx..%x", tx_wr);
+  tx_wr += n;
+  WizPut2(B+SK_TX_WR0, tx_wr);
+  printk("..%x", tx_wr);
   AssertEQ(SS->tx_to_go, 0);
-  TcpPoll(JUST_SOCK); // Issues the SEND command, when it can.
+  WizIssueCommand(SOCK_AND  SK_CR_SEND);
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -295,9 +307,8 @@ int RomMain() {
 
     // Next things printed go on that second line.
     Vars->vdg_ptr = 0x0420;
-    // Don't be a boor.
-    PutStr("HELO");
-    PutStr(__TIME__);
+
+    printk("SP=%x REV=%s", StackPointer(), __TIME__);
 
 #if CHECKSUMS
     Checksum();
@@ -310,15 +321,21 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     word local_port = 0x8000 | 0xFFFE & WizTicks();
     TcpOpen(SOCK1_AND local_port);
     TcpDial(SOCK1_AND BR_GATEWAY, 14511);
+    TcpEstablish(JUST_SOCK1);
 
 #if 1
-    char *message = "NANDO";
+    const char *message = "NANDO";
     TcpReserveToSend(SOCK1_AND  5);
     TcpDataToSend(SOCK1_AND  message, 5);
-    TcpFinalizeSend(JUST_SOCK1);
+    TcpFinalizeSend(SOCK1_AND 5);
 #endif
-L
+    for (byte i = 3; i; i--) {
+L     TcpPoll(JUST_SOCK1);
+    }
+#if 0
     Waitee(JUST_SOCK1);
+#endif
+    Fatal("OKAY", 250);
 
     // NOTREACHED
     return 0;

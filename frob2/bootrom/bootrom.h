@@ -166,8 +166,9 @@ extern const byte BR_RESOLV  [4];
 
 extern const byte HexAlphabet[];
 
-//
+// common.c
 
+word StackPointer();
 void Delay(word n);
 
 // checksum.c

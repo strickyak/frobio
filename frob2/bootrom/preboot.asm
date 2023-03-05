@@ -35,8 +35,7 @@
 program_start
 _preboot
     orcc #$50   ; disable interrupts
-    lds #$0400  ; 1KB stack in lowest memory
-    tfr s,u
+    ;;;;; lds #$0400  ; 1KB stack in lowest memory
 
     clrb
     tfr b,dp    ; dp=0
@@ -50,11 +49,6 @@ id_loop
     sta ,y+
     lda ,x+
     bpl id_loop  ; while no N bit
-
-    ldy #$0000  ; no global vars
-    tfr y,u     ; no previous frame
-    pshs y,u    ; 8 bytes of zeros onto stack
-    pshs y,u
 
 *		IFNE WHOLE_PROGRAM
 *    lbsr _main  ; and call main with no args, which probably never returns.
