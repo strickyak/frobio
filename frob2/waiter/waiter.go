@@ -42,26 +42,35 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	}
 }
 
-func ReadFive(conn net.Conn) []byte {
-	buf := make([]byte, 5)
-	_, err := io.ReadFull(conn, buf)
-	if err != nil {
-		panic(err)
-	}
-	return buf
+func ReadFive(conn net.Conn) {
+    quint := make([]byte, 5)
+    for {
+        _, err := io.ReadFull(conn, quint)
+        if err != nil {
+            log.Printf("ReadFive: stopping due to error: %v", err);
+            break;
+        }
+
+        switch quint[0] {
+        case 78:
+            log.Printf("ReadFive: message %q", quint)
+        case 201:
+            log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+        default:
+            log.Fatalf("ReadFive: BAD COMMAND %d.", quint[0]);
+        }
+    }
 }
 
 func Serve(conn net.Conn) {
     log.Printf("gonna ReadFive");
-    buf := ReadFive(conn);
-    log.Printf("ReadFive: %q", buf);
-    time.Sleep(600 * time.Second)
+    go ReadFive(conn);
 
-    log.Printf("Serving: Poke to 0x500");
-	PokeRam(conn, 0x500, []byte("IT'S A UNIX SYSTEM!  I KNOW THIS!"))
-    log.Printf("Serving: Did it.");
-	// buf := ReadFive(conn)
-    time.Sleep(600 * time.Second)
+    log.Printf("Serving: Poke to 0x400");
+	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
+
+    log.Printf("Serving: Sleeping.");
+    time.Sleep(3600 * time.Second)
     conn.Close()
     log.Printf("Serving: Closed.");
 }
