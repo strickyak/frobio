@@ -13,6 +13,22 @@ word StackPointer() {
     return result;
 }
 
+char PolCat() {
+  char inkey;
+#ifdef __GNUC__
+  asm volatile (R"(
+    jsr [$A000]
+    sta %0
+  )" : "=m" (inkey) );
+#else
+  asm {
+    jsr [$A000]
+    sta :inkey
+  }
+#endif
+  return inkey;
+}
+
 void Delay(word n) {
   while (n--) {
 #ifdef __GNUC__
@@ -148,12 +164,16 @@ void printk(const char* format, ...) {
 
 // Debug Trace by Line Number
 void ShowLine(word line) {
+#if VERBOSE >= 6
     printk("%u", line);
+#endif
 }
 
 void Line(const char* s) {
+#if VERBOSE >= 6
   PutStr(s);
   PutChar(' ');
+#endif
 }
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef _FROB2_BOOTROM_BOOTROM_H_
 #define _FROB2_BOOTROM_BOOTROM_H_
 
+#define VERBOSE 3
+
 #define X220NET 1
 #define LOCALNET 0
 
@@ -8,7 +10,7 @@
 #define BR_DHCP 0
 
 #define MULTI_SOCK 1
-#define CHECKSUMS 1
+#define CHECKSUMS 0
 
 #define PRINTK 1
 
@@ -16,11 +18,13 @@
 
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
 
-#define TFTPD_SERVER_PORT 69
-#define BR_BOOTFILE "COCOIO.BOOT"  // in DECB LOADM format
-#define BR_NAME "COCO" // 4-letter name is used for MAC and DHCP
+#if 0
+#  define TFTPD_SERVER_PORT 69
+#  define BR_BOOTFILE "COCOIO.BOOT"  // in DECB LOADM format
+#  define BR_NAME "COCO" // 4-letter name is used for MAC and DHCP
+#endif
 
-// Conventional types and consants for Frobio
+// Conventional types and constants for Frobio
 typedef unsigned char bool;
 typedef unsigned char byte;
 typedef unsigned char errnum;
@@ -72,27 +76,34 @@ struct wiz_port {
 
 
 struct vars {
+    byte hostname[8];
     byte mac_addr[6];
-    byte hostname[4];
-
     byte ip_addr[4];
     byte ip_mask[4];
     byte ip_gateway[4];
     byte ip_resolver[4];
+    byte ip_waiter[4];
+    char waiter_domain[32];
+    word flags;     // might tell us which fields above to use.
+    byte hostchar;  // might tell us what config to load or remote-load.
 
     word vdg_ptr;
 
+#if 0
     struct loader {
       byte state;
       byte op;
       word counter;
       word addr;
     } loader;
+#endif
 
     // TODO -- get rid of these:
+#if 0
 #if WANT_PACKIN_PACKOUT
     byte packin[200];
     byte packout[200];
+#endif
 #endif
 
 };
@@ -161,14 +172,15 @@ extern const struct sock Socks[4];
 extern const byte BR_ADDR    [4];
 extern const byte BR_MASK    [4];
 extern const byte BR_GATEWAY [4];
-extern const byte BR_WAITER  [4];
 extern const byte BR_RESOLV  [4];
+extern const byte BR_WAITER  [4];
 
 extern const byte HexAlphabet[];
 
 // common.c
 
 word StackPointer();
+char PolCat(); // Return one INKEY char, or 0, with BASIC `POLCAT` subroutine.
 void Delay(word n);
 
 // checksum.c
@@ -187,6 +199,20 @@ void Line(const char* s);
 void AssertEQ(word a, word b);
 void AssertLE(word a, word b);
 
-#define L ShowLine(__LINE__);
+#define print1 if (VERBOSE>=1) printk
+#define print2 if (VERBOSE>=2) printk
+#define print3 if (VERBOSE>=3) printk
+#define print4 if (VERBOSE>=4) printk
+#define print5 if (VERBOSE>=5) printk
+#define print6 if (VERBOSE>=6) printk
+#define print7 if (VERBOSE>=7) printk
+#define print8 if (VERBOSE>=8) printk
+#define print9 if (VERBOSE>=9) printk
+
+#if VERBOSE >= 6
+#  define L ShowLine(__LINE__);
+#else
+#  define L /**/
+#endif
 
 #endif // _FROB2_BOOTROM_BOOTROM_H_

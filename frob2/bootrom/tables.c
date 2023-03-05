@@ -17,7 +17,7 @@ const struct sock Socks[4] = {
 #endif
 
 #if X220NET
-// For my coco3 with ethernet wired to a laptop.
+// For my coco3(10.1.2.3) with ethernet(255.0.0.0) wired to a laptop(10.2.2.2).
 const byte BR_ADDR    [4] = { 10, 1, 2, 3 };
 const byte BR_MASK    [4] = { 255, 0, 0, 0 };
 const byte BR_GATEWAY [4] = { 10, 2, 2, 2 };

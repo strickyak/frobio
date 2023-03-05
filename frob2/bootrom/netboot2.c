@@ -1,11 +1,20 @@
 #include "frob2/bootrom/bootrom.h"
 
+enum Commands {
+  CMD_POKE = 0,
+  CMD_INKEY = 201,
+  CMD_PUTCHARS = 202,
+  CMD_PEEK = 203,
+  CMD_DATA = 204,
+  CMD_JSR = 255,
+};
+
 static byte WizGet1(word reg) {
   WIZ->addr_hi = (byte)(reg >> 8);
   WIZ->addr_lo = (byte)(reg);
   byte z = WIZ->data;
   if (reg < 0x1000) {
-    printk("%x->%x", reg, z);
+    print7("%x->%x", reg, z);
   }
   return z;
 }
@@ -16,7 +25,7 @@ static word WizGet2(word reg) {
   byte z_lo = WIZ->data;
   word z = ((word)(z_hi) << 8) + (word)z_lo;
   if (reg < 0x1000) {
-    printk("%x=>%x", reg, z);
+    print7("%x=>%x", reg, z);
   }
   return z;
 }
@@ -27,14 +36,14 @@ static void WizGetN(word reg, void* buffer, word size) {
   for (word i=0; i<size; i++) {
     *to++ = WIZ->data;
   }
-  printk("%x[%x]>", reg, size);
+  print7("%x[%x]>", reg, size);
 }
 static void WizPut1(word reg, byte value) {
   WIZ->addr_hi = (byte)(reg >> 8);
   WIZ->addr_lo = (byte)(reg);
   WIZ->data = value;
   if (reg < 0x1000) {
-    printk("%x<-%x", reg, value);
+    print7("%x<-%x", reg, value);
   }
 }
 static void WizPut2(word reg, word value) {
@@ -43,7 +52,7 @@ static void WizPut2(word reg, word value) {
   WIZ->data = (byte)(value >> 8);
   WIZ->data = (byte)(value);
   if (reg < 0x1000) {
-    printk("%x<=%x", reg, value);
+    print7("%x<=%x", reg, value);
   }
 }
 static void WizPutN(word reg, const void* data, word size) {
@@ -53,7 +62,7 @@ static void WizPutN(word reg, const void* data, word size) {
   for (word i=0; i<size; i++) {
     WIZ->data = *from++;
   }
-  printk("%x[%x]<", reg, size);
+  print7("%x[%x]<", reg, size);
 }
 
 // WizTicks: 0.1ms but may have readbyte,readbyte error?
@@ -62,32 +71,31 @@ word WizTicks() {
 }
 
 void WizReset() {
-  PutStr("WizReset ");
+  printk("WizReset ");
   WIZ->command = 128; // Reset
-L Delay(9000);
+  Delay(5000);
   WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-L Delay(9000);
+  Delay(1000);
+ 
+  // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
 
-  // Interval until retry.
+  // Interval until retry: 1 second.
   WizPut2(RTR0, 10000 /* Tenths of milliseconds. */ );
   // Number of retries.
   WizPut1(RCR, 10);
-
-  // Default configuration of 2k per ring.
-  // WizPut1(0x001a/*=Rx Memory Size*/, 0x55); // 2k per sock
-  // WizPut1(0x001b/*=Tx Memory Size*/, 0x55); // 2k per sock
 }
 
 void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway) {
-L WizPutN(0x0001/*gateway*/, ip_gateway, 4);
-L WizPutN(0x0005/*mask*/, ip_mask, 4);
-L WizPutN(0x000f/*ip_addr*/, ip_addr, 4);
+  WizPutN(0x0001/*gateway*/, ip_gateway, 4);
+  WizPutN(0x0005/*mask*/, ip_mask, 4);
+  WizPutN(0x000f/*ip_addr*/, ip_addr, 4);
 
   // Create locally assigned mac_addr from ip_addr.
   Vars->mac_addr [0] = 2;
   Vars->mac_addr [1] = 2;
   memcpy(Vars->mac_addr+2, ip_addr, 4);
-L WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
+  WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
+  printk("Conf a=%a m=%a g=%a MAC=2.2.%a", ip_addr, ip_mask, ip_gateway, Vars->mac_addr+2);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -111,33 +119,32 @@ void WizWaitStatus(PARAM_SOCK_AND byte want) {
   Line("W>");
 }
 
-// Advance to a new status after old_status.
-byte WizNextStatus(PARAM_SOCK_AND byte old_status) {
-  byte status;
-  Line("<S");
-  byte stuck = 200;
-  do {
-    if (!--stuck) Fatal("S", old_status);
-    status = WizGet1(B+SK_SR);
-    Line("S");
-  } while (status == old_status);
-  Line("S>");
-  return status;
+struct proto {
+  byte open_mode;
+  byte open_status;
+};
+const struct proto TcpProto = {
+  SK_MR_TCP+SK_MR_ND, // TCP Protocol mode with No Delayed Ack.
+  SK_SR_INIT, 
+};
+const struct proto UdpProto = {
+  SK_MR_UDP, // UDP Protocol mode.
+  SK_SR_UDP,
+};
+
+bool IsBroadcast(PARAM_JUST_SOCK) {
+  byte first = WizGet1(B+SK_DIPR0);
+  return first==255;  // Net 255 is enough to check.
 }
 
 
-void TcpOpen(PARAM_SOCK_AND word local_port ) {
-  WizPut1(B+SK_MR, SK_MR_TCP+SK_MR_ND); // Set TCP Protocol mode with No Delayed Ack.
-  WizPut2(B+SK_PORTR0, local_port); // Set TCP local port.
+void WizOpen(PARAM_SOCK_AND struct proto* proto, word local_port ) {
+  WizPut1(B+SK_MR, proto->open_mode);
+  WizPut2(B+SK_PORTR0, local_port); // Set local port.
   WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
   WizIssueCommand(SOCK_AND SK_CR_OPEN);
 
-  WizWaitStatus(SOCK_AND SK_SR_INIT);
-
-  // Does this help?
-  word tx_rd = WizGet2(B+SK_TX_RD0);
-  WizPut2(B+SK_TX_WR0, tx_rd); // Does this help?
-  printk("0tx.rd=%x", tx_rd);
+  WizWaitStatus(SOCK_AND proto->open_status);
 }
 
 // Only called for TCP Client.
@@ -169,48 +176,40 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 
   };
   Line("E>");
-  // TODO -- why does this bit continue to show up?
-  printk("est:q=%x", WizGet1(B+SK_IR));
+
+  print4("est:q=%x", WizGet1(B+SK_IR));
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
-  printk("..:q=%x", WizGet1(B+SK_IR));
+  print4("..:q=%x", WizGet1(B+SK_IR));
 }
 
-void TcpPoll(PARAM_JUST_SOCK) {
-      byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
+void TcpCheck(PARAM_JUST_SOCK) {
       byte sr = WizGet1(B+SK_SR); // Socket Status Register
 
-      if (sr != SK_SR_ESTB) { // No longer established?
+      // TODO -- this is clearly wrong.
+      if (sr != SK_SR_ESTB) // No longer established?
         return;
-        // Fatal("TNE", sr);
-      }
+
+      byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
-        Fatal("TTO", ir);
+        Fatal("TMO", ir);
       }
       if (ir & SK_IR_DISC) { // Disconnect?
-        Fatal("TDIS", ir);
-      }
-
-      if (ir & SK_IR_TXOK) { // OK to send?
-        if (WizGet2(B+SK_TX_RD0) != WizGet2(B+SK_TX_WR0)) {  // some bytes to send?
-          WizPut1(B+SK_IR, SK_IR_TXOK);  // clear TXOK bit.
-          WizIssueCommand(SOCK_AND  SK_CR_SEND);
-          Line("SEND!");
-        }
+        Fatal("DIS", ir);
       }
 }
 
-void TcpRecvData(PARAM_SOCK_AND char* buf, size_t n) {
-  word bytes_waiting;
-  Line("<R");
-  do {
-    Line("R");
-    bytes_waiting = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
-    TcpPoll(JUST_SOCK);
-  } while (bytes_waiting < n);
-  Line("R>");
+bool TcpRecvDataTry(PARAM_SOCK_AND char* buf, size_t n) {
+  TcpCheck(JUST_SOCK);
 
-  word begin = WizGet2(B+SK_RX_RD0) & RING_MASK; // begin: Beneath RING_SIZE.
+  word bytes_waiting = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
+  word rd = WizGet2(B+SK_RX_RD0);
+  word wr = WizGet2(B+SK_RX_WR0);
+
+  word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
+  print5("n=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
+
+  if (bytes_waiting < n) return false;
 
   if (end >= RING_SIZE) {
     word first_n = RING_SIZE - begin;
@@ -221,25 +220,51 @@ void TcpRecvData(PARAM_SOCK_AND char* buf, size_t n) {
     WizGetN(R+begin, buf, n);
   }
 
-  WizPut2(B+SK_RX_RD0, R + begin + n);
+  WizPut2(B+SK_RX_RD0, rd + n);
   WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
+  return true;
+}
+void TcpRecvData(PARAM_SOCK_AND char* buf, size_t n) {
+  Line("<R");
+  bool ok;
+  do {
+    ok = TcpRecvDataTry(SOCK_AND buf, n);
+  } while (!ok);
+  Line("R>");
 }
 
-void TcpReserveToSend(PARAM_SOCK_AND  size_t n) {
+void UdpDial(PARAM_SOCK_AND  const byte* dest_ip, word dest_port) {
+  WizPutN(B+SK_DIPR0, dest_ip, 4);
+  WizPut2(B+SK_DPORTR0, dest_port);
+
+  // Only UDP will send to broadcast.
+  byte send_command = SK_CR_SEND;
+  if (IsBroadcast(JUST_SOCK)) {
+    // Broadcast to 255.255.255.255
+    send_command = SK_CR_SEND+1;
+    // TODO: when do we undo this?
+    WizPutN(B+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
+  }
+
+}
+void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
+  // Wait until free space is available.
   word free_size;
   Line("<D");
   do {
   Line("D");
-    TcpPoll(JUST_SOCK);
+    TcpCheck(JUST_SOCK);
     free_size = WizGet2(B+SK_TX_FSR0);
   } while (free_size < n);
   Line("D>");
+
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
   SS->tx_to_go = n;
-  printk("1tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
+  print4("1tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
-void TcpDataToSend(PARAM_SOCK_AND char* data, size_t n) {
+void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
+  TcpCheck(JUST_SOCK);
   AssertLE(n, SS->tx_to_go);  // Must have already reserved.
 
   word begin = SS->tx_ptr;  // begin: Beneath RING_SIZE.
@@ -255,45 +280,99 @@ void TcpDataToSend(PARAM_SOCK_AND char* data, size_t n) {
   }
   SS->tx_to_go -= n;
   SS->tx_ptr = (n + SS->tx_ptr) & RING_MASK;
-  printk("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
+  print4("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
-void TcpFinalizeSend(PARAM_SOCK_AND size_t n) {
-  printk("FSend %x", n);
+void WizFinalizeSend(PARAM_SOCK_AND size_t n) {
+  TcpCheck(JUST_SOCK);
+  print4("FSend %x", n);
   word tx_wr = WizGet2(B+SK_TX_WR0);  
-  printk("3tx..%x", tx_wr);
+  print4("3tx..%x", tx_wr);
   tx_wr += n;
   WizPut2(B+SK_TX_WR0, tx_wr);
-  printk("..%x", tx_wr);
+  print4("..%x", tx_wr);
   AssertEQ(SS->tx_to_go, 0);
-  WizIssueCommand(SOCK_AND  SK_CR_SEND);
+  byte send_command = SK_CR_SEND + IsBroadcast(JUST_SOCK);
+  WizIssueCommand(SOCK_AND  send_command);
+  TcpCheck(JUST_SOCK);
+}
+
+void WizSend(PARAM_SOCK_AND  char* data, size_t n) {
+  print4("SEND");
+  TcpCheck(JUST_SOCK);
+  WizReserveToSend(SOCK_AND  n);
+  WizDataToSend(SOCK_AND data, n);
+  WizFinalizeSend(SOCK_AND n);
+}
+
+void Close(PARAM_JUST_SOCK) {
+  print4("Z");
+  WizIssueCommand(SOCK1_AND 0x10/*CLOSE*/);
+  WizPut1(B+SK_MR, 0x00/*Protocol: Socket Closed*/);
+  WizPut1(B+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-void Waitee(PARAM_JUST_SOCK) {
-  char buf[5];
+void LemmaClientS1() {
+  char quint[5];
+  char inkey;
+  bool ok;
+
   while (true) {
-    printk("<W");
-    TcpRecvData(SOCK_AND buf, 5);
-    printk("W>");
-    switch (buf[0]) {
-      case 0: // case POKE
-        {
-          word n = *(word*)(buf+1);
-          word p = *(word*)(buf+3);
-          printk("POKE(%x@%x)", n, p);
-          TcpRecvData(SOCK_AND (char*)p, n);
-        }
-        break;
-      default:
-        Fatal("WUT?", buf[0]);
-        break;
+    inkey = PolCat();
+    if (inkey) {
+      memset(quint, 0, sizeof quint);
+      quint[0] = CMD_INKEY;
+      quint[4] = inkey;
+      WizSend(SOCK1_AND  quint, sizeof quint);
     }
-  }
+
+    TcpCheck(JUST_SOCK1);
+
+    ok = TcpRecvDataTry(SOCK1_AND quint, sizeof quint);
+    if (ok) {
+      word n = *(word*)(quint+1);
+      word p = *(word*)(quint+3);
+      switch ((byte)quint[0]) {
+        case CMD_POKE:
+          {
+            print3("POKE(%x@%x)", n, p);
+            TcpRecvData(SOCK1_AND (char*)p, n);
+          }
+          break;
+        case CMD_PUTCHARS:
+          {
+            for (word i = 0; i < n; i++) {
+              PutChar(*(char*)(p+i));
+            }
+          }
+          break;
+        case CMD_PEEK:
+          {
+            print3("PEEK(%x@%x)", n, p);
+            quint[0] = CMD_DATA;
+            WizSend(SOCK1_AND quint, 5);
+            WizSend(SOCK1_AND p, n);
+          }
+          break;
+        case CMD_JSR:
+          {
+            func fn = (func)p;
+            print3("CALLING %x", fn); Delay(9000);
+            fn();
+            print3("RETURNING FROM %x", fn); Delay(9000);
+          }
+          break;
+        default:
+          Fatal("WUT?", quint[0]);
+          break;
+      } // switch
+    } // ok
+  } // true
 }
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #if WHOLE_PROGRAM
 #define RomMain main  // Whole Program Optimization requires 'main' instead of 'RomMain'.
@@ -308,7 +387,7 @@ int RomMain() {
     // Next things printed go on that second line.
     Vars->vdg_ptr = 0x0420;
 
-    printk("SP=%x REV=%s", StackPointer(), __TIME__);
+    printk("SP=%x REV=%s@%s", StackPointer(), __DATE__, __TIME__);
 
 #if CHECKSUMS
     Checksum();
@@ -319,21 +398,22 @@ L   WizReset();
 L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif
     word local_port = 0x8000 | 0xFFFE & WizTicks();
-    TcpOpen(SOCK1_AND local_port);
-    TcpDial(SOCK1_AND BR_GATEWAY, 14511);
+    WizOpen(SOCK1_AND &TcpProto, local_port);
+    TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
 
 #if 1
     const char *message = "NANDO";
-    TcpReserveToSend(SOCK1_AND  5);
-    TcpDataToSend(SOCK1_AND  message, 5);
-    TcpFinalizeSend(SOCK1_AND 5);
-#endif
-    for (byte i = 3; i; i--) {
-L     TcpPoll(JUST_SOCK1);
-    }
+    WizSend(SOCK1_AND  message, 5);
 #if 0
-    Waitee(JUST_SOCK1);
+    WizReserveToSend(SOCK1_AND  5);
+    WizDataToSend(SOCK1_AND  message, 5);
+    WizFinalizeSend(SOCK1_AND 5);
+#endif
+#endif
+
+#if 1
+    LemmaClientS1();
 #endif
     Fatal("OKAY", 250);
 

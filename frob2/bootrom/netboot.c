@@ -286,11 +286,9 @@ errnum UdpSend(byte* payload, word size, const byte* dest_ip, word dest_port) {
   poke_n(BASE+SockDestIp, dest_ip, 4);
   poke_word(BASE+SockDestPort, dest_port);
 
-  bool broadcast = false;
   byte send_command = 0x20;
   if (IsBroadcast(dest_ip)) {
     // Broadcast to 255.255.255.255
-    broadcast = true;
     send_command = 0x21;
     // TODO: when do we undo this?
     poke_n(BASE+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
