@@ -1,7 +1,7 @@
 #ifndef _FROB2_BOOTROM_BOOTROM_H_
 #define _FROB2_BOOTROM_BOOTROM_H_
 
-#define VERBOSE 9 // 6 // 3
+#define VERBOSE 2 // 9 // 6 // 3
 
 #define X220NET 1
 #define LOCALNET 0

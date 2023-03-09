@@ -163,7 +163,7 @@ void TcpEstablish(PARAM_JUST_SOCK) {
   byte stuck = 250;
   while(1) {
     Delay(1000);
-    printk("");
+    printk("+");
     // Or we could wait for the connected interrupt bit,
     // and not the disconnected nor the timeout bit.
     byte status = WizGet1(B+SK_SR);
@@ -305,7 +305,6 @@ void WizSend(PARAM_SOCK_AND  char* data, size_t n) {
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND n);
-  PutChar(255);
 }
 
 void Close(PARAM_JUST_SOCK) {
@@ -415,16 +414,23 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
 
-
+word p = 0xC000;
 while (1) {
     WizSend(SOCK1_AND  "NANDO", 5);
-    Delay(1000);
+    //Delay(1000);
     WizSend(SOCK1_AND  "BILBO", 5);
-    Delay(1000);
+    //Delay(1000);
     WizSend(SOCK1_AND  "FRODO", 5);
-    Delay(1000);
+    //Delay(1000);
     WizSend(SOCK1_AND  "SAMWI", 5);
-    Delay(5000);
+    // Delay(5000);
+    
+    char quint[5] = { 204, 1, 0, p>>8, p&255 };
+    WizSend(SOCK1_AND quint, 5);
+    WizSend(SOCK1_AND p, 0x100);
+    // Delay(5000);
+    p += 0x100;
+    if ( p > 0xCfff ) p = 0xC000;
 }
 
 #if 0
