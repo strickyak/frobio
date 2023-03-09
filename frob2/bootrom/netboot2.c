@@ -149,6 +149,8 @@ void WizOpen(PARAM_SOCK_AND struct proto* proto, word local_port ) {
 
 // Only called for TCP Client.
 void TcpDial(PARAM_SOCK_AND const byte* host, word port) {
+  WizPut2(B+SK_TX_WR0, T); // does this help
+
   printk("tcp dial %a $x", host, port);
   WizPutN(B+SK_DIPR0, host, 4);
   WizPut2(B+SK_DPORTR0, port);
@@ -181,12 +183,14 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 }
 
 void TcpCheck(PARAM_JUST_SOCK) {
+#if 0
       byte sr = WizGet1(B+SK_SR); // Socket Status Register
 
       // TODO -- this is clearly wrong.
-      if (sr != SK_SR_ESTB) // No longer established?
+      if (sr != SK_SR_ESTB) { // No longer established?
         return;
-
+      }
+#endif
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
         Fatal("TMO", ir);
@@ -251,7 +255,7 @@ void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
   Line("<D");
   do {
   Line("D");
-    TcpCheck(JUST_SOCK);
+    // TcpCheck(JUST_SOCK);
     free_size = WizGet2(B+SK_TX_FSR0);
   } while (free_size < n);
   Line("D>");
@@ -262,7 +266,7 @@ void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
 }
 
 void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
-  TcpCheck(JUST_SOCK);
+  // TcpCheck(JUST_SOCK);
   AssertLE(n, SS->tx_to_go);  // Must have already reserved.
 
   word begin = SS->tx_ptr;  // begin: Beneath RING_SIZE.
@@ -282,7 +286,7 @@ void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
 }
 
 void WizFinalizeSend(PARAM_SOCK_AND size_t n) {
-  TcpCheck(JUST_SOCK);
+  // TcpCheck(JUST_SOCK);
   print4("FSend %x", n);
   word tx_wr = WizGet2(B+SK_TX_WR0);  
   print4("3tx..%x", tx_wr);
@@ -292,7 +296,7 @@ void WizFinalizeSend(PARAM_SOCK_AND size_t n) {
   AssertEQ(SS->tx_to_go, 0);
   byte send_command = SK_CR_SEND + IsBroadcast(JUST_SOCK);
   WizIssueCommand(SOCK_AND  send_command);
-  TcpCheck(JUST_SOCK);
+  // TcpCheck(JUST_SOCK);
 }
 
 void WizSend(PARAM_SOCK_AND  char* data, size_t n) {
@@ -301,6 +305,7 @@ void WizSend(PARAM_SOCK_AND  char* data, size_t n) {
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND n);
+  PutChar(255);
 }
 
 void Close(PARAM_JUST_SOCK) {
@@ -410,15 +415,21 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
 
-#if 1
-    const char *message = "NANDO";
-    WizSend(SOCK1_AND  message, 5);
+
+while (1) {
+    WizSend(SOCK1_AND  "NANDO", 5);
+    Delay(1000);
+    WizSend(SOCK1_AND  "BILBO", 5);
+    Delay(1000);
+    WizSend(SOCK1_AND  "FRODO", 5);
+    Delay(1000);
+    WizSend(SOCK1_AND  "SAMWI", 5);
+    Delay(5000);
+}
+
 #if 0
-    WizReserveToSend(SOCK1_AND  5);
-    WizDataToSend(SOCK1_AND  message, 5);
-    WizFinalizeSend(SOCK1_AND 5);
-#endif
-#endif
+    while (1) {}
+    Fatal("NOT", 13);
 
 #if 1
     LemmaClientS1();
@@ -426,5 +437,6 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     Fatal("OKAY", 250);
 
     // NOTREACHED
+#endif
     return 0;
 }

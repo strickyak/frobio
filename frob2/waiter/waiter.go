@@ -65,27 +65,30 @@ func ReadFiveLoop(conn net.Conn) {
 			log.Fatalf("ReadFive: stopping due to error: %v", err)
 		}
 
-		switch quint[0] {
-		case 78: // 'N'
+		if 'A' <= quint[0] && quint[0] <= 'Z' {
 			log.Printf("ReadFive: message %q", quint)
+		} else {
+			switch quint[0] {
 
-		case INKEY: // INKEY
-			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+			case INKEY: // INKEY
+				log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
-		case DATA: // DATA
-			{
-				n, p := HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
-				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
-				data := make([]byte, n)
-				_, err := io.ReadFull(conn, data)
-				if err != nil {
-					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+			case DATA: // DATA
+				{
+					n, p := HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
+					log.Printf("ReadFive: DATA $%x @ $%x", n, p)
+					data := make([]byte, n)
+					_, err := io.ReadFull(conn, data)
+					log.Printf("ReadFive: got data")
+					if err != nil {
+						log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+					}
+					DumpHexLines("M", p, data)
 				}
-				DumpHexLines("M", p, data)
-			}
 
-		default:
-			log.Fatalf("ReadFive: BAD COMMAND $%x", quint[0])
+			default:
+				log.Fatalf("ReadFive: BAD COMMAND $%x", quint[0])
+			}
 		}
 	}
 }
@@ -107,7 +110,8 @@ func UploadProgram(conn net.Conn) {
 
 func Serve(conn net.Conn) {
 	log.Printf("gonna ReadFive")
-	go ReadFiveLoop(conn)
+	ReadFiveLoop(conn)
+	// go ReadFiveLoop(conn)
 
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))

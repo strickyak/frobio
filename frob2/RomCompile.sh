@@ -81,7 +81,7 @@ case $COMPILER in
     for x in $others bootrom/abort.c ; do
 	    gcc6809 -I.. -Os  $frame -S --std=gnu99 $x
     done
-    for x in $others ; do
+    for x in $others bootrom/abort.c ; do
       y=$(basename $x .c)
 	    lwasm --format=obj \
         --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \

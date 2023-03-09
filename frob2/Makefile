@@ -68,6 +68,7 @@ netboot.smallest.exp:
 
 
 netboot2s: netboot2.cmoc.exp netboot2.gcc.exp netboot2.smallest.exp
+# HINT: decb copy -2 -b -r ./netboot2.gcc.exp /media/strick/APRIL3/z,NETBOOT.DEC && decb dir /media/strick/APRIL3/z && bat
 
 netboot2.cmoc.exp:
 	sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
