@@ -1,4 +1,4 @@
-package main
+package waiter
 
 import (
 	"flag"
@@ -18,6 +18,11 @@ var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
 const (
 	POKE = 0
 	CALL = 255
+
+	INKEY    = 201
+	PUTCHARS = 202
+	PEEK     = 203
+	DATA     = 204
 )
 
 func HiLo(a, b byte) uint {
@@ -28,6 +33,14 @@ func Hi(x uint) byte {
 }
 func Lo(x uint) byte {
 	return 255 & byte(x)
+}
+
+func WriteFive(conn net.Conn, cmd byte, a uint, b uint) {
+	log.Printf("WriteFive: %x %x %x", cmd, a, b)
+	_, err := conn.Write([]byte{cmd, Hi(a), Lo(a), Hi(b), Lo(b)}) // == WriteFull
+	if err != nil {
+		log.Fatalf("writeFive: stopping due to error: %v", err)
+	}
 }
 
 func PokeRam(conn net.Conn, addr uint, data []byte) {
@@ -44,31 +57,40 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	}
 }
 
-func ReadFive(conn net.Conn) {
+func ReadFiveLoop(conn net.Conn) {
 	quint := make([]byte, 5)
 	for {
 		_, err := io.ReadFull(conn, quint)
 		if err != nil {
-			log.Printf("ReadFive: stopping due to error: %v", err)
-			break
+			log.Fatalf("ReadFive: stopping due to error: %v", err)
 		}
 
 		switch quint[0] {
-		case 78:
+		case 78: // 'N'
 			log.Printf("ReadFive: message %q", quint)
-		case 201:
+
+		case INKEY: // INKEY
 			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+
+		case DATA: // DATA
+			{
+				n, p := HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
+				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
+				data := make([]byte, n)
+				_, err := io.ReadFull(conn, data)
+				if err != nil {
+					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+				}
+				DumpHexLines("M", p, data)
+			}
+
 		default:
-			log.Fatalf("ReadFive: BAD COMMAND %d.", quint[0])
+			log.Fatalf("ReadFive: BAD COMMAND $%x", quint[0])
 		}
 	}
 }
 
 func UploadProgram(conn net.Conn) {
-	if *PROGRAM == "" {
-		return
-	}
-
 	bb, err := ioutil.ReadFile(*PROGRAM)
 	if err != nil {
 		log.Printf("CANNOT READ PROGRAM %q: %v", *PROGRAM, err)
@@ -85,20 +107,17 @@ func UploadProgram(conn net.Conn) {
 
 func Serve(conn net.Conn) {
 	log.Printf("gonna ReadFive")
-	go ReadFive(conn)
+	go ReadFiveLoop(conn)
 
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
 
-	/*
-		    var b []byte
-		    for i := 128+3; i < 256; i += 4 {
-		      b = append(b, byte(i))
-		    }
-			PokeRam(conn, 0x600 - 64, b)
-	*/
+	if *PROGRAM != "" {
+		UploadProgram(conn)
+	}
 
-	UploadProgram(conn)
+	WriteFive(conn, PEEK, 0xC000, 256)
+	WriteFive(conn, PEEK, 0xC800, 256)
 
 	log.Printf("Serving: Sleeping.")
 	time.Sleep(3600 * time.Second)
@@ -122,9 +141,4 @@ func Listen() {
 		log.Printf("Accepted.")
 		go Serve(conn)
 	}
-}
-
-func main() {
-	flag.Parse()
-	Listen()
 }
