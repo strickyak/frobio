@@ -2,10 +2,12 @@
 
 enum Commands {
   CMD_POKE = 0,
+  CMD_LOG = 200,
   CMD_INKEY = 201,
   CMD_PUTCHARS = 202,
   CMD_PEEK = 203,
   CMD_DATA = 204,
+  CMD_SP_PC = 205,
   CMD_JSR = 255,
 };
 
@@ -341,7 +343,7 @@ void LemmaClientS1() {
           {
             print3("POKE(%x@%x)", n, p);
             while (n) {
-              word chunk = (n < 256) ? n : 256;
+              word chunk = (n < 256u) ? n : 256u;
               printk("#$%x", chunk);
               TcpRecvData(SOCK1_AND (char*)p, chunk);
               n -= chunk;
@@ -362,7 +364,7 @@ void LemmaClientS1() {
             print3("PEEK(%x@%x)", n, p);
             quint[0] = CMD_DATA;
             WizSend(SOCK1_AND quint, 5);
-            WizSend(SOCK1_AND p, n);
+            WizSend(SOCK1_AND (char*)p, n);
           }
           break;
         case CMD_JSR:
@@ -381,12 +383,20 @@ void LemmaClientS1() {
   } // true
 }
 
+void Send5(byte cmd, word n, word p) {
+    char quint[5] = { cmd, (byte)(n>>8), (byte)(n&255), (byte)(p>>8), (byte)(p&255) };
+    WizSend(SOCK1_AND quint, 5);
+} 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #if WHOLE_PROGRAM
 #define RomMain main  // Whole Program Optimization requires 'main' instead of 'RomMain'.
 #endif
 int RomMain() {
+    word sp_reg = StackPointer();
+
     // Clear our "global" variables to zero.
     memset(Vars, 0, sizeof (struct vars));
 
@@ -396,7 +406,7 @@ int RomMain() {
     // Next things printed go on that second line.
     Vars->vdg_ptr = 0x0420;
 
-    printk("SP=%x REV=%s@%s", StackPointer(), __DATE__, __TIME__);
+    printk("SP=%x REV=%s@%s", sp_reg, __DATE__, __TIME__);
 
 #if CHECKSUMS
     Checksum();
@@ -413,16 +423,18 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     WizOpen(SOCK1_AND &TcpProto, local_port);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
+    Send5(CMD_SP_PC, sp_reg, (word)&RomMain);
 
 word p = 0x0000;
 while (1) {
-    WizSend(SOCK1_AND  "NANDO", 5);
+    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
+    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
     //Delay(1000);
-    WizSend(SOCK1_AND  "BILBO", 5);
+    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "BILBO", 5);
     //Delay(1000);
-    WizSend(SOCK1_AND  "FRODO", 5);
+    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "FRODO", 5);
     //Delay(1000);
-    WizSend(SOCK1_AND  "SAMWI", 5);
+    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "SAMWI", 5);
     // Delay(5000);
     
     char quint[5] = { 204, 1, 0, p>>8, p&255 };
