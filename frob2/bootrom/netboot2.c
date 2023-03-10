@@ -414,7 +414,7 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
 
-word p = 0xC000;
+word p = 0x0000;
 while (1) {
     WizSend(SOCK1_AND  "NANDO", 5);
     //Delay(1000);
@@ -430,7 +430,7 @@ while (1) {
     WizSend(SOCK1_AND p, 0x100);
     // Delay(5000);
     p += 0x100;
-    if ( p > 0xCfff ) p = 0xC000;
+    if ( p == 0xFF00 ) p = 0x0000;
 }
 
 #if 0
