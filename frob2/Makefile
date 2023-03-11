@@ -54,7 +54,7 @@ f.b-unix:
 	./a.out -a tweb/testdata/index.fm
 
 
-netboots: netboot.cmoc.exp netboot.gcc.exp netboot.smallest.exp
+netboots: netboot.cmoc.exp netboot.gcc.exp netboot.smallest.exp netboot.fastest.exp
 
 netboot.cmoc.exp:
 	sh RomCompile.sh bootrom/netboot.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
@@ -65,9 +65,12 @@ netboot.gcc.exp:
 netboot.smallest.exp:
 	FRAME=0 OPT=-Os COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
 	mv netboot.exp netboot.smallest.exp
+netboot.fastest.exp:
+	FRAME=0 OPT=-O2 COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot.exp netboot.fastest.exp
 
 
-netboot2s: netboot2.cmoc.exp netboot2.gcc.exp netboot2.smallest.exp
+netboot2s: netboot2.cmoc.exp netboot2.gcc.exp netboot2.smallest.exp netboot2.fastest.exp
 # HINT: decb copy -2 -b -r ./netboot2.gcc.exp /media/strick/APRIL3/z,NETBOOT.DEC && decb dir /media/strick/APRIL3/z && bat
 
 netboot2.cmoc.exp:
@@ -79,6 +82,9 @@ netboot2.gcc.exp:
 netboot2.smallest.exp:
 	FRAME=0 OPT=-Os COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
 	mv netboot2.exp netboot2.smallest.exp
+netboot2.fastest.exp:
+	FRAME=0 OPT=-O2 COMPILER=whole-gcc sh RomCompile.sh bootrom/netboot2.c bootrom/common.c  bootrom/tables.c  bootrom/checksum.c
+	mv netboot2.exp netboot2.fastest.exp
 
 #WHOLE_PROGRAM=0
 #

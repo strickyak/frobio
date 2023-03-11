@@ -8,8 +8,11 @@ enum Commands {
   CMD_PEEK = 203,
   CMD_DATA = 204,
   CMD_SP_PC = 205,
+  CMD_REV = 206,
   CMD_JSR = 255,
 };
+
+const char Rev[] = __DATE__ " " __TIME__;
 
 static byte WizGet1(word reg) {
   WIZ->addr_hi = (byte)(reg >> 8);
@@ -35,7 +38,7 @@ static void WizGetN(word reg, void* buffer, word size) {
   byte* to = (byte*) buffer;
   WIZ->addr_hi = (byte)(reg >> 8);
   WIZ->addr_lo = (byte)(reg);
-  for (word i=0; i<size; i++) {
+  for (word i=size; i; i--) {
     *to++ = WIZ->data;
   }
   print7("%x[%x]>", reg, size);
@@ -61,9 +64,17 @@ static void WizPutN(word reg, const void* data, word size) {
   const byte* from = (const byte*) data;
   WIZ->addr_hi = (byte)(reg >> 8);
   WIZ->addr_lo = (byte)(reg);
-  for (word i=0; i<size; i++) {
+
+#if 1
+  for (word i=size; i; i--) {
     WIZ->data = *from++;
   }
+#else
+  word i = size;
+  do {
+    WIZ->data = *from++;
+  } while (i--);
+#endif
   print7("%x[%x]<", reg, size);
 }
 
@@ -323,7 +334,7 @@ void LemmaClientS1() {
   char inkey;
   bool ok;
 
-  while (true) {
+  // while (true) {
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -332,6 +343,7 @@ void LemmaClientS1() {
       WizSend(SOCK1_AND  quint, sizeof quint);
     }
 
+/*
     TcpCheck(JUST_SOCK1);
 
     ok = TcpRecvDataTry(SOCK1_AND quint, sizeof quint);
@@ -380,7 +392,8 @@ void LemmaClientS1() {
           break;
       } // switch
     } // ok
-  } // true
+*/
+  // } // true
 }
 
 void Send5(byte cmd, word n, word p) {
@@ -406,7 +419,7 @@ int RomMain() {
     // Next things printed go on that second line.
     Vars->vdg_ptr = 0x0420;
 
-    printk("SP=%x REV=%s@%s", sp_reg, __DATE__, __TIME__);
+    printk("SP=%x REV='%s'", sp_reg, Rev);
 
 #if CHECKSUMS
     Checksum();
@@ -424,25 +437,38 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
     Send5(CMD_SP_PC, sp_reg, (word)&RomMain);
+    Send5(CMD_REV, strlen(Rev), 0);
+    WizSend(SOCK1_AND  Rev, strlen(Rev));
 
+word rounds = 0;
 word p = 0x0000;
 while (1) {
+    LemmaClientS1();
     Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
+
+    LemmaClientS1();
     Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
-    //Delay(1000);
+
+    LemmaClientS1();
     Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "BILBO", 5);
-    //Delay(1000);
+
+    LemmaClientS1();
     Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "FRODO", 5);
-    //Delay(1000);
+
+    LemmaClientS1();
     Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "SAMWI", 5);
-    // Delay(5000);
-    
+
+    LemmaClientS1();
+
     char quint[5] = { 204, 1, 0, p>>8, p&255 };
     WizSend(SOCK1_AND quint, 5);
     WizSend(SOCK1_AND p, 0x100);
-    // Delay(5000);
     p += 0x100;
-    if ( p == 0xFF00 ) p = 0x0000;
+    if ( p == 0xFF00 ) {
+        p = 0x0000;
+        ++rounds;
+        printk("%u", rounds);
+    }
 }
 
 #if 0

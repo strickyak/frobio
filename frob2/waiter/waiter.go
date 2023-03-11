@@ -25,6 +25,7 @@ const (
 	PEEK     = 203
 	DATA     = 204
 	SP_PC    = 205
+	REV      = 206
 )
 
 func HiLo(a, b byte) uint {
@@ -67,44 +68,50 @@ func ReadFiveLoop(conn net.Conn) {
 			log.Fatalf("ReadFive: stopping due to error: %v", err)
 		}
 
-		if 'A' <= quint[0] && quint[0] <= 'Z' {
-			log.Printf("ReadFive: message %q", quint)
-		} else {
-			cmd, n, p := quint[0], HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
-			log.Printf("ReadFive: cmd=%x n=%x p=%x ...", cmd, n, p)
+		cmd, n, p := quint[0], HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
+		log.Printf("ReadFive: cmd=%x n=%x p=%x ...", cmd, n, p)
 
-			switch cmd {
+		switch cmd {
 
-			case SP_PC:
-				log.Printf("ReadFive: sp=%x pc=%x", n, p)
+		case SP_PC:
+			log.Printf("ReadFive: sp=%x pc=%x", n, p)
 
-			case LOG:
-				{
-					data := make([]byte, n)
-					_, err := io.ReadFull(conn, data)
-					if err != nil {
-						log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
-					}
-					log.Printf("ReadFive: LOG %q", data)
+		case LOG:
+			{
+				data := make([]byte, n)
+				_, err := io.ReadFull(conn, data)
+				if err != nil {
+					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
 				}
-
-			case INKEY: // INKEY
-				log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
-
-			case DATA: // DATA
-				{
-					log.Printf("ReadFive: DATA $%x @ $%x", n, p)
-					data := make([]byte, n)
-					_, err := io.ReadFull(conn, data)
-					if err != nil {
-						log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
-					}
-					DumpHexLines("M", p, data)
-				}
-
-			default:
-				log.Fatalf("ReadFive: BAD COMMAND $%x", quint[0])
+				log.Printf("ReadFive: LOG %q", data)
 			}
+
+		case REV:
+			{
+				data := make([]byte, n)
+				_, err := io.ReadFull(conn, data)
+				if err != nil {
+					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+				}
+				log.Printf("ReadFive: REV %q", data)
+			}
+
+		case INKEY: // INKEY
+			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+
+		case DATA: // DATA
+			{
+				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
+				data := make([]byte, n)
+				_, err := io.ReadFull(conn, data)
+				if err != nil {
+					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+				}
+				DumpHexLines("M", p, data)
+			}
+
+		default:
+			log.Fatalf("ReadFive: BAD COMMAND $%x", quint[0])
 		}
 	}
 }
