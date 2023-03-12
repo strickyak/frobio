@@ -113,6 +113,8 @@ func ReadFiveLoop(conn net.Conn) {
 					LogicalRamImage[p+i] = data[i]
 				}
 				DumpHexLines("M", p, data)
+/*
+                // Add this code to save a snapshot of Ram that we've seen:
 
 				if p == 0xFE00 && n == 256 {
 					const RamFile = "/tmp/coco.ram"
@@ -121,6 +123,7 @@ func ReadFiveLoop(conn net.Conn) {
 						log.Fatalf("ReadFive: DATA: writing %q: %v", RamFile, err)
 					}
 				}
+*/
 			}
 
 		default:
