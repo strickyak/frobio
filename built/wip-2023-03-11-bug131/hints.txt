@@ -1,0 +1,58 @@
+Insert SD card into linux.  It shows up as /media/strick/APRIL3
+It contains a decb image named "z".   See photo.
+
+---------------------------
+
+$ cd /home/strick/go/src/github.com/strickyak/frobio/frob2
+
+$ make -B netboot2s
+
+$ decb copy -2 -b -r ./netboot2.fastest.exp  /media/strick/APRIL3/z,NETBOOT.DEC && decb dir /media/strick/APRIL3/z
+
+$ sync
+
+$ cp ./netboot2.fastest.exp ../built/wip-2023-03-11-bug131/NETBOOT.DEC
+
+---------------------------
+
+Move the SD card to CocoSDC in mini-MPI slot 1, and CocoIO is in mini-MPI slot 2.
+Mount the decb image "z".
+Go into basic, LOAD "GO", and RUN that.
+It will ERASE flash slot @4 in your CocoSDC! and install NETBOOT.DEC in slot @4.
+
+---------------------------
+
+Before you RUN @4, you have to set up your ethernet and run a "waiter".
+
+Configure a Linux ethernet interface to be 10.2.2.2 with netmask 255.0.0.0.
+No gateway or routing is needed.  Just don't be on another network 10.
+Wire this network directly to the CocoIO (or though a hub/switch/router).
+
+Change everything for your own HOME, but you do need the frobio repository
+to be in a path in your HOME starting with go/src/github.com/strickyak/.
+
+$ export GOPATH=/home/strick/go
+
+$ cd /home/strick/go/src/github.com/strickyak/frobio/frob2/waiter/cli
+
+$ go run waiter.go
+
+That will accept the TCP connection from the CocoIO card.
+
+---------------------------
+
+If you don't have "go", you have to "apt install golang" or equivalent.
+
+---------------------------
+
+If Go says you have the wrong version of Go,
+
+$ cd /home/strick/go/src/github.com/strickyak/frobio/frob2/waiter
+
+$ rm go.mod
+
+$ go mod init
+
+$ go mod tidy
+
+and that should fix it up for your version of the Go compiler.
