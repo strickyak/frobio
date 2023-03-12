@@ -31,7 +31,8 @@ Wire this network directly to the CocoIO (or though a hub/switch/router).
 
 --------------------------------------
 
-To run a TCP sink, you can run this on linux:
+To run a TCP sink, you can use netcat ("nc") on linux.
+It must be TCP port 14511 on host 10.2.2.2.
 
 $ nc -l 14511 < /dev/null > /dev/null
 
@@ -39,7 +40,7 @@ To capture the data (it can get big quickly), send it to a file:
 
 $ nc -l 14511 < /dev/null > /tmp/frob.dat
 
-use ^C to stop it.
+Use ^C to stop it.
 
 --------------------------------------
 
