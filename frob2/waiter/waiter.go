@@ -28,6 +28,8 @@ const (
 	REV      = 206
 )
 
+var LogicalRamImage [0x10000]byte // capture coco image.
+
 func HiLo(a, b byte) uint {
 	return (uint(a) << 8) | uint(b)
 }
@@ -107,7 +109,18 @@ func ReadFiveLoop(conn net.Conn) {
 				if err != nil {
 					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
 				}
+				for i := uint(0); i < n; i++ {
+					LogicalRamImage[p+i] = data[i]
+				}
 				DumpHexLines("M", p, data)
+
+				if p == 0xFE00 && n == 256 {
+					const RamFile = "/tmp/coco.ram"
+					err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
+					if err != nil {
+						log.Fatalf("ReadFive: DATA: writing %q: %v", RamFile, err)
+					}
+				}
 			}
 
 		default:
