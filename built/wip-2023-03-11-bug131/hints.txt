@@ -22,11 +22,30 @@ It will ERASE flash slot @4 in your CocoSDC! and install NETBOOT.DEC in slot @4.
 
 ---------------------------
 
-Before you RUN @4, you have to set up your ethernet and run a "waiter".
+Before you RUN @4, you have to (1) set up your ethernet and (2) run a TCP sink
+to catch the data.
 
 Configure a Linux ethernet interface to be 10.2.2.2 with netmask 255.0.0.0.
 No gateway or routing is needed.  Just don't be on another network 10.
 Wire this network directly to the CocoIO (or though a hub/switch/router).
+
+--------------------------------------
+
+To run a TCP sink, you can run this on linux:
+
+$ nc -l 14511 < /dev/null > /dev/null
+
+To capture the data (it can get big quickly), send it to a file:
+
+$ nc -l 14511 < /dev/null > /tmp/frob.dat
+
+use ^C to stop it.
+
+--------------------------------------
+
+Another way to run a TCP sink is to run the program (work in progress)
+that is intended to talk with CocoIO.  It's also in the frobio
+repository, and is written in the language Go.
 
 Change everything for your own HOME, but you do need the frobio repository
 to be in a path in your HOME starting with go/src/github.com/strickyak/.
@@ -56,3 +75,6 @@ $ go mod init
 $ go mod tidy
 
 and that should fix it up for your version of the Go compiler.
+
+-----------------------------
+-----------------------------
