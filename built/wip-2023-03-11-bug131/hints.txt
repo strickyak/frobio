@@ -20,6 +20,13 @@ Mount the decb image "z".
 Go into basic, LOAD "GO", and RUN that.
 It will ERASE flash slot @4 in your CocoSDC! and install NETBOOT.DEC in slot @4.
 
+When you reboot, you don't need the SD card inserted again.
+Just boot with the CocoSDC, maybe hit ESC, and enter
+  RUN @4
+
+and you can even set dip switches to boot directly into @4,
+like for a Coco with a broken keyboard.
+
 ---------------------------
 
 Before you RUN @4, you have to (1) set up your ethernet and (2) run a TCP sink
