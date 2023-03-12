@@ -19,6 +19,7 @@ Move the SD card to CocoSDC in mini-MPI slot 1, and CocoIO is in mini-MPI slot 2
 Mount the decb image "z".
 Go into basic, LOAD "GO", and RUN that.
 It will ERASE flash slot @4 in your CocoSDC! and install NETBOOT.DEC in slot @4.
+(See image 1t.png)
 
 When you reboot, you don't need the SD card inserted again.
 Just boot with the CocoSDC, maybe hit ESC, and enter
@@ -35,6 +36,9 @@ to catch the data.
 Configure a Linux ethernet interface to be 10.2.2.2 with netmask 255.0.0.0.
 No gateway or routing is needed.  Just don't be on another network 10.
 Wire this network directly to the CocoIO (or though a hub/switch/router).
+
+If the program works, it will slowly count on the screen
+( as seen in file 2t.png ).
 
 --------------------------------------
 
