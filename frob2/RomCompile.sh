@@ -5,7 +5,7 @@ COMPILER=${COMPILER:-cmoc}
 OPT=${OPT:--O0}
 # WHOLE=${WHOLE:-0}
 FRAME=${FRAME:-1}
-EXTRA=${EXTRA:-}
+PIC=${PIC:-}
 
 src=$1 ; shift
 others="$@"
@@ -73,13 +73,13 @@ case $COMPILER in
 
   gcc)
     lwasm --obj -lpreboot.list -opreboot.o   bootrom/preboot.asm
-	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/stdlib.c
-	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/abort.c
-	  gcc6809 -I.. $OPT $frame -S --std=gnu99 $EXTRA -D"WHOLE_PROGRAM=0" $src
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 $PIC bootrom/stdlib.c
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 $PIC bootrom/abort.c
+	  gcc6809 -I.. $OPT $frame -S --std=gnu99 $PIC -D"WHOLE_PROGRAM=0" $src
     ofiles="$p.o"
 
     for x in $others bootrom/abort.c ; do
-	    gcc6809 -I.. -Os  $frame -S --std=gnu99 $x
+	    gcc6809 -I.. $OPT  $frame -S --std=gnu99 $PIC $x
     done
     for x in $others bootrom/abort.c ; do
       y=$(basename $x .c)
@@ -108,12 +108,12 @@ case $COMPILER in
     sed s/RomMain/main/g <bootrom/preboot.asm >__prebootmain.s
     lwasm --obj -lpreboot.list -opreboot.o __prebootmain.s
 
-	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/stdlib.c
-	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 bootrom/abort.c
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 $PIC bootrom/stdlib.c
+	  gcc6809 -I.. $OPT  $frame -S --std=gnu99 $PIC bootrom/abort.c
 
     cat $src $others > __whole.c
 
-	  gcc6809 -fwhole-program -I.. $OPT $frame -S --std=gnu99 $EXTRA -D"WHOLE_PROGRAM=1" __whole.c
+	  gcc6809 -fwhole-program -I.. $OPT $frame -S --std=gnu99 $PIC -D"WHOLE_PROGRAM=1" __whole.c
 
 	  lwasm --format=obj \
       --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource \
