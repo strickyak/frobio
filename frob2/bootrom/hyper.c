@@ -1,5 +1,8 @@
 #include "frob2/bootrom/bootrom.h"
 
+#if EMULATED
+
+#undef PrintH
 void PrintH(const char* format, ...) {
 #ifdef __GNUC__
   // Problem: may not be a frame pointer.
@@ -11,3 +14,5 @@ void PrintH(const char* format, ...) {
   }
 #endif
 }
+
+#endif
