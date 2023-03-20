@@ -63,15 +63,22 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 }
 
 func ReadFiveLoop(conn net.Conn) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("ReadfiveLoop terminating with panic: %v", r)
+		}
+	}()
+
 	quint := make([]byte, 5)
 	for {
 		_, err := io.ReadFull(conn, quint)
 		if err != nil {
-			log.Fatalf("ReadFive: stopping due to error: %v", err)
+			log.Panicf("ReadFive: stopping due to error: %v", err)
 		}
 
 		cmd, n, p := quint[0], HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
-		log.Printf("ReadFive: cmd=%x n=%x p=%x ...", cmd, n, p)
+		log.Printf("ReadFive: cmd=%02x n=%04x p=%04x ...", cmd, n, p)
 
 		switch cmd {
 
@@ -83,7 +90,7 @@ func ReadFiveLoop(conn net.Conn) {
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
 				if err != nil {
-					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
 				}
 				log.Printf("ReadFive: LOG %q", data)
 			}
@@ -93,7 +100,7 @@ func ReadFiveLoop(conn net.Conn) {
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
 				if err != nil {
-					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
 				}
 				log.Printf("ReadFive: REV %q", data)
 			}
@@ -107,27 +114,27 @@ func ReadFiveLoop(conn net.Conn) {
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
 				if err != nil {
-					log.Fatalf("ReadFive: DATA: stopping due to error: %v", err)
+					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
 				}
 				for i := uint(0); i < n; i++ {
 					LogicalRamImage[p+i] = data[i]
 				}
 				DumpHexLines("M", p, data)
-/*
-                // Add this code to save a snapshot of Ram that we've seen:
+				/*
+					                   // Add this code to save a snapshot of Ram that we've seen:
 
-				if p == 0xFE00 && n == 256 {
-					const RamFile = "/tmp/coco.ram"
-					err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
-					if err != nil {
-						log.Fatalf("ReadFive: DATA: writing %q: %v", RamFile, err)
-					}
-				}
-*/
+							if p == 0xFE00 && n == 256 {
+								const RamFile = "/tmp/coco.ram"
+								err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
+								if err != nil {
+									log.Fatalf("ReadFive: DATA: writing %q: %v", RamFile, err)
+								}
+							}
+				*/
 			}
 
 		default:
-			log.Fatalf("ReadFive: BAD COMMAND $%x", quint[0])
+			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
 		}
 	}
 }
@@ -149,8 +156,7 @@ func UploadProgram(conn net.Conn) {
 
 func Serve(conn net.Conn) {
 	log.Printf("gonna ReadFive")
-	ReadFiveLoop(conn)
-	// go ReadFiveLoop(conn)
+	go ReadFiveLoop(conn)
 
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
@@ -159,8 +165,8 @@ func Serve(conn net.Conn) {
 		UploadProgram(conn)
 	}
 
-	WriteFive(conn, PEEK, 0xC000, 256)
-	WriteFive(conn, PEEK, 0xC800, 256)
+	WriteFive(conn, PEEK, 256, 0xC000)
+	WriteFive(conn, PEEK, 256, 0xC800)
 
 	log.Printf("Serving: Sleeping.")
 	time.Sleep(3600 * time.Second)
