@@ -14,7 +14,8 @@ word StackPointer() {
 }
 
 char PolCat() {
-  char inkey;
+  char inkey = 0;
+#if !EMULATED
 #ifdef __GNUC__
   asm volatile (R"(
     jsr [$A000]
@@ -26,10 +27,12 @@ char PolCat() {
     sta :inkey
   }
 #endif
+#endif
   return inkey;
 }
 
 void Delay(word n) {
+#if !EMULATED
   while (n--) {
 #ifdef __GNUC__
     asm volatile ("mul" : : : "d", "b", "a");
@@ -47,9 +50,14 @@ void Delay(word n) {
     }
 #endif
   }
+#endif
 }
 
 void PutChar(char ch) {
+#if EMULATED
+  PrintH("PC: %x %c", ch, (' ' <= ch && ch <= '~') ? ch : '?');
+  return;
+#endif
     if (ch == 13) { // Carriage Return
       do {
         PutChar(' ');

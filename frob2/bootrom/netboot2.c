@@ -222,7 +222,7 @@ bool TcpRecvDataTry(PARAM_SOCK_AND char* buf, size_t n) {
 
   word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
-  print5("n=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
+  PrintH("TTn=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
 
   if (bytes_waiting < n) return false;
 
@@ -263,6 +263,7 @@ void UdpDial(PARAM_SOCK_AND  const byte* dest_ip, word dest_port) {
 
 }
 void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
+  PrintH("ResTS %x", n);
   // Wait until free space is available.
   word free_size;
   Line("<D");
@@ -270,6 +271,7 @@ void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
   Line("D");
     // TcpCheck(JUST_SOCK);
     free_size = WizGet2(B+SK_TX_FSR0);
+    PrintH("Res free %x", free_size);
   } while (free_size < n);
   Line("D>");
 
@@ -307,7 +309,12 @@ void WizFinalizeSend(PARAM_SOCK_AND size_t n) {
   WizPut2(B+SK_TX_WR0, tx_wr);
   print4("..%x", tx_wr);
   AssertEQ(SS->tx_to_go, 0);
+#if 0
+  // IF WE UNIFY UDP AND TCP, we want the Broadcast check.
   byte send_command = SK_CR_SEND + IsBroadcast(JUST_SOCK);
+#else
+  byte send_command = SK_CR_SEND;
+#endif
   WizIssueCommand(SOCK_AND  send_command);
   // TcpCheck(JUST_SOCK);
 }
@@ -334,7 +341,6 @@ void LemmaClientS1() {
   char inkey;
   bool ok;
 
-  // while (true) {
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -343,7 +349,6 @@ void LemmaClientS1() {
       WizSend(SOCK1_AND  quint, sizeof quint);
     }
 
-/*
     TcpCheck(JUST_SOCK1);
 
     ok = TcpRecvDataTry(SOCK1_AND quint, sizeof quint);
@@ -354,6 +359,7 @@ void LemmaClientS1() {
         case CMD_POKE:
           {
             print3("POKE(%x@%x)", n, p);
+            PrintH("POKE(%x@%x)", n, p);
             while (n) {
               word chunk = (n < 256u) ? n : 256u;
               printk("#$%x", chunk);
@@ -374,11 +380,16 @@ void LemmaClientS1() {
         case CMD_PEEK:
           {
             print3("PEEK(%x@%x)", n, p);
+            PrintH("PEEK(%x@%x)", n, p);
             quint[0] = CMD_DATA;
+            PrintH("PEEK:Q(DATA)");
             WizSend(SOCK1_AND quint, 5);
-            WizSend(SOCK1_AND (char*)p, n);
+            PrintH("PEEK:DATA");
+            WizSend(SOCK1_AND p, n);
+            PrintH("PEEK:DONE");
           }
           break;
+/*
         case CMD_JSR:
           {
             func fn = (func)p;
@@ -387,13 +398,13 @@ void LemmaClientS1() {
             print3("RETURNING FROM %x", fn); Delay(9000);
           }
           break;
+*/
         default:
           Fatal("WUT?", quint[0]);
           break;
       } // switch
     } // ok
-*/
-  // } // true
+
 }
 
 void Send5(byte cmd, word n, word p) {
@@ -409,6 +420,7 @@ void Send5(byte cmd, word n, word p) {
 #endif
 int RomMain() {
     word sp_reg = StackPointer();
+    PrintH("stack=%x", sp_reg);
 
     // Clear our "global" variables to zero.
     memset(Vars, 0, sizeof (struct vars));
@@ -426,50 +438,56 @@ int RomMain() {
 #endif
     word ticks = WizTicks();
     word local_port = 0x8000 | ticks;
-    printk("  TICKS *%x* PORT *%x*  ", ticks, local_port);
+    //printk("  TICKS *%x* PORT *%x*  ", ticks, local_port);
+    //PrintH("TICKS *%x* PORT *%x*  ", ticks, local_port);
 
 L   WizReset();
 #if BR_STATIC
 L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif
+    PrintH("CONF");
     // word local_port = 0x8000 | 0xFFFE & WizTicks();
     WizOpen(SOCK1_AND &TcpProto, local_port);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
+    PrintH("EST");
     Send5(CMD_SP_PC, sp_reg, (word)&RomMain);
     Send5(CMD_REV, strlen(Rev), 0);
     WizSend(SOCK1_AND  Rev, strlen(Rev));
+    PrintH("sent some");
 
 word rounds = 0;
 word p = 0x0000;
-while (1) {
-    LemmaClientS1();
-    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
 
-    LemmaClientS1();
-    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
+    while (1) {
+        PrintH("WH");
+        LemmaClientS1();
+        Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
 
-    LemmaClientS1();
-    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "BILBO", 5);
+        LemmaClientS1();
+        Send5(CMD_LOG, 9, 0); WizSend(SOCK1_AND  "NANDO_TWO", 9);
 
-    LemmaClientS1();
-    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "FRODO", 5);
+        LemmaClientS1();
+        Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "BILBO", 5);
 
-    LemmaClientS1();
-    Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "SAMWI", 5);
+        LemmaClientS1();
+        Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "FRODO", 5);
 
-    LemmaClientS1();
+        LemmaClientS1();
+        Send5(CMD_LOG, 7, 0); WizSend(SOCK1_AND  "SAMWISE", 7);
 
-    char quint[5] = { 204, 1, 0, p>>8, p&255 };
-    WizSend(SOCK1_AND quint, 5);
-    WizSend(SOCK1_AND p, 0x100);
-    p += 0x100;
-    if ( p == 0xFF00 ) {
-        p = 0x0000;
-        ++rounds;
-        printk("%u", rounds);
+        LemmaClientS1();
+
+        char quint[5] = { CMD_DATA, 1, 0, p>>8, p&255 };
+        WizSend(SOCK1_AND quint, 5);
+        WizSend(SOCK1_AND p, 0x100);
+        p += 0x100;
+        if ( p == 0xFF00 ) {
+            p = 0x0000;
+            ++rounds;
+            printk("%u", rounds);
+        }
     }
-}
 
 #if 0
     while (1) {}

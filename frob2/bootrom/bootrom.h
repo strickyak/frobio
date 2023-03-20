@@ -2,9 +2,10 @@
 #define _FROB2_BOOTROM_BOOTROM_H_
 
 #define VERBOSE 2 // 9 // 6 // 3
+#define EMULATED 1
 
-#define X220NET 1
-#define LOCALNET 0
+#define X220NET 0
+#define LOCALNET 1
 
 #define BR_STATIC 1
 #define BR_DHCP 0
@@ -198,6 +199,12 @@ void printk(const char* format, ...);
 void Line(const char* s);
 void AssertEQ(word a, word b);
 void AssertLE(word a, word b);
+
+// hyper
+
+void PrintH(const char* format, ...);
+
+// vanishing printk's
 
 #define print1 if (VERBOSE>=1) printk
 #define print2 if (VERBOSE>=2) printk
