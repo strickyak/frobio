@@ -534,4 +534,238 @@ Where is corrupt in $C0xx and $C8xx ?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-[END]
+I see Coco3 BASIC (COCO3.ROM) setting up the MMU thus on reset:
+
+GIME MmuTask <- 0; clock rate <- false
+GIME MmuMap[0][0] <- 38  (was 00)
+GIME MmuMap[0][1] <- 39  (was 39)
+GIME MmuMap[0][2] <- 34  (was 3a)
+GIME MmuMap[0][3] <- 3b  (was 3b)
+GIME MmuMap[0][4] <- 3c  (was 3c)
+GIME MmuMap[0][5] <- 3d  (was 3d)
+GIME MmuMap[0][6] <- 3e  (was 3e)
+GIME MmuMap[0][7] <- 3f  (was 3f)
+GIME MmuMap[1][0] <- 38  (was 00)
+GIME MmuMap[1][1] <- 30  (was 39)
+GIME MmuMap[1][2] <- 31  (was 3a)
+GIME MmuMap[1][3] <- 32  (was 3b)
+GIME MmuMap[1][4] <- 33  (was 3c)
+GIME MmuMap[1][5] <- 3d  (was 3d)
+GIME MmuMap[1][6] <- 35  (was 3e)
+GIME MmuMap[1][7] <- 3f  (was 3f)
+GIME MmuEnable <- true
+(...)
+GIME MmuMap[0][2] <- 3a  (was 34)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+In fact, here is everything I logged during the reset.
+but I'm afraid the first part is my initialization,
+not running the ROM.
+
+Super Basic Reset
+
+$ go run --tags=coco3,level2 gomar.go -t 1 -rom_8000  rom/BASIC3.ROM
+GIME ff90 <= 6c
+GIME MmuEnable <- true
+GIME ff91 <= 00
+GIME MmuTask <- 0; clock rate <- false
+GIME ff92 <= 00
+GIME		IRQ bits: $00=|||||||
+GIME ff93 <= 00
+GIME		FIRQ bits: $00=|||||||
+GIME ff94 <= 09
+GIME		Timer=$900 Start!
+GIME ff95 <= 00
+GIME		Timer=$900
+GIME ff96 <= 00
+GIME		reserved
+GIME ff97 <= 00
+GIME		reserved
+GIME ff98 <= 03
+GIME		GraphicsNotAlpha=0 AttrsIfAlpha=0 Artifacting=0 Monochrome=0 50Hz=0 LinesPerCharRow=3=8.
+GIME ff99 <= 20
+GIME		LinesPerField=1=200. HRES=0 CRES=0
+GIME ff9a <= 00
+GIME		Border: rgb=$00=(0,0,0)
+GIME ff9b <= 00
+GIME		512K bank selector: 00
+GIME ff9c <= 00
+GIME		Virt Scroll (alpha) = 0
+GIME ff9d <= 3c
+GIME		VirtOffsetAddr=$1e000
+GIME ff9e <= 01
+GIME		VirtOffsetAddr=$1e008
+GIME ff9f <= 00
+GIME		HVEN=0 HorzOffsetAddr=0
+GIME ff90 <= 0a
+GIME MmuEnable <- false
+GIME ffb0 <= 12
+GIME		$ffb0: palette[$0] <- rgb=$12=(0,3,0)
+GIME ffb1 <= 12
+GIME		$ffb1: palette[$1] <- rgb=$12=(0,3,0)
+GIME ffb2 <= 12
+GIME		$ffb2: palette[$2] <- rgb=$12=(0,3,0)
+GIME ffb3 <= 12
+GIME		$ffb3: palette[$3] <- rgb=$12=(0,3,0)
+GIME ffb4 <= 12
+GIME		$ffb4: palette[$4] <- rgb=$12=(0,3,0)
+GIME ffb5 <= 12
+GIME		$ffb5: palette[$5] <- rgb=$12=(0,3,0)
+GIME ffb6 <= 12
+GIME		$ffb6: palette[$6] <- rgb=$12=(0,3,0)
+GIME ffb7 <= 12
+GIME		$ffb7: palette[$7] <- rgb=$12=(0,3,0)
+GIME ffb8 <= 12
+GIME		$ffb8: palette[$8] <- rgb=$12=(0,3,0)
+GIME ffb9 <= 12
+GIME		$ffb9: palette[$9] <- rgb=$12=(0,3,0)
+GIME ffba <= 12
+GIME		$ffba: palette[$a] <- rgb=$12=(0,3,0)
+GIME ffbb <= 12
+GIME		$ffbb: palette[$b] <- rgb=$12=(0,3,0)
+GIME ffbc <= 12
+GIME		$ffbc: palette[$c] <- rgb=$12=(0,3,0)
+GIME ffbd <= 12
+GIME		$ffbd: palette[$d] <- rgb=$12=(0,3,0)
+GIME ffbe <= 12
+GIME		$ffbe: palette[$e] <- rgb=$12=(0,3,0)
+GIME ffbf <= 12
+GIME		$ffbf: palette[$f] <- rgb=$12=(0,3,0)
+GIME ffa0 <= 38
+GIME MmuMap[0][0] <- 38  (was 00)
+GIME ffa1 <= 39
+GIME MmuMap[0][1] <- 39  (was 39)
+GIME ffa2 <= 34
+GIME MmuMap[0][2] <- 34  (was 3a)
+GIME ffa3 <= 3b
+GIME MmuMap[0][3] <- 3b  (was 3b)
+GIME ffa4 <= 3c
+GIME MmuMap[0][4] <- 3c  (was 3c)
+GIME ffa5 <= 3d
+GIME MmuMap[0][5] <- 3d  (was 3d)
+GIME ffa6 <= 3e
+GIME MmuMap[0][6] <- 3e  (was 3e)
+GIME ffa7 <= 3f
+GIME MmuMap[0][7] <- 3f  (was 3f)
+GIME ffa8 <= 38
+GIME MmuMap[1][0] <- 38  (was 00)
+GIME ffa9 <= 30
+GIME MmuMap[1][1] <- 30  (was 39)
+GIME ffaa <= 31
+GIME MmuMap[1][2] <- 31  (was 3a)
+GIME ffab <= 32
+GIME MmuMap[1][3] <- 32  (was 3b)
+GIME ffac <= 33
+GIME MmuMap[1][4] <- 33  (was 3c)
+GIME ffad <= 3d
+GIME MmuMap[1][5] <- 3d  (was 3d)
+GIME ffae <= 35
+GIME MmuMap[1][6] <- 35  (was 3e)
+GIME ffaf <= 3f
+GIME MmuMap[1][7] <- 3f  (was 3f)
+GIME ff90 <= ce
+GIME MmuEnable <- true
+GIME ff94 <= ff
+GIME		Timer=$ff00 Start!
+GIME ff95 <= ff
+GIME		Timer=$ffff
+GIME ff98 <= 00
+GIME		GraphicsNotAlpha=0 AttrsIfAlpha=0 Artifacting=0 Monochrome=0 50Hz=0 LinesPerCharRow=0=1.
+GIME ff99 <= 00
+GIME		LinesPerField=0=192. HRES=0 CRES=0
+GIME ff9a <= 00
+GIME		Border: rgb=$00=(0,0,0)
+GIME ff9b <= 00
+GIME		512K bank selector: 00
+GIME ff9c <= 0f
+GIME		Virt Scroll (alpha) = f
+GIME ff9d <= e0
+GIME		VirtOffsetAddr=$70008
+GIME ff9e <= 00
+GIME		VirtOffsetAddr=$70000
+GIME ff9f <= 00
+GIME		HVEN=0 HorzOffsetAddr=0
+GIME ff90 <= ca
+GIME MmuEnable <- true
+GIME ff90 <= c8
+GIME MmuEnable <- true
+GIME ff90 <= ca
+GIME MmuEnable <- true
+GIME ff90 <= ce
+GIME MmuEnable <- true
+GIME ffb0 <= 12
+GIME		$ffb0: palette[$0] <- rgb=$12=(0,3,0)
+GIME ffb1 <= 24
+GIME		$ffb1: palette[$1] <- rgb=$24=(3,0,0)
+GIME ffb2 <= 0b
+GIME		$ffb2: palette[$2] <- rgb=$0b=(0,1,3)
+GIME ffb3 <= 07
+GIME		$ffb3: palette[$3] <- rgb=$07=(1,1,1)
+GIME ffb4 <= 3f
+GIME		$ffb4: palette[$4] <- rgb=$3f=(3,3,3)
+GIME ffb5 <= 1f
+GIME		$ffb5: palette[$5] <- rgb=$1f=(1,3,3)
+GIME ffb6 <= 09
+GIME		$ffb6: palette[$6] <- rgb=$09=(0,0,3)
+GIME ffb7 <= 26
+GIME		$ffb7: palette[$7] <- rgb=$26=(3,1,0)
+GIME ffb8 <= 00
+GIME		$ffb8: palette[$8] <- rgb=$00=(0,0,0)
+GIME ffb9 <= 12
+GIME		$ffb9: palette[$9] <- rgb=$12=(0,3,0)
+GIME ffba <= 00
+GIME		$ffba: palette[$a] <- rgb=$00=(0,0,0)
+GIME ffbb <= 3f
+GIME		$ffbb: palette[$b] <- rgb=$3f=(3,3,3)
+GIME ffbc <= 00
+GIME		$ffbc: palette[$c] <- rgb=$00=(0,0,0)
+GIME ffbd <= 12
+GIME		$ffbd: palette[$d] <- rgb=$12=(0,3,0)
+GIME ffbe <= 00
+GIME		$ffbe: palette[$e] <- rgb=$00=(0,0,0)
+GIME ffbf <= 26
+GIME		$ffbf: palette[$f] <- rgb=$26=(3,1,0)
+GIME ffa2 <= 3a
+GIME MmuMap[0][2] <- 3a  (was 34)
+# pre timer interrupt #
+# pre timer interrupt #
+# pre timer interrupt #
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Level1:
+
+Addr Size Ty Rv At Uc   Name
+---- ---- -- -- -- -- ---------
+EE06   99 C1  5 r   0 REL
+EE9F  7ED C1  0 r   0 Krn
+F698  54B C1  0 r   1 KrnP2
+FBE3   6E C0  0 r   2 Init
+FC51  1AC C1  0 r   1 Boot
+
+B500  70A C1  0 r   1 IOMan
+BC0A  DE5 D1  0 r   0 RBF
+C9EF  54F E1  1 r   0 rb1773
+CF3E   2F F1  0 r   0 D0
+CF6D   2F F1  0 r   0 D1
+CF9C   2F F1  0 r   0 D2
+CFCB   2F F1  0 r   0 DD
+CFFA  6D3 D1  0 r   2 SCF
+D6CD  866 E1  0 r   2 VTIO
+DF33  2C2 C1  0 r   1 CoVDG
+E1F5   3C F1  0 r   2 Term
+E231  1BC E1  0 r   0 scbbp
+E3ED   3A F1  0 r   0 p
+E427  18A E1  0 r   0 scbbt
+E5B1   3B F1  0 r   0 T1
+E5EC  23E D1  0 r   0 PipeMan
+E82A   28 E1  0 r   0 Piper
+E852   26 F1  0 r   0 Pipe
+E878  174 C1  8 r   1 Clock
+E9EC   66 21  0 r   1 Clock2
+EA52  1E3 11  3 r   1 SysGo
+
+A200  627 11  0 r   1 Shell
+9F00  238 11  0 r   1 Mdir
+
