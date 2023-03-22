@@ -769,3 +769,16 @@ EA52  1E3 11  3 r   1 SysGo
 A200  627 11  0 r   1 Shell
 9F00  238 11  0 r   1 Mdir
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+# notice for level1 we need the Old Color Basic ROM interrupt vectors.
+
+cd ~/OS9/nitros9/level1/coco1/modules$
+
+( echobyte 0 0 16 255 240 ; dd bs=16 skip=511 if=~/6809/ROMS/Color_Basic_v1.0__1980___Tandy_.rom  ;    echobyte 0 14 212 48 0 ;  cat rel krn krnp2 init boot_lemma ; echobyte 255 0 0 48 2  ) > /tmp/boot
+
+go run --tags=coco3,level2,cocoio,trace,hyper,display,d  gomar.go   --t=1 -loadm /tmp/boot    -v=w -basic_text  2>_
+
+# Now it is waiting for TCP for the rest of the boot modules.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
