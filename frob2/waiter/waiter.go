@@ -167,12 +167,25 @@ func Serve(conn net.Conn) {
 
 	WriteFive(conn, PEEK, 256, 0xC000)
 	WriteFive(conn, PEEK, 256, 0xC800)
+	/*
+	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+		hub := NewHub()
+		for {
+			select {
+			case x := <-hub.queue
+			}
+		}
+
+	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	*/
 	log.Printf("Serving: Sleeping.")
 	time.Sleep(3600 * time.Second)
 	conn.Close()
 	log.Printf("Serving: Closed.")
 }
+
+///////////////////////////////////////////////////
 
 func Listen() {
 	l, err := net.Listen("tcp", Format(":%d", *PORT))

@@ -1,0 +1,30 @@
+proc Quint {c n p} {
+  binary format cSS $c $n $p
+}
+
+set M /home/strick/OS9/nitros9/level1/coco1/modules
+
+foreach x {rel krn krnp2 init boot_lemma} {
+  append Boot1 [binary readfile $M/$x]
+}
+
+foreach x {ioman scf.mn vtio.dr covdg.io term_vdg.dt clock_60hz clock2_soft sysgo_dd   ../cmds/shell_21  ../cmds/mdir} {
+  append Boot2 [binary readfile $M/$x]
+}
+
+set Size1 [string length $Boot1]
+set Size2 [string length $Boot2]
+
+foreach x [split {
+  Quint 0 16 0xFFF0
+  binary readfile $M/vectors
+  Quint 0 $Size1 0x2600
+  set Boot1
+  Quint 255 0 0x2602
+} "\n"] {
+  log 3 "=== appending output of $x ==="
+  append Output [eval $x]
+  log 3 "=== Output size [string length $Output] =="
+}
+
+binary writefile /tmp/out1 $Output
