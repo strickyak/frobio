@@ -165,19 +165,19 @@ func Serve(conn net.Conn) {
 		UploadProgram(conn)
 	}
 
-	WriteFive(conn, PEEK, 256, 0xC000)
-	WriteFive(conn, PEEK, 256, 0xC800)
+	// WriteFive(conn, PEEK, 256, 0xC000)
+	// WriteFive(conn, PEEK, 256, 0xC800)
 	/*
-	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-		hub := NewHub()
-		for {
-			select {
-			case x := <-hub.queue
+			hub := NewHub()
+			for {
+				select {
+				case x := <-hub.queue
+				}
 			}
-		}
 
-	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	*/
 	log.Printf("Serving: Sleeping.")
 	time.Sleep(3600 * time.Second)

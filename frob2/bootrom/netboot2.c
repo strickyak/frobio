@@ -389,16 +389,14 @@ void LemmaClientS1() {
             PrintH("PEEK:DONE");
           }
           break;
-/*
         case CMD_JSR:
           {
             func fn = (func)p;
-            print3("CALLING %x", fn); Delay(9000);
+            PrintH("CALLING %x", fn); Delay(9000);
             fn();
-            print3("RETURNING FROM %x", fn); Delay(9000);
+            PrintH("RETURNING FROM %x", fn); Delay(9000);
           }
           break;
-*/
         default:
           Fatal("WUT?", quint[0]);
           break;
@@ -460,8 +458,9 @@ word rounds = 0;
 word p = 0x0000;
 
     while (1) {
-        PrintH("WH");
+        // PrintH("WH");
         LemmaClientS1();
+        /*
         Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
 
         LemmaClientS1();
@@ -487,6 +486,7 @@ word p = 0x0000;
             ++rounds;
             printk("%u", rounds);
         }
+        */
     }
 
 #if 0

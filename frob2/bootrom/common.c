@@ -55,7 +55,7 @@ void Delay(word n) {
 
 void PutChar(char ch) {
 #if EMULATED
-  PrintH("PC: %x %c", ch, (' ' <= ch && ch <= '~') ? ch : '?');
+  PrintH("CH: %x %c", ch, (' ' <= ch && ch <= '~') ? ch : '?');
   return;
 #endif
     if (ch == 13) { // Carriage Return

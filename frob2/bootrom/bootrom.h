@@ -1,11 +1,11 @@
 #ifndef _FROB2_BOOTROM_BOOTROM_H_
 #define _FROB2_BOOTROM_BOOTROM_H_
 
-#define VERBOSE 2 // 9 // 6 // 3
-#define EMULATED 0
+#define VERBOSE 3 // 9 // 6 // 3
+#define EMULATED 1
 
-#define X220NET 1
-#define LOCALNET 0
+#define X220NET 0
+#define LOCALNET 1
 
 #define BR_STATIC 1
 #define BR_DHCP 0

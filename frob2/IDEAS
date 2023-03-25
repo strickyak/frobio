@@ -1036,3 +1036,7 @@ go run --tags=coco3,level2,cocoio,trace,hyper,display,d  gomar.go   --t=1 -loadm
 # Now it is waiting for TCP for the rest of the boot modules.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+go run --tags=coco3,level2,cocoio,trace,hyper,display,d  gomar.go --rom_8000 rom/BASIC3.ROM --cart /sy/frobio/frob2/netboot2.cart   --t=1   -v=w -basic_text  2>_
+
+
