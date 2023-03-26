@@ -13,6 +13,11 @@
 *          (github.com/n6il).
 
 ******
+*   ~/OS9/nitros9$ grep _lemma `find . -name makefile `
+* ./level1/coco1/modules/makefile:		boot_sdc boot_lemma
+* ./level1/coco1/modules/makefile:boot_lemma: boot_lemma.asm
+*   ~/OS9/nitros9$
+******
 *
 * Lemma Definitions
 Q.BfBegin equ 211  ; quint { cmd total_size.hi total_size.lo 0 0 }
@@ -27,8 +32,8 @@ Quint     equ $16
 QuintN    equ $17
 QuintSize equ 5     ; quint is 5 bytes
 
-Value equ $0004   ; for ShowHex
-Ptr equ $0006     ; for ShowHex
+* Value equ $0004   ; for ShowHex
+* Ptr equ $0006     ; for ShowHex
 
 SK_CR_RECV equ $40
 *
@@ -58,19 +63,19 @@ name     fcs   /Boot/
 
 ;;  Load Quint (for Q.BfBegin)
 ;;  Assert BfSize, and get sz.
-;;  
+;;
 ;;  F$SRqMem D=sz => U=begin
 ;;  current := begin
-;;  
+;;
 ;;  LOOP:
 ;;    Load Quint.
 ;;    If BfEnd{ s } , return: X=begin D=sz
-;;  
+;;
 ;;    Assert BfChunk{ chunk_sz }
-;;  
+;;
 ;;    Read(current, chunk_sz }
 ;;    current += chunk_sz
-;;  
+;;
 ;;  GOTO LOOP;
 
 start    pshs  u,y,dp
@@ -90,8 +95,8 @@ start    pshs  u,y,dp
   ldd <QuintN    ; D<-sz
 
   os9 F$SRqMem
-  stu <BeginPtr 
-  stu <CurrPtr 
+  stu <BeginPtr
+  stu <CurrPtr
 
 	stu <Value
 	ldd #$8078
@@ -104,7 +109,7 @@ LoopLemma
   lda <Quint
   cmpa #Q.BfEnd
   beq Return
-  
+
   ldx <CurrPtr
   ldy <QuintN
 	daa
@@ -266,7 +271,7 @@ LoopW
 *    parts or one
 *  if(roffset + len > SKBUFMASK)
   sty ,u  ; exptectd bytes => temp
-  addd ,u  ; roffset + temp  
+  addd ,u  ; roffset + temp
   cmpd #SKBUFMASK
   ble once
 twice
@@ -289,7 +294,7 @@ twice
   std ,u ; temp
   puls d ; len
   subd 6,u ; rsize
-  tfr d,y  
+  tfr d,y
   bra doonce
 once
 * rgblkget(buf, sockp->skrbstrt + roffset, len)
@@ -321,7 +326,7 @@ advance
   std CIO0ADDR
   ldb CIO0DATA
 	bne @wait0
-  
+
 rxdone
   inc   $8001
   leas 10,s
