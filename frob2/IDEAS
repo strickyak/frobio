@@ -1039,4 +1039,7 @@ go run --tags=coco3,level2,cocoio,trace,hyper,display,d  gomar.go   --t=1 -loadm
 
 go run --tags=coco3,level2,cocoio,trace,hyper,display,d  gomar.go --rom_8000 rom/BASIC3.ROM --cart /sy/frobio/frob2/netboot2.cart   --t=1   -v=w -basic_text  2>_
 
+# reduce video size for Discord.
+$ ffmpeg -i PXL_20230326_015753850.mp4  -n -fs 7950000 -fpsmax 5 -s 480x360 -b:a 120000 -b:v 200000  -metadata location="" -metadata location-eng=""   /tmp/output.mp4
+
 
