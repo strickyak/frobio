@@ -1,13 +1,31 @@
-; lem.blk : block disk device for lemma
+; github.com/strickyak/frobio/frob2/drivers/rblemma.asm : block disk device for lemma
+;
+; assembled by Henry Strickland (github.com/strickyak).
+; Original contributions by Henry Strickland are MIT license.
+;
+; Based on code from nitros9/level1/modules/emudsk.asm
+; by Alan DeKok and others, with the following notes and license:
+;
+* EmuDisk floppy disk controller driver
+* Edition #1
+* 04/18/96 : Written from scratch by Alan DeKok
+*                                 aland@sandelman.ocunix.on.ca
+*
+*  This program is Copyright (C) 1996 by Alan DeKok,
+*                  All Rights Reserved.
+*  License is given to individuals for personal use only.
+*
+*  Comments: Ensure that device descriptors mark it as a hard drive
 
-         nam   lem.blk
-         ttl   os9 device driver
+
+         nam   rblemma.asm
+         ttl   Random Block Lemma: os9 device driver
 
          ifp1
          use   defsfile
          endc
 
-N.Drives equ 4
+N.Drives equ 2
 
          org   0
          rmb   DRVBEG+(DRVMEM*N.Drives) Normal RBF device mem for N Drives
@@ -20,11 +38,9 @@ atrv     set   ReEnt+rev
 rev      set   $01
 edition  set   $01
 
-         org   0
          mod   eom,name,tylg,atrv,start,static_storage_size
-
-         fcb   DIR.+SHARE.+PEXEC.+PWRIT.+PREAD.+EXEC.+UPDAT.  ; driver permissions
-name     fcs   /lem.blk/
+         fcb   DIR.+SHARE.+PEXEC.+PWRIT.+PREAD.+EXEC.+UPDAT.
+name     fcs   /RBLemma/
          fcb   edition
 
 **************************************************************************
@@ -162,11 +178,11 @@ reterr   tfr    a,b           Move error code to reg B
 *        U = Device static storage ptr
 *
 * Exit:  B = Error code, zero if none (also sets Carry)
-*        B,X,Y,U are preserved
+*        X,Y,U are preserved
 *
 **************************************************************************
 
-GetSect  pshs  u,y,x,a        ;Save regs x and a
+GetSect  pshs  u,y,x          ;Save regs x and a
          tfr d,u              ;temporary save D
 
          lda   PD.DRV,y       ;Get drive number requested
@@ -175,15 +191,15 @@ GetSect  pshs  u,y,x,a        ;Save regs x and a
 
 ; (byte driveNum, byte lsn1, word lsn2, word path_desc)
 
-         pshs y   ; path_desc
-         pshs x   ; lsn2
+         pshs y   ; (4) path_desc
+         pshs x   ; (3) lsn2
 				 clra
-				 pshs d   ; lsn1
+				 pshs d   ; (2) lsn1
 
 		 		 tfr u,d             ; temporary restore D
 				 tfr a,b
 				 clra
-				 pshs d  ; driveNum
+				 pshs d  ; (1) driveNum
 
 				 tfr u,d             ; temporary restore D
 @if
@@ -196,7 +212,8 @@ GetSect  pshs  u,y,x,a        ;Save regs x and a
 				 jsr _BlockRead,PCR
 @endif
 
-        puls u,y,x,a
+        leas 8,s       ; drop 4 args from stack
+        puls u,y,x
 
 			  clra              ; clears carry
 			  tstb              ; if 0, dont set carry.
@@ -209,7 +226,7 @@ GetSect  pshs  u,y,x,a        ;Save regs x and a
 * Translate emulator error code to OS-9 code and return to caller.
 
 DriveErr
-        puls u,y,x,a
+        puls u,y,x
 				ldb #240   ; Unit Error
         rts
 

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"time"
 )
 
@@ -14,18 +15,29 @@ var Format = fmt.Sprintf
 
 var PORT = flag.Int("port", 14511, "Listen on this TCP port")
 var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
+var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
+
+var Block0 *os.File
 
 const (
-	POKE = 0
-	CALL = 255
+	CMD_POKE = 0
+	CMD_CALL = 255
 
-	LOG      = 200
-	INKEY    = 201
-	PUTCHARS = 202
-	PEEK     = 203
-	DATA     = 204
-	SP_PC    = 205
-	REV      = 206
+	CMD_LOG   = 200
+	CMD_INKEY = 201
+	PUTCHARS  = 202
+	CMD_PEEK  = 203
+	CMD_DATA  = 204
+	CMD_SP_PC = 205
+	CMD_REV   = 206
+
+	CMD_BLOCK_READ  = 207 // block device
+	CMD_BLOCK_WRITE = 208 // block device
+	CMD_BLOCK_ERROR = 209 // nack
+	CMD_BLOCK_OKAY  = 210 // ack
+	CMD_BOOT_BEGIN  = 211 // boot_lemma
+	CMD_BOOT_CHUNK  = 212 // boot_lemma
+	CMD_BOOT_END    = 213 // boot_lemma
 )
 
 var LogicalRamImage [0x10000]byte // capture coco image.
@@ -51,7 +63,7 @@ func WriteFive(conn net.Conn, cmd byte, a uint, b uint) {
 func PokeRam(conn net.Conn, addr uint, data []byte) {
 	n := uint(len(data))
 
-	_, err := conn.Write([]byte{POKE, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
+	_, err := conn.Write([]byte{CMD_POKE, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
 	if err != nil {
 		panic(err)
 	}
@@ -82,10 +94,10 @@ func ReadFiveLoop(conn net.Conn) {
 
 		switch cmd {
 
-		case SP_PC:
+		case CMD_SP_PC:
 			log.Printf("ReadFive: sp=%x pc=%x", n, p)
 
-		case LOG:
+		case CMD_LOG:
 			{
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
@@ -95,7 +107,7 @@ func ReadFiveLoop(conn net.Conn) {
 				log.Printf("ReadFive: LOG %q", data)
 			}
 
-		case REV:
+		case CMD_REV:
 			{
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
@@ -105,10 +117,10 @@ func ReadFiveLoop(conn net.Conn) {
 				log.Printf("ReadFive: REV %q", data)
 			}
 
-		case INKEY: // INKEY
+		case CMD_INKEY:
 			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
-		case DATA: // DATA
+		case CMD_DATA:
 			{
 				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
 				data := make([]byte, n)
@@ -133,6 +145,43 @@ func ReadFiveLoop(conn net.Conn) {
 				*/
 			}
 
+		case CMD_BLOCK_READ:
+			{
+				var err error
+
+				drive := byte(n >> 8)
+				if drive != 0 {
+					log.Panic("BLOCK_READ: got drive %d. but can only handle drive 0.", drive)
+				}
+
+				if Block0 == nil {
+					Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
+					if err != nil {
+						log.Fatalf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
+					}
+				}
+				lsn := int64(n&255) | int64(p)
+				log.Printf("BLOCK0 READ LSN %d.", lsn)
+
+				_, err = Block0.Seek(256*lsn, 0)
+				if err != nil {
+					log.Panicf("BLOCK_READ: Cannot Seek for Block device 0 to LSN %d: %q: %v", lsn, *BLOCK0, err)
+				}
+				buf := make([]byte, 256)
+				cc, err := Block0.Read(buf)
+				if err != nil {
+					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, *BLOCK0, err)
+				}
+				if cc != 256 {
+					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, *BLOCK0, cc)
+				}
+				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
+
+				_, err = conn.Write(buf) // == WriteFull
+				if err != nil {
+					log.Fatalf("BLOCK_READ: Write256: network block write failed: %v", err)
+				}
+			}
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
 		}
@@ -165,8 +214,8 @@ func Serve(conn net.Conn) {
 		UploadProgram(conn)
 	}
 
-	// WriteFive(conn, PEEK, 256, 0xC000)
-	// WriteFive(conn, PEEK, 256, 0xC800)
+	// WriteFive(conn, CMD_PEEK, 256, 0xC000)
+	// WriteFive(conn, CMD_PEEK, 256, 0xC800)
 	/*
 		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

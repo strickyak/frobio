@@ -10,7 +10,6 @@
 #define BR_STATIC 1
 #define BR_DHCP 0
 
-#define MULTI_SOCK 0
 #define CHECKSUMS 0
 
 #define WIZ_PORT  0xFF68   // Hardware port.
@@ -59,96 +58,19 @@ extern int strlen(const char* s);
 //
 //////////////////////////////////////////////////
 
-struct wiz_port {
+struct wiz_ports {
   byte command;
-  byte addr_hi;
-  byte addr_lo;
+  word addr;
   byte data;
 };
 
-#define WIZ  ((volatile struct wiz_port*)WIZ_PORT)
-
-
-// Four of SockState immediately follow struct vars,
-// but due to const initialization rules, we cannot
-// make them part of the struct.
-struct SockState {
-  word tx_ptr;
-  word tx_to_go;
-};
-
-#define VARS_RAM (CASBUF)
-#define Vars ((struct vars*)VARS_RAM)
-
-#define VDG_RAM  0x0400  // default 32x16 64-char screen
-#define VDG_LEN  0x0200
-#define VDG_END  0x0600
-
-#if MULTI_SOCK
-
-  struct sock {
-    word base;
-    word tx_ring;
-    word rx_ring;
-    word ss; // struct SockState* ss;
-    byte nth;
-  };
-
-extern const struct sock Socks[4];
-
-#define SOCK1_AND (Socks+1),
-#define JUST_SOCK1 (Socks+1)
-
-#define PARAM_JUST_SOCK   const struct sock* sockp
-#define PARAM_SOCK_AND    const struct sock* sockp,
-#define JUST_SOCK         sockp
-#define SOCK_AND          sockp,
-
-#define B    (sockp->base)
-#define T    (sockp->tx_ring)
-#define R    (sockp->rx_ring)
-#define SS   ((struct SockState*)sockp->ss)
-#define N    (sockp->nth)
-
-#else
-
-#define SOCK1_AND
-#define JUST_SOCK1 
-
-  #define PARAM_JUST_SOCK
-  #define PARAM_SOCK_AND
-  #define JUST_SOCK
-  #define SOCK_AND
-
-  #define B    0x500
-  #define T    0x4800
-  #define R    0x6800
-  #define N    1
-  #define SS   ((struct SockState*)(VARS_RAM+sizeof(struct vars)+sizeof(struct SockState)*N))
-
-#endif
+#define WIZ  ((volatile struct wiz_ports*)WIZ_PORT)
+#define BASE    0x500
+#define TX_RING    0x4800
+#define RX_RING    0x6800
 
 #define RING_SIZE 2048
 #define RING_MASK (RING_SIZE - 1)
-
-extern const byte BR_ADDR    [4];
-extern const byte BR_MASK    [4];
-extern const byte BR_GATEWAY [4];
-extern const byte BR_RESOLV  [4];
-extern const byte BR_WAITER  [4];
-
-extern const byte HexAlphabet[];
-
-// common.c
-
-word StackPointer();
-char PolCat(); // Return one INKEY char, or 0, with BASIC `POLCAT` subroutine.
-void Delay(word n);
-
-// checksum.c
-void Checksum();
-
-// printk.c
 
 void PutChar(char ch);
 void PutStr(const char* s);
@@ -156,30 +78,29 @@ void PutHex(word x);
 void PutDec(word x);
 void Fatal(const char* wut, word arg);
 void ShowLine(word line);
-void printk(const char* format, ...);
 void Line(const char* s);
 void AssertEQ(word a, word b);
 void AssertLE(word a, word b);
 
-// hyper
-
 #if EMULATED
+// HyperLogging with Emulator's PrintH command.
 void PrintH(const char* format, ...);
 #else
+// These turn to nothing, if not emulated.
 #define PrintH(FMT,...) /*nothing*/
 #endif
 
-// vanishing printk's
+// vanishing PrintH's
 
-#define print1 if (VERBOSE>=1) printk
-#define print2 if (VERBOSE>=2) printk
-#define print3 if (VERBOSE>=3) printk
-#define print4 if (VERBOSE>=4) printk
-#define print5 if (VERBOSE>=5) printk
-#define print6 if (VERBOSE>=6) printk
-#define print7 if (VERBOSE>=7) printk
-#define print8 if (VERBOSE>=8) printk
-#define print9 if (VERBOSE>=9) printk
+#define print1 if (VERBOSE>=1) PrintH
+#define print2 if (VERBOSE>=2) PrintH
+#define print3 if (VERBOSE>=3) PrintH
+#define print4 if (VERBOSE>=4) PrintH
+#define print5 if (VERBOSE>=5) PrintH
+#define print6 if (VERBOSE>=6) PrintH
+#define print7 if (VERBOSE>=7) PrintH
+#define print8 if (VERBOSE>=8) PrintH
+#define print9 if (VERBOSE>=9) PrintH
 
 #if VERBOSE >= 6
 #  define L ShowLine(__LINE__);

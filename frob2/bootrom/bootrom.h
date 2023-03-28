@@ -2,10 +2,11 @@
 #define _FROB2_BOOTROM_BOOTROM_H_
 
 #define VERBOSE 3 // 9 // 6 // 3
-#define EMULATED 1
+#define EMULATED 0
+#define PRINTK 1
 
-#define X220NET 0
-#define LOCALNET 1
+#define X220NET 1
+#define LOCALNET 0
 
 #define BR_STATIC 1
 #define BR_DHCP 0
@@ -13,7 +14,6 @@
 #define MULTI_SOCK 1
 #define CHECKSUMS 0
 
-#define PRINTK 1
 
 #define WIZ_PORT  0xFF68   // Hardware port.
 

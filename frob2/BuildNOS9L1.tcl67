@@ -1,5 +1,6 @@
 set BOOT2_MODS {
   ioman
+  rbf.mn
   scf.mn
   vtio.dr
   covdg.io
@@ -12,25 +13,28 @@ set BOOT2_MODS {
   ../cmds/mfree
   ../cmds/procs
   ../cmds/echo
-  ../cmds/cputype
-  ../cmds/basic09
+
+  drivers/rblemma.os9
+  drivers/y0.os9
 }
 
 proc Quint {c n p} {
   binary format cSS $c $n $p
 }
 
-set M /home/strick/OS9/nitros9/level1/coco1/modules
+set M /home/strick/OS9/one-nitros9/level1/coco1/modules
+set F /home/strick/go/src/github.com/strickyak/frobio/frob2
 
 foreach x {rel krn krnp2 init boot_lemma} {
   append Boot1 [binary readfile $M/$x]
 }
 
-#foreach x {ioman scf.mn vtio.dr covdg.io term_vdg.dt clock_60hz clock2_soft sysgo_dd   ../cmds/shell_21  ../cmds/mdir} {
-#  append Boot2 [binary readfile $M/$x]
-#}
 foreach x $BOOT2_MODS {
-  append Boot2 [binary readfile $M/$x]
+  if [string match drivers/* $x] {
+    append Boot2 [binary readfile $F/$x]
+  } else {
+    append Boot2 [binary readfile $M/$x]
+  }
 }
 set Size1 [string length $Boot1]
 set Size2 [string length $Boot2]
