@@ -182,7 +182,8 @@ reterr   tfr    a,b           Move error code to reg B
 *
 **************************************************************************
 
-GetSect  pshs  u,y,x          ;Save regs x and a
+GetSect  pshs  u,y,x,cc          ;Save regs x and a
+         orcc  #$50           ; disable interrupts throughout a sector operation.
          tfr d,u              ;temporary save D
 
          lda   PD.DRV,y       ;Get drive number requested
@@ -213,7 +214,7 @@ GetSect  pshs  u,y,x          ;Save regs x and a
 @endif
 
         leas 8,s       ; drop 4 args from stack
-        puls u,y,x
+        puls u,y,x,cc
 
 			  clra              ; clears carry
 			  tstb              ; if 0, dont set carry.
@@ -226,7 +227,7 @@ GetSect  pshs  u,y,x          ;Save regs x and a
 * Translate emulator error code to OS-9 code and return to caller.
 
 DriveErr
-        puls u,y,x
+        puls u,y,x,cc
 				ldb #240   ; Unit Error
         rts
 
