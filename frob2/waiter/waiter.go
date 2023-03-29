@@ -160,8 +160,8 @@ func ReadFiveLoop(conn net.Conn) {
 						log.Fatalf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
 					}
 				}
-				lsn := int64(n&255) | int64(p)
-				log.Printf("BLOCK0 READ LSN %d.", lsn)
+				lsn := (int64(n&255) << 16) | int64(p)
+				log.Printf("BLOCK0 READ LSN %d. =$%x", lsn, lsn)
 
 				_, err = Block0.Seek(256*lsn, 0)
 				if err != nil {
