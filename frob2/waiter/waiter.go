@@ -82,6 +82,30 @@ func ReadFiveLoop(conn net.Conn) {
 		}
 	}()
 
+	prepareBlockDevice := func(n uint, p uint) int64 {
+		var err error
+
+		drive := byte(n >> 8)
+		if drive != 0 {
+			log.Panic("BLOCK_READ: got drive %d. but can only handle drive 0.", drive)
+		}
+
+		if Block0 == nil {
+			Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
+			if err != nil {
+				log.Fatalf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
+			}
+		}
+		lsn := (int64(n&255) << 16) | int64(p)
+		log.Printf("BLOCK0 READ LSN %d. =$%x", lsn, lsn)
+
+		_, err = Block0.Seek(256*lsn, 0)
+		if err != nil {
+			log.Panicf("BLOCK_READ: Cannot Seek for Block device 0 to LSN %d: %q: %v", lsn, *BLOCK0, err)
+		}
+		return lsn
+	}
+
 	quint := make([]byte, 5)
 	for {
 		_, err := io.ReadFull(conn, quint)
@@ -147,26 +171,9 @@ func ReadFiveLoop(conn net.Conn) {
 
 		case CMD_BLOCK_READ:
 			{
+				lsn := prepareBlockDevice(n, p)
 				var err error
 
-				drive := byte(n >> 8)
-				if drive != 0 {
-					log.Panic("BLOCK_READ: got drive %d. but can only handle drive 0.", drive)
-				}
-
-				if Block0 == nil {
-					Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
-					if err != nil {
-						log.Fatalf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
-					}
-				}
-				lsn := (int64(n&255) << 16) | int64(p)
-				log.Printf("BLOCK0 READ LSN %d. =$%x", lsn, lsn)
-
-				_, err = Block0.Seek(256*lsn, 0)
-				if err != nil {
-					log.Panicf("BLOCK_READ: Cannot Seek for Block device 0 to LSN %d: %q: %v", lsn, *BLOCK0, err)
-				}
 				buf := make([]byte, 256)
 				cc, err := Block0.Read(buf)
 				if err != nil {
@@ -181,6 +188,30 @@ func ReadFiveLoop(conn net.Conn) {
 				if err != nil {
 					log.Fatalf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
+			}
+		case CMD_BLOCK_WRITE:
+			{
+				lsn := prepareBlockDevice(n, p)
+				var err error
+
+				buf := make([]byte, 256)
+				cc, err := io.ReadFull(conn, buf)
+				if err != nil {
+					log.Panicf("BLOCK_WRITE: error reading 256 from conn: %v", err)
+				}
+				if cc != 256 {
+					log.Panicf("BLOCK_WRITE: short read, got %d, want 256 from conn: %v", cc, err)
+				}
+
+				cc, err = Block0.Write(buf)
+				if err != nil {
+					log.Panicf("BLOCK_WRITE: Cannot Write for Block device 0 at LSN %d: %q: %v", lsn, *BLOCK0, err)
+				}
+				if cc != 256 {
+					log.Panicf("BLOCK_WRITE: Short Write Block device 0 at LSN %d: %q: only %d bytes", lsn, *BLOCK0, cc)
+				}
+				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
+
 			}
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
