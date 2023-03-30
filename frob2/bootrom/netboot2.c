@@ -15,67 +15,37 @@ enum Commands {
 const char Rev[] = __DATE__ " " __TIME__;
 
 static byte WizGet1(word reg) {
-  WIZ->addr_hi = (byte)(reg >> 8);
-  WIZ->addr_lo = (byte)(reg);
-  byte z = WIZ->data;
-  if (reg < 0x1000) {
-    print7("%x->%x", reg, z);
-  }
-  return z;
+  WIZ->addr = reg;
+  return WIZ->data;
 }
 static word WizGet2(word reg) {
-  WIZ->addr_hi = (byte)(reg >> 8);
-  WIZ->addr_lo = (byte)(reg);
+  WIZ->addr = reg;
   byte z_hi = WIZ->data;
   byte z_lo = WIZ->data;
-  word z = ((word)(z_hi) << 8) + (word)z_lo;
-  if (reg < 0x1000) {
-    print7("%x=>%x", reg, z);
-  }
-  return z;
+  return ((word)(z_hi) << 8) + (word)z_lo;
 }
 static void WizGetN(word reg, void* buffer, word size) {
   byte* to = (byte*) buffer;
-  WIZ->addr_hi = (byte)(reg >> 8);
-  WIZ->addr_lo = (byte)(reg);
+  WIZ->addr = reg;
   for (word i=size; i; i--) {
     *to++ = WIZ->data;
   }
-  print7("%x[%x]>", reg, size);
 }
 static void WizPut1(word reg, byte value) {
-  WIZ->addr_hi = (byte)(reg >> 8);
-  WIZ->addr_lo = (byte)(reg);
+  WIZ->addr = reg;
   WIZ->data = value;
-  if (reg < 0x1000) {
-    print7("%x<-%x", reg, value);
-  }
 }
 static void WizPut2(word reg, word value) {
-  WIZ->addr_hi = (byte)(reg >> 8);
-  WIZ->addr_lo = (byte)(reg);
+  WIZ->addr = reg;
   WIZ->data = (byte)(value >> 8);
   WIZ->data = (byte)(value);
-  if (reg < 0x1000) {
-    print7("%x<=%x", reg, value);
-  }
 }
 static void WizPutN(word reg, const void* data, word size) {
   const byte* from = (const byte*) data;
-  WIZ->addr_hi = (byte)(reg >> 8);
-  WIZ->addr_lo = (byte)(reg);
-
-#if 1
+  WIZ->addr = reg;
   for (word i=size; i; i--) {
     WIZ->data = *from++;
   }
-#else
-  word i = size;
-  do {
-    WIZ->data = *from++;
-  } while (i--);
-#endif
-  print7("%x[%x]<", reg, size);
 }
 
 // WizTicks: 0.1ms but may have readbyte,readbyte error?
@@ -88,7 +58,7 @@ void WizReset() {
   WIZ->command = 128; // Reset
   Delay(5000);
   WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  Delay(1000);
+  Delay(100);
  
   // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
 
@@ -115,21 +85,23 @@ void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gatew
 
 void WizIssueCommand(PARAM_SOCK_AND byte cmd) {
   WizPut1(B+SK_CR, cmd);
-  Line("<C");
-  while (WizGet1(B+SK_CR)) {Line("C");}
-  Line("C>");
+  while (WizGet1(B+SK_CR)) {
+    ++ *(char*)0x401;
+  }
+  
+  if (cmd == 0x40) PutChar('<');
+  else if (cmd == 0x20) PutChar('>');
+  else PutChar('!');
 }
 
 void WizWaitStatus(PARAM_SOCK_AND byte want) {
   byte status;
-  Line("<W");
   byte stuck = 200;
   do {
+    ++ *(char*)0x400;
     status = WizGet1(B+SK_SR);
     if (!--stuck) Fatal("W", status);
-    Line("W");
   } while (status != want);
-  Line("W>");
 }
 
 struct proto {
@@ -152,6 +124,7 @@ bool IsBroadcast(PARAM_JUST_SOCK) {
 
 
 void WizOpen(PARAM_SOCK_AND struct proto* proto, word local_port ) {
+  printk("open");
   WizPut1(B+SK_MR, proto->open_mode);
   WizPut2(B+SK_PORTR0, local_port); // Set local port.
   WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
@@ -164,7 +137,7 @@ void WizOpen(PARAM_SOCK_AND struct proto* proto, word local_port ) {
 void TcpDial(PARAM_SOCK_AND const byte* host, word port) {
   WizPut2(B+SK_TX_WR0, T); // does this help
 
-  printk("tcp dial %a $x", host, port);
+  printk("tcp dial %a %x", host, port);
   WizPutN(B+SK_DIPR0, host, 4);
   WizPut2(B+SK_DPORTR0, port);
   WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
@@ -176,7 +149,7 @@ void TcpEstablish(PARAM_JUST_SOCK) {
   byte stuck = 250;
   while(1) {
     Delay(1000);
-    printk("+");
+    PutChar('+');
     // Or we could wait for the connected interrupt bit,
     // and not the disconnected nor the timeout bit.
     byte status = WizGet1(B+SK_SR);
@@ -190,20 +163,10 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 
   };
 
-  print4("est:q=%x", WizGet1(B+SK_IR));
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
-  print4("..:q=%x", WizGet1(B+SK_IR));
 }
 
 void TcpCheck(PARAM_JUST_SOCK) {
-#if 0
-      byte sr = WizGet1(B+SK_SR); // Socket Status Register
-
-      // TODO -- this is clearly wrong.
-      if (sr != SK_SR_ESTB) { // No longer established?
-        return;
-      }
-#endif
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
         Fatal("TMO", ir);
@@ -240,12 +203,11 @@ bool TcpRecvDataTry(PARAM_SOCK_AND char* buf, size_t n) {
   return true;
 }
 void TcpRecvData(PARAM_SOCK_AND char* buf, size_t n) {
-  Line("<R");
   bool ok;
   do {
+    ++ *(char*)0x402;
     ok = TcpRecvDataTry(SOCK_AND buf, n);
   } while (!ok);
-  Line("R>");
 }
 
 void UdpDial(PARAM_SOCK_AND  const byte* dest_ip, word dest_port) {
@@ -266,14 +228,12 @@ void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
   PrintH("ResTS %x", n);
   // Wait until free space is available.
   word free_size;
-  Line("<D");
   do {
-  Line("D");
     // TcpCheck(JUST_SOCK);
     free_size = WizGet2(B+SK_TX_FSR0);
     PrintH("Res free %x", free_size);
+    ++ *(char*)0x404;
   } while (free_size < n);
-  Line("D>");
 
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
   SS->tx_to_go = n;
@@ -362,7 +322,7 @@ void LemmaClientS1() {
             PrintH("POKE(%x@%x)", n, p);
             while (n) {
               word chunk = (n < 256u) ? n : 256u;
-              printk("#$%x", chunk);
+              // printk("#$%x", chunk);
               TcpRecvData(SOCK1_AND (char*)p, chunk);
               n -= chunk;
               p += chunk;
@@ -408,6 +368,7 @@ void LemmaClientS1() {
 void Send5(byte cmd, word n, word p) {
     char quint[5] = { cmd, (byte)(n>>8), (byte)(n&255), (byte)(p>>8), (byte)(p&255) };
     WizSend(SOCK1_AND quint, 5);
+    PutChar('#');
 } 
 
 
@@ -439,9 +400,9 @@ int RomMain() {
     //printk("  TICKS *%x* PORT *%x*  ", ticks, local_port);
     //PrintH("TICKS *%x* PORT *%x*  ", ticks, local_port);
 
-L   WizReset();
+    WizReset();
 #if BR_STATIC
-L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
+    WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif
     PrintH("CONF");
     // word local_port = 0x8000 | 0xFFFE & WizTicks();
@@ -454,51 +415,9 @@ L   WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
     WizSend(SOCK1_AND  Rev, strlen(Rev));
     PrintH("sent some");
 
-word rounds = 0;
-word p = 0x0000;
-
     while (1) {
-        // PrintH("WH");
         LemmaClientS1();
-        /*
-        Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "NANDO", 5);
-
-        LemmaClientS1();
-        Send5(CMD_LOG, 9, 0); WizSend(SOCK1_AND  "NANDO_TWO", 9);
-
-        LemmaClientS1();
-        Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "BILBO", 5);
-
-        LemmaClientS1();
-        Send5(CMD_LOG, 5, 0); WizSend(SOCK1_AND  "FRODO", 5);
-
-        LemmaClientS1();
-        Send5(CMD_LOG, 7, 0); WizSend(SOCK1_AND  "SAMWISE", 7);
-
-        LemmaClientS1();
-
-        char quint[5] = { CMD_DATA, 1, 0, p>>8, p&255 };
-        WizSend(SOCK1_AND quint, 5);
-        WizSend(SOCK1_AND p, 0x100);
-        p += 0x100;
-        if ( p == 0xFF00 ) {
-            p = 0x0000;
-            ++rounds;
-            printk("%u", rounds);
-        }
-        */
     }
 
-#if 0
-    while (1) {}
-    Fatal("NOT", 13);
-
-#if 1
-    LemmaClientS1();
-#endif
-    Fatal("OKAY", 250);
-
-    // NOTREACHED
-#endif
     return 0;
 }

@@ -97,7 +97,6 @@ void PutChar(char ch) {
     }
     Vars->vdg_ptr = p;
     *(byte*)p = 0xEF;  // display Blue Box cursor.
-    // Delay(100);  // don't print too fast
 }
 
 void PutStr(const char* s) {
@@ -187,21 +186,6 @@ void printk(const char* format, ...) {
     }
     va_end(ap);
     PutChar(';');
-    Delay(1000);
-}
-
-// Debug Trace by Line Number
-void ShowLine(word line) {
-#if VERBOSE >= 6
-    printk("%u", line);
-#endif
-}
-
-void Line(const char* s) {
-#if VERBOSE >= 6
-  PutStr(s);
-  PutChar(' ');
-#endif
 }
 
 #endif

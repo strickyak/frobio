@@ -14,16 +14,9 @@
 #define MULTI_SOCK 1
 #define CHECKSUMS 0
 
-
 #define WIZ_PORT  0xFF68   // Hardware port.
 
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
-
-#if 0
-#  define TFTPD_SERVER_PORT 69
-#  define BR_BOOTFILE "COCOIO.BOOT"  // in DECB LOADM format
-#  define BR_NAME "COCO" // 4-letter name is used for MAC and DHCP
-#endif
 
 // Conventional types and constants for Frobio
 typedef unsigned char bool;
@@ -68,8 +61,7 @@ extern int strlen(const char* s);
 
 struct wiz_port {
   byte command;
-  byte addr_hi;
-  byte addr_lo;
+  word addr;
   byte data;
 };
 
@@ -89,25 +81,8 @@ struct vars {
     byte hostchar;  // might tell us what config to load or remote-load.
 
     word vdg_ptr;
-
-#if 0
-    struct loader {
-      byte state;
-      byte op;
-      word counter;
-      word addr;
-    } loader;
-#endif
-
-    // TODO -- get rid of these:
-#if 0
-#if WANT_PACKIN_PACKOUT
-    byte packin[200];
-    byte packout[200];
-#endif
-#endif
-
 };
+
 // Four of SockState immediately follow struct vars,
 // but due to const initialization rules, we cannot
 // make them part of the struct.
@@ -219,11 +194,5 @@ void PrintH(const char* format, ...);
 #define print7 if (VERBOSE>=7) printk
 #define print8 if (VERBOSE>=8) printk
 #define print9 if (VERBOSE>=9) printk
-
-#if VERBOSE >= 6
-#  define L ShowLine(__LINE__);
-#else
-#  define L /**/
-#endif
 
 #endif // _FROB2_BOOTROM_BOOTROM_H_
