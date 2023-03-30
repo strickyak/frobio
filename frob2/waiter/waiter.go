@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"time"
 )
 
 var Format = fmt.Sprintf
@@ -231,6 +230,7 @@ func UploadProgram(conn net.Conn) {
 		log.Printf("CANNOT UPLOAD PROGRAM %q: %v", *PROGRAM, err2)
 		return
 	}
+
 	log.Printf("Uploaded %q", *PROGRAM)
 }
 
@@ -260,9 +260,9 @@ func Serve(conn net.Conn) {
 		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	*/
 	log.Printf("Serving: Sleeping.")
-	time.Sleep(3600 * time.Second)
-	conn.Close()
-	log.Printf("Serving: Closed.")
+
+    done := make(chan bool, 0)
+    <-done
 }
 
 ///////////////////////////////////////////////////
