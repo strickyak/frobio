@@ -15,6 +15,7 @@ var Format = fmt.Sprintf
 var PORT = flag.Int("port", 14511, "Listen on this TCP port")
 var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
 var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
+var DEMO = flag.String("demo", "", "run a demo")
 
 var Block0 *os.File
 
@@ -38,6 +39,8 @@ const (
 	CMD_BOOT_CHUNK  = 212 // boot_lemma
 	CMD_BOOT_END    = 213 // boot_lemma
 )
+
+var Demos map[string]func(net.Conn)
 
 var LogicalRamImage [0x10000]byte // capture coco image.
 
@@ -241,6 +244,17 @@ func Serve(conn net.Conn) {
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
 
+	if *DEMO != "" {
+		demo, ok := Demos[*DEMO]
+		if !ok {
+			for k := range Demos {
+				log.Printf("known demo: %q", k)
+			}
+			log.Fatalf("Unknown demo: %q", *DEMO)
+		}
+		demo(conn)
+	}
+
 	if *PROGRAM != "" {
 		UploadProgram(conn)
 	}
@@ -261,8 +275,8 @@ func Serve(conn net.Conn) {
 	*/
 	log.Printf("Serving: Sleeping.")
 
-    done := make(chan bool, 0)
-    <-done
+	done := make(chan bool, 0)
+	<-done
 }
 
 ///////////////////////////////////////////////////
