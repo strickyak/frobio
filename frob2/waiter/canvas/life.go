@@ -48,13 +48,16 @@ func RunLifeCommon(conn net.Conn, verify bool) {
 		}
 
 		duration := time.Since(life.Start)
-		mtbf := duration / time.Duration(life.Errors+1)
+		mtbf := "Inf"
+		if life.Errors > 0 {
+			mtbf = fmt.Sprintf("%0.2f", duration/time.Duration(life.Errors))
+		}
 		fps := float64(life.Generation) / duration.Seconds()
 
 		s := fmt.Sprintf("Generation: %d Duration: %v  FPS: %.2f",
 			life.Generation, duration, fps)
 		if verify {
-			s += fmt.Sprintf("  Errors: %d MTBF: %v", life.Errors, mtbf)
+			s += fmt.Sprintf("  Errors: %d  MTBF: %v", life.Errors, mtbf)
 		}
 		log.Print(s)
 	}

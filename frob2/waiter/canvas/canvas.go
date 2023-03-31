@@ -1,6 +1,7 @@
 package canvas
 
 import (
+	"io"
 	"log"
 	"net"
 
@@ -72,8 +73,9 @@ func (can *Canvas) Render(conn net.Conn) {
 	MustWrite(conn, can.bm[:])
 }
 func (can *Canvas) Verify(conn net.Conn) {
-	for i := uint(0); i < 12; i++ {
-		lem.WriteFive(conn, lem.CMD_PEEK, 256, 256*i+ScreenLoc)
+	const PeekChunkSize = 1024
+	for i := uint(0); i < 3072/PeekChunkSize; i++ {
+		lem.WriteFive(conn, lem.CMD_PEEK, PeekChunkSize, PeekChunkSize*i+ScreenLoc)
 
 	HDR:
 		for {
@@ -110,19 +112,19 @@ func (can *Canvas) Verify(conn net.Conn) {
 			}
 		}
 
-		v := make([]byte, 256)
-		cc, err := conn.Read(v)
+		v := make([]byte, PeekChunkSize)
+		cc, err := io.ReadFull(conn, v)
 		if err != nil {
 			panic("read peek")
 		}
-		if cc != 256 {
+		if cc != PeekChunkSize {
 			panic("short read")
 		}
 
-		for j := uint(0); j < 256; j++ {
-			want := can.bm[j+256*i]
+		for j := uint(0); j < PeekChunkSize; j++ {
+			want := can.bm[j+PeekChunkSize*i]
 			if v[j] != want {
-				log.Panicf("Diff [%d]: %x vs %x", j+256*i, v[j], want)
+				log.Panicf("Diff [%d]: %x vs %x", j+PeekChunkSize*i, v[j], want)
 			}
 		}
 	}
