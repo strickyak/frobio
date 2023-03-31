@@ -125,7 +125,6 @@ func (can *Canvas) Verify(conn net.Conn) {
 				log.Panicf("Diff [%d]: %x vs %x", j+256*i, v[j], want)
 			}
 		}
-		log.Printf("veriried")
 	}
 }
 

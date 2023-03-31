@@ -1,8 +1,11 @@
 package canvas
 
 import (
+	"fmt"
+	"log"
 	"math/rand"
 	"net"
+	"time"
 
 	lem "github.com/strickyak/frobio/frob2/waiter"
 )
@@ -25,29 +28,56 @@ func RunTest(conn net.Conn) {
 }
 
 func RunLifeCommon(conn net.Conn, verify bool) {
-	//G6CMode(conn)
 	G3CMode(conn)
 	SetVdgScreenAddr(conn, ScreenLoc)
 	life := &Life{
-		curr: &Canvas{},
+		curr:  &Canvas{},
+		Start: time.Now(),
 	}
-	gen := 0
+
 	for {
-		if gen%StirFreq == 0 {
+		if life.Generation%StirFreq == 0 {
 			life.Stir()
 		}
-		gen++
+		life.Generation++
 
 		life.Next()
 		life.curr.Render(conn)
 		if verify {
-			life.curr.Verify(conn)
+			VerifyAndCountErrors(life, conn)
 		}
+
+		duration := time.Since(life.Start)
+		mtbf := duration / time.Duration(life.Errors+1)
+		fps := float64(life.Generation) / duration.Seconds()
+
+		s := fmt.Sprintf("Generation: %d Duration: %v  FPS: %.2f",
+			life.Generation, duration, fps)
+		if verify {
+			s += fmt.Sprintf("  Errors: %d MTBF: %v", life.Errors, mtbf)
+		}
+		log.Print(s)
 	}
+}
+
+func VerifyAndCountErrors(life *Life, conn net.Conn) {
+	func() {
+		r := recover()
+		if r != nil {
+			log.Printf("Recovered: %v", r)
+			life.Errors++
+			log.Printf("Total Errors: %d", life.Errors)
+		}
+	}()
+
+	life.curr.Verify(conn)
 }
 
 type Life struct {
 	curr, next *Canvas
+	Errors     uint
+	Start      time.Time
+	Generation uint
 }
 
 func (life *Life) Next() {
