@@ -1,5 +1,9 @@
 package waiter
 
+// TODO: use ReadFull everywhere on the network conn.
+
+// TODO: gc Life Generator goroutines.
+
 import (
 	"flag"
 	"fmt"

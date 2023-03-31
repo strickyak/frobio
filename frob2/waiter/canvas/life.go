@@ -35,13 +35,26 @@ func RunLifeCommon(conn net.Conn, verify bool) {
 		Start: time.Now(),
 	}
 
-	for {
-		if life.Generation%StirFreq == 0 {
-			life.Stir()
+	// TODO: gc goroutines
+	generator := make(chan *Canvas, 3)
+	go func() {
+		game := &Canvas{}
+		g := 0
+		for {
+			if g%StirFreq == 0 {
+				LifeStir(game)
+			}
+
+			game = LifeNext(game)
+			generator <- game
+			g++
 		}
+	}()
+
+	for {
+		life.curr = <-generator
 		life.Generation++
 
-		life.Next()
 		life.curr.Render(conn)
 		if verify {
 			VerifyAndCountErrors(life, conn)
@@ -83,17 +96,17 @@ type Life struct {
 	Generation uint
 }
 
-func (life *Life) Next() {
-	life.next = &Canvas{}
+func LifeNext(curr *Canvas) *Canvas {
+	next := &Canvas{}
 
 	for x := 0; x < W; x++ {
 		for y := 0; y < H; y++ {
-			old := life.curr.Get(x, y)
+			old := curr.Get(x, y)
 
 			cy, or := 0, 0
 			for i := -1; i < 2; i++ {
 				for j := -1; j < 2; j++ {
-					switch life.curr.Get(x+i, y+j) {
+					switch curr.Get(x+i, y+j) {
 					case Magenta:
 						cy++
 					case Orange:
@@ -104,22 +117,22 @@ func (life *Life) Next() {
 			n := cy + or
 
 			if old > 0 && (n == 2+1 || n == 3+1) {
-				life.next.Set(x, y, old)
+				next.Set(x, y, old)
 			} else if n == 3 {
 				if cy > or {
-					life.next.Set(x, y, Magenta)
+					next.Set(x, y, Magenta)
 				} else {
-					life.next.Set(x, y, Orange)
+					next.Set(x, y, Orange)
 				}
 			}
 
 		}
 	}
 
-	life.curr, life.next = life.next, nil
+	return next
 }
 
-func (life *Life) Stir() {
+func LifeStir(curr *Canvas) {
 	const Thick = 10 / 2 // thickness of stir
 	const Mid = W / 2    // midpoint of Width
 	for x := Mid - Thick; x < Mid+Thick; x++ {
@@ -127,9 +140,9 @@ func (life *Life) Stir() {
 			r := rand.Intn(6)
 			switch r {
 			case 1:
-				life.curr.Set(x, y, Magenta)
+				curr.Set(x, y, Magenta)
 			case 3:
-				life.curr.Set(x, y, Orange)
+				curr.Set(x, y, Orange)
 			}
 		}
 	}
