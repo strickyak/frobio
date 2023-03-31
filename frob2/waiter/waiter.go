@@ -239,7 +239,6 @@ func UploadProgram(conn net.Conn) {
 
 func Serve(conn net.Conn) {
 	log.Printf("gonna ReadFive")
-	go ReadFiveLoop(conn)
 
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
@@ -256,6 +255,7 @@ func Serve(conn net.Conn) {
 	}
 
 	if *PROGRAM != "" {
+		go ReadFiveLoop(conn)
 		UploadProgram(conn)
 	}
 
