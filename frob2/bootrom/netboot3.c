@@ -57,7 +57,7 @@ void TcpCheck(PARAM_JUST_SOCK) {
       }
 }
 
-bool TcpRecvDataTry(PARAM_SOCK_AND char* buf, size_t n) {
+bool TcpRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
   TcpCheck(JUST_SOCK);
 
   word bytes_waiting = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
@@ -83,12 +83,20 @@ bool TcpRecvDataTry(PARAM_SOCK_AND char* buf, size_t n) {
   WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
   return true;
 }
-void TcpRecvData(PARAM_SOCK_AND char* buf, size_t n) {
+void TcpRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
   bool ok;
   do {
     ++ *(char*)0x402;
-    ok = TcpRecvDataTry(SOCK_AND buf, n);
+    ok = TcpRecvChunkTry(SOCK_AND buf, n);
   } while (!ok);
+}
+void TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
+  while (n) {
+    word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
+    TcpRecvChunk(SOCK1_AND (char*)p, chunk);
+    n -= chunk;
+    p += chunk;
+  }
 }
 
 void UdpDial(PARAM_SOCK_AND  const byte* dest_ip, word dest_port) {
@@ -154,15 +162,22 @@ void WizFinalizeSend(PARAM_SOCK_AND size_t n) {
   byte send_command = SK_CR_SEND;
 #endif
   WizIssueCommand(SOCK_AND  send_command);
-  // TcpCheck(JUST_SOCK);
 }
 
-void WizSend(PARAM_SOCK_AND  char* data, size_t n) {
+void WizSendChunk(PARAM_SOCK_AND  char* data, size_t n) {
   print4("SEND");
   TcpCheck(JUST_SOCK);
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND n);
+}
+void WizSend(PARAM_SOCK_AND  char* p, size_t n) {
+  while (n) {
+    word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
+    WizSendChunk(SOCK1_AND p, chunk);
+    n -= chunk;
+    p += chunk;
+  }
 }
 
 void Close(PARAM_JUST_SOCK) {
@@ -184,12 +199,10 @@ void LemmaClientS1() {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
       quint[4] = inkey;
-      WizSend(SOCK1_AND  quint, sizeof quint);
+      WizSendChunk(SOCK1_AND  quint, sizeof quint);
     }
 
-    TcpCheck(JUST_SOCK1);
-
-    ok = TcpRecvDataTry(SOCK1_AND quint, sizeof quint);
+    ok = TcpRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (ok) {
       word n = *(word*)(quint+1);
       word p = *(word*)(quint+3);
@@ -198,12 +211,8 @@ void LemmaClientS1() {
           {
             print3("POKE(%x@%x)", n, p);
             PrintH("POKE(%x@%x)", n, p);
-            while (n) {
-              word chunk = (n < 256u) ? n : 256u;
-              TcpRecvData(SOCK1_AND (char*)p, chunk);
-              n -= chunk;
-              p += chunk;
-            }
+            TcpRecv(SOCK1_AND (char*)p, n);
+
             print3(".");
           }
           break;
@@ -218,12 +227,12 @@ void LemmaClientS1() {
           {
             print3("PEEK(%x@%x)", n, p);
             PrintH("PEEK(%x@%x)", n, p);
+
             quint[0] = CMD_DATA;
-            PrintH("PEEK:Q(DATA)");
-            WizSend(SOCK1_AND quint, 5);
-            PrintH("PEEK:DATA");
+            WizSendChunk(SOCK1_AND quint, 5);
             WizSend(SOCK1_AND (char*)p, n);
-            PrintH("PEEK:DONE");
+
+            print3(",");
           }
           break;
         case CMD_JSR:
@@ -250,7 +259,7 @@ void Send5(byte cmd, word n, word p) {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-int RomMain() {
+int main() {
     // Clear our global variables to zero.
     memset(Vars, 0, sizeof (struct vars));
     Vars->vars_magic = VARS_MAGIC;

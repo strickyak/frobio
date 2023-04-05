@@ -378,7 +378,3 @@ void WizWaitStatus(PARAM_SOCK_AND byte want) {
     if (!--stuck) Fatal("W", status);
   } while (status != want);
 }
-
-void RomMain() {
-  PrintF("TODO");
-}

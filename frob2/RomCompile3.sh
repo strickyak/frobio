@@ -22,10 +22,11 @@ gcc bootrom/abort.c
 asm abort.s --output=abort.o --list=abort.list
 
 cat >'netboot3.script' <<\HERE
-section preboot  load 0xC000
-section api.data load 0xC100
-section net.text load 0xC200
-section .text    load 0xC900
+section preboot          load 0xC000
+section api.data         load 0xC100
+section net.text         load 0xC200
+section .text.startup    load 0xC900
+section .text
 section rom.data
 section rom.bss
 section .data

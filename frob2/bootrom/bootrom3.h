@@ -12,7 +12,7 @@
 #define BR_DHCP 0
 
 #define MULTI_SOCK 1
-#define CHECKSUMS 0
+#define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
 
 #define WIZ_PORT  0xFF68   // Hardware port.
 

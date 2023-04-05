@@ -50,11 +50,7 @@ id_loop
     lda ,x+
     bpl id_loop  ; while no N bit
 
-*		IFNE WHOLE_PROGRAM
-*    lbsr _main  ; and call main with no args, which probably never returns.
-*		ELSE
-    lbsr _RomMain  ; and call RomMain with no args, which probably never returns.
-*		ENDC
+    lbsr _main  ; and call main with no args, which probably never returns.
 
 *** Show id backwards if RomMain returns, and get stuck.
 not_reached
@@ -72,9 +68,7 @@ di_stuck
 
 id_string  fcs / -- STRICKYAK FROBIO PREBOOT -- /
 
-*** Thanks https://github.com/beretta42/sdboot/blob/master/rom.asm
-    ;XXX fill    $ff,9*256	; this is area that Super Basic trashes
-
-    ;fill    $ff,256-.	; this is area that Super Basic trashes
+*** Notice https://github.com/beretta42/sdboot/blob/master/rom.asm
+*** that second halves of $C000 and $C800 are unusable.
 
     ENDSECTION
