@@ -79,11 +79,23 @@ const byte BR_RESOLV  [4] = { 127, 0, 0, 1 };
 const struct proto TcpProto = {
   SK_MR_TCP+SK_MR_ND, // TCP Protocol mode with No Delayed Ack.
   SK_SR_INIT,
+  false,
+  SK_CR_SEND,
 };
 const struct proto UdpProto = {
   SK_MR_UDP, // UDP Protocol mode.
   SK_SR_UDP,
+  false,
+  SK_CR_SEND,
 };
+const struct proto BroadcastUdpProto = {
+  SK_MR_UDP, // UDP Protocol mode.
+  SK_SR_UDP,
+  true,
+  SK_CR_SEND+1,
+};
+const char SixFFs[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 ////////////////////////////////////////////////////////
 

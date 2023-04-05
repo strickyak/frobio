@@ -96,6 +96,8 @@ struct SockState {
   word tx_ptr;
   word tx_to_go;
 };
+extern const char SixFFs[6];
+extern const char Eight00s[8];
 
 #define VARS_RAM (CASBUF)
 #define Vars ((struct vars*)VARS_RAM)
@@ -106,13 +108,13 @@ struct SockState {
 
 #if MULTI_SOCK
 
-  struct sock {
+struct sock {
     word base;
     word tx_ring;
     word rx_ring;
     word ss; // struct SockState* ss;
     byte nth;
-  };
+};
 
 extern const struct sock Socks[4];
 
@@ -172,9 +174,12 @@ enum Commands {
 struct proto {
   byte open_mode;
   byte open_status;
+  bool is_broadcast;
+  byte send_command;
 };
 extern const struct proto TcpProto;
 extern const struct proto UdpProto;
+extern const struct proto BroadcastUdpProto;
 
 extern const char RevDate[16];
 extern const char RevTime[16];

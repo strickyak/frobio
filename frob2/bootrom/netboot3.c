@@ -1,11 +1,5 @@
 #include "frob2/bootrom/bootrom3.h"
 
-bool IsBroadcast(PARAM_JUST_SOCK) {
-  byte first = WizGet1(B+SK_DIPR0);
-  return first==255;  // Net 255 is enough to check.
-}
-
-
 void WizOpen(PARAM_SOCK_AND const struct proto* proto, word local_port ) {
   WizPut1(B+SK_MR, proto->open_mode);
   WizPut2(B+SK_PORTR0, local_port); // Set local port.
@@ -99,19 +93,16 @@ void TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
   }
 }
 
-void UdpDial(PARAM_SOCK_AND  const byte* dest_ip, word dest_port) {
-  WizPutN(B+SK_DIPR0, dest_ip, 4);
-  WizPut2(B+SK_DPORTR0, dest_port);
-
-  // Only UDP will send to broadcast.
-  byte send_command = SK_CR_SEND;
-  if (IsBroadcast(JUST_SOCK)) {
-    // Broadcast to 255.255.255.255
-    send_command = SK_CR_SEND+1;
-    // TODO: when do we undo this?
-    WizPutN(B+6/*Sn_DHAR*/, "\xFF\xFF\xFF\xFF\xFF\xFF", 6);
+void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
+             const byte* dest_ip, word dest_port) {
+  if (proto->is_broadcast) {
+    // Broadcast to 255.255.255.255 to FF:FF:FF:FF:FF:FF.
+    WizPutN(B+6/*Sn_DHAR*/, SixFFs, 6);
+    WizPutN(B+SK_DIPR0, SixFFs, 4);
+  } else {
+    WizPutN(B+SK_DIPR0, dest_ip, 4);
   }
-
+  WizPut2(B+SK_DPORTR0, dest_port);
 }
 void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
   PrintH("ResTS %x", n);
@@ -147,34 +138,28 @@ void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
   print4("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
-void WizFinalizeSend(PARAM_SOCK_AND size_t n) {
+void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n) {
   print4("FSend %x", n);
-  word tx_wr = WizGet2(B+SK_TX_WR0);  
+  word tx_wr = WizGet2(B+SK_TX_WR0);
   print4("3tx..%x", tx_wr);
   tx_wr += n;
   WizPut2(B+SK_TX_WR0, tx_wr);
   print4("..%x", tx_wr);
   AssertEQ(SS->tx_to_go, 0);
-#if 0
-  // IF WE UNIFY UDP AND TCP, we want the Broadcast check.
-  byte send_command = SK_CR_SEND + IsBroadcast(JUST_SOCK);
-#else
-  byte send_command = SK_CR_SEND;
-#endif
-  WizIssueCommand(SOCK_AND  send_command);
+  WizIssueCommand(SOCK_AND  proto->send_command);
 }
 
-void WizSendChunk(PARAM_SOCK_AND  char* data, size_t n) {
+void TcpSendChunk(PARAM_SOCK_AND  char* data, size_t n) {
   print4("SEND");
   TcpCheck(JUST_SOCK);
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
-  WizFinalizeSend(SOCK_AND n);
+  WizFinalizeSend(SOCK_AND &TcpProto, n);
 }
-void WizSend(PARAM_SOCK_AND  char* p, size_t n) {
+void TcpSend(PARAM_SOCK_AND  char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
-    WizSendChunk(SOCK1_AND p, chunk);
+    TcpSendChunk(SOCK1_AND p, chunk);
     n -= chunk;
     p += chunk;
   }
@@ -199,7 +184,7 @@ void LemmaClientS1() {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
       quint[4] = inkey;
-      WizSendChunk(SOCK1_AND  quint, sizeof quint);
+      TcpSendChunk(SOCK1_AND  quint, sizeof quint);
     }
 
     ok = TcpRecvChunkTry(SOCK1_AND quint, sizeof quint);
@@ -229,8 +214,8 @@ void LemmaClientS1() {
             PrintH("PEEK(%x@%x)", n, p);
 
             quint[0] = CMD_DATA;
-            WizSendChunk(SOCK1_AND quint, 5);
-            WizSend(SOCK1_AND (char*)p, n);
+            TcpSendChunk(SOCK1_AND quint, 5);
+            TcpSend(SOCK1_AND (char*)p, n);
 
             print3(",");
           }
@@ -251,11 +236,13 @@ void LemmaClientS1() {
 }
 
 void Send5(byte cmd, word n, word p) {
-    char quint[5] = { cmd, (byte)(n>>8), (byte)(n&255), (byte)(p>>8), (byte)(p&255) };
-    WizSend(SOCK1_AND quint, 5);
+    char quint[5] = {
+      cmd,
+      (byte)(n>>8), (byte)(n),
+      (byte)(p>>8), (byte)(p) };
+    TcpSendChunk(SOCK1_AND quint, 5);
     PutChar('#');
-} 
-
+}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
