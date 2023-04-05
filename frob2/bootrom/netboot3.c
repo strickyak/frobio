@@ -41,7 +41,7 @@ void TcpEstablish(PARAM_JUST_SOCK) {
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
 }
 
-void TcpCheck(PARAM_JUST_SOCK) {
+void ErrCheck(PARAM_JUST_SOCK) {
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
         Fatal("TMO", ir);
@@ -51,8 +51,8 @@ void TcpCheck(PARAM_JUST_SOCK) {
       }
 }
 
-bool TcpRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
-  TcpCheck(JUST_SOCK);
+bool WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
+  ErrCheck(JUST_SOCK);
 
   word bytes_waiting = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
   word rd = WizGet2(B+SK_RX_RD0);
@@ -77,17 +77,17 @@ bool TcpRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
   WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
   return true;
 }
-void TcpRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
+void WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
   bool ok;
   do {
-    ++ *(char*)0x402;
-    ok = TcpRecvChunkTry(SOCK_AND buf, n);
+    LIVENESS(0);
+    ok = WizRecvChunkTry(SOCK_AND buf, n);
   } while (!ok);
 }
 void TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
-    TcpRecvChunk(SOCK1_AND (char*)p, chunk);
+    WizRecvChunk(SOCK1_AND (char*)p, chunk);
     n -= chunk;
     p += chunk;
   }
@@ -104,14 +104,15 @@ void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
   }
   WizPut2(B+SK_DPORTR0, dest_port);
 }
+
 void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
   PrintH("ResTS %x", n);
   // Wait until free space is available.
   word free_size;
   do {
+    LIVENESS(1);
     free_size = WizGet2(B+SK_TX_FSR0);
     PrintH("Res free %x", free_size);
-    ++ *(char*)0x404;
   } while (free_size < n);
 
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
@@ -151,7 +152,7 @@ void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n) {
 
 void TcpSendChunk(PARAM_SOCK_AND  char* data, size_t n) {
   print4("SEND");
-  TcpCheck(JUST_SOCK);
+  ErrCheck(JUST_SOCK);
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND &TcpProto, n);
@@ -187,7 +188,7 @@ void LemmaClientS1() {
       TcpSendChunk(SOCK1_AND  quint, sizeof quint);
     }
 
-    ok = TcpRecvChunkTry(SOCK1_AND quint, sizeof quint);
+    ok = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (ok) {
       word n = *(word*)(quint+1);
       word p = *(word*)(quint+3);

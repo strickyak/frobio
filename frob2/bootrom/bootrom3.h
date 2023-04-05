@@ -106,6 +106,8 @@ extern const char Eight00s[8];
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
 
+#define LIVENESS(N) {++ *(byte*)(VDG_RAM+N);}
+
 #if MULTI_SOCK
 
 struct sock {
@@ -115,7 +117,6 @@ struct sock {
     word ss; // struct SockState* ss;
     byte nth;
 };
-
 extern const struct sock Socks[4];
 
 #define SOCK1_AND (Socks+1),
@@ -180,6 +181,12 @@ struct proto {
 extern const struct proto TcpProto;
 extern const struct proto UdpProto;
 extern const struct proto BroadcastUdpProto;
+
+struct UdpRecvHeader {
+    byte addr[4];
+    word port;
+    word len;
+};
 
 extern const char RevDate[16];
 extern const char RevTime[16];
