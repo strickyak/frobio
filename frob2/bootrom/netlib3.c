@@ -76,7 +76,14 @@ const byte BR_WAITER  [4] = { 127, 0, 0, 1 };
 const byte BR_RESOLV  [4] = { 127, 0, 0, 1 };
 #endif
 
-// END
+const struct proto TcpProto = {
+  SK_MR_TCP+SK_MR_ND, // TCP Protocol mode with No Delayed Ack.
+  SK_SR_INIT,
+};
+const struct proto UdpProto = {
+  SK_MR_UDP, // UDP Protocol mode.
+  SK_SR_UDP,
+};
 
 ////////////////////////////////////////////////////////
 
@@ -334,7 +341,7 @@ void WizReset() {
   Delay(5000);
   WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
   Delay(100);
- 
+
   // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
 
   // Interval until retry: 1 second.
@@ -363,7 +370,7 @@ void WizIssueCommand(PARAM_SOCK_AND byte cmd) {
   while (WizGet1(B+SK_CR)) {
     ++ *(char*)0x401;
   }
-  
+
   if (cmd == 0x40) PutChar('<');
   else if (cmd == 0x20) PutChar('>');
   else PutChar('!');

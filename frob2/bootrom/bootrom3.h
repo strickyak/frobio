@@ -173,14 +173,8 @@ struct proto {
   byte open_mode;
   byte open_status;
 };
-const struct proto TcpProto = {
-  SK_MR_TCP+SK_MR_ND, // TCP Protocol mode with No Delayed Ack.
-  SK_SR_INIT, 
-};
-const struct proto UdpProto = {
-  SK_MR_UDP, // UDP Protocol mode.
-  SK_SR_UDP,
-};
+extern const struct proto TcpProto;
+extern const struct proto UdpProto;
 
 extern const char RevDate[16];
 extern const char RevTime[16];
