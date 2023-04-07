@@ -9,15 +9,23 @@ LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc
 
 .SUFFIXES:  # Use no builtin rules.
 
-3: chat255.decb netboot3.l3k
+3: chat255.loadm netboot3.l3k netboot3.dsk
 
-chat255.decb: chat255.c
+chat255.loadm: chat255.c
 	gcc6809 -I.. --std=gnu99  -Os  -S chat255.c
 	lwasm -o chat255.o --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource chat255.s --list=chat255.o.list
-	lwlink --format=decb --entry=_main -o chat255.decb --map=chat255.map  chat255.o
+	lwlink --format=decb --entry=_main -o chat255.loadm --map=chat255.map  chat255.o
 
 netboot3.l3k:
 	sh RomCompile3.sh
+netboot3.dsk: netboot3.l3k
+	rm -f netboot3.dsk
+	decb dskini netboot3.dsk
+	decb copy -0 -b bootrom/GO.BAS netboot3.dsk,INSTALL4.BAS
+	decb copy -2 -b netboot3.l3k netboot3.dsk,NETBOOT.DEC
+	decb dir netboot3.dsk
+	ls -l netboot3.dsk
+
 
 
 # f-*.c are our intended frobio commands.
