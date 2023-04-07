@@ -176,7 +176,7 @@ void PutChar(char ch) {
   PrintH("CH: %x %c", ch, (' ' <= ch && ch <= '~') ? ch : '?');
   return;
 #endif
-    if (ch == 13) { // Carriage Return
+    if (ch == 13 || ch == 10) { // Carriage Return
       do {
         PutChar(' ');
       } while ((Vars->vdg_ptr & 31));
@@ -302,7 +302,6 @@ void PrintF(const char* format, ...) {
         s++;
     }
     va_end(ap);
-    PutChar(';');
 }
 
 ///////////////////////////////////////////////////////////
@@ -359,7 +358,7 @@ void WizReset() {
   // Interval until retry: 1 second.
   WizPut2(RTR0, 10000 /* Tenths of milliseconds. */ );
   // Number of retries.
-  WizPut1(RCR, 10);
+  WizPut1(RCR, 5);
 }
 
 void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway) {
@@ -380,19 +379,18 @@ void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gatew
 void WizIssueCommand(PARAM_SOCK_AND byte cmd) {
   WizPut1(B+SK_CR, cmd);
   while (WizGet1(B+SK_CR)) {
-    ++ *(char*)0x401;
+    // ++ *(char*)0x401;
   }
-
-  if (cmd == 0x40) PutChar('<');
-  else if (cmd == 0x20) PutChar('>');
-  else PutChar('!');
+  // if (cmd == 0x40) PutChar('<');
+  // else if (cmd == 0x20) PutChar('>');
+  // else PutChar('!');
 }
 
 void WizWaitStatus(PARAM_SOCK_AND byte want) {
   byte status;
   byte stuck = 200;
   do {
-    ++ *(char*)0x400;
+    // ++ *(char*)0x400;
     status = WizGet1(B+SK_SR);
     if (!--stuck) Fatal("W", status);
   } while (status != want);

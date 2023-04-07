@@ -41,7 +41,7 @@ void TcpEstablish(PARAM_JUST_SOCK) {
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
 }
 
-void ErrCheck(PARAM_JUST_SOCK) {
+void WizCheck(PARAM_JUST_SOCK) {
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
         Fatal("TMO", ir);
@@ -52,7 +52,7 @@ void ErrCheck(PARAM_JUST_SOCK) {
 }
 
 bool WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
-  ErrCheck(JUST_SOCK);
+  WizCheck(JUST_SOCK);
 
   word bytes_waiting = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
   word rd = WizGet2(B+SK_RX_RD0);
@@ -60,9 +60,10 @@ bool WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
 
   word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
-  PrintH("TTn=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
+  PrintH("WRCTn=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
 
   if (bytes_waiting < n) return false;
+  PrintH("WRCT+");
 
   if (end >= RING_SIZE) {
     word first_n = RING_SIZE - begin;
@@ -77,10 +78,11 @@ bool WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
   WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
   return true;
 }
+
 void WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
   bool ok;
   do {
-    LIVENESS(0);
+    // LIVENESS(0);
     ok = WizRecvChunkTry(SOCK_AND buf, n);
   } while (!ok);
 }
@@ -110,14 +112,14 @@ void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
   // Wait until free space is available.
   word free_size;
   do {
-    LIVENESS(1);
+    // LIVENESS(1);
     free_size = WizGet2(B+SK_TX_FSR0);
     PrintH("Res free %x", free_size);
   } while (free_size < n);
 
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
   SS->tx_to_go = n;
-  print4("1tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
+  //print4("1tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
 void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
@@ -136,38 +138,38 @@ void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
   }
   SS->tx_to_go -= n;
   SS->tx_ptr = (n + SS->tx_ptr) & RING_MASK;
-  print4("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
+  //print4("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
 void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n) {
-  print4("FSend %x", n);
+  //print4("FSend %x", n);
   word tx_wr = WizGet2(B+SK_TX_WR0);
-  print4("3tx..%x", tx_wr);
+  //print4("3tx..%x", tx_wr);
   tx_wr += n;
   WizPut2(B+SK_TX_WR0, tx_wr);
-  print4("..%x", tx_wr);
+  //print4("..%x", tx_wr);
   AssertEQ(SS->tx_to_go, 0);
   WizIssueCommand(SOCK_AND  proto->send_command);
 }
 
-void TcpSendChunk(PARAM_SOCK_AND  char* data, size_t n) {
-  print4("SEND");
-  ErrCheck(JUST_SOCK);
+void WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n) {
+  //print4("SEND");
+  WizCheck(JUST_SOCK);
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
-  WizFinalizeSend(SOCK_AND &TcpProto, n);
+  WizFinalizeSend(SOCK_AND proto, n);
 }
 void TcpSend(PARAM_SOCK_AND  char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
-    TcpSendChunk(SOCK1_AND p, chunk);
+    WizSendChunk(SOCK1_AND &TcpProto, p, chunk);
     n -= chunk;
     p += chunk;
   }
 }
 
-void Close(PARAM_JUST_SOCK) {
-  print4("Z");
+void WizClose(PARAM_JUST_SOCK) {
+  //print4("Z");
   WizIssueCommand(SOCK1_AND 0x10/*CLOSE*/);
   WizPut1(B+SK_MR, 0x00/*Protocol: Socket Closed*/);
   WizPut1(B+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
@@ -185,7 +187,7 @@ void LemmaClientS1() {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
       quint[4] = inkey;
-      TcpSendChunk(SOCK1_AND  quint, sizeof quint);
+      WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
     }
 
     ok = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
@@ -195,11 +197,11 @@ void LemmaClientS1() {
       switch ((byte)quint[0]) {
         case CMD_POKE:
           {
-            print3("POKE(%x@%x)", n, p);
+            // print3("POKE(%x@%x)", n, p);
             PrintH("POKE(%x@%x)", n, p);
             TcpRecv(SOCK1_AND (char*)p, n);
 
-            print3(".");
+            // print3(".");
           }
           break;
         case CMD_PUTCHARS:
@@ -211,22 +213,22 @@ void LemmaClientS1() {
           break;
         case CMD_PEEK:
           {
-            print3("PEEK(%x@%x)", n, p);
+            // print3("PEEK(%x@%x)", n, p);
             PrintH("PEEK(%x@%x)", n, p);
 
             quint[0] = CMD_DATA;
-            TcpSendChunk(SOCK1_AND quint, 5);
+            WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
             TcpSend(SOCK1_AND (char*)p, n);
 
-            print3(",");
+            // print3(",");
           }
           break;
         case CMD_JSR:
           {
             func fn = (func)p;
-            PrintH("CALLING %x", fn); Delay(9000);
+            // PrintH("CALLING %x", fn); Delay(9000);
             fn();
-            PrintH("RETURNING FROM %x", fn); Delay(9000);
+            // PrintH("RETURNING FROM %x", fn); Delay(9000);
           }
           break;
         default:
@@ -236,14 +238,16 @@ void LemmaClientS1() {
     } // ok
 }
 
+#if 0
 void Send5(byte cmd, word n, word p) {
     char quint[5] = {
       cmd,
       (byte)(n>>8), (byte)(n),
       (byte)(p>>8), (byte)(p) };
-    TcpSendChunk(SOCK1_AND quint, 5);
+    WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
     PutChar('#');
 }
+#endif
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -264,24 +268,24 @@ int main() {
 
     // Record Vars->s_reg, to give some idea of memory size.
     word s_reg = StackPointer();
-    PrintF("stack=%x", s_reg);
+    PrintF("stack=%x; ", s_reg);
     Vars->s_reg = s_reg;
 
     // Use Ticks to create a local port with high bit set.
     word ticks = WizTicks();
     word local_port = 0x8000 | ticks;
 
-    PrintF("WizReset");
+    PrintF("WizReset; ");
     WizReset();
 #if BR_STATIC
-    PrintF("CONF");
+    // PrintF("CONF");
     WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #endif
     WizOpen(SOCK1_AND &TcpProto, local_port);
-    PrintF("tcp dial %a %x", BR_WAITER, 14511);
+    PrintF("tcp dial %a %x;", BR_WAITER, 14511);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
-    PrintF("CONN");
+    PrintF(" CONN; ");
 
     while (1) {
         LemmaClientS1();

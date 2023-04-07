@@ -40,12 +40,14 @@ typedef void (*func)();
 #include <stdarg.h>
 typedef unsigned int size_t;
 
+#define restrict
 void abort(void);
 void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 void *memset(void *s, int c, size_t n);
 char *strcpy(char *restrict dest, const char *restrict src);
 char *strncpy(char *restrict dest, const char *restrict src, size_t n);
 size_t strlen(const char *s);
+#undef restrict
 
 #else
 
@@ -106,7 +108,8 @@ extern const char Eight00s[8];
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
 
-#define LIVENESS(N) {++ *(byte*)(VDG_RAM+N);}
+// This was an indication of waiting in loops.
+// #define LIVENESS(N) {++ *(byte*)(VDG_RAM+N);}
 
 #if MULTI_SOCK
 
