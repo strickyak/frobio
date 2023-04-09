@@ -1,3 +1,4 @@
+#include "frob2/bootrom/bootrom3.h"
 
 struct dhcp {
     byte opcode; // 1=request 2=response
@@ -24,25 +25,6 @@ struct dhcp {
 //236
     byte options[300];  // not really 300?
 };
-#if 0
-const byte LocalEtherAddr[6] = { 2, 2, 'C', 'O', 'C', 'O'};
-const byte DiscoverOffset0Len12[] = {
-  1, // opcode: request
-  1, // htype: ethernet
-  6, // hlen: 6-byte hw addrs
-  0, // hops: none.
-  'C', 'O', 'C', 'O', // xid: reuse the Hostname.`
-  0, 0, // secs
-  0, 0x80, // flags:  0x80=Broadcast or 0x00=Unicast.
-};
-const byte OptionsBytes[] = {
-  99, 130, 83, 99, // magic cookie for DHCP.
-  53, 1, 1, // 53=DHCP Option, 1=length, 1=Discover.
-  12, 4, 'C', 'O', 'C', 'O', // 12=Hostname, 4=length.
-  255, 0   // 255=End, 0=length.
-};
-#endif
-
 
 const byte RequestDHCP0[] = {
   1, // opcode: 1=request 2-response
@@ -55,21 +37,37 @@ const byte RequestDHCP8[] = {
   0, 0, // secs
   0x00, 0x80, // broadcast
 };
-const byte RequestOptions[] = {
+const byte DiscoverOptions[] = {
   99, 130, 83, 99, // magic cookie for DHCP
   51, 1, 1,  // 53=OptionType 1=len 1=Discover
   12, 4, // 12=Hostname, 4=len4chars, FOLLOWED BY NAME
 };
-const byte RequestEndOptions[] = {
+const byte DiscoverOptions[] = {
+  99, 130, 83, 99, // magic cookie for DHCP
+  51, 1, 1,  // 53=OptionType 1=len 1=Discover
+  12, 4, // 12=Hostname, 4=len4chars, FOLLOWED BY NAME
+};
+const byte RequestOptions[] = {
+  99, 130, 83, 99, // magic cookie for DHCP
+  51, 1, 3,  // 53=OptionType 1=len 3=Request
+  12, 4, // 12=Hostname, 4=len4chars, FOLLOWED BY NAME
+};
+const byte RequestAddressOption[] = {
+  50, 4, // plus 4-byte address.
+};
+const byte EndOptions[] = {
   255, 0   // 255=end, 0=len
 };
 
-void DhcpRequest0(const char* name4) {
+void DhcpRequest(const char* name4, bool second) {
   byte mac[6] = {
     2, 32, name4[0], name4[1], name4[2], name4[3]};
   word req_size = 236 +
-      sizeof RequestOptions + 4 +
-      sizeof RequestEndOptions;
+      (second)
+        ? (sizeof RequestOptions + 4
+            + sizeof RequestAddressOption + 4)
+        : (sizeof DiscoverOptions + 4)
+      + sizeof EndOptions;
 
   WizReserveToSend(PARAM_SOCK_AND req_size);
 
@@ -86,24 +84,32 @@ void DhcpRequest0(const char* name4) {
     SendData(Eight00s, 8); // ch_addr + sname + bname
   }
 
-  SendData(RequestOptions, sizeof RequestOptions);
-  SendData(name4, 4);
-  SendData(RequestEndOptions, sizeof RequestEndOptions);
+  if (second) {
+    SendData(RequestOptions, sizeof RequestOptions);
+    SendData(name4, 4);
+    SendData(RequestAddressOption, sizeof RequestAddressOption);
+    SendData(address, 4);
+  } else {
+    SendData(DiscoverOptions, sizeof DiscoverOptions);
+    SendData(name4, 4);
+  }
+  SendData(EndOptions, sizeof EndOptions);
 
-  WizReserveToSend(PARAM_SOCK_AND req_size);
   WizFinalizeSend(PARAM_SOCK_AND BroadcastUdpProto, req_size);
 }
 
-void RunDhcp(const char* name4) {
-  struct UdpRecvHeader hdr;
-  DhcpRequest0(name4);
+void WasteRecvBytes(word n) {
+  char junk[8];
+  while (n >= 8) {
+    WizRecvChunk(PARAM_SOCK_AND  buf, 8);
+    n -= 8;
+  }
+  if (n > 0) {
+    WizRecvChunk(PARAM_SOCK_AND  buf, n);
+  }
+}
 
-  // TODO try N times
-  bool ok = WizRecvChunkTry(PARAM_SOCK_AND (char*)&hdr, sizeof hdr);
-  assert(ok);
-
-
-void DhcpReply1(struct UdpRecvHeader *hdr) {
+void DhcpReply(struct UdpRecvHeader *hdr, bool second) {
   char buf[4];
 
   // we want 16:yiaddr (you) and 20:siaddr (server)
@@ -116,16 +122,18 @@ void DhcpReply1(struct UdpRecvHeader *hdr) {
 
   WizRecvChunk(PARAM_SOCK_AND  buf, 4); // DHCP magic
   assert(buf[0] == 99);
-  //assert(buf[1] == 130);
-  //assert(buf[2] == 83);
+  assert(buf[1] == 130);
+  assert(buf[2] == 83);
   assert(buf[3] == 99);
 
   word opt_len = 0;
   do {
     opt_len += 2;
     WizRecvChunk(PARAM_SOCK_AND  buf, 2); // Option & Len
+                                          //
 #define OPT buf[0]
-#define LEN buf[0]
+#define LEN buf[1]
+
     opt_len += LEN;
     if (len == 4) {
       WizRecvChunk(PARAM_SOCK_AND  buf, 4); // 4 byte IP addr
@@ -148,14 +156,23 @@ void DhcpReply1(struct UdpRecvHeader *hdr) {
   WasteRecvBytes(junk_len);
 }
 
-void WasteRecvBytes(word n) {
-  char junk[8];
-  while (n >= 8) {
-    WizRecvChunk(PARAM_SOCK_AND  buf, 8);
-    n -= 8;
+errnum RunOneDhcpRound(const char* name4, bool second) {
+  struct UdpRecvHeader hdr;
+  DhcpRequest(name4, second);
+
+  bool ok = WizRecvChunk(PARAM_SOCK_AND (char*)&hdr, sizeof hdr);
+  assert(ok);
+  if (hdr.len < sizeof Offfer) {
+     return BAD_OFFER_LEN;
   }
-  while (n > 0) {
-    WizRecvChunk(PARAM_SOCK_AND  buf, 1);
-    n--;
-  }
+  DhcpReply(SOCK_AND &hdr);
+}
+
+errnum RunDhcp(const char* name4) {
+  // First round: Discover.
+  errnum e = RunOneDhcpRound(name4, false);
+  if (e) return e;
+  // Second round: Request.
+  e = RunOneDhcpRound(name4, true);
+  if (e) return e;
 }
