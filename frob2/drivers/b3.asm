@@ -1,10 +1,10 @@
 ********************************************************************
-* Y0 : LEMMA Block Disk Device 0
+* B3 : LEMMA Block Disk Device 0
 *
 * Modified from pipe.asm by Henry Strickland (github.com/strickyak)
 
-         nam   Y0
-         ttl   Y0 lemma block disk device descriptor
+         nam   B3
+         ttl   B3 lemma block disk device descriptor
 
          ifp1  
          use   defsfile
@@ -16,7 +16,6 @@ rev      set   $00
 
          mod   eom,name,tylg,atrv,mgrnam,drvnam
 
-         ;;;; fcb   READ.+WRITE. ; mode byte
          fcb   $87          ; mode byte
          fcb   $00          ; M$PORT[3]: $0E: extended controller address
          fdb   $0000        ;                 physical controller address
@@ -25,12 +24,12 @@ rev      set   $00
 				 ; Initialization Table
 iBegin   equ   *
          fcb   DT.RBF       ; M$DTyp: $12: device type
-         fcb   0            ; IT.DRV: $13: drive number
+         fcb   3            ; IT.DRV: $13: drive number
          fcb   1            ; IT.STP: $14: step rate
-         fcb   TYP.HARD     ; IT.TYP: $15: step rate
+         fcb   TYP.HARD     ; IT.TYP: $15: hard drive
 iEnd     equ   *
 
-name     fcs   /DD/         ; /Y0/ is the default disk, so /DD/.
+name     fcs   /Y3/
 mgrnam   fcs   /RBF/
 drvnam   fcs   /RBLemma/
 

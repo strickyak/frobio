@@ -25,7 +25,7 @@
          use   defsfile
          endc
 
-N.Drives equ 2
+N.Drives equ 4
 
          org   0
          rmb   DRVBEG+(DRVMEM*N.Drives) Normal RBF device mem for N Drives
@@ -231,7 +231,7 @@ DriveErr
 				ldb #240   ; Unit Error
         rts
 
-				use _generated_from_rblemma.s
+				use _generated_from_rblemmac.s
 
          emod
 eom      equ   *

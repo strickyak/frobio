@@ -64,40 +64,12 @@ struct wiz_ports {
 #define RING_SIZE 2048
 #define RING_MASK (RING_SIZE - 1)
 
-void PutChar(char ch);
-void PutStr(const char* s);
-void PutHex(word x);
-void PutDec(word x);
-void Fatal(const char* wut, word arg);
-void ShowLine(word line);
-void Line(const char* s);
-void AssertEQ(word a, word b);
-void AssertLE(word a, word b);
-
 #if EMULATED
 // HyperLogging with Emulator's PrintH command.
 void PrintH(const char* format, ...);
 #else
 // These turn to nothing, if not emulated.
 #define PrintH(FMT,...) /*nothing*/
-#endif
-
-// vanishing PrintH's
-
-#define print1 if (VERBOSE>=1) PrintH
-#define print2 if (VERBOSE>=2) PrintH
-#define print3 if (VERBOSE>=3) PrintH
-#define print4 if (VERBOSE>=4) PrintH
-#define print5 if (VERBOSE>=5) PrintH
-#define print6 if (VERBOSE>=6) PrintH
-#define print7 if (VERBOSE>=7) PrintH
-#define print8 if (VERBOSE>=8) PrintH
-#define print9 if (VERBOSE>=9) PrintH
-
-#if VERBOSE >= 6
-#  define L ShowLine(__LINE__);
-#else
-#  define L /**/
 #endif
 
 #endif // _FROB2_DRIVERS_RBLEMMA_H_
