@@ -11,7 +11,7 @@ const (
 )
 
 func HiLo(a, b byte) int {
-	return int(uint(a)<<8) | uint(b)
+	return int((uint(a) << 8) | uint(b))
 }
 func Hi(x int) byte {
 	return 255 & byte(uint(x)>>8)
@@ -22,39 +22,41 @@ func Lo(x int) byte {
 
 type Quint [5]byte // Quintabyte commands.
 
-func NewQuint(cmd byte, count int, addr int) Quint {
+func NewQuint(cmd byte, n int, p int) Quint {
 	var q Quint
 	q[0] = cmd
-	q[1] = Hi(count)
-	q[2] = Lo(count)
-	q[3] = Hi(addr)
-	q[4] = Lo(addr)
+	q[1] = Hi(n)
+	q[2] = Lo(n)
+	q[3] = Hi(p)
+	q[4] = Lo(p)
 	return q
 }
 
-type Network struct {
-	Conn *net.Conn
-	ses  *Session
+func (q Quint) N() int {
+	return HiLo(q[1], q[2])
+}
+func (q Quint) P() int {
+	return HiLo(q[3], q[4])
 }
 
-func (nw *Network) SendQuint(q Quint) {
-	cc, err := nw.Conn.Write(q[:])
+func (ses *Session) SendQuint(q Quint) {
+	cc, err := ses.Conn.Write(q[:])
 	if err != nil {
-		log.Panicf("SendQuint(%q) got err: %v", nw.ses.ID, err)
+		log.Panicf("SendQuint(%q) got err: %v", ses.ID, err)
 	}
 	if cc != 5 {
-		log.Panicf("SendQuint(%q) short write: %v", nw.ses.ID, cc)
+		log.Panicf("SendQuint(%q) short write: %v", ses.ID, cc)
 	}
 }
 
-func (nw *Network) RecvQuint() Quint {
+func (ses *Session) RecvQuint() Quint {
 	var q Quint
-	cc, err := nw.Conn.ReadFull(q[:])
+	cc, err := ses.Conn.ReadFull(q[:])
 	if err != nil {
-		log.Panicf("RecvQuint(%q) got err: %v", nw.ses.ID, err)
+		log.Panicf("RecvQuint(%q) got err: %v", ses.ID, err)
 	}
 	if cc != 5 {
-		log.Panicf("RecvQuint(%q) short read: %v", nw.ses.ID, cc)
+		log.Panicf("RecvQuint(%q) short read: %v", ses.ID, cc)
 	}
 	return q
 }
@@ -62,9 +64,10 @@ func (nw *Network) RecvQuint() Quint {
 type Screen interface {
 	Clear()
 	PutChar(ch byte)
+	PutStr(s string)
 	Width() int
 	Height() int
-	Push()
+	Push(*Session)
 	Redraw()
 }
 
@@ -73,7 +76,6 @@ type Text struct {
 	New  []byte // screen RAM not yet sent.
 	W, H int    // screen dimensions
 	X, Y int    // cursor
-	nw   *Network
 	Addr int
 }
 
@@ -100,9 +102,87 @@ func (t *Text) Clear() {
 	t.Screen = make([]byte, t.W*t.H)
 }
 
+type LineBuf struct {
+	buf []byte
+}
+
 type Session struct {
-	Screen  *Screen
-	LineBuf []byte
-	nw      *Network
-	ID      string
+	ID          string
+	Conn        *net.Conn
+	Screen      *Screen
+	LineBuf     *LineBuf
+	LineHandler func()            // uses LineBuf
+	Env         map[string]string // for whatever
+	User        *User             // logged in user
+}
+
+// Run() is called with "go" to manage a connection session.
+var nextID int = 101
+
+func Run(conn *net.Conn) {
+	ses := &Session{
+		ID:      fmt.Sprintf("ses%d", nextID),
+		Conn:    conn,
+		Screen:  NewScreen(),
+		LineBuf: nil,
+	}
+
+	// Fill initial screen.
+	// Pushes initial screen.
+	// Set LineHandler.
+	// Waits on Read Quint.
+}
+
+type Card interface {
+	Activate(ses *Session)
+	// Accept(ses *Session, submission string) Card
+}
+
+type PromptCard struct {
+	Prompt  string
+	Actions map[string]*Card
+}
+
+func (pc *PromptCard) Activate(ses *Session) {
+    ses.Screen.Clear()
+    ses.Screen.PutStr(pc.Prompt)
+    ses.Screen.Push(ses)
+    ses.LineHandler = func() {
+        s := string(ses.LineBuf.buf)
+        s = strings.TrimSpace(s)
+        next, ok := pc.Actions[s]
+        if ok {
+            next.Activate(ses)
+        } else {
+            pc.Activate(ses)
+        }
+    }
+}
+
+type ActionCard struct {
+	Func func(ses *Session)
+}
+func (ac *ActionCard) Activate(ses *Session) {
+    ac.Func(ses)
+}
+
+var RunNitros9Card = &ActionCard{
+	Func: func(ses *Session) {
+		ToDo()
+	},
+}
+
+var HomeCard = &Card{
+	Prompt: `Welcome to Lemma.
+  1) run nitros9
+  2) run nyancat
+  3) login user
+  4) create user
+`,
+	Actions: map[string]*Card{
+		{"1", RunNitros9Card},
+		{"2", RunNitros9Card},
+		{"3", RunNitros9Card},
+		{"4", RunNitros9Card},
+	},
 }

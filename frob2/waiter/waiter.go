@@ -62,7 +62,7 @@ func WriteFive(conn net.Conn, cmd byte, a uint, b uint) {
 	log.Printf("WriteFive: %x %x %x", cmd, a, b)
 	_, err := conn.Write([]byte{cmd, Hi(a), Lo(a), Hi(b), Lo(b)}) // == WriteFull
 	if err != nil {
-		log.Fatalf("writeFive: stopping due to error: %v", err)
+		log.Panicf("writeFive: stopping due to error: %v", err)
 	}
 }
 
@@ -99,7 +99,7 @@ func ReadFiveLoop(conn net.Conn) {
 		if Block0 == nil {
 			Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
 			if err != nil {
-				log.Fatalf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
+				log.Panicf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
 			}
 		}
 		lsn := (int64(n&255) << 16) | int64(p)
@@ -169,7 +169,7 @@ func ReadFiveLoop(conn net.Conn) {
 								const RamFile = "/tmp/coco.ram"
 								err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
 								if err != nil {
-									log.Fatalf("ReadFive: DATA: writing %q: %v", RamFile, err)
+									log.Panicf("ReadFive: DATA: writing %q: %v", RamFile, err)
 								}
 							}
 				*/
@@ -192,7 +192,7 @@ func ReadFiveLoop(conn net.Conn) {
 
 				_, err = conn.Write(buf) // == WriteFull
 				if err != nil {
-					log.Fatalf("BLOCK_READ: Write256: network block write failed: %v", err)
+					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
 			}
 		case CMD_BLOCK_WRITE:
@@ -253,7 +253,7 @@ func Serve(conn net.Conn) {
 			for k := range Demos {
 				log.Printf("known demo: %q", k)
 			}
-			log.Fatalf("Unknown demo: %q", *DEMO)
+			log.Panicf("Unknown demo: %q", *DEMO)
 		}
 		demo(conn)
 	}
@@ -288,7 +288,7 @@ func Serve(conn net.Conn) {
 func Listen() {
 	l, err := net.Listen("tcp", Format(":%d", *PORT))
 	if err != nil {
-		log.Fatalf("Cannot Listen(): %v", err)
+		log.Panicf("Cannot Listen(): %v", err)
 	}
 	defer l.Close()
 	log.Printf("Listening on port %d", *PORT)
@@ -296,7 +296,7 @@ func Listen() {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			log.Fatalf("Cannot Accept() connection: %v", err)
+			log.Panicf("Cannot Accept() connection: %v", err)
 		}
 		log.Printf("Accepted.")
 		go Serve(conn)
