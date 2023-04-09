@@ -35,6 +35,7 @@ struct RomApi3 RomApi = {
     strncpy,
     strlen,
 
+    ConfigureTextScreen,
     StackPointer,
     PolCat,
     Delay,

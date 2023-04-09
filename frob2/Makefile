@@ -23,6 +23,7 @@ netboot3.dsk: netboot3.l3k
 	decb dskini netboot3.dsk
 	decb copy -0 -b bootrom/GO.BAS netboot3.dsk,INSTALL4.BAS
 	decb copy -2 -b netboot3.l3k netboot3.dsk,NETBOOT.DEC
+	decb copy -2 -b exoboot3.loadm netboot3.dsk,EXOBOOT.BIN
 	decb dir netboot3.dsk
 	ls -l netboot3.dsk
 

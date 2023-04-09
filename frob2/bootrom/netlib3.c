@@ -118,6 +118,25 @@ void PrintH(const char* format, ...) {
 
 ////////////////////////////////////////////////////////
 
+// Initially, addr is 0x400.
+void ConfigureTextScreen(word addr, bool orange) {
+#if 0
+  *(byte*)0xFF90 |= 0x80; // Tell coco3 to be coco12-compatible.
+  *(byte*)0xFF22 = orange? 0x08 : 0x00;
+
+  *(byte*)0xFFC0 = 0; // SAM V0 clear.
+  *(byte*)0xFFC2 = 0; // SAM V1 clear.
+  *(byte*)0xFFC4 = 0; // SAM V2 clear.
+  word a = (addr >> 9); // Start examining bit 9.
+  byte *p = (byte*)0xFFC6;  // SAM F0 control.
+  for (byte i = 0; i < 7; i++) {
+    p[a&1] = 0; // Fn clear or set, according to addr bit.
+    p += 2;
+    a >>= 1;  // examine next bit.
+  }
+#endif
+};
+
 word StackPointer() {
   word result;
 #ifdef __GNUC__
@@ -349,16 +368,17 @@ word WizTicks() {
 
 void WizReset() {
   WIZ->command = 128; // Reset
-  Delay(5000);
+  Delay(9000);
   WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  Delay(100);
+  Delay(9000);
 
   // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
 
   // Interval until retry: 1 second.
   WizPut2(RTR0, 10000 /* Tenths of milliseconds. */ );
-  // Number of retries.
-  WizPut1(RCR, 5);
+  // Number of retries: 10 x 1sec = 10sec.
+  // Sometimes reset-to-carrier takes over 5 seconds.
+  WizPut1(RCR, 10);
 }
 
 void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway) {

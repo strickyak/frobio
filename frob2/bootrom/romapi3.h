@@ -21,6 +21,7 @@ struct RomApi3 {
   size_t (*api_strlen)(const char *s);
 #undef restrict
 
+  void (*api_ConfigureTextScreen)(word addr, bool orange);
   word (*api_StackPointer)();
   char (*api_PolCat)();
   void (*api_Delay)(word n);

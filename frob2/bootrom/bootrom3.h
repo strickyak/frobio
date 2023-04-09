@@ -69,6 +69,7 @@ struct wiz_port {
 };
 
 struct vars {
+    struct RomApi3 *rom_api_3;
     word vars_magic;
     word s_reg;  // Original Stack Pointer, for idea of mem size.
     volatile struct wiz_port* wiz_port;
@@ -79,7 +80,6 @@ struct vars {
     byte ip_gateway[4];
     byte ip_resolver[4];
     byte ip_waiter[4];
-    char waiter_domain[32]; // unused
     word flags;     // unused: might tell us which fields above to use.
     byte hostchar;  // unused: might tell us what config to load or remote-load.
 
@@ -207,6 +207,7 @@ void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gatew
 void WizIssueCommand(PARAM_SOCK_AND byte cmd);
 void WizWaitStatus(PARAM_SOCK_AND byte want);
 
+void ConfigureTextScreen(word addr, bool orange);
 word StackPointer();
 char PolCat(); // Return one INKEY char, or 0, with BASIC `POLCAT` subroutine.
 void Delay(word n);

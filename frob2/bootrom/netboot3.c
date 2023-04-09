@@ -254,11 +254,17 @@ void Send5(byte cmd, word n, word p) {
 int main() {
     // Clear our global variables to zero.
     memset(Vars, 0, sizeof (struct vars));
+    // From the address of main, we can determine if we
+    // are netboot3 at $Cxxx or exoboot3 at $6xxx.
+    Vars->rom_api_3 = (struct RomApi3*)(
+        ((word)(&main) & 0xE000) | 0x0100);
+
     Vars->vars_magic = VARS_MAGIC;
     Vars->wiz_port = (struct wiz_port*) WIZ_PORT;
 
     // Set VDG 32x16 text screen to dots.
     // Preserve the top line.
+    ConfigureTextScreen(VDG_RAM, /*orange=*/false);
     Vars->vdg_addr = VDG_RAM;
     Vars->vdg_begin = VDG_RAM+32;
     Vars->vdg_ptr = VDG_RAM+32;

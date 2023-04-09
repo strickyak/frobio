@@ -24,8 +24,9 @@ struct globals {
   char me[3];
 };
 
-#define A ((struct RomApi3*)0xC100)
+// #define A ((struct RomApi3*)0xC100)
 #define G ((struct globals*)0x600)
+#define A (Vars->rom_api_3)
 
 const byte BroadcastIP[4] = {255, 255, 255, 255};
 
@@ -37,6 +38,7 @@ void SetUp() {
   const struct sock* sock = &A->api_SockStructs[0];
   const struct proto* proto = A->api_BroadcastUdpProto;
 
+  A->api_ConfigureTextScreen(VDG_RAM, /*orange=*/false);
   memset((char*)G, 0, sizeof *G);
 
   A->api_WizOpen(sock, proto, CHAT255_PORT);
