@@ -9,6 +9,25 @@ LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc
 
 .SUFFIXES:  # Use no builtin rules.
 
+3: chat255.loadm netboot3.l3k netboot3.dsk
+
+chat255.loadm: chat255.c
+	gcc6809 -I.. --std=gnu99  -Os  -S chat255.c
+	lwasm -o chat255.o --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource chat255.s --list=chat255.o.list
+	lwlink --format=decb --entry=_main -o chat255.loadm --map=chat255.map  chat255.o
+
+netboot3.l3k:
+	sh RomCompile3.sh
+netboot3.dsk: netboot3.l3k
+	rm -f netboot3.dsk
+	decb dskini netboot3.dsk
+	decb copy -0 -b bootrom/GO.BAS netboot3.dsk,INSTALL4.BAS
+	decb copy -2 -b netboot3.l3k netboot3.dsk,NETBOOT.DEC
+	decb dir netboot3.dsk
+	ls -l netboot3.dsk
+
+
+
 # f-*.c are our intended frobio commands.
 f.arp.os9 : f-arp.c $(HDRS) $(LIBS)
 	sh Compile.sh $@ $< $(LIBS)
@@ -201,19 +220,19 @@ f.ncl.os9:
 	sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c $(LIBS) regexp/re.c match/util.c
 
 g.ncl.os9:
-	HOW=gcc sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c $(LIBS) regexp/re.c match/util.c os9/frobos9_gcc.c platform/std_gcc.c 
+	HOW=gcc sh Compile.sh f.ncl.os9 ncl/ncl.c ncl/ncl_os9.c $(LIBS) regexp/re.c match/util.c os9/frobos9_gcc.c platform/std_gcc.c
 	lwlink --format=os9 buf.o flag.o format.o frobos9_gcc.o frobos9.o malloc.o ncl.o ncl_os9.o nylib.o nystdio.o re.o stack300.o std_gcc.o std.o util.o wiz5100s.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4 -lgcc
 
 trapa.o:
-	lwasm --obj -o trapa.o trapa.asm 
+	lwasm --obj -o trapa.o trapa.asm
 trapc.o:
 	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os  trapc.c
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=trapc.list   -I.. -o trapc.o trapc.s
 
 z2a.bin:
 	cat z2.c froblib/*.c  decb/*.c  > z2a.c
-	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os -fwhole-program  z2a.c 
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map  -I.. -o z2a.o z2a.s 
+	/opt/yak/fuzix/bin/m6809-unknown-gcc-4.6.4 --std=gnu99 -funsigned-char -funsigned-bitfields -S -I.. -Os -fwhole-program  z2a.c
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=z2a.list --map=z2a.map  -I.. -o z2a.o z2a.s
 	lwlink --format=decb --entry=_main -o z2a.bin --map=z2a.bin.map -s decb.script z2a.o -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc
 	# # # scp z2a.bin root@yak.net:/tmp/
 	decb dir /media/strick/APRIL3/YDECB.DSK
@@ -250,7 +269,7 @@ OPT_LEVEL_1X = -fdefer-pop -fmerge-constants -fthread-jumps -floop-optimize -fcr
 
 yadd2all.os9: yadd2.c os9/frobos9_gcc.c FORCE
 	rm -f yadd2all.os9 yadd2all.o yadd2all.s
-	cat yadd2.c os9/frobos9_gcc.c > yadd2all.c 
+	cat yadd2.c os9/frobos9_gcc.c > yadd2all.c
 	# gcc6809 -Os -S  -I.. -std=gnu99 -nostdlib -fpic -da -dP -fdump-unnumbered-links -fdump-unnumbered -fdump-noaddr -fwhole-program yadd2all.c
 	gcc6809 -O2 -S  -I.. -std=gnu99 -nostdlib -fpic -da -dP -fwhole-program yadd2all.c
 	sed 's/area\t[.]text[.]startup/area\t.text/' < yadd2all.s > yadd2all.s+ ; mv yadd2all.s+ yadd2all.s
