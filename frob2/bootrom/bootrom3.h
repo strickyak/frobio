@@ -5,8 +5,9 @@
 #define EMULATED 0
 #define PRINTK 1
 
-#define X220NET 1
-#define LOCALNET 0
+#define X220_NET 0
+#define LOCAL_NET 0
+#define INTER_NET 1
 
 #define BR_STATIC 0
 #define BR_DHCP 1

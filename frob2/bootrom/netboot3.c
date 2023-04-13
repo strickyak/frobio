@@ -55,11 +55,9 @@ errnum WizCheck(PARAM_JUST_SOCK) {
 }
 
 errnum WizRecvGetBytesWaiting(PARAM_SOCK_AND word* bytes_waiting_out) {
-L
   errnum e = WizCheck(JUST_SOCK);
   if (e) return e;
 
-L
   *bytes_waiting_out = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
   return OKAY;
 }
@@ -67,19 +65,16 @@ L
 errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
   word bytes_waiting = 0;
   errnum e = WizRecvGetBytesWaiting(SOCK_AND &bytes_waiting);
-L
   if (e) return e;
-L
-  PrintF("[[ %x < %x ]] ", bytes_waiting, n);
+  // PrintF("[[ %x < %x ]] ", bytes_waiting, n);
   if( bytes_waiting < n) return NOTYET;
-L
 
   word rd = WizGet2(B+SK_RX_RD0);
   word wr = WizGet2(B+SK_RX_WR0);
 
   word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
-  PrintF("RCT=%x,*%x,r%x,w%x,b/%x,e/%x;", n, bytes_waiting, rd, wr, begin, end);
+  // PrintF("RCT=%x,*%x,r%x,w%x,b/%x,e/%x;", n, bytes_waiting, rd, wr, begin, end);
 
   if (end >= RING_SIZE) {
     word first_n = RING_SIZE - begin;
@@ -98,11 +93,9 @@ L
 errnum WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
   errnum e;
   do {
-L
     // LIVENESS(0);
     e = WizRecvChunkTry(SOCK_AND buf, n);
   } while (e == NOTYET);
-L
   return e;
 }
 errnum TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
@@ -292,10 +285,12 @@ int main() {
     PrintF("WizReset; ");
     WizReset();
 #if BR_STATIC
-    PrintF("CONF");
+    PrintF("CONF:");
     WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
 #elif BR_DHCP
+    PrintF("DHCP:");
     errnum e = RunDhcp(SOCK0_AND name4, ticks);
+    if (e) Fatal("RunDhcp", e);
     WizClose(JUST_SOCK0);
 #endif
     WizOpen(SOCK1_AND &TcpProto, local_port);

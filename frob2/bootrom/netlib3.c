@@ -58,7 +58,16 @@ const struct sock Socks[4] = {
 };
 #endif
 
-#if X220NET
+#if INTER_NET
+// for using DHCP and then the public waiter.
+const byte BR_ADDR    [4] = { 0, 0, 0, 0 };
+const byte BR_MASK    [4] = { 255, 0, 0, 0 };
+const byte BR_GATEWAY [4] = { 0, 0, 0, 0 };
+const byte BR_WAITER  [4] = { 134, 122, 16, 44 }; // lemma.yak.net
+const byte BR_RESOLV  [4] = { 8, 8, 8, 8 };
+#endif
+
+#if X220_NET
 // For my coco3(10.1.2.3) with ethernet(255.0.0.0) wired to a laptop(10.2.2.2).
 const byte BR_ADDR    [4] = { 10, 1, 2, 3 };
 const byte BR_MASK    [4] = { 255, 0, 0, 0 };
@@ -67,7 +76,7 @@ const byte BR_WAITER  [4] = { 10, 2, 2, 2 };
 const byte BR_RESOLV  [4] = { 8, 8, 8, 8 };
 #endif
 
-#if LOCALNET
+#if LOCAL_NET
 // For my emulator, which opens a port for TFTP services on localhost.
 const byte BR_ADDR    [4] = { 127, 0, 0, 1 };
 const byte BR_MASK    [4] = { 255, 0, 0, 0 };
@@ -404,7 +413,7 @@ void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gatew
   Vars->mac_addr [1] = 2;
   memcpy(Vars->mac_addr+2, ip_addr, 4);
   WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
-  PrintF("Conf a=%a m=%a g=%a MAC=2.2.%a", ip_addr, ip_mask, ip_gateway, Vars->mac_addr+2);
+  PrintF("Conf a=%a m=%a g=%a MAC=%d.%d.%a", ip_addr, ip_mask, ip_gateway, Vars->mac_addr[0], Vars->mac_addr[1], Vars->mac_addr+2);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
