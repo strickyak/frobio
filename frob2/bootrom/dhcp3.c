@@ -1,5 +1,14 @@
 #include "frob2/bootrom/bootrom3.h"
 
+#define D {PrintF("D%u;", __LINE__); Delay(3000);}
+
+#define DHCP_CLIENT_PORT 68
+#define DHCP_SERVER_PORT 67
+
+#define BAD_SHORT_PACKET       50
+#define BAD_DHCP_OPTION_MAGIC  51
+#define BAD_OFFER_LEN          52
+
 struct dhcp {
     byte opcode; // 1=request 2=response
     byte htype;  // 1=ethernet
@@ -23,7 +32,7 @@ struct dhcp {
 //108
     byte bname[128];  // boot file name
 //236
-    byte options[300];  // not really 300?
+    // THEN byte options[...]
 };
 
 const byte RequestDHCP0[] = {
@@ -35,21 +44,16 @@ const byte RequestDHCP0[] = {
 // Then 4 byte xid == name
 const byte RequestDHCP8[] = {
   0, 0, // secs
-  0x00, 0x80, // broadcast
+  0x80, 0x00, // broadcast
 };
 const byte DiscoverOptions[] = {
   99, 130, 83, 99, // magic cookie for DHCP
-  51, 1, 1,  // 53=OptionType 1=len 1=Discover
-  12, 4, // 12=Hostname, 4=len4chars, FOLLOWED BY NAME
-};
-const byte DiscoverOptions[] = {
-  99, 130, 83, 99, // magic cookie for DHCP
-  51, 1, 1,  // 53=OptionType 1=len 1=Discover
+  53, 1, 1,  // 53=OptionType 1=len 1=Discover
   12, 4, // 12=Hostname, 4=len4chars, FOLLOWED BY NAME
 };
 const byte RequestOptions[] = {
   99, 130, 83, 99, // magic cookie for DHCP
-  51, 1, 3,  // 53=OptionType 1=len 3=Request
+  53, 1, 3,  // 53=OptionType 1=len 3=Request
   12, 4, // 12=Hostname, 4=len4chars, FOLLOWED BY NAME
 };
 const byte RequestAddressOption[] = {
@@ -59,120 +63,247 @@ const byte EndOptions[] = {
   255, 0   // 255=end, 0=len
 };
 
-void DhcpRequest(const char* name4, bool second) {
+const char lmnop[8] = "LMNOPQR";
+
+void DhcpRequest(PARAM_SOCK_AND const char* name4, bool second) {
+PrintF("Req#%d;", second);
+D
   byte mac[6] = {
     2, 32, name4[0], name4[1], name4[2], name4[3]};
-  word req_size = 236 +
-      (second)
-        ? (sizeof RequestOptions + 4
-            + sizeof RequestAddressOption + 4)
-        : (sizeof DiscoverOptions + 4)
-      + sizeof EndOptions;
 
-  WizReserveToSend(PARAM_SOCK_AND req_size);
-
-  SendData(RequestDHCP0, sizeof RequestDHCP0);
-  SendData(name4, 4);
-  SendData(RequestDHCP8, sizeof RequestDHCP8);
-  SendData(Eight00s, 8);  // ciaddr & yiaddr
-  SendData(Eight00s, 8); // siaddr & giaddr
-  SendData(mac, 6); // ch_addr
-  SendData(Eight00s, 2);  // ch_addr cont'd
-
-  byte N = 1/*chaddr cont'd*/ + 8/*sname*/ + 16/*bname*/;
-  for (byte i = 0; i < N; i++) {
-    SendData(Eight00s, 8); // ch_addr + sname + bname
-  }
-
+  word req_size = sizeof (struct dhcp) + sizeof EndOptions;
   if (second) {
-    SendData(RequestOptions, sizeof RequestOptions);
-    SendData(name4, 4);
-    SendData(RequestAddressOption, sizeof RequestAddressOption);
-    SendData(address, 4);
+    req_size += sizeof RequestOptions + sizeof RequestAddressOption + 8;
   } else {
-    SendData(DiscoverOptions, sizeof DiscoverOptions);
-    SendData(name4, 4);
+    req_size += sizeof RequestOptions + 4;
   }
-  SendData(EndOptions, sizeof EndOptions);
 
-  WizFinalizeSend(PARAM_SOCK_AND BroadcastUdpProto, req_size);
+D
+  WizReserveToSend(SOCK_AND req_size);
+PrintF("reqs=$%x=%u.;", req_size, req_size);
+D
+
+  WizBytesToSend(SOCK_AND RequestDHCP0, sizeof RequestDHCP0);
+
+  WizBytesToSend(SOCK_AND Vars->xid, 4);
+
+  WizBytesToSend(SOCK_AND RequestDHCP8, sizeof RequestDHCP8);
+
+  WizDataToSend(SOCK_AND Eight00s, 8);  // ciaddr & yiaddr
+
+  WizDataToSend(SOCK_AND Eight00s, 8); // siaddr & giaddr
+
+  WizBytesToSend(SOCK_AND mac, 6); // ch_addr
+
+  WizDataToSend(SOCK_AND Eight00s, 2);  // ch_addr cont'd
+
+
+  byte n = 1/*chaddr cont'd*/ + 8/*sname*/; //  + 16/*bname*/;
+  for (byte i = 0; i < n; i++) {
+
+    WizDataToSend(SOCK_AND Eight00s, 8); // ch_addr + sname + bname
+  }
+
+  for (byte i = 0; i < 16/*bname*/; i++) {
+
+    WizDataToSend(SOCK_AND lmnop, 8); // ch_addr + sname + bname
+  }
+
+D
+  if (second) {
+D
+    WizBytesToSend(SOCK_AND RequestOptions, sizeof RequestOptions);
+    WizDataToSend(SOCK_AND name4, 4);
+    WizBytesToSend(SOCK_AND RequestAddressOption, sizeof RequestAddressOption);
+    WizBytesToSend(SOCK_AND Vars->ip_addr, 4);
+  } else {
+D
+    WizBytesToSend(SOCK_AND DiscoverOptions, sizeof DiscoverOptions);
+    WizDataToSend(SOCK_AND name4, 4);
+  }
+D
+  WizBytesToSend(SOCK_AND EndOptions, sizeof EndOptions);
+
+PrintF("reqs=$%x=%u.;", req_size, req_size);
+  WizFinalizeSend(SOCK_AND &BroadcastUdpProto, req_size);
+D
 }
 
-void WasteRecvBytes(word n) {
+errnum WasteRecvBytes(PARAM_SOCK_AND word n) {
+D
+  errnum e = OKAY;
   char junk[8];
   while (n >= 8) {
-    WizRecvChunk(PARAM_SOCK_AND  buf, 8);
+    e = WizRecvChunk(SOCK_AND  junk, 8);
+    if (e) return e;
     n -= 8;
   }
   if (n > 0) {
-    WizRecvChunk(PARAM_SOCK_AND  buf, n);
+    e = WizRecvChunk(SOCK_AND  junk, n);
+    if (e) return e;
   }
+D
+  return e;
 }
 
-void DhcpReply(struct UdpRecvHeader *hdr, bool second) {
+errnum DhcpReply(PARAM_SOCK_AND struct UdpRecvHeader *hdr, bool second) {
+D
+  errnum e = OKAY;
   char buf[4];
 
   // we want 16:yiaddr (you) and 20:siaddr (server)
-  assert (hdr->len >= 236);
+  if (hdr->len < sizeof (struct dhcp)) return BAD_SHORT_PACKET;
 
-  WasteRecvBytes(16);
-  WizRecvChunk(PARAM_SOCK_AND  Vars->ip_addr, 4);
-  WizRecvChunk(PARAM_SOCK_AND  Vars->ip_server, 4);
-  WasteRecvBytes(236 - 24);
+D
+  WasteRecvBytes(SOCK_AND 16);
 
-  WizRecvChunk(PARAM_SOCK_AND  buf, 4); // DHCP magic
-  assert(buf[0] == 99);
-  assert(buf[1] == 130);
-  assert(buf[2] == 83);
-  assert(buf[3] == 99);
+  e = WizRecvChunk(SOCK_AND  Vars->ip_addr, 4);
+  if (e) return e;
+  PrintF("addr=%a;", Vars->ip_addr);
 
+  e = WizRecvChunk(SOCK_AND  Vars->ip_dhcp, 4);
+  if (e) return e;
+  PrintF("dhcpd=%a;", Vars->ip_dhcp);
+
+  WasteRecvBytes(SOCK_AND sizeof (struct dhcp) - 24);
+
+D
+  e = WizRecvChunk(SOCK_AND  buf, 4); // DHCP magic
+  if (e) return e;
+  if (buf[0] != 99) return BAD_DHCP_OPTION_MAGIC;
+  if (buf[1] != 130) return BAD_DHCP_OPTION_MAGIC;
+  if (buf[2] != 83) return BAD_DHCP_OPTION_MAGIC;
+  if (buf[3] != 99) return BAD_DHCP_OPTION_MAGIC;
+
+  byte dhcp_op = 0;
   word opt_len = 0;
-  do {
-    opt_len += 2;
-    WizRecvChunk(PARAM_SOCK_AND  buf, 2); // Option & Len
+  while(hdr->len - 236 - opt_len > 1) {
+D
+    opt_len += 1;
+    e = WizRecvChunk(SOCK_AND  buf, 1); // Get Option
+    if (e) return e;
                                           //
 #define OPT buf[0]
 #define LEN buf[1]
 
+    if (OPT == 255) break;  // From Google Wifi, 255 is last, no len.
+
+    opt_len += 1;
+    e = WizRecvChunk(SOCK_AND  buf+1, 1); // Get Len
+    if (e) return e;
+
     opt_len += LEN;
-    if (len == 4) {
-      WizRecvChunk(PARAM_SOCK_AND  buf, 4); // 4 byte IP addr
+    if (LEN == 4) {
+      e = WizRecvChunk(SOCK_AND  buf, 4); // 4 byte IP addr
+      if (e) return e;
+
       if (OPT == 1) {
         memcpy(Vars->ip_mask, buf, 4);
+        PrintF("mask=%a;", Vars->ip_mask);
       } else if (OPT == 3) {
         memcpy(Vars->ip_gateway, buf, 4);
+        PrintF("gw=%a;", Vars->ip_gateway);
       } else if (OPT == 6) {
         memcpy(Vars->ip_resolver, buf, 4);
+        PrintF("resolv=%a;", Vars->ip_resolver);
       } else {
         // just dont use buf.
       }
+    } else if (OPT==53 && LEN==1) {
+      e = WizRecvChunk(SOCK_AND &dhcp_op, 1); // 1 byte opcode
+      if (e) return e;
+      PrintF("dhcp_op=%x;", dhcp_op);
+      if (dhcp_op != (second ? 4 : 2)) {
+        break;
+      }
     } else {
-      WasteRecvBytes(LEN);
+      WasteRecvBytes(SOCK_AND LEN);
     }
-  } while (OPT != 255);
+  }
 
   // how much extra junk?
   word junk_len = hdr->len - 236 - opt_len;
-  WasteRecvBytes(junk_len);
-}
-
-errnum RunOneDhcpRound(const char* name4, bool second) {
-  struct UdpRecvHeader hdr;
-  DhcpRequest(name4, second);
-
-  bool ok = WizRecvChunk(PARAM_SOCK_AND (char*)&hdr, sizeof hdr);
-  assert(ok);
-  if (hdr.len < sizeof Offfer) {
-     return BAD_OFFER_LEN;
+  PrintF("junk_len = %x", junk_len);
+D
+  e = WasteRecvBytes(SOCK_AND junk_len);
+  if (e) return e;
+D
+  if (dhcp_op != (second ? 4 : 2)) {
+    return NOTYET;
   }
-  DhcpReply(SOCK_AND &hdr);
+  return OKAY;
 }
 
-errnum RunDhcp(const char* name4) {
+errnum RunOneDhcpRound(PARAM_SOCK_AND const char* name4, bool second) {
+PrintF("Round#%d", second);
+D
+  errnum e = OKAY;
+  struct UdpRecvHeader hdr;
+
+  do {
+  D
+    DhcpRequest(SOCK_AND name4, second);
+
+  D
+    e = WizRecvChunk(SOCK_AND (char*)&hdr, sizeof hdr);
+  D
+    if (e) return e;
+  D
+
+    if (hdr.len < sizeof (struct dhcp)) {
+  D
+       return BAD_OFFER_LEN;
+    }
+  D
+    e = DhcpReply(SOCK_AND &hdr, second);
+  } while (e==NOTYET);
+  D
+  return e;
+}
+
+void WizConfigureDhcpFirst(const byte* name4) {
+D
+  WizPutN(0x0001/*gateway*/, Eight00s, 4);
+  WizPutN(0x0005/*mask*/, ClassAMask, 4);
+  WizPutN(0x000f/*ip_addr*/, Eight00s, 4);
+
+  // Create locally assigned mac_addr from ip_addr.
+  Vars->mac_addr [0] = 2;
+  Vars->mac_addr [1] = 32;
+  memcpy(Vars->mac_addr+2, name4, 4);
+  WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
+  PrintF("Conf a=%a m=%a g=%a MAC=2.32.%a;", Vars->ip_addr, Vars->ip_mask, Vars->ip_gateway, Vars->mac_addr+2);
+}
+
+errnum RunDhcp(PARAM_SOCK_AND const char* name4, word ticks) {
+D
+    WizOpen(SOCK_AND &BroadcastUdpProto, DHCP_CLIENT_PORT);
+D
+  WizConfigureDhcpFirst(name4);
+
+  UdpDial(SOCK_AND  &BroadcastUdpProto,
+          /*dest_ip=*/ SixFFs, DHCP_SERVER_PORT);
+
   // First round: Discover.
-  errnum e = RunOneDhcpRound(name4, false);
+D
+  Vars->xid[0] = 42;
+  Vars->xid[1] = 42;
+  Vars->xid[2] = (byte)(ticks>>8);
+  Vars->xid[3] = (byte)(ticks);
+  ++ticks;
+  errnum e = RunOneDhcpRound(SOCK_AND name4, false);
   if (e) return e;
   // Second round: Request.
-  e = RunOneDhcpRound(name4, true);
+D
+  Vars->xid[2] = (byte)(ticks>>8);
+  Vars->xid[3] = (byte)(ticks);
+  ++ticks;
+  e = RunOneDhcpRound(SOCK_AND name4, true);
   if (e) return e;
+D
+  WizConfigure(Vars->ip_addr, Vars->ip_mask, Vars->ip_gateway);
+D
+  WizClose(JUST_SOCK);
+D
+  return OKAY;
 }

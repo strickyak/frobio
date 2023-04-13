@@ -8,8 +8,8 @@
 #define X220NET 1
 #define LOCALNET 0
 
-#define BR_STATIC 1
-#define BR_DHCP 0
+#define BR_STATIC 0
+#define BR_DHCP 1
 
 #define MULTI_SOCK 1
 #define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
@@ -26,6 +26,7 @@ typedef unsigned int word;
 #define true (bool)1
 #define false (bool)0
 #define OKAY (errnum)0
+#define NOTYET (errnum)1
 
 typedef void (*func)();
 
@@ -80,6 +81,8 @@ struct vars {
     byte ip_gateway[4];
     byte ip_resolver[4];
     byte ip_waiter[4];
+    byte ip_dhcp[4];
+    byte xid[4];
     word flags;     // unused: might tell us which fields above to use.
     byte hostchar;  // unused: might tell us what config to load or remote-load.
 
@@ -121,6 +124,9 @@ struct sock {
     byte nth;
 };
 extern const struct sock Socks[4];
+
+#define SOCK0_AND (Socks+0),
+#define JUST_SOCK0 (Socks+0)
 
 #define SOCK1_AND (Socks+1),
 #define JUST_SOCK1 (Socks+1)
@@ -184,6 +190,9 @@ struct proto {
 extern const struct proto TcpProto;
 extern const struct proto UdpProto;
 extern const struct proto BroadcastUdpProto;
+extern const char ClassAMask[4];
+extern const char ClassBMask[4];
+extern const char ClassCMask[4];
 
 struct UdpRecvHeader {
     byte addr[4];
@@ -206,6 +215,24 @@ void WizReset();
 void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway);
 void WizIssueCommand(PARAM_SOCK_AND byte cmd);
 void WizWaitStatus(PARAM_SOCK_AND byte want);
+
+void WizOpen(PARAM_SOCK_AND const struct proto* proto, word local_port );
+void TcpDial(PARAM_SOCK_AND const byte* host, word port);
+void TcpEstablish(PARAM_JUST_SOCK);
+errnum WizCheck(PARAM_JUST_SOCK);
+errnum WizRecvGetBytesWaiting(PARAM_SOCK_AND word* bytes_waiting_out);
+void WizReserveToSend(PARAM_SOCK_AND  size_t n);
+void WizDataToSend(PARAM_SOCK_AND const char* data, size_t n);
+void WizBytesToSend(PARAM_SOCK_AND const byte* data, size_t n);
+void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n);
+errnum WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n);
+errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n);
+errnum WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n);
+errnum TcpRecv(PARAM_SOCK_AND char* p, size_t n);
+errnum TcpSend(PARAM_SOCK_AND  char* p, size_t n);
+void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
+             const byte* dest_ip, word dest_port);
+void WizClose(PARAM_JUST_SOCK);
 
 void ConfigureTextScreen(word addr, bool orange);
 word StackPointer();

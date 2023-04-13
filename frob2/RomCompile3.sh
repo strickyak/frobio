@@ -15,6 +15,9 @@ gcc bootrom/netlib3.c -o __netlib3.s
 sed -e 's/[.]area [.]text$/.area net.text/' < __netlib3.s > netlib3.s
 asm netlib3.s --output=netlib3.o --list=netlib3.list
 
+gcc bootrom/dhcp3.c
+asm dhcp3.s --output=dhcp3.o --list=dhcp3.list
+
 gcc bootrom/netboot3.c
 asm netboot3.s --output=netboot3.o --list=netboot3.list
 
@@ -33,7 +36,7 @@ section rom.bss
 section .data
 section .bss
 HERE
-lwlink --decb --script=exoboot3.script preboot3.o romapi3.o netlib3.o netboot3.o \
+lwlink --decb --script=exoboot3.script preboot3.o romapi3.o netlib3.o netboot3.o dhcp3.o \
     -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc abort.o \
     --output=exoboot3.loadm --map=exoboot3.map --entry=_main
 
@@ -51,7 +54,7 @@ section rom.bss
 section .data
 section .bss
 HERE
-lwlink --decb --script=netboot3.script preboot3.o romapi3.o netlib3.o netboot3.o \
+lwlink --decb --script=netboot3.script preboot3.o romapi3.o netlib3.o netboot3.o dhcp3.o \
     -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc abort.o \
     --output=netboot3.decb --map=netboot3.map
 

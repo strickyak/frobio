@@ -53,16 +53,16 @@ struct RomApi3 {
   void (*api_WizOpen)(PARAM_SOCK_AND const struct proto* proto, word local_port );
   void (*api_TcpDial)(PARAM_SOCK_AND const byte* host, word port);
   void (*api_TcpEstablish)(PARAM_JUST_SOCK);
-  void (*api_WizCheck)(PARAM_JUST_SOCK);
-  bool (*api_WizRecvChunkTry)(PARAM_SOCK_AND char* buf, size_t n);
-  void (*api_WizRecvChunk)(PARAM_SOCK_AND char* buf, size_t n);
-  void (*api_TcpRecv)(PARAM_SOCK_AND char* p, size_t n);
+  errnum (*api_WizCheck)(PARAM_JUST_SOCK);
+  errnum (*api_WizRecvChunkTry)(PARAM_SOCK_AND char* buf, size_t n);
+  errnum (*api_WizRecvChunk)(PARAM_SOCK_AND char* buf, size_t n);
+  errnum (*api_TcpRecv)(PARAM_SOCK_AND char* p, size_t n);
   void (*api_UdpDial)(PARAM_SOCK_AND  const struct proto *proto, const byte* dest_ip, word dest_port);
   void (*api_WizReserveToSend)(PARAM_SOCK_AND  size_t n);
-  void (*api_WizDataToSend)(PARAM_SOCK_AND char* data, size_t n);
+  void (*api_WizDataToSend)(PARAM_SOCK_AND const char* data, size_t n);
   void (*api_WizFinalizeSend)(PARAM_SOCK_AND const struct proto *proto, size_t n);
-  void (*api_WizSendChunk)(PARAM_SOCK_AND const struct proto* proto, char* data, size_t n);
-  void (*api_TcpSend)(PARAM_SOCK_AND  char* p, size_t n);
+  errnum (*api_WizSendChunk)(PARAM_SOCK_AND const struct proto* proto, char* data, size_t n);
+  errnum (*api_TcpSend)(PARAM_SOCK_AND  char* p, size_t n);
   void (*api_WizClose)(PARAM_JUST_SOCK);
 
 };

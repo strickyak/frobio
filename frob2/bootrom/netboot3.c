@@ -1,5 +1,7 @@
 #include "frob2/bootrom/bootrom3.h"
 
+#define L /*{PrintF("L%u;", __LINE__); Delay(9000);}*/
+
 void WizOpen(PARAM_SOCK_AND const struct proto* proto, word local_port ) {
   WizPut1(B+SK_MR, proto->open_mode);
   WizPut2(B+SK_PORTR0, local_port); // Set local port.
@@ -41,29 +43,43 @@ void TcpEstablish(PARAM_JUST_SOCK) {
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
 }
 
-void WizCheck(PARAM_JUST_SOCK) {
+errnum WizCheck(PARAM_JUST_SOCK) {
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
-        Fatal("TMO", ir);
+        return SK_IR_TOUT;
       }
       if (ir & SK_IR_DISC) { // Disconnect?
-        Fatal("DIS", ir);
+        return SK_IR_DISC;
       }
+      return OKAY;
 }
 
-bool WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
-  WizCheck(JUST_SOCK);
+errnum WizRecvGetBytesWaiting(PARAM_SOCK_AND word* bytes_waiting_out) {
+L
+  errnum e = WizCheck(JUST_SOCK);
+  if (e) return e;
 
-  word bytes_waiting = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
+L
+  *bytes_waiting_out = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
+  return OKAY;
+}
+
+errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
+  word bytes_waiting = 0;
+  errnum e = WizRecvGetBytesWaiting(SOCK_AND &bytes_waiting);
+L
+  if (e) return e;
+L
+  PrintF("[[ %x < %x ]] ", bytes_waiting, n);
+  if( bytes_waiting < n) return NOTYET;
+L
+
   word rd = WizGet2(B+SK_RX_RD0);
   word wr = WizGet2(B+SK_RX_WR0);
 
   word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
-  PrintH("WRCTn=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
-
-  if (bytes_waiting < n) return false;
-  PrintH("WRCT+");
+  PrintF("RCT=%x,*%x,r%x,w%x,b/%x,e/%x;", n, bytes_waiting, rd, wr, begin, end);
 
   if (end >= RING_SIZE) {
     word first_n = RING_SIZE - begin;
@@ -76,20 +92,24 @@ bool WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
 
   WizPut2(B+SK_RX_RD0, rd + n);
   WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
-  return true;
+  return OKAY;
 }
 
-void WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
-  bool ok;
+errnum WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
+  errnum e;
   do {
+L
     // LIVENESS(0);
-    ok = WizRecvChunkTry(SOCK_AND buf, n);
-  } while (!ok);
+    e = WizRecvChunkTry(SOCK_AND buf, n);
+  } while (e == NOTYET);
+L
+  return e;
 }
-void TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
+errnum TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
-    WizRecvChunk(SOCK1_AND (char*)p, chunk);
+    errnum e = WizRecvChunk(SOCK_AND (char*)p, chunk);
+    if (e) return e;
     n -= chunk;
     p += chunk;
   }
@@ -108,21 +128,24 @@ void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
 }
 
 void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
-  PrintH("ResTS %x", n);
+  PrintH("ResTS %x;", n);
   // Wait until free space is available.
   word free_size;
   do {
     // LIVENESS(1);
     free_size = WizGet2(B+SK_TX_FSR0);
-    PrintH("Res free %x", free_size);
+    PrintH("Res free %x;", free_size);
   } while (free_size < n);
 
   SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
   SS->tx_to_go = n;
-  //print4("1tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
-void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
+void WizBytesToSend(PARAM_SOCK_AND const byte* data, size_t n) {
+  WizDataToSend(SOCK_AND (char*)data, n);
+}
+void WizDataToSend(PARAM_SOCK_AND const char* data, size_t n) {
+  PrintF("togo=%u;", SS->tx_to_go);
   AssertLE(n, SS->tx_to_go);  // Must have already reserved.
 
   word begin = SS->tx_ptr;  // begin: Beneath RING_SIZE.
@@ -138,70 +161,66 @@ void WizDataToSend(PARAM_SOCK_AND char* data, size_t n) {
   }
   SS->tx_to_go -= n;
   SS->tx_ptr = (n + SS->tx_ptr) & RING_MASK;
-  //print4("2tx.ptr=%x togo=%x", SS->tx_ptr, SS->tx_to_go);
 }
 
 void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n) {
-  //print4("FSend %x", n);
   word tx_wr = WizGet2(B+SK_TX_WR0);
-  //print4("3tx..%x", tx_wr);
   tx_wr += n;
   WizPut2(B+SK_TX_WR0, tx_wr);
-  //print4("..%x", tx_wr);
   AssertEQ(SS->tx_to_go, 0);
   WizIssueCommand(SOCK_AND  proto->send_command);
 }
 
-void WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n) {
-  //print4("SEND");
-  WizCheck(JUST_SOCK);
+errnum WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n) {
+  errnum e = WizCheck(JUST_SOCK);
+  if (e) return e;
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND proto, n);
+  return OKAY;
 }
-void TcpSend(PARAM_SOCK_AND  char* p, size_t n) {
+errnum TcpSend(PARAM_SOCK_AND  char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
-    WizSendChunk(SOCK1_AND &TcpProto, p, chunk);
+    errnum e = WizSendChunk(SOCK_AND &TcpProto, p, chunk);
+    if (e) return e;
     n -= chunk;
     p += chunk;
   }
+  return OKAY;
 }
 
 void WizClose(PARAM_JUST_SOCK) {
-  //print4("Z");
-  WizIssueCommand(SOCK1_AND 0x10/*CLOSE*/);
+  WizIssueCommand(SOCK_AND 0x10/*CLOSE*/);
   WizPut1(B+SK_MR, 0x00/*Protocol: Socket Closed*/);
   WizPut1(B+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-void LemmaClientS1() {
+errnum LemmaClientS1() {
   char quint[5];
   char inkey;
-  bool ok;
+  bool e;
 
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
       quint[4] = inkey;
-      WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
+      e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
+      if (e) return e;
     }
 
-    ok = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
-    if (ok) {
+    e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
+    if (e == OKAY) {
       word n = *(word*)(quint+1);
       word p = *(word*)(quint+3);
       switch ((byte)quint[0]) {
         case CMD_POKE:
           {
-            // print3("POKE(%x@%x)", n, p);
             PrintH("POKE(%x@%x)", n, p);
             TcpRecv(SOCK1_AND (char*)p, n);
-
-            // print3(".");
           }
           break;
         case CMD_PUTCHARS:
@@ -213,43 +232,31 @@ void LemmaClientS1() {
           break;
         case CMD_PEEK:
           {
-            // print3("PEEK(%x@%x)", n, p);
             PrintH("PEEK(%x@%x)", n, p);
 
             quint[0] = CMD_DATA;
             WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
             TcpSend(SOCK1_AND (char*)p, n);
-
-            // print3(",");
           }
           break;
         case CMD_JSR:
           {
             func fn = (func)p;
-            // PrintH("CALLING %x", fn); Delay(9000);
             fn();
-            // PrintH("RETURNING FROM %x", fn); Delay(9000);
           }
           break;
         default:
           Fatal("WUT?", quint[0]);
           break;
       } // switch
-    } // ok
+    }
+    return (e==NOTYET) ? OKAY : e;
 }
-
-#if 0
-void Send5(byte cmd, word n, word p) {
-    char quint[5] = {
-      cmd,
-      (byte)(n>>8), (byte)(n),
-      (byte)(p>>8), (byte)(p) };
-    WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
-    PutChar('#');
-}
-#endif
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+extern errnum RunDhcp(PARAM_SOCK_AND const char* name4, word ticks);
+const char name4[] = "CC-4";
 
 int main() {
     // Clear our global variables to zero.
@@ -281,11 +288,15 @@ int main() {
     word ticks = WizTicks();
     word local_port = 0x8000 | ticks;
 
+
     PrintF("WizReset; ");
     WizReset();
 #if BR_STATIC
-    // PrintF("CONF");
+    PrintF("CONF");
     WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
+#elif BR_DHCP
+    errnum e = RunDhcp(SOCK0_AND name4, ticks);
+    WizClose(JUST_SOCK0);
 #endif
     WizOpen(SOCK1_AND &TcpProto, local_port);
     PrintF("tcp dial %a %x;", BR_WAITER, 14511);
@@ -294,7 +305,8 @@ int main() {
     PrintF(" CONN; ");
 
     while (1) {
-        LemmaClientS1();
+        e = LemmaClientS1();
+        AssertEQ(e, OKAY);
     }
 
     return 0;

@@ -97,6 +97,10 @@ const struct proto BroadcastUdpProto = {
 const char SixFFs[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
+const char ClassAMask[4] = {255, 0, 0, 0};
+const char ClassBMask[4] = {255, 255, 0, 0};
+const char ClassCMask[4] = {255, 255, 255, 0};
+
 ////////////////////////////////////////////////////////
 
 #if EMULATED
@@ -305,6 +309,15 @@ void PrintF(const char* format, ...) {
                 case 'u': {
                     word x = va_arg(ap, word);
                     PutDec(x);
+                }
+                break;
+                case 'd': {
+                    int x = va_arg(ap, int);
+                    if (x<0) {
+                      PutChar('-');
+                      x = -x;
+                    }
+                    PutDec((word)x);
                 }
                 break;
                 case 's': {
