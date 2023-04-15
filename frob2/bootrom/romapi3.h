@@ -44,7 +44,7 @@ struct RomApi3 {
 
   word (*api_WizTicks)();
   void (*api_WizReset)();
-  void (*api_WizConfigure)(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway);
+  void (*api_WizConfigure)();
   void (*api_WizIssueCommand)(PARAM_SOCK_AND byte cmd);
   void (*api_WizWaitStatus)(PARAM_SOCK_AND byte want);
 

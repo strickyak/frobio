@@ -83,9 +83,7 @@ struct vars {
     byte ip_resolver[4];
     byte ip_waiter[4];
     byte ip_dhcp[4];
-    byte xid[4];
-    word flags;     // unused: might tell us which fields above to use.
-    byte hostchar;  // unused: might tell us what config to load or remote-load.
+    byte xid[4];    // Temporary packet id in DHCP
 
     word vdg_addr;   // mapped via SAM
     word vdg_begin;  // begin useable portion
@@ -213,7 +211,7 @@ void WizPut2(word reg, word value);
 void WizPutN(word reg, const void* data, word size);
 word WizTicks();
 void WizReset();
-void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway);
+void WizConfigure();
 void WizIssueCommand(PARAM_SOCK_AND byte cmd);
 void WizWaitStatus(PARAM_SOCK_AND byte want);
 

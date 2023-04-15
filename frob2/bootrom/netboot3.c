@@ -1,7 +1,5 @@
 #include "frob2/bootrom/bootrom3.h"
 
-#define L /*{PrintF("L%u;", __LINE__); Delay(9000);}*/
-
 void WizOpen(PARAM_SOCK_AND const struct proto* proto, word local_port ) {
   WizPut1(B+SK_MR, proto->open_mode);
   WizPut2(B+SK_PORTR0, local_port); // Set local port.
@@ -25,7 +23,7 @@ void TcpDial(PARAM_SOCK_AND const byte* host, word port) {
 void TcpEstablish(PARAM_JUST_SOCK) {
   byte stuck = 250;
   while(1) {
-    Delay(1000);
+    Delay(2000);
     PutChar('+');
     // Or we could wait for the connected interrupt bit,
     // and not the disconnected nor the timeout bit.
@@ -138,7 +136,6 @@ void WizBytesToSend(PARAM_SOCK_AND const byte* data, size_t n) {
   WizDataToSend(SOCK_AND (char*)data, n);
 }
 void WizDataToSend(PARAM_SOCK_AND const char* data, size_t n) {
-  PrintF("togo=%u;", SS->tx_to_go);
   AssertLE(n, SS->tx_to_go);  // Must have already reserved.
 
   word begin = SS->tx_ptr;  // begin: Beneath RING_SIZE.
@@ -249,7 +246,7 @@ errnum LemmaClientS1() {
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 extern errnum RunDhcp(PARAM_SOCK_AND const char* name4, word ticks);
-const char name4[] = "CC-4";
+const char name4[] = "NONE"; // unused
 
 int main() {
     // Clear our global variables to zero.
@@ -274,30 +271,42 @@ int main() {
 
     // Record Vars->s_reg, to give some idea of memory size.
     word s_reg = StackPointer();
-    PrintF("stack=%x; ", s_reg);
+    PrintF("main=%x stack=%x; ", &main, s_reg);
     Vars->s_reg = s_reg;
 
-    // Use Ticks to create a local port with high bit set.
+    // Use ticks to create a local port with high bit set.
+    // Get ticks before the reset!
     word ticks = WizTicks();
     word local_port = 0x8000 | ticks;
-
 
     PrintF("WizReset; ");
     WizReset();
 #if BR_STATIC
     PrintF("CONF:");
-    WizConfigure(BR_ADDR, BR_MASK, BR_GATEWAY);
+    memcpy(Vars->ip_addr, BR_ADDR, 4);
+    memcpy(Vars->ip_mask, BR_MASK, 4);
+    memcpy(Vars->ip_gateway, BR_GATEWAY, 4);
+    Vars->mac_addr[0] = Vars->mac_addr[1] = 2;  // 2 == self-assigned.
+    memcpy(Vars->mac_addr+2, BR_ADDR, 4);
+    // Use hex hostname based on ip_addr.
+    for (byte i = 0; i < 4; i++) {
+      Vars->hostname[i+i+0] = HexAlphabet[15&(Vars->ip_addr[i]>>4)];
+      Vars->hostname[i+i+1] = HexAlphabet[15&(Vars->ip_addr[i]>>0)];
+    }
+
 #elif BR_DHCP
     PrintF("DHCP:");
     errnum e = RunDhcp(SOCK0_AND name4, ticks);
     if (e) Fatal("RunDhcp", e);
-    WizClose(JUST_SOCK0);
 #endif
+    WizConfigure();
+
     WizOpen(SOCK1_AND &TcpProto, local_port);
     PrintF("tcp dial %a %x;", BR_WAITER, 14511);
     TcpDial(SOCK1_AND BR_WAITER, 14511);
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
+    Delay(9000);
 
     while (1) {
         e = LemmaClientS1();

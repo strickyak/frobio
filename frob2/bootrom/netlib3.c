@@ -403,17 +403,12 @@ void WizReset() {
   WizPut1(RCR, 10);
 }
 
-void WizConfigure(const byte* ip_addr, const byte* ip_mask, const byte* ip_gateway) {
-  WizPutN(0x0001/*gateway*/, ip_gateway, 4);
-  WizPutN(0x0005/*mask*/, ip_mask, 4);
-  WizPutN(0x000f/*ip_addr*/, ip_addr, 4);
-
-  // Create locally assigned mac_addr from ip_addr.
-  Vars->mac_addr [0] = 2;
-  Vars->mac_addr [1] = 2;
-  memcpy(Vars->mac_addr+2, ip_addr, 4);
+void WizConfigure() {
+  WizPutN(0x0001/*gateway*/, Vars->ip_gateway, 4);
+  WizPutN(0x0005/*mask*/, Vars->ip_mask, 4);
+  WizPutN(0x000f/*ip_addr*/, Vars->ip_addr, 4);
   WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
-  PrintF("Conf a=%a m=%a g=%a MAC=%d.%d.%a", ip_addr, ip_mask, ip_gateway, Vars->mac_addr[0], Vars->mac_addr[1], Vars->mac_addr+2);
+  PrintF("Conf a=%a m=%a g=%a MAC=%d.%d.%a", Vars->ip_addr, Vars->ip_mask, Vars->ip_gateway, Vars->mac_addr[0], Vars->mac_addr[1], Vars->mac_addr+2);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
