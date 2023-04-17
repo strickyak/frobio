@@ -16,7 +16,7 @@ import (
 
 var Format = fmt.Sprintf
 
-var PORT = flag.Int("port", 14511, "Listen on this TCP port")
+var PORT = flag.Int("port", 2319, "Listen on this TCP port")
 var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
 var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
 var DEMO = flag.String("demo", "", "run a demo")
