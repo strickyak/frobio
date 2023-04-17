@@ -16,18 +16,13 @@ func init() {
 	if lem.Demos == nil {
 		lem.Demos = make(map[string]func(net.Conn))
 	}
-	lem.Demos["life"] = RunLife
-	lem.Demos["test"] = RunTest
+	lem.Demos["life"] = func(conn net.Conn) { RunLife(conn, false, "") }
+	lem.Demos["life2"] = func(conn net.Conn) { RunLife(conn, false, "2") }
+	lem.Demos["test"] = func(conn net.Conn) { RunLife(conn, true, "") }
+	lem.Demos["test2"] = func(conn net.Conn) { RunLife(conn, true, "2") }
 }
 
-func RunLife(conn net.Conn) {
-	RunLifeCommon(conn, false)
-}
-func RunTest(conn net.Conn) {
-	RunLifeCommon(conn, true)
-}
-
-func RunLifeCommon(conn net.Conn, verify bool) {
+func RunLife(conn net.Conn, verify bool, mode string) {
 	G3CMode(conn)
 	SetVdgScreenAddr(conn, ScreenLoc)
 	life := &Life{
@@ -42,7 +37,11 @@ func RunLifeCommon(conn net.Conn, verify bool) {
 		g := 0
 		for {
 			if g%StirFreq == 0 {
-				LifeStir(game)
+				if mode == "2" {
+					LifeStir(game)
+				} else {
+					LifeSetR(game)
+				}
 			}
 
 			game = LifeNext(game)
@@ -130,6 +129,23 @@ func LifeNext(curr *Canvas) *Canvas {
 	}
 
 	return next
+}
+
+var nextOrange = false
+
+func LifeSetR(curr *Canvas) {
+	x := rand.Intn(10) + 40
+	y := rand.Intn(10) + 40
+	var color Color = Magenta
+	if nextOrange {
+		color = Orange
+	}
+	curr.Set(x+5, y+5, color)
+	curr.Set(x+6, y+5, color)
+	curr.Set(x+4, y+6, color)
+	curr.Set(x+5, y+6, color)
+	curr.Set(x+5, y+7, color)
+	nextOrange = !nextOrange
 }
 
 func LifeStir(curr *Canvas) {
