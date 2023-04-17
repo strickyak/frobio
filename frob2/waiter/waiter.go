@@ -242,6 +242,17 @@ func UploadProgram(conn net.Conn) {
 }
 
 func Serve(conn net.Conn) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("Closing connection: Exception %v", r)
+			conn.Close()
+		} else {
+			log.Printf("Done with connection")
+			conn.Close()
+		}
+	}()
+
 	log.Printf("gonna ReadFive")
 
 	log.Printf("Serving: Poke to 0x400")
@@ -263,20 +274,6 @@ func Serve(conn net.Conn) {
 		UploadProgram(conn)
 	}
 
-	// WriteFive(conn, CMD_PEEK, 256, 0xC000)
-	// WriteFive(conn, CMD_PEEK, 256, 0xC800)
-	/*
-		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-			hub := NewHub()
-			for {
-				select {
-				case x := <-hub.queue
-				}
-			}
-
-		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	*/
 	log.Printf("Serving: Sleeping.")
 
 	done := make(chan bool, 0)
