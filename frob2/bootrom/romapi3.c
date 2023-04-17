@@ -6,8 +6,6 @@ struct RomApi3 RomApi = {
 
     &Socks[0],
     Vars,
-    RevDate,
-    RevTime,
 
     &TcpProto,
     &UdpProto,
@@ -19,7 +17,6 @@ struct RomApi3 RomApi = {
     strncpy,
     strlen,
 
-    ConfigureTextScreen,
     StackPointer,
     PolCat,
     Delay,
@@ -45,8 +42,6 @@ struct RomApi3 RomApi = {
     WizIssueCommand,
     WizWaitStatus,
 
-    //
-
     WizOpen,
     TcpDial,
     TcpEstablish,
@@ -61,5 +56,4 @@ struct RomApi3 RomApi = {
     WizSendChunk,
     TcpSend,
     WizClose,
-
 };

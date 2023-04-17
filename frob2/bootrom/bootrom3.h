@@ -12,10 +12,10 @@
 #define BR_STATIC 0
 #define BR_DHCP 1
 
-#define MULTI_SOCK 1
 #define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
 
 #define WIZ_PORT  0xFF68   // Hardware port.
+#define WAITER_TCP_PORT  2319   // w# a# i#
 
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
 
@@ -70,6 +70,11 @@ struct wiz_port {
   byte data;
 };
 
+struct sock_vars {
+  word tx_ptr;
+  word tx_to_go;
+};
+
 struct vars {
     struct RomApi3 *rom_api_3;
     word vars_magic;
@@ -83,23 +88,24 @@ struct vars {
     byte ip_resolver[4];
     byte ip_waiter[4];
     byte ip_dhcp[4];
+    byte mask_num;
+    word waiter_port;
     byte xid[4];    // Temporary packet id in DHCP
 
     word vdg_addr;   // mapped via SAM
     word vdg_begin;  // begin useable portion
     word vdg_end;    // end usable portion
     word vdg_ptr;    // inside usable portion
+
+    char line_buf[64];
+    char* line_ptr;
+    bool need_dhcp;  // from command to DHCP.
+
+    struct sock_vars sock_vars[4];
 };
 
-#define VARS_MAGIC 0x4756 /* 'G' 'V' global vars */
+#define VARS_MAGIC 0x0756 /* ^G V global vars */
 
-// Four of SockState immediately follow struct vars,
-// but due to const initialization rules, we cannot
-// make them part of the struct.
-struct SockState {
-  word tx_ptr;
-  word tx_to_go;
-};
 extern const char SixFFs[6];
 extern const char Eight00s[8];
 
@@ -113,13 +119,10 @@ extern const char Eight00s[8];
 // This was an indication of waiting in loops.
 // #define LIVENESS(N) {++ *(byte*)(VDG_RAM+N);}
 
-#if MULTI_SOCK
-
 struct sock {
     word base;
     word tx_ring;
     word rx_ring;
-    word ss; // struct SockState* ss;
     byte nth;
 };
 extern const struct sock Socks[4];
@@ -138,35 +141,11 @@ extern const struct sock Socks[4];
 #define B    (sockp->base)
 #define T    (sockp->tx_ring)
 #define R    (sockp->rx_ring)
-#define SS   ((struct SockState*)sockp->ss)
+#define SV   (Vars->sock_vars + sockp->nth)
 #define N    (sockp->nth)
-
-#else
-
-#define SOCK1_AND
-#define JUST_SOCK1 
-
-  #define PARAM_JUST_SOCK
-  #define PARAM_SOCK_AND
-  #define JUST_SOCK
-  #define SOCK_AND
-
-  #define B    0x500
-  #define T    0x4800
-  #define R    0x6800
-  #define N    1
-  #define SS   ((struct SockState*)(VARS_RAM+sizeof(struct vars)+sizeof(struct SockState)*N))
-
-#endif
 
 #define RING_SIZE 2048
 #define RING_MASK (RING_SIZE - 1)
-
-extern const byte BR_ADDR    [4];
-extern const byte BR_MASK    [4];
-extern const byte BR_GATEWAY [4];
-extern const byte BR_RESOLV  [4];
-extern const byte BR_WAITER  [4];
 
 enum Commands {
   CMD_POKE = 0,
@@ -189,9 +168,11 @@ struct proto {
 extern const struct proto TcpProto;
 extern const struct proto UdpProto;
 extern const struct proto BroadcastUdpProto;
+#if 0
 extern const char ClassAMask[4];
 extern const char ClassBMask[4];
 extern const char ClassCMask[4];
+#endif
 
 struct UdpRecvHeader {
     byte addr[4];
@@ -199,8 +180,6 @@ struct UdpRecvHeader {
     word len;
 };
 
-extern const char RevDate[16];
-extern const char RevTime[16];
 extern const byte HexAlphabet[];
 
 byte WizGet1(word reg);
@@ -227,6 +206,7 @@ void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n);
 errnum WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n);
 errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n);
 errnum WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n);
+errnum WizRecvChunkBytes(PARAM_SOCK_AND byte* buf, size_t n);
 errnum TcpRecv(PARAM_SOCK_AND char* p, size_t n);
 errnum TcpSend(PARAM_SOCK_AND  char* p, size_t n);
 void UdpDial(PARAM_SOCK_AND  const struct proto *proto,

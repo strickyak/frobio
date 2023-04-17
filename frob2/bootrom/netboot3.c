@@ -1,6 +1,6 @@
 #include "frob2/bootrom/bootrom3.h"
 
-void WizOpen(PARAM_SOCK_AND const struct proto* proto, word local_port ) {
+void WizOpen(const struct sock* sockp, const struct proto* proto, word local_port ) {
   WizPut1(B+SK_MR, proto->open_mode);
   WizPut2(B+SK_PORTR0, local_port); // Set local port.
   WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
@@ -10,7 +10,7 @@ void WizOpen(PARAM_SOCK_AND const struct proto* proto, word local_port ) {
 }
 
 // Only called for TCP Client.
-void TcpDial(PARAM_SOCK_AND const byte* host, word port) {
+void TcpDial(const struct sock* sockp, const byte* host, word port) {
   WizPut2(B+SK_TX_WR0, T); // does this help
 
   WizPutN(B+SK_DIPR0, host, 4);
@@ -52,7 +52,7 @@ errnum WizCheck(PARAM_JUST_SOCK) {
       return OKAY;
 }
 
-errnum WizRecvGetBytesWaiting(PARAM_SOCK_AND word* bytes_waiting_out) {
+errnum WizRecvGetBytesWaiting(const struct sock* sockp, word* bytes_waiting_out) {
   errnum e = WizCheck(JUST_SOCK);
   if (e) return e;
 
@@ -60,19 +60,15 @@ errnum WizRecvGetBytesWaiting(PARAM_SOCK_AND word* bytes_waiting_out) {
   return OKAY;
 }
 
-errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
+errnum WizRecvChunkTry(const struct sock* sockp, char* buf, size_t n) {
   word bytes_waiting = 0;
   errnum e = WizRecvGetBytesWaiting(SOCK_AND &bytes_waiting);
   if (e) return e;
-  // PrintF("[[ %x < %x ]] ", bytes_waiting, n);
   if( bytes_waiting < n) return NOTYET;
 
   word rd = WizGet2(B+SK_RX_RD0);
-  word wr = WizGet2(B+SK_RX_WR0);
-
   word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
-  // PrintF("RCT=%x,*%x,r%x,w%x,b/%x,e/%x;", n, bytes_waiting, rd, wr, begin, end);
 
   if (end >= RING_SIZE) {
     word first_n = RING_SIZE - begin;
@@ -88,25 +84,28 @@ errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
   return OKAY;
 }
 
-errnum WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n) {
+errnum WizRecvChunk(const struct sock* sockp, char* buf, size_t n) {
   errnum e;
   do {
-    // LIVENESS(0);
     e = WizRecvChunkTry(SOCK_AND buf, n);
   } while (e == NOTYET);
   return e;
 }
-errnum TcpRecv(PARAM_SOCK_AND char* p, size_t n) {
+errnum WizRecvChunkBytes(const struct sock* sockp, byte* buf, size_t n) {
+  return WizRecvChunk(sockp, (char*)buf, n);
+}
+errnum TcpRecv(const struct sock* sockp, char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
-    errnum e = WizRecvChunk(SOCK_AND (char*)p, chunk);
+    errnum e = WizRecvChunk(SOCK_AND  p, chunk);
     if (e) return e;
     n -= chunk;
     p += chunk;
   }
+  return OKAY;
 }
 
-void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
+void UdpDial(const struct sock* sockp,  const struct proto *proto,
              const byte* dest_ip, word dest_port) {
   if (proto->is_broadcast) {
     // Broadcast to 255.255.255.255 to FF:FF:FF:FF:FF:FF.
@@ -118,27 +117,28 @@ void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
   WizPut2(B+SK_DPORTR0, dest_port);
 }
 
-void WizReserveToSend(PARAM_SOCK_AND  size_t n) {
+void WizReserveToSend(const struct sock* sockp,  size_t n) {
   PrintH("ResTS %x;", n);
   // Wait until free space is available.
   word free_size;
   do {
-    // LIVENESS(1);
     free_size = WizGet2(B+SK_TX_FSR0);
     PrintH("Res free %x;", free_size);
   } while (free_size < n);
 
-  SS->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
-  SS->tx_to_go = n;
+  struct sock_vars *sv = SV;
+  sv->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
+  sv->tx_to_go = n;
 }
 
-void WizBytesToSend(PARAM_SOCK_AND const byte* data, size_t n) {
+void WizBytesToSend(const struct sock* sockp, const byte* data, size_t n) {
   WizDataToSend(SOCK_AND (char*)data, n);
 }
-void WizDataToSend(PARAM_SOCK_AND const char* data, size_t n) {
-  AssertLE(n, SS->tx_to_go);  // Must have already reserved.
+void WizDataToSend(const struct sock* sockp, const char* data, size_t n) {
+  struct sock_vars *sv = SV;
+  AssertLE(n, sv->tx_to_go);  // Must have already reserved.
 
-  word begin = SS->tx_ptr;  // begin: Beneath RING_SIZE.
+  word begin = sv->tx_ptr;  // begin: Beneath RING_SIZE.
   word end = begin + n;       // end:  Sum may not be beneath RING_SIZE.
 
   if (end >= RING_SIZE) {
@@ -149,19 +149,20 @@ void WizDataToSend(PARAM_SOCK_AND const char* data, size_t n) {
   } else {
     WizPutN(T+begin, data, n);
   }
-  SS->tx_to_go -= n;
-  SS->tx_ptr = (n + SS->tx_ptr) & RING_MASK;
+  sv->tx_to_go -= n;
+  sv->tx_ptr = (n + sv->tx_ptr) & RING_MASK;
 }
 
-void WizFinalizeSend(PARAM_SOCK_AND const struct proto *proto, size_t n) {
+void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t n) {
+  struct sock_vars *sv = SV;
   word tx_wr = WizGet2(B+SK_TX_WR0);
   tx_wr += n;
   WizPut2(B+SK_TX_WR0, tx_wr);
-  AssertEQ(SS->tx_to_go, 0);
+  AssertEQ(sv->tx_to_go, 0);
   WizIssueCommand(SOCK_AND  proto->send_command);
 }
 
-errnum WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n) {
+errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
   errnum e = WizCheck(JUST_SOCK);
   if (e) return e;
   WizReserveToSend(SOCK_AND  n);
@@ -169,7 +170,7 @@ errnum WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_
   WizFinalizeSend(SOCK_AND proto, n);
   return OKAY;
 }
-errnum TcpSend(PARAM_SOCK_AND  char* p, size_t n) {
+errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
     errnum e = WizSendChunk(SOCK_AND &TcpProto, p, chunk);
@@ -245,7 +246,8 @@ errnum LemmaClientS1() {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-extern errnum RunDhcp(PARAM_SOCK_AND const char* name4, word ticks);
+extern void DoKeyboardCommands();
+extern errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks);
 const char name4[] = "NONE"; // unused
 
 int main() {
@@ -261,7 +263,6 @@ int main() {
 
     // Set VDG 32x16 text screen to dots.
     // Preserve the top line.
-    ConfigureTextScreen(VDG_RAM, /*orange=*/false);
     Vars->vdg_addr = VDG_RAM;
     Vars->vdg_begin = VDG_RAM+32;
     Vars->vdg_ptr = VDG_RAM+32;
@@ -271,8 +272,10 @@ int main() {
 
     // Record Vars->s_reg, to give some idea of memory size.
     word s_reg = StackPointer();
-    PrintF("main=%x stack=%x; ", &main, s_reg);
+    PrintF("main=%x stack=%x\n", &main, s_reg);
     Vars->s_reg = s_reg;
+
+    DoKeyboardCommands();
 
     // Use ticks to create a local port with high bit set.
     // Get ticks before the reset!
@@ -281,36 +284,36 @@ int main() {
 
     PrintF("WizReset; ");
     WizReset();
-#if BR_STATIC
-    PrintF("CONF:");
-    memcpy(Vars->ip_addr, BR_ADDR, 4);
-    memcpy(Vars->ip_mask, BR_MASK, 4);
-    memcpy(Vars->ip_gateway, BR_GATEWAY, 4);
-    Vars->mac_addr[0] = Vars->mac_addr[1] = 2;  // 2 == self-assigned.
-    memcpy(Vars->mac_addr+2, BR_ADDR, 4);
-    // Use hex hostname based on ip_addr.
-    for (byte i = 0; i < 4; i++) {
-      Vars->hostname[i+i+0] = HexAlphabet[15&(Vars->ip_addr[i]>>4)];
-      Vars->hostname[i+i+1] = HexAlphabet[15&(Vars->ip_addr[i]>>0)];
+
+    if (Vars->need_dhcp) {
+      PrintF("DHCP:");
+      errnum e = RunDhcp(SOCK0_AND name4, ticks);
+      if (e) Fatal("RunDhcp", e);
+    } else {
+      // Set Hostname
+      for (byte i = 0; i < 4; i++) {
+        Vars->hostname[i+i+0] = HexAlphabet[15&(Vars->ip_addr[i]>>4)];
+        Vars->hostname[i+i+1] = HexAlphabet[15&(Vars->ip_addr[i]>>0)];
+      }
+      // Set MAC
+      Vars->mac_addr[0] = 2;  // 2 == self-assigned.
+      Vars->mac_addr[1] = 255;
+      memcpy(Vars->mac_addr+2, Vars->ip_addr, 4);
     }
 
-#elif BR_DHCP
-    PrintF("DHCP:");
-    errnum e = RunDhcp(SOCK0_AND name4, ticks);
-    if (e) Fatal("RunDhcp", e);
-#endif
     WizConfigure();
 
     WizOpen(SOCK1_AND &TcpProto, local_port);
-    PrintF("tcp dial %a %x;", BR_WAITER, 14511);
-    TcpDial(SOCK1_AND BR_WAITER, 14511);
+    PrintF("tcp dial %a:%u;", Vars->ip_waiter, Vars->waiter_port);
+    TcpDial(SOCK1_AND Vars->ip_waiter, Vars->waiter_port);
+
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
-    Delay(9000);
+    Delay(50000);
 
     while (1) {
-        e = LemmaClientS1();
-        AssertEQ(e, OKAY);
+        errnum e = LemmaClientS1();
+        if (e) Fatal("BOTTOM", e);
     }
 
     return 0;

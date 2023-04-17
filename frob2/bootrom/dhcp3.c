@@ -64,7 +64,7 @@ const byte EndOptions[] = {
   255, 0   // 255=end, 0=len
 };
 
-void SendDhcpRequest(PARAM_SOCK_AND const char* name4, bool second) {
+void SendDhcpRequest(const struct sock* sockp, const char* name4, bool second) {
   PrintF("%s. ", second ? "REQUEST" : "DISCOVER");
 
   word req_size = sizeof (struct dhcp) + sizeof EndOptions;
@@ -83,7 +83,7 @@ void SendDhcpRequest(PARAM_SOCK_AND const char* name4, bool second) {
   WizBytesToSend(SOCK_AND RequestDHCP8, sizeof RequestDHCP8);
 
   WizDataToSend(SOCK_AND Eight00s, 4); // ciaddr
-  WizDataToSend(SOCK_AND Vars->ip_addr, 4); // yiaddr
+  WizBytesToSend(SOCK_AND Vars->ip_addr, 4); // yiaddr
   WizDataToSend(SOCK_AND Eight00s, 4); // siaddr
   WizDataToSend(SOCK_AND Eight00s, 4); // giaddr
 
@@ -104,19 +104,19 @@ void SendDhcpRequest(PARAM_SOCK_AND const char* name4, bool second) {
 
   if (second) {
     WizBytesToSend(SOCK_AND RequestOptions, sizeof RequestOptions);
-    WizDataToSend(SOCK_AND Vars->hostname, 8);
+    WizBytesToSend(SOCK_AND Vars->hostname, 8);
     WizBytesToSend(SOCK_AND RequestAddressOption, sizeof RequestAddressOption);
     WizBytesToSend(SOCK_AND Vars->ip_addr, 4);
   } else {
     WizBytesToSend(SOCK_AND DiscoverOptions, sizeof DiscoverOptions);
-    WizDataToSend(SOCK_AND Vars->hostname, 8);
+    WizBytesToSend(SOCK_AND Vars->hostname, 8);
   }
   WizBytesToSend(SOCK_AND EndOptions, sizeof EndOptions);
 
   WizFinalizeSend(SOCK_AND &BroadcastUdpProto, req_size);
 }
 
-errnum WasteRecvBytes(PARAM_SOCK_AND word n) {
+errnum WasteRecvBytes(const struct sock* sockp, word n) {
   errnum e = OKAY;
   char junk[8];
   while (n >= 8) {
@@ -131,7 +131,7 @@ errnum WasteRecvBytes(PARAM_SOCK_AND word n) {
   return e;
 }
 
-errnum RecvDhcpReply(PARAM_SOCK_AND struct UdpRecvHeader *hdr, bool second) {
+errnum RecvDhcpReply(const struct sock* sockp, struct UdpRecvHeader *hdr, bool second) {
   errnum e = OKAY;
   char buf[4];
 
@@ -145,11 +145,11 @@ errnum RecvDhcpReply(PARAM_SOCK_AND struct UdpRecvHeader *hdr, bool second) {
   
   WasteRecvBytes(SOCK_AND 12);  // done 16
 
-  e = WizRecvChunk(SOCK_AND  Vars->ip_addr, 4);  // done 20
+  e = WizRecvChunkBytes(SOCK_AND  Vars->ip_addr, 4);  // done 20
   if (e) return e;
   PrintF("addr=%a;", Vars->ip_addr);
 
-  e = WizRecvChunk(SOCK_AND  Vars->ip_dhcp, 4); // done 24
+  e = WizRecvChunkBytes(SOCK_AND  Vars->ip_dhcp, 4); // done 24
   if (e) return e;
   PrintF("dhcpd=%a;", Vars->ip_dhcp);
 
@@ -166,13 +166,13 @@ errnum RecvDhcpReply(PARAM_SOCK_AND struct UdpRecvHeader *hdr, bool second) {
   word togo = hdr->len - 4 - sizeof (struct dhcp);
   byte dhcp_op = 0, opt, len;
   while (togo >= 1) {
-    e = WizRecvChunk(SOCK_AND  &opt, 1); // Get Option
+    e = WizRecvChunkBytes(SOCK_AND  &opt, 1); // Get Option
     if (e) return e;
     --togo;
 
     if (opt == 255) break;  // From Google Wifi, 255 is last, no len.
 
-    e = WizRecvChunk(SOCK_AND  &len, 1); // Get Len
+    e = WizRecvChunkBytes(SOCK_AND  &len, 1); // Get Len
     if (e) return e;
     --togo;
 
@@ -216,7 +216,7 @@ errnum RecvDhcpReply(PARAM_SOCK_AND struct UdpRecvHeader *hdr, bool second) {
 // 17	DHCPLEASEQUERYSTATUS	[RFC7724]
 // 18	DHCPTLS	[RFC7724]
 
-      e = WizRecvChunk(SOCK_AND &dhcp_op, 1); // 1 byte opcode
+      e = WizRecvChunkBytes(SOCK_AND &dhcp_op, 1); // 1 byte opcode
       if (e) return e;
       PrintF(" %s=$%x; ",
           (dhcp_op==2 ? "OFFER" : dhcp_op==5 ? "ACK" : "?"),
@@ -240,7 +240,7 @@ errnum RecvDhcpReply(PARAM_SOCK_AND struct UdpRecvHeader *hdr, bool second) {
   return OKAY;
 }
 
-errnum RunOneDhcpRound(PARAM_SOCK_AND const char* name4, bool second) {
+errnum RunOneDhcpRound(const struct sock* sockp, const char* name4, bool second) {
   PrintF(" Round#%x; ", second);
   errnum e = OKAY;
   struct UdpRecvHeader hdr;
@@ -257,21 +257,24 @@ errnum RunOneDhcpRound(PARAM_SOCK_AND const char* name4, bool second) {
   return e;
 }
 
-errnum RunDhcp(PARAM_SOCK_AND const char* name4, word ticks) {
+errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks) {
   errnum e = OKAY;
+  byte random = 31 & ticks; // use low 5 bits.
+  byte hostchar = (random > 9) ? 'A' + random - 10 : '0' + random;
+
   // 16 possible MACs.
   memset(Vars->ip_addr, 0, 4);
   memset(Vars->ip_mask, 0, 4);
   memset(Vars->ip_gateway, 0, 4);
   memcpy(Vars->mac_addr, "\x02\x02\x02\x02\x02", 5);
-  Vars->mac_addr[5] = 15 & ticks;
+  Vars->mac_addr[5] = hostchar;
   memcpy(Vars->hostname, "CocoIO_", 7);
-  Vars->hostname[7] = HexAlphabet[15 & ticks];
+  Vars->hostname[7] = hostchar;
   WizConfigure();
 
   WizOpen(SOCK_AND &BroadcastUdpProto, DHCP_CLIENT_PORT);
   UdpDial(SOCK_AND  &BroadcastUdpProto,
-          /*dest_ip=*/ SixFFs, DHCP_SERVER_PORT);
+          /*dest_ip=*/ (const byte*)SixFFs, DHCP_SERVER_PORT);
 
   // First round: Discover.
   Vars->xid[0] = 42;

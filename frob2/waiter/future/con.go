@@ -32,6 +32,9 @@ func NewQuint(cmd byte, n int, p int) Quint {
 	return q
 }
 
+func (q Quint) Command() byte {
+	return q[0]
+}
 func (q Quint) N() int {
 	return HiLo(q[1], q[2])
 }
@@ -107,30 +110,43 @@ type LineBuf struct {
 }
 
 type Session struct {
-	ID          string
-	Conn        *net.Conn
-	Screen      *Screen
-	LineBuf     *LineBuf
-	LineHandler func()            // uses LineBuf
-	Env         map[string]string // for whatever
-	User        *User             // logged in user
+	ID      string
+	Conn    *net.Conn
+	Screen  *Screen
+	LineBuf *LineBuf
+	Env     map[string]string // for whatever
+	User    *User             // logged in user
+	Card    Card              // Current card.
+}
+
+func (ses *Session) GoTo(card Card) {
+	ses.Card = card
+	card.Activate(ses)
 }
 
 // Run() is called with "go" to manage a connection session.
 var nextID int = 101
 
-func Run(conn *net.Conn) {
+func Run(conn *net.Conn, initialCard Card) {
 	ses := &Session{
 		ID:      fmt.Sprintf("ses%d", nextID),
 		Conn:    conn,
 		Screen:  NewScreen(),
 		LineBuf: nil,
 	}
+	nextID++
 
-	// Fill initial screen.
-	// Pushes initial screen.
-	// Set LineHandler.
-	// Waits on Read Quint.
+	ses.GoTo(initialCard)
+
+	for {
+		q := ses.RecvQuint()
+		switch q.Command() {
+		case INKEY:
+			ses.LineBuf.Inkey(q.P())
+		default:
+			fmt.Panicf("Unexpected RecvQuint Command: %d", q.Command())
+		}
+	}
 }
 
 type Card interface {
@@ -144,26 +160,27 @@ type PromptCard struct {
 }
 
 func (pc *PromptCard) Activate(ses *Session) {
-    ses.Screen.Clear()
-    ses.Screen.PutStr(pc.Prompt)
-    ses.Screen.Push(ses)
-    ses.LineHandler = func() {
-        s := string(ses.LineBuf.buf)
-        s = strings.TrimSpace(s)
-        next, ok := pc.Actions[s]
-        if ok {
-            next.Activate(ses)
-        } else {
-            pc.Activate(ses)
-        }
-    }
+	ses.Screen.Clear()
+	ses.Screen.PutStr(pc.Prompt)
+	ses.Screen.Push(ses)
+	ses.LineHandler = func() {
+		s := string(ses.LineBuf.buf)
+		s = strings.TrimSpace(s)
+		next, ok := pc.Actions[s]
+		if ok {
+			next.Activate(ses)
+		} else {
+			pc.Activate(ses)
+		}
+	}
 }
 
 type ActionCard struct {
 	Func func(ses *Session)
 }
+
 func (ac *ActionCard) Activate(ses *Session) {
-    ac.Func(ses)
+	ac.Func(ses)
 }
 
 var RunNitros9Card = &ActionCard{

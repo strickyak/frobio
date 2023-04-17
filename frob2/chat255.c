@@ -38,7 +38,6 @@ void SetUp() {
   const struct sock* sock = &A->api_SockStructs[0];
   const struct proto* proto = A->api_BroadcastUdpProto;
 
-  A->api_ConfigureTextScreen(VDG_RAM, /*orange=*/false);
   memset((char*)G, 0, sizeof *G);
 
   A->api_WizOpen(sock, proto, CHAT255_PORT);

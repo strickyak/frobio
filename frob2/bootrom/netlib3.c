@@ -1,10 +1,9 @@
 #include "frob2/bootrom/bootrom3.h"
 #include "frob2/bootrom/romapi3.h"
 
-const char RevDate[16] = __DATE__;
-const char RevTime[16] = __TIME__;
-
 ////////////////////////////////////////////////////////
+///
+///  GCC Standard Library Routines.
 
 void* memcpy(void* dest, const void* src, size_t n) {
   char* d = (char*)dest;
@@ -20,19 +19,20 @@ void *memset(void *s, int c, size_t n) {
 }
 
 char *strcpy(char *restrict dest, const char *restrict src) {
+  void* z = dest;
   while (*src) *dest++ = *src++;
-  return dest;
+  return z;
 }
 
 char *strncpy(char *restrict dest, const char *restrict src, size_t n) {
-  void* dest0 = dest;
+  void* z = dest;
   int i = 0;
   while (*src) {
     *dest++ = *src++;
     i++;
     if (i>=n) break;
   }
-  return dest;
+  return z;
 }
 
 size_t strlen(const char *s) {
@@ -44,46 +44,12 @@ size_t strlen(const char *s) {
 ////////////////////////////////////////////////////////
 const byte HexAlphabet[] = "0123456789abcdef";
 
-#if MULTI_SOCK
-// If multiple sockets are supported,
-// this table has the relevant facts about each.
-
-// Sorry about the awkward construction of the SockState location,
-// but I had to make it a constant integer.
 const struct sock Socks[4] = {
-    { 0x400, 0x4000, 0x6000, VARS_RAM+sizeof(struct vars)+sizeof(struct sock)*0, 0 },
-    { 0x500, 0x4800, 0x6800, VARS_RAM+sizeof(struct vars)+sizeof(struct sock)*1, 1 },
-    { 0x600, 0x5000, 0x7000, VARS_RAM+sizeof(struct vars)+sizeof(struct sock)*2, 2 },
-    { 0x700, 0x5800, 0x7800, VARS_RAM+sizeof(struct vars)+sizeof(struct sock)*3, 3 },
+    { 0x400, 0x4000, 0x6000, 0 },
+    { 0x500, 0x4800, 0x6800, 1 },
+    { 0x600, 0x5000, 0x7000, 2 },
+    { 0x700, 0x5800, 0x7800, 3 },
 };
-#endif
-
-#if INTER_NET
-// for using DHCP and then the public waiter.
-const byte BR_ADDR    [4] = { 0, 0, 0, 0 };
-const byte BR_MASK    [4] = { 255, 0, 0, 0 };
-const byte BR_GATEWAY [4] = { 0, 0, 0, 0 };
-const byte BR_WAITER  [4] = { 134, 122, 16, 44 }; // lemma.yak.net
-const byte BR_RESOLV  [4] = { 8, 8, 8, 8 };
-#endif
-
-#if X220_NET
-// For my coco3(10.1.2.3) with ethernet(255.0.0.0) wired to a laptop(10.2.2.2).
-const byte BR_ADDR    [4] = { 10, 1, 2, 3 };
-const byte BR_MASK    [4] = { 255, 0, 0, 0 };
-const byte BR_GATEWAY [4] = { 10, 2, 2, 2 };
-const byte BR_WAITER  [4] = { 10, 2, 2, 2 };
-const byte BR_RESOLV  [4] = { 8, 8, 8, 8 };
-#endif
-
-#if LOCAL_NET
-// For my emulator, which opens a port for TFTP services on localhost.
-const byte BR_ADDR    [4] = { 127, 0, 0, 1 };
-const byte BR_MASK    [4] = { 255, 0, 0, 0 };
-const byte BR_GATEWAY [4] = { 127, 0, 0, 1 };
-const byte BR_WAITER  [4] = { 127, 0, 0, 1 };
-const byte BR_RESOLV  [4] = { 127, 0, 0, 1 };
-#endif
 
 const struct proto TcpProto = {
   SK_MR_TCP+SK_MR_ND, // TCP Protocol mode with No Delayed Ack.
@@ -106,10 +72,6 @@ const struct proto BroadcastUdpProto = {
 const char SixFFs[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-const char ClassAMask[4] = {255, 0, 0, 0};
-const char ClassBMask[4] = {255, 255, 0, 0};
-const char ClassCMask[4] = {255, 255, 255, 0};
-
 ////////////////////////////////////////////////////////
 
 #if EMULATED
@@ -130,25 +92,6 @@ void PrintH(const char* format, ...) {
 
 
 ////////////////////////////////////////////////////////
-
-// Initially, addr is 0x400.
-void ConfigureTextScreen(word addr, bool orange) {
-#if 0
-  *(byte*)0xFF90 |= 0x80; // Tell coco3 to be coco12-compatible.
-  *(byte*)0xFF22 = orange? 0x08 : 0x00;
-
-  *(byte*)0xFFC0 = 0; // SAM V0 clear.
-  *(byte*)0xFFC2 = 0; // SAM V1 clear.
-  *(byte*)0xFFC4 = 0; // SAM V2 clear.
-  word a = (addr >> 9); // Start examining bit 9.
-  byte *p = (byte*)0xFFC6;  // SAM F0 control.
-  for (byte i = 0; i < 7; i++) {
-    p[a&1] = 0; // Fn clear or set, according to addr bit.
-    p += 2;
-    a >>= 1;  // examine next bit.
-  }
-#endif
-};
 
 word StackPointer() {
   word result;
@@ -215,12 +158,20 @@ void PutChar(char ch) {
       return;
     }
 
+    word p = Vars->vdg_ptr;
     if (ch == 8) { // Backspace
-      if (Vars->vdg_ptr > Vars->vdg_begin) {
-        *(byte*)(Vars->vdg_ptr) = 32;
-        -- Vars->vdg_ptr;
+      if (p > Vars->vdg_begin) {
+        *(byte*)p = 32;
+        --p;
       }
-      return;
+      goto END;
+    }
+
+    if (ch == 1) { // Hilite previous char.
+      if (p > Vars->vdg_begin) {
+        *(byte*)(p-1) ^= 0x40;  // toggle the inverse bit.
+      }
+      goto END;
     }
 
     if (ch < 32) return;  // Ignore other control chars.
@@ -229,7 +180,6 @@ void PutChar(char ch) {
     if (96 <= ch && ch <= 126) ch -= 32;
     byte codepoint = (byte)ch;
 
-    word p = Vars->vdg_ptr;
     *(byte*)p = (0x3f & codepoint);
     p++;
 
@@ -245,6 +195,7 @@ void PutChar(char ch) {
         }
         p = Vars->vdg_end-32;
     }
+END:
     *(byte*)p = 0xEF;  // display Blue Box cursor.
     Vars->vdg_ptr = p;
 }
@@ -408,12 +359,12 @@ void WizConfigure() {
   WizPutN(0x0005/*mask*/, Vars->ip_mask, 4);
   WizPutN(0x000f/*ip_addr*/, Vars->ip_addr, 4);
   WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
-  PrintF("Conf a=%a m=%a g=%a MAC=%d.%d.%a", Vars->ip_addr, Vars->ip_mask, Vars->ip_gateway, Vars->mac_addr[0], Vars->mac_addr[1], Vars->mac_addr+2);
+  PrintF(" Config a=%a m=%a g=%a MAC=%d.%d.%a; ", Vars->ip_addr, Vars->ip_mask, Vars->ip_gateway, Vars->mac_addr[0], Vars->mac_addr[1], Vars->mac_addr+2);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-void WizIssueCommand(PARAM_SOCK_AND byte cmd) {
+void WizIssueCommand(const struct sock* sockp, byte cmd) {
   WizPut1(B+SK_CR, cmd);
   while (WizGet1(B+SK_CR)) {
     // ++ *(char*)0x401;
@@ -423,7 +374,7 @@ void WizIssueCommand(PARAM_SOCK_AND byte cmd) {
   // else PutChar('!');
 }
 
-void WizWaitStatus(PARAM_SOCK_AND byte want) {
+void WizWaitStatus(const struct sock* sockp, byte want) {
   byte status;
   byte stuck = 200;
   do {
