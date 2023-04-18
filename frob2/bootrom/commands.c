@@ -3,6 +3,10 @@
 #define BUF (Vars->line_buf)
 #define PTR (Vars->line_ptr)
 
+void NativeMode() {
+  asm volatile("ldmd #1");
+}
+
 void GetUpperCaseLine(char initialChar) {
   memset(BUF, 0, sizeof BUF);
   char* p = BUF;  // Rewind.
@@ -50,6 +54,7 @@ static void SkipWhite() {
   while (*PTR == ' ' || *PTR == '.' || *PTR == '/' || *PTR == ':') ++PTR;
 }
 
+#if 0
 // *num_out is set to 0, if no number.
 static bool GetNum1Byte(byte* num_out) {
   SkipWhite();
@@ -63,18 +68,39 @@ static bool GetNum1Byte(byte* num_out) {
   *num_out = x;
   return gotnum;
 }
+#endif
 
 static bool GetNum2Bytes(word* num_out) {
   SkipWhite();
   bool gotnum = false;
   word x = 0;
-  while ('0' <= *PTR && *PTR <= '9') {
-    x = x * 10 + (*PTR - '0');
-    gotnum = true;
+  if (*PTR == '$') {
     ++PTR;
+    while (('0' <= *PTR && *PTR <= '9') ||
+           ('A' <= *PTR && *PTR <= 'F')) {
+      if (*PTR <= '9') {
+        x = x * 16 + (*PTR - '0');
+      } else {
+        x = x * 16 + (*PTR - 'A' + 10);
+      }
+      gotnum = true;
+      ++PTR;
+    }
+  } else {
+    while ('0' <= *PTR && *PTR <= '9') {
+      x = x * 10 + (*PTR - '0');
+      gotnum = true;
+      ++PTR;
+    }
   }
   *num_out = x;
   return gotnum;
+}
+static bool GetNum1Byte(byte* num_out) {
+  word x;
+  bool b = GetNum2Bytes(&x);
+  *num_out = (byte)x;
+  return b;
 }
 
 static bool GetAddyInXid() {
@@ -161,6 +187,7 @@ static void ShowNetwork() {
 bool DoOneCommand(char initialChar) {
   bool done = false;
   errnum e = OKAY;
+  word peek_addr = 0;
 
   GetUpperCaseLine(initialChar);
 
@@ -218,10 +245,37 @@ bool DoOneCommand(char initialChar) {
     done = true;
     goto END;
 
+  } else if (cmd == 'Q') {
+    *(byte*)0xFFD9 = 1;
+
+  } else if (cmd == 'N') {
+    NativeMode();
+
+  } else if (cmd == '<') {
+    word tmp = peek_addr;
+    if (!GetNum2Bytes(&peek_addr)) peek_addr = tmp;
+
+    PrintF("%x: ", peek_addr);
+    for (byte i = 0; i < 8; i++) {
+      PrintF(" %x", *(byte*)peek_addr);
+      ++peek_addr;
+    }
+    PutChar(13);
+
+  } else if (cmd == '>') {
+      byte b;
+    if (GetNum2Bytes(&peek_addr) && GetNum1Byte(&b)) {
+      *(byte*)peek_addr = b;
+    } else {
+      PrintF("?\n");
+    }
+
   } else if (cmd == 0) {
     // end of line
   } else {
     PrintF("U\1 :upper wiznet port $FF78\n");
+    PrintF("Q\1 :quick: poke 1 to $FFD9\n");
+    PrintF("N\1 :native mode for H6309\n");
     PrintF("D\1 :use DHCP\n");
     PrintF("I\1 1.2.3.4/24 5.6.7.8\n");
     PrintF("  :Set IP addr, mask, gateway\n");
