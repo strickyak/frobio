@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -300,16 +301,41 @@ func BoldInt(x int) string {
 	return Bold(fmt.Sprintf("%d", x))
 }
 
-func Run(ses *Session) {
-	current := Cards[0]
+type NumStr struct {
+	Num int
+	Str string
+}
+type NumStrSlice []NumStr
 
+func (o NumStrSlice) Len() int           { return len(o) }
+func (o NumStrSlice) Less(i, j int) bool { return o[i].Num < o[j].Num }
+func (o NumStrSlice) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
+
+func Run(ses *Session) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			ses.Screen.PutStr(fmt.Sprintf("\n\nERROR: %v\n", r))
+			panic(r)
+		}
+	}()
+
+	current := Cards[0]
 	for {
 		ses.Screen.Clear()
-		ses.Screen.PutStr(fmt.Sprintf("== %d == %q ==\n", BoldInt(current.Num), Bold(current.Name)))
+		ses.Screen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
 		ses.Screen.PutStr(current.Text + "\n")
+
+		// Sort kids and show them.
+		var vec NumStrSlice
 		for num, kid := range current.Kids {
-			ses.Screen.PutStr(fmt.Sprintf("[%d] %s\n", num, kid.Name))
+			vec = append(vec, NumStr{num, fmt.Sprintf("[%d] %s\n", num, kid.Name)})
 		}
+		sort.Sort(vec)
+		for _, ns := range vec {
+			ses.Screen.PutStr(ns.Str)
+		}
+		ses.Screen.PutStr(">\001")
 
 		line := ses.LineBuf.GetLine()
 		line = strings.Trim(line, " \t\r\n")
