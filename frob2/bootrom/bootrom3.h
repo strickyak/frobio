@@ -151,7 +151,7 @@ enum Commands {
   CMD_POKE = 0,
   CMD_LOG = 200,
   CMD_INKEY = 201,
-  CMD_PUTCHARS = 202,
+  CMD_PUTCHAR = 202,
   CMD_PEEK = 203,
   CMD_DATA = 204,
   CMD_SP_PC = 205,

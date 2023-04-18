@@ -1,4 +1,4 @@
-package lemma
+package waiter
 
 import (
 	"bytes"
@@ -8,26 +8,29 @@ import (
 	"net"
 	"strconv"
 	"strings"
-
-	. "github.com/strickyak/frobio/frob2/waiter"
 )
 
-/*
-const (
-	POKE = 0
-	CALL = 255
-)
+type Number interface {
+	~byte | ~rune | ~int | ~uint | ~int64
+}
 
-func HiLo(a, b byte) int {
-	return int((uint(a) << 8) | uint(b))
+func Assert(b bool) {
+	if b {
+		log.Panic("Assert Fail")
+	}
 }
-func Hi(x int) byte {
-	return 255 & byte(uint(x)>>8)
+
+func AssertLT[N Number](a, b N) {
+	if a >= b {
+		log.Panicf("AssertLT Fail: %v < %v", a, b)
+	}
 }
-func Lo(x int) byte {
-	return 255 & byte(uint(x))
+
+func Check(err error) {
+	if err != nil {
+		log.Panicf("Check Fail: %v", err)
+	}
 }
-*/
 
 type Quint [5]byte // Quintabyte commands.
 
@@ -77,17 +80,39 @@ type Screen interface {
 	Clear()
 	PutChar(ch byte)
 	PutStr(s string)
-	Width() int
-	Height() int
-	Push(*Session)
-	Redraw()
+	//Width() int
+	//Height() int
+	//Push(*Session)
+	//Redraw()
 }
 
+type AxScreen struct {
+	Ses *Session
+}
+
+func (ax *AxScreen) Clear() {
+	for i := 0; i < 16; i++ {
+		ax.PutChar(13)
+	}
+}
+func (ax *AxScreen) PutChar(ch byte) {
+	q := NewQuint(CMD_PUTCHAR, 0, uint(ch))
+	_, err := ax.Ses.Conn.Write(q[:])
+	Check(err)
+}
+func (ax *AxScreen) PutStr(s string) {
+	for _, r := range s {
+		AssertLT(r, 127)
+		ax.PutChar(byte(r))
+	}
+}
+
+/*
 type TextScreen struct {
 	Old  []byte // screen RAM already sent.
 	New  []byte // screen RAM not yet sent.
 	W, H int    // screen dimensions
-	X, Y int    // cursor
+	P    int    // cursor
 	Addr int
 }
 
@@ -104,8 +129,7 @@ func NewTextScreen(w, h int, addr int) *TextScreen {
 		New:  n,
 		W:    w,
 		H:    h,
-		X:    0,
-		Y:    0,
+		P:    0,
 		Addr: addr,
 	}
 }
@@ -117,11 +141,62 @@ func (t *TextScreen) Clear() {
 	}
 }
 func (t *TextScreen) PutChar(ch byte) {
-	TODO()
+	if ch == 10 || ch == 13 {
+		PutChar(' ')
+		for (t.P & (t.W - 1)) != 0 {
+			PutChar(' ')
+		}
+		return
+	}
+
+	if ' ' <= ch && ch <= '~' {
+		t.New[t.P] = ch
+		t.P++
+		for t.P >= t.W*t.H {
+			for i := t.W; i < t.W*t.H; i++ {
+				t.New[i-t.W] = t.New[i]
+			}
+		}
+	}
 }
+*/
 
 type LineBuf struct {
-	buf []byte
+	Ses *Session
+}
+
+func (lb *LineBuf) GetLine() string {
+	var buf []byte
+	for {
+		var q Quint
+		_, err := io.ReadFull(lb.Ses.Conn, q[:])
+		Check(err)
+		cmd := q.Command()
+
+		switch cmd {
+		case CMD_INKEY:
+			ch := byte(q.P())
+			switch ch {
+			case 10, 13:
+				lb.Ses.Screen.PutChar(ch)
+				return string(buf)
+			case 8:
+				if len(buf) > 0 {
+					buf = buf[:len(buf)-1] // trim last
+					lb.Ses.Screen.PutChar(ch)
+				}
+			default:
+				if ' ' <= ch && ch <= '~' {
+					buf = append(buf, ch)
+					lb.Ses.Screen.PutChar(ch)
+				} else {
+					// log.Panicf("LineBuf: weird char: %d", ch)
+				}
+			} // switch ch
+		default:
+			log.Panicf("bad packet to GetLine: cmd=%d", cmd)
+		} // switch cmd
+	}
 }
 
 type Session struct {
@@ -131,19 +206,19 @@ type Session struct {
 	LineBuf *LineBuf
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
-	Card Card // Current card.
+	// Card *Card // Current card.
 }
 
 // Run() is called with "go" to manage a connection session.
 var nextID int = 1001
 
-func NewSession(conn net.Conn, initialCard Card) *Session {
+func NewSession(conn net.Conn) *Session {
 	ses := &Session{
-		ID:      fmt.Sprintf("ses%d", nextID),
-		Conn:    conn,
-		Screen:  NewTextScreen(32, 16, 0x0400),
-		LineBuf: nil,
+		ID:   fmt.Sprintf("ses%d", nextID),
+		Conn: conn,
 	}
+	ses.Screen = &AxScreen{ses}
+	ses.LineBuf = &LineBuf{ses}
 	nextID++
 
 	/*
@@ -160,102 +235,56 @@ func NewSession(conn net.Conn, initialCard Card) *Session {
 	return ses
 }
 
-type Card interface {
-	// Activate(ses *Session)
-	Name() string
-}
+var Cards = make(map[int]*Card)
 
-var Cards = make(map[int]Card)
-
-type TCard struct {
+type Card struct {
 	Num  int
-	name string
+	Name string
 	Moms []int
-	Kids map[int]Card
+	Kids map[int]*Card
 
 	Text    string
-	Actions map[string]Card
+	Actions map[string]*Card
 }
 
-/*
-func (tc *TCard) Activate(ses *Session) {
-	ses.Screen.Clear()
-	ses.Screen.PutStr(tc.Text)
-	for num, kid := range tc.Kids {
-		ses.Screen.PutStr(fmt.Sprintf("[%d] %s\n", num, kid.name))
-	}
-	ses.Screen.Push(ses)
-
-	line := ses.GetLine()
-	line = strings.Trim(line, " \t\r\n")
-	aNum, err := strconv.Atoi(line)
-	if err == nil {
-		// It was a number.
-		card, ok := Cards[aNum]
-		card.Activate(ses)
-	} else {
-		// It was something else.
-		log.Panicf("Not a number: %q", line)
-	}
-}
-*/
-
-type ActionCard struct {
-	Func func(ses *Session)
-}
-
-func (ac *ActionCard) Activate(ses *Session) {
-	ac.Func(ses)
-}
-
-var RunNitros9Card = &ActionCard{
-	Func: func(ses *Session) {
-		ToDo()
-	},
-}
-
-func Add(num int, parent int, name string, tc *TCard) {
+func Add(num int, parent int, name string, tc *Card) {
 	tc.Num = num
-	tc.name = name
+	tc.Name = name
 	tc.Moms = append(tc.Moms, parent)
-	tc.Kids = make(map[int]Card)
+	tc.Kids = make(map[int]*Card)
 
 	Cards[num] = tc
 	if num > 0 {
 		for _, mom := range tc.Moms {
-			p, ok := Cards[mom]
+			parent, ok := Cards[mom]
 			if !ok {
-				log.Panicf("Add TCard #%d=%q: cannot find mom %d", num, name, mom)
+				log.Panicf("Add Card #%d=%q: cannot find mom %d", num, name, mom)
 			}
-			ptc, ok := p.(*TCard)
-			if !ok {
-				log.Panicf("Add TCard #%d=%q: mom not a TCard %T :: %v", num, name, p, p)
-			}
-			ptc.Kids[num] = tc
+			parent.Kids[num] = tc
 		}
 	}
 }
 
 func init() {
-	Add(0, 0, "Home", &TCard{
+	Add(0, 0, "Home", &Card{
 		Text: `Welcome to Lemma.
 This is the home card.
 You can return here by typing 0.
 `,
 	})
 
-	Add(10, 0, "CocoIO-Tests", &TCard{
+	Add(10, 0, "CocoIO-Tests", &Card{
 		Text: `These are some tests you can try
 to stress your CocoIO Card.
 `,
 	})
 
-	Add(20, 0, "Demos", &TCard{})
+	Add(20, 0, "Demos", &Card{})
 
-	Add(30, 0, "Nitros-9", &TCard{})
-	Add(31, 30, "Level1", &TCard{})
-	Add(32, 30, "Level2", &TCard{})
-	Add(33, 30, "EOU", &TCard{})
+	Add(30, 0, "Nitros-9", &Card{})
+	Add(31, 30, "Level1", &Card{})
+	Add(32, 30, "Level2", &Card{})
+	Add(33, 30, "EOU", &Card{})
 }
 
 func Bold(s string) string {
@@ -272,29 +301,26 @@ func BoldInt(x int) string {
 }
 
 func Run(ses *Session) {
-	current := Cards[0].(*TCard)
+	current := Cards[0]
 
 	for {
 		ses.Screen.Clear()
-		ses.Screen.PutStr(fmt.Sprintf("%d = %q\n\n", BoldInt(current.Num), current.name))
+		ses.Screen.PutStr(fmt.Sprintf("== %d == %q ==\n", BoldInt(current.Num), Bold(current.Name)))
 		ses.Screen.PutStr(current.Text + "\n")
 		for num, kid := range current.Kids {
-			ses.Screen.PutStr(fmt.Sprintf("[%d] %s\n", num, kid.Name()))
+			ses.Screen.PutStr(fmt.Sprintf("[%d] %s\n", num, kid.Name))
 		}
-		ses.Screen.Push(ses)
 
-		line := ses.GetLine()
+		line := ses.LineBuf.GetLine()
 		line = strings.Trim(line, " \t\r\n")
 		aNum, err := strconv.Atoi(line)
 		if err == nil {
 			// It was a number.
 			card, ok := Cards[aNum]
 			if ok {
-				tcard, ok := card.(*TCard)
-				if ok {
-					current = tcard
-				}
+				current = card
 			} else {
+				log.Panicf("Unknown card number: %d", aNum)
 			}
 		} else {
 			// It was something else.

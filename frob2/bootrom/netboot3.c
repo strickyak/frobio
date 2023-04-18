@@ -214,11 +214,9 @@ errnum LemmaClientS1() {
             TcpRecv(SOCK1_AND (char*)p, n);
           }
           break;
-        case CMD_PUTCHARS:
+        case CMD_PUTCHAR:
           {
-            for (word i = 0; i < n; i++) {
-              PutChar(*(char*)(p+i));
-            }
+              PutChar(p);
           }
           break;
         case CMD_PEEK:

@@ -20,6 +20,7 @@ var PORT = flag.Int("port", 2319, "Listen on this TCP port")
 var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
 var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
 var DEMO = flag.String("demo", "", "run a demo")
+var CARDS = flag.Bool("cards", false, "run the cards")
 
 var Block0 *os.File
 
@@ -27,13 +28,13 @@ const (
 	CMD_POKE = 0
 	CMD_CALL = 255
 
-	CMD_LOG   = 200
-	CMD_INKEY = 201
-	PUTCHARS  = 202
-	CMD_PEEK  = 203
-	CMD_DATA  = 204
-	CMD_SP_PC = 205
-	CMD_REV   = 206
+	CMD_LOG     = 200
+	CMD_INKEY   = 201
+	CMD_PUTCHAR = 202
+	CMD_PEEK    = 203
+	CMD_DATA    = 204
+	CMD_SP_PC   = 205
+	CMD_REV     = 206
 
 	CMD_BLOCK_READ  = 207 // block device
 	CMD_BLOCK_WRITE = 208 // block device
@@ -253,10 +254,13 @@ func Serve(conn net.Conn) {
 		}
 	}()
 
-	log.Printf("gonna ReadFive")
-
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
+
+	if *CARDS {
+		Run(NewSession(conn))
+		log.Panicf("Run Cards: quit")
+	}
 
 	if *DEMO != "" {
 		demo, ok := Demos[*DEMO]
