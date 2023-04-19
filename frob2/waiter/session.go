@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -205,6 +206,10 @@ type Session struct {
 	Conn    net.Conn
 	Screen  Screen
 	LineBuf *LineBuf
+
+	Block0 *os.File
+	Block1 *os.File
+
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
 	// Card *Card // Current card.
@@ -244,8 +249,11 @@ type Card struct {
 	Moms []int
 	Kids map[int]*Card
 
-	Text    string
-	Actions map[string]*Card
+	Text string
+
+	Launch string
+	Block0 string
+	Block1 string
 }
 
 func Add(num int, parent int, name string, tc *Card) {
@@ -264,28 +272,6 @@ func Add(num int, parent int, name string, tc *Card) {
 			parent.Kids[num] = tc
 		}
 	}
-}
-
-func init() {
-	Add(0, 0, "Home", &Card{
-		Text: `Welcome to Lemma.
-This is the home card.
-You can return here by typing 0.
-`,
-	})
-
-	Add(10, 0, "CocoIO-Tests", &Card{
-		Text: `These are some tests you can try
-to stress your CocoIO Card.
-`,
-	})
-
-	Add(20, 0, "Demos", &Card{})
-
-	Add(30, 0, "Nitros-9", &Card{})
-	Add(31, 30, "Level1", &Card{})
-	Add(32, 30, "Level2", &Card{})
-	Add(33, 30, "EOU", &Card{})
 }
 
 func Bold(s string) string {
@@ -326,6 +312,10 @@ func Run(ses *Session) {
 		ses.Screen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
 		ses.Screen.PutStr(current.Text + "\n")
 
+		if current.Launch != "" {
+			ses.Screen.PutStr("[@] Launch!")
+		}
+
 		// Sort kids and show them.
 		var vec NumStrSlice
 		for num, kid := range current.Kids {
@@ -345,12 +335,70 @@ func Run(ses *Session) {
 			card, ok := Cards[aNum]
 			if ok {
 				current = card
-			} else {
 				log.Panicf("Unknown card number: %d", aNum)
 			}
+		} else if line == "@" {
+			if current.Launch == "" {
+				log.Panicf("Cannot @ because no Launch Spec")
+			}
+			if current.Block0 != "" {
+				r, err := os.Open(*READONLY + "/" + current.Block0[1:])
+				Check(err)
+
+				tmp, err := os.CreateTemp("/tmp", "tmp.block0.*.tmp")
+				Check(err)
+				_, err = io.Copy(tmp, r)
+				Check(err)
+				r.Close()
+
+				ses.Block0 = tmp
+				err = os.Remove(tmp.Name())
+				Check(err)
+			}
+			go ReadFiveLoop(ses.Conn, ses)
+			UploadProgram(ses.Conn, *READONLY+"/"+current.Launch[1:])
 		} else {
 			// It was something else.
 			log.Panicf("Not a number: %q", line)
 		}
 	}
+}
+
+func init() {
+	Add(0, 0, "Home", &Card{
+		Text: `Welcome to Lemma.
+This is the home card.
+You can return here by typing 0.
+`,
+	})
+
+	Add(10, 0, "CocoIO-Tests", &Card{
+		Text: `These are some tests you can try
+to stress your CocoIO Card.
+`,
+	})
+
+	Add(20, 0, "Demos", &Card{})
+
+	Add(30, 0, "Nitros-9", &Card{})
+	Add(31, 30, "Level1", &Card{})
+	Add(32, 30, "Level2", &Card{})
+	Add(323, 32, "L2-3.3.0-H6309.ax", &Card{
+		Launch: ".L2-330-H.ax",
+		Block0: ".L2-330-H.dsk",
+	})
+	Add(328, 32, "L2-3.3.0-M6809.ax", &Card{
+		Launch: ".L2-330-M.ax",
+		Block0: ".L2-330-M.dsk",
+	})
+
+	Add(33, 30, "EOU", &Card{})
+	Add(333, 33, "EOU-1.0.0-H6309.ax", &Card{
+		Launch: ".EOU100-H.ax",
+		Block0: ".EOU100-H.dsk",
+	})
+	Add(338, 33, "EOU-1.0.0-M6809.ax", &Card{
+		Launch: ".EOU100-M.ax",
+		Block0: ".EOU100-M.dsk",
+	})
 }

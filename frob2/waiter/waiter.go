@@ -21,6 +21,7 @@ var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
 var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
 var DEMO = flag.String("demo", "", "run a demo")
 var CARDS = flag.Bool("cards", false, "run the cards")
+var READONLY = flag.String("ro", "", "read only resource directory")
 
 var Block0 *os.File
 
@@ -81,11 +82,16 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	}
 }
 
-func ReadFiveLoop(conn net.Conn) {
+func ReadFiveLoop(conn net.Conn, ses *Session) {
+	var block0 *os.File
+
 	defer func() {
 		r := recover()
 		if r != nil {
 			log.Printf("ReadfiveLoop terminating with panic: %v", r)
+		}
+		if block0 != nil {
+			block0.Close()
 		}
 	}()
 
@@ -97,16 +103,19 @@ func ReadFiveLoop(conn net.Conn) {
 			log.Panic("BLOCK_READ: got drive %d. but can only handle drive 0.", drive)
 		}
 
-		if Block0 == nil {
+		if ses != nil && ses.Block0 != nil {
+			block0 = ses.Block0
+		} else if Block0 == nil {
 			Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
 			if err != nil {
 				log.Panicf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
 			}
+			block0 = Block0
 		}
 		lsn := (int64(n&255) << 16) | int64(p)
 		log.Printf("BLOCK0 READ LSN %d. =$%x", lsn, lsn)
 
-		_, err = Block0.Seek(256*lsn, 0)
+		_, err = block0.Seek(256*lsn, 0)
 		if err != nil {
 			log.Panicf("BLOCK_READ: Cannot Seek for Block device 0 to LSN %d: %q: %v", lsn, *BLOCK0, err)
 		}
@@ -182,7 +191,7 @@ func ReadFiveLoop(conn net.Conn) {
 				var err error
 
 				buf := make([]byte, 256)
-				cc, err := Block0.Read(buf)
+				cc, err := block0.Read(buf)
 				if err != nil {
 					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, *BLOCK0, err)
 				}
@@ -210,7 +219,7 @@ func ReadFiveLoop(conn net.Conn) {
 					log.Panicf("BLOCK_WRITE: short read, got %d, want 256 from conn: %v", cc, err)
 				}
 
-				cc, err = Block0.Write(buf)
+				cc, err = block0.Write(buf)
 				if err != nil {
 					log.Panicf("BLOCK_WRITE: Cannot Write for Block device 0 at LSN %d: %q: %v", lsn, *BLOCK0, err)
 				}
@@ -226,8 +235,8 @@ func ReadFiveLoop(conn net.Conn) {
 	}
 }
 
-func UploadProgram(conn net.Conn) {
-	bb, err := ioutil.ReadFile(*PROGRAM)
+func UploadProgram(conn net.Conn, filename string) {
+	bb, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Printf("CANNOT READ PROGRAM %q: %v", *PROGRAM, err)
 		return
@@ -274,8 +283,8 @@ func Serve(conn net.Conn) {
 	}
 
 	if *PROGRAM != "" {
-		go ReadFiveLoop(conn)
-		UploadProgram(conn)
+		go ReadFiveLoop(conn, nil)
+		UploadProgram(conn, *PROGRAM)
 	}
 
 	log.Printf("Serving: Sleeping.")
