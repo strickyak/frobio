@@ -267,7 +267,7 @@ func DuplicateFileToTemp(filename string) *os.File {
 	//err = os.Remove(tmp.Name())
 	//Check(err)
 
-    log.Printf("Duplicated %q => %q", filename, tmp.Name())
+	log.Printf("Duplicated %q => %q", filename, tmp.Name())
 	return tmp
 }
 
@@ -305,8 +305,8 @@ func Run(ses *Session) {
 
 	current := Cards[0]
 	for {
-        log.Printf("== %d == %q ==", current.Num, current.Name)
-        log.Printf("%#v", *current)
+		log.Printf("== %d == %q ==", current.Num, current.Name)
+		log.Printf("%#v", *current)
 		ses.Screen.Clear()
 		ses.Screen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
 		ses.Screen.PutStr(current.Text + "\n")
@@ -328,7 +328,7 @@ func Run(ses *Session) {
 
 		line := ses.LineBuf.GetLine()
 		line = strings.Trim(line, " \t\r\n")
-        log.Printf("GetLine => %q", line)
+		log.Printf("GetLine => %q", line)
 		aNum, err := strconv.Atoi(line)
 		if err == nil {
 			// It was a number.
@@ -343,18 +343,18 @@ func Run(ses *Session) {
 				log.Panicf("Cannot @ because no Launch Spec")
 			}
 			if current.Block0 != "" {
-                tail := strings.TrimPrefix(current.Block0, ".")
-                log.Printf("Block0: %q", tail)
-                ses.Block0 = DuplicateFileToTemp(*READONLY + "/" + tail)
+				tail := strings.TrimPrefix(current.Block0, ".")
+				log.Printf("Block0: %q", tail)
+				ses.Block0 = DuplicateFileToTemp(*READONLY + "/" + tail)
 			}
 			if current.Block1 != "" {
-                tail := strings.TrimPrefix(current.Block1, ".")
-                log.Printf("Block1: %q", tail)
-                ses.Block1 = DuplicateFileToTemp(*READONLY + "/" + tail)
+				tail := strings.TrimPrefix(current.Block1, ".")
+				log.Printf("Block1: %q", tail)
+				ses.Block1 = DuplicateFileToTemp(*READONLY + "/" + tail)
 			}
 			go ReadFiveLoop(ses.Conn, ses)
-            tail := strings.TrimPrefix(current.Launch, ".")
-            log.Printf("Upload: %q", tail)
+			tail := strings.TrimPrefix(current.Launch, ".")
+			log.Printf("Upload: %q", tail)
 			UploadProgram(ses.Conn, *READONLY+"/"+tail)
 		} else {
 			// It was something else.
@@ -393,7 +393,6 @@ to stress your CocoIO Card.
 		Launch: ".L1-330-M.ax",
 		Block0: ".L1-330-M.dsk",
 	})
-
 
 	Add(32, 30, "Nitros9 Level2", &Card{})
 	Add(323, 32, "L2 3.3.0 for H6309", &Card{

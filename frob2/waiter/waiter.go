@@ -192,7 +192,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 				buf := make([]byte, 256)
 				cc, err := block0.Read(buf)
-                log.Printf("read %d bytes from %q", cc, block0.Name())
+				log.Printf("read %d bytes from %q", cc, block0.Name())
 				if err != nil {
 					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, *BLOCK0, err)
 				}
@@ -200,13 +200,13 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, *BLOCK0, cc)
 				}
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
-                log.Printf("sent Block Okay header")
+				log.Printf("sent Block Okay header")
 
 				_, err = conn.Write(buf) // == WriteFull
 				if err != nil {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
-                log.Printf("sent buf: [%d] %q", len(buf), buf)
+				log.Printf("sent buf: [%d] %q", len(buf), buf)
 			}
 		case CMD_BLOCK_WRITE:
 			{
@@ -258,18 +258,18 @@ func Serve(conn net.Conn) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			log.Printf("Closing connection: Exception %v", r)
-			conn.Close()
+			log.Printf("Closing connection %q: Exception %v", conn.RemoteAddr().String(), r)
 		} else {
-			log.Printf("Done with connection")
-			conn.Close()
+			log.Printf("Done with connection %q", conn.RemoteAddr().String())
 		}
+		conn.Close()
 	}()
 
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
 
 	if *CARDS {
+		go ReadFiveLoop(conn, nil)
 		Run(NewSession(conn))
 		log.Panicf("Run Cards: quit")
 	}
@@ -311,7 +311,7 @@ func Listen() {
 		if err != nil {
 			log.Panicf("Cannot Accept() connection: %v", err)
 		}
-		log.Printf("Accepted.")
+		log.Printf("Accepted %q.", conn.RemoteAddr().String())
 		go Serve(conn)
 	}
 }
