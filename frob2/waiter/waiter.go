@@ -113,7 +113,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			block0 = Block0
 		}
 		lsn := (int64(n&255) << 16) | int64(p)
-		log.Printf("BLOCK0 READ LSN %d. =$%x", lsn, lsn)
+		log.Printf("BLOCK0 READ LSN %d. =$%x (%q)", lsn, lsn, block0.Name())
 
 		_, err = block0.Seek(256*lsn, 0)
 		if err != nil {
@@ -192,6 +192,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 				buf := make([]byte, 256)
 				cc, err := block0.Read(buf)
+                log.Printf("read %d bytes from %q", cc, block0.Name())
 				if err != nil {
 					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, *BLOCK0, err)
 				}
@@ -199,11 +200,13 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, *BLOCK0, cc)
 				}
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
+                log.Printf("sent Block Okay header")
 
 				_, err = conn.Write(buf) // == WriteFull
 				if err != nil {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
+                log.Printf("sent buf: [%d] %q", len(buf), buf)
 			}
 		case CMD_BLOCK_WRITE:
 			{
