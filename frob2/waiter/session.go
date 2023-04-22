@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Quint [5]byte // Quintabyte commands.
@@ -255,7 +256,6 @@ func Add(num int, parent int, name string, tc *Card) {
 func DuplicateFileToTemp(filename string) *os.File {
 	r, err := os.Open(filename)
 	Check(err)
-
 	tmp, err := os.CreateTemp("/tmp", "tmp.waiter.*.tmp")
 	Check(err)
 	_, err = io.Copy(tmp, r)
@@ -264,11 +264,16 @@ func DuplicateFileToTemp(filename string) *os.File {
 	err = r.Close()
 	Check(err)
 
-	//err = os.Remove(tmp.Name())
-	//Check(err)
-
 	log.Printf("Duplicated %q => %q", filename, tmp.Name())
+	err = os.Remove(tmp.Name())
+	Check(err)
 	return tmp
+}
+
+func NonduplicatingDuplicateFileToTemp(filename string) *os.File {
+	r, err := os.OpenFile(filename, os.O_RDWR, 0777)
+	Check(err)
+	return r
 }
 
 func Bold(s string) string {
@@ -298,12 +303,14 @@ func Run(ses *Session) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			ses.Screen.PutStr(fmt.Sprintf("\n\nERROR: %v\n", r))
+			ses.Screen.PutStr(fmt.Sprintf("\n\n(session Run) ERROR: %v\n", r))
 			panic(r)
 		}
 	}()
 
 	current := Cards[0]
+
+CARD:
 	for {
 		log.Printf("== %d == %q ==", current.Num, current.Name)
 		log.Printf("%#v", *current)
@@ -312,7 +319,7 @@ func Run(ses *Session) {
 		ses.Screen.PutStr(current.Text + "\n")
 
 		if current.Launch != "" {
-			ses.Screen.PutStr("[@] Launch!")
+			ses.Screen.PutStr("[@] Launch!\n")
 		}
 
 		// Sort kids and show them.
@@ -336,81 +343,50 @@ func Run(ses *Session) {
 			if ok {
 				current = card
 			} else {
-				log.Panicf("Unknown card number: %d", aNum)
+				ses.Screen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
+				goto DELAY
 			}
 		} else if line == "@" {
+
 			if current.Launch == "" {
-				log.Panicf("Cannot @ because no Launch Spec")
+				ses.Screen.PutStr("There is no \"@\" command on this page.")
+				goto DELAY
 			}
+
 			if current.Block0 != "" {
 				tail := strings.TrimPrefix(current.Block0, ".")
 				log.Printf("Block0: %q", tail)
+				ses.Screen.PutStr(fmt.Sprintf("Block0: %q", tail))
 				ses.Block0 = DuplicateFileToTemp(*READONLY + "/" + tail)
 			}
-			if current.Block1 != "" {
-				tail := strings.TrimPrefix(current.Block1, ".")
-				log.Printf("Block1: %q", tail)
-				ses.Block1 = DuplicateFileToTemp(*READONLY + "/" + tail)
+
+			if strings.HasPrefix(current.Launch, "@") {
+				name := current.Launch[1:]
+				demo, ok := Demos[name]
+				if !ok {
+					for k := range Demos {
+						log.Printf("known demo: %q", k)
+					}
+					log.Printf("Unknown demo: %q", name)
+					ses.Screen.PutStr(fmt.Sprintf("\nUnknown Demo: %q", name))
+					goto DELAY
+				}
+				demo(ses.Conn)
+				return
 			}
-			go ReadFiveLoop(ses.Conn, ses)
+
 			tail := strings.TrimPrefix(current.Launch, ".")
 			log.Printf("Upload: %q", tail)
 			UploadProgram(ses.Conn, *READONLY+"/"+tail)
+			ReadFiveLoop(ses.Conn, ses)
+			return
 		} else {
 			// It was something else.
-			log.Panicf("Not a number: %q", line)
+			ses.Screen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
+			goto DELAY
 		}
+		continue CARD
+	DELAY:
+		time.Sleep(3 * time.Second)
 	}
-}
-
-////////////////////////////////////////////////////////////////////
-
-func init() {
-	Add(0, 0, "Home", &Card{
-		Text: `Welcome to Lemma.
-This is the home card.
-You can return here by typing 0.
-`,
-	})
-
-	Add(10, 0, "CocoIO-Tests", &Card{
-		Text: `These are some tests you can try
-to stress your CocoIO Card.
-`,
-	})
-
-	Add(20, 0, "Demos", &Card{})
-
-	Add(30, 0, "Nitros-9", &Card{})
-
-	Add(31, 30, "Nitros9 Level1", &Card{})
-
-	Add(313, 31, "L1 3.3.0 for H6309", &Card{
-		Launch: ".L1-330-H.ax",
-		Block0: ".L1-330-H.dsk",
-	})
-	Add(318, 31, "L1 3.3.0 for M6809", &Card{
-		Launch: ".L1-330-M.ax",
-		Block0: ".L1-330-M.dsk",
-	})
-
-	Add(32, 30, "Nitros9 Level2", &Card{})
-	Add(323, 32, "L2 3.3.0 for H6309", &Card{
-		Launch: ".L2-330-H.ax",
-		Block0: ".L2-330-H.dsk",
-	})
-	Add(328, 32, "L2 3.3.0 for M6809", &Card{
-		Launch: ".L2-330-M.ax",
-		Block0: ".L2-330-M.dsk",
-	})
-
-	Add(33, 30, "Nitros9 EOU", &Card{})
-	Add(333, 33, "Nitros9 EOU 1.0.0 for H6309", &Card{
-		Launch: ".EOU-100-H.ax",
-		Block0: ".EOU-100-H.dsk",
-	})
-	Add(338, 33, "Nitros9 EOU 1.0.0 for M6809", &Card{
-		Launch: ".EOU-100-M.ax",
-		Block0: ".EOU-100-M.dsk",
-	})
 }
