@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 var Format = fmt.Sprintf
@@ -82,6 +83,38 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	}
 }
 
+func GetBlockDevice(ses *Session) *os.File {
+	var err error
+	if *BLOCK0 != "" {
+		if Block0 == nil {
+			log.Printf("Opening BLOCK0 == %q", *BLOCK0)
+			Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
+			if err != nil {
+				log.Panicf("GBD: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
+			}
+		}
+		log.Printf("GBD: returning %v", Block0)
+		return Block0
+	}
+	log.Printf("GBD: not global BLOCK0")
+	log.Printf("GBD: session %v", ses)
+	log.Printf("GBD: session.Block0 %v", ses.Block0)
+	log.Printf("GBD: session.Block0.Name(): %q", ses.Block0.Name())
+	return ses.Block0
+}
+
+func SeekSectorReturnLSN(block *os.File, n uint, p uint) int64 {
+	var err error
+	lsn := (int64(n&255) << 16) | int64(p)
+	log.Printf("block READ LSN %d. =$%x (%q)", lsn, lsn, block.Name())
+
+	_, err = block.Seek(256*lsn, 0)
+	if err != nil {
+		log.Panicf("SSRL: Cannot Seek for Block device to LSN %d.: %q: %v", lsn, block.Name(), err)
+	}
+	return lsn
+}
+
 func ReadFiveLoop(conn net.Conn, ses *Session) {
 	var block0 *os.File
 
@@ -91,43 +124,19 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			log.Printf("ReadfiveLoop terminating with panic: %v", r)
 		}
 		if block0 != nil {
+			log.Printf("ReadfiveLoop closing block0: %q", block0.Name())
 			block0.Close()
 		}
 	}()
 
-	prepareBlockDevice := func(n uint, p uint) int64 {
-		var err error
-
-		drive := byte(n >> 8)
-		if drive != 0 {
-			log.Panic("BLOCK_READ: got drive %d. but can only handle drive 0.", drive)
-		}
-
-		if ses != nil && ses.Block0 != nil {
-			block0 = ses.Block0
-		} else if Block0 == nil {
-			Block0, err = os.OpenFile(*BLOCK0, os.O_RDWR, 0777)
-			if err != nil {
-				log.Panicf("BLOCK_READ: Cannot OpenFile for Block device 0: %q: %v", *BLOCK0, err)
-			}
-			block0 = Block0
-		}
-		lsn := (int64(n&255) << 16) | int64(p)
-		log.Printf("BLOCK0 READ LSN %d. =$%x (%q)", lsn, lsn, block0.Name())
-
-		_, err = block0.Seek(256*lsn, 0)
-		if err != nil {
-			log.Panicf("BLOCK_READ: Cannot Seek for Block device 0 to LSN %d: %q: %v", lsn, *BLOCK0, err)
-		}
-		return lsn
-	}
-
 	quint := make([]byte, 5)
 	for {
+		log.Printf("for: ddt will ReadFive")
 		_, err := io.ReadFull(conn, quint)
 		if err != nil {
 			log.Panicf("ReadFive: stopping due to error: %v", err)
 		}
+		log.Printf("ddt ReadFive %#v", quint)
 
 		cmd, n, p := quint[0], HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
 		log.Printf("ReadFive: cmd=%02x n=%04x p=%04x ...", cmd, n, p)
@@ -172,45 +181,45 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					LogicalRamImage[p+i] = data[i]
 				}
 				DumpHexLines("M", p, data)
-				/*
-					                   // Add this code to save a snapshot of Ram that we've seen:
-
-							if p == 0xFE00 && n == 256 {
-								const RamFile = "/tmp/coco.ram"
-								err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
-								if err != nil {
-									log.Panicf("ReadFive: DATA: writing %q: %v", RamFile, err)
-								}
-							}
-				*/
 			}
 
 		case CMD_BLOCK_READ:
 			{
-				lsn := prepareBlockDevice(n, p)
+				// block0, lsn := prepareBlockDevice(ses, n, p)
+				// lsn := prepareBlockDevice(n, p)
+				block0 = GetBlockDevice(ses)
+				lsn := SeekSectorReturnLSN(block0, n, p)
 				var err error
 
 				buf := make([]byte, 256)
 				cc, err := block0.Read(buf)
 				log.Printf("read %d bytes from %q", cc, block0.Name())
 				if err != nil {
-					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, *BLOCK0, err)
+					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, block0.Name(), err)
 				}
 				if cc != 256 {
-					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, *BLOCK0, cc)
+					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 				}
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
 				log.Printf("sent Block Okay header")
 
-				_, err = conn.Write(buf) // == WriteFull
+				cc, err = conn.Write(buf) // == WriteFull
 				if err != nil {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
-				log.Printf("sent buf: [%d] %q", len(buf), buf)
+				// ddt -- added this panic and it broke?
+				log.Printf("Should be 255 conn.Write, but wrote %d", cc)
+				if false && cc != 256 {
+					log.Panicf("BLOCK_READ: Short TCP Write Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
+				}
+				log.Printf("sent buf: [%d]", len(buf))
 			}
 		case CMD_BLOCK_WRITE:
 			{
-				lsn := prepareBlockDevice(n, p)
+				// block0, lsn := prepareBlockDevice(ses, n, p)
+				// lsn := prepareBlockDevice(n, p)
+				block0 = GetBlockDevice(ses)
+				lsn := SeekSectorReturnLSN(block0, n, p)
 				var err error
 
 				buf := make([]byte, 256)
@@ -224,34 +233,35 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 				cc, err = block0.Write(buf)
 				if err != nil {
-					log.Panicf("BLOCK_WRITE: Cannot Write for Block device 0 at LSN %d: %q: %v", lsn, *BLOCK0, err)
+					log.Panicf("BLOCK_WRITE: Cannot Write for Block device 0 at LSN %d: %q: %v", lsn, block0.Name(), err)
 				}
 				if cc != 256 {
-					log.Panicf("BLOCK_WRITE: Short Write Block device 0 at LSN %d: %q: only %d bytes", lsn, *BLOCK0, cc)
+					log.Panicf("BLOCK_WRITE: Short Write Block device 0 at LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 				}
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
 
 			}
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
-		}
-	}
-}
+		} // end switch
+		log.Printf("next")
+	} // end for
+} // end ReadFiveLoop
 
 func UploadProgram(conn net.Conn, filename string) {
 	bb, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Printf("CANNOT READ PROGRAM %q: %v", *PROGRAM, err)
+		log.Printf("CANNOT READ PROGRAM %q: %v", filename, err)
 		return
 	}
 
 	_, err2 := conn.Write(bb)
 	if err2 != nil {
-		log.Printf("CANNOT UPLOAD PROGRAM %q: %v", *PROGRAM, err2)
+		log.Printf("CANNOT UPLOAD PROGRAM %q: %v", filename, err2)
 		return
 	}
 
-	log.Printf("Uploaded %q", *PROGRAM)
+	log.Printf("Uploaded %q", filename)
 }
 
 func Serve(conn net.Conn) {
@@ -268,12 +278,6 @@ func Serve(conn net.Conn) {
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
 
-	if *CARDS {
-		go ReadFiveLoop(conn, nil)
-		Run(NewSession(conn))
-		log.Panicf("Run Cards: quit")
-	}
-
 	if *DEMO != "" {
 		demo, ok := Demos[*DEMO]
 		if !ok {
@@ -283,11 +287,14 @@ func Serve(conn net.Conn) {
 			log.Panicf("Unknown demo: %q", *DEMO)
 		}
 		demo(conn)
-	}
-
-	if *PROGRAM != "" {
+	} else if *PROGRAM != "" {
 		go ReadFiveLoop(conn, nil)
+		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *PROGRAM)
+	} else {
+		ses := NewSession(conn)
+		Run(ses)
+		log.Panicf("Run Cards: quit")
 	}
 
 	log.Printf("Serving: Sleeping.")
@@ -315,3 +322,15 @@ func Listen() {
 		go Serve(conn)
 	}
 }
+
+/*
+	                   // Add this code to save a snapshot of Ram that we've seen:
+
+			if p == 0xFE00 && n == 256 {
+				const RamFile = "/tmp/coco.ram"
+				err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
+				if err != nil {
+					log.Panicf("ReadFive: DATA: writing %q: %v", RamFile, err)
+				}
+			}
+*/
