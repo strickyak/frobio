@@ -1,0 +1,96 @@
+# This is a fcl script: github.com/strickyak/frobio/frob2/fcl/
+# It is a roughly comparable to TCL 6.7, with some extensions.
+
+# Global pathnames.
+set M /home/strick/OS9/one-nitros9/level2/coco3/modules
+set F /home/strick/go/src/github.com/strickyak/frobio/frob2
+set EOU /home/strick/OS9/EOU_Version1_0_0_6809_ONLY_12-02-2022
+
+# Extract the boottrack from the emu boot disk.
+# Tracks are 18 sectors.  We want the 35th track.
+set eou_bt [box eou_boottrack [
+    binary readfile $EOU/68EMU.dsk [expr 256*18*34] [expr 256*18*1] ]]
+
+# REL is the first $130 bytes.
+# (Remember in TCL, string range is *inclusive* at end,
+#  so use 0x12F, not 0x130.)
+set eou_rel [box EOU.REL [string range [unbox $eou_bt] 0 0x12F]]
+
+# KRN starts at offset $300 and runs through the end.
+set eou_krn [box EOU.KRN [string range [unbox $eou_bt] 0x300 end]]
+
+# But use the boot_lemma module.
+# TODO: move it into drivers/ directory.
+set boot_lemma [box BOOT.LEMMA [ binary readfile $M/boot_lemma ]]
+
+# Rejoin EOU's REL and KRN with our BOOT module.
+# It must be REL then BOOT then KERNEL.
+set boottrack [box boottrack [
+  binary join [list [unbox $eou_rel] [unbox $boot_lemma] [unbox $eou_krn]]]]
+
+binary writefile /tmp/bt_out [unbox $boottrack]
+
+
+# OS9Boot was extracted from 68EMU.dsk
+set eou_bf [box eou_bootfile [ binary readfile $EOU/OS9Boot]]
+
+set eou_mods [os9 scanmodules [unbox $eou_bf]]
+
+set mods {}
+foreach m $eou_mods {
+  if { $m eq "rb1773" } continue
+  if { $m eq "DD" } continue
+  if { [regexp {H[0-9]} $m] } continue
+  if { [regexp {D[0-9]} $m] } continue
+
+  # Not filtered out, so add it to mods.
+  lappend mods $m
+}
+lappend mods [box rblemma [binary readfile $F/drivers/rblemma.os9]]
+lappend mods [box dd [binary readfile $F/drivers/y0.os9]]
+
+echo mods: $mods
+
+set bootfile {}
+foreach m $mods {
+  binary writefile /tmp/mods/$m [unbox $m]
+  append bootfile [unbox $m]
+}
+set bootfile [box bootfile $bootfile]
+
+proc Quint {c n p} {
+  binary format cSS $c $n $p
+}
+
+set Boot1 [unbox $boottrack]
+set Boot2 [unbox $bootfile]
+
+set Size1 [string length $Boot1]
+set Size2 [string length $Boot2]
+
+log 3 "=== Size1 $Size1 Size2 $Size2 ==="
+
+foreach x [split {
+  Quint 0 16 0xFFF0
+  binary readfile $M/vectors
+  Quint 0 $Size1 0x2600
+  set Boot1
+  Quint 255 0 0x2602
+} "\n"] {
+  log 3 "=== appending output of $x ==="
+  append Output [eval $x]
+  log 3 "=== Output size [string length $Output] =="
+}
+
+append Output [Quint 211 $Size2 0]
+foreach chunk [binary split $Boot2 444] {
+  set chunkSize [string length $chunk]
+  append Output [Quint 212 $chunkSize 0]
+  log 3 "=== Output size [string length $Output] =="
+  append Output $chunk
+  log 3 "=== Output size [string length $Output] =="
+}
+append Output [Quint 213 $Size2 0]
+log 3 "=== Output size [string length $Output] =="
+
+binary writefile /tmp/out1 $Output

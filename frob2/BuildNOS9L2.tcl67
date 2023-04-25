@@ -9,7 +9,7 @@ set BOOT2_MODS {
   snddrv_cc3.sb
   joydrv_joy.sb
   cowin.io
-  term_win80.dt
+  term_vdg.dt
 
   w.dw
   w1.dw
@@ -25,8 +25,10 @@ set BOOT2_MODS {
   sysgo_dd
 
   drivers/rblemma.os9
-  drivers/y0.os9
+  drivers/ddb0.os9
 }
+  # term_win80.dt
+
   # ../cmds/shell_21
 
   #../cmds/shellplus
