@@ -1,20 +1,17 @@
 ********************************************************************
 * Boot - NitrOS-9 Lemma Boot Module
 *
+* $Id: boot_lemma.asm,v 1.6 2023/04/25 03:48:23 strick Exp strick $
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
 *   1      2023/03/15  Henry Strickland W6REK (github.com/strickyak)
 *
 * Created, based on boot_rom by Boisy G. Pitre for boilerplate,
-*          and Michael Furman N6IL's cocoio-dw repository
-*          (github.com/n6il).
+*          and Alan DeKok's disassembly of boot_ide with mods by others,
+*          and Michael Furman N6IL's cocoio-dw repository (github.com/n6il).
 
-******
-*   ~/OS9/nitros9$ grep _lemma `find . -name makefile `
-* ./level1/coco1/modules/makefile:		boot_sdc boot_lemma
-* ./level1/coco1/modules/makefile:boot_lemma: boot_lemma.asm
-*   ~/OS9/nitros9$
 ******
 *
 * Lemma Definitions
@@ -30,8 +27,8 @@ Quint     equ $16
 QuintN    equ $17
 QuintSize equ 5     ; quint is 5 bytes
 
-* Value equ $0004   ; for ShowHex
-* Ptr equ $0006     ; for ShowHex
+Value equ $0004   ; for ShowHex
+Ptr equ $0006     ; for ShowHex
 
 SK_CR_RECV equ $40
 *
@@ -61,45 +58,45 @@ name     fcs   /Boot/
 
 ;;  Load Quint (for Q.BfBegin)
 ;;  Assert BfSize, and get sz.
-;;
+;;  
 ;;  F$SRqMem D=sz => U=begin
 ;;  current := begin
-;;
+;;  
 ;;  LOOP:
 ;;    Load Quint.
 ;;    If BfEnd{ s } , return: X=begin D=sz
-;;
+;;  
 ;;    Assert BfChunk{ chunk_sz }
-;;
+;;  
 ;;    Read(current, chunk_sz }
 ;;    current += chunk_sz
-;;
+;;  
 ;;  GOTO LOOP;
 
-start    pshs  u,y,dp
+start    pshs  u,y,cc,dp
   daa            ; daa: searchable in emulator log
-  inc   $8004
+  orcc #$50      ; paranoid: no interrupts please.
   clra
   tfr a,dp       ; we use DP=0.
 
-	ldd #$2468
-	std Value
-	ldd #$801C
-	std Ptr
-	lbsr ShowHex
+	;; ldd #$2468
+	;; std Value
+	;; ldd #$801C
+	;; std Ptr
+	;; lbsr ShowHex
 
   bsr ReadQuint
 	daa
   ldd <QuintN    ; D<-sz
 
   os9 F$SRqMem
-  stu <BeginPtr
-  stu <CurrPtr
+  stu <BeginPtr 
+  stu <CurrPtr 
 
-	stu <Value
-	ldd #$8078
-	std <Ptr
-	lbsr ShowHex
+	;; stu <Value
+	;; ldd #$8078
+	;; std <Ptr
+	;; lbsr ShowHex
 
 LoopLemma
   bsr ReadQuint  ; read Q.BfChunk or Q.BfEnd quint.
@@ -107,14 +104,14 @@ LoopLemma
   lda <Quint
   cmpa #Q.BfEnd
   beq Return
-
+  
   ldx <CurrPtr
   ldy <QuintN
 	daa
-  inc   $8006
+  ;; inc   $8006
   bsr Tcp1Read     ; read data packet
 	daa
-  inc   $8007
+  ;; inc   $8007
 
   ldd <CurrPtr
   addd <QuintN
@@ -130,10 +127,10 @@ Return
   clra           ; resets carry.
   ldx <BeginPtr
   ldd <QuintN
-  puls  u,y,dp,pc
+  puls  u,y,dp,cc,pc
 
 ReadQuint
-  inc   $8005
+  ;; inc   $8005
   LDX #Quint
   LDY #$0005
 	daa
@@ -141,22 +138,22 @@ ReadQuint
 
   clra
 	ldb Quint
-	std <Value
-	ldd #$8080
-	std <Ptr
-	lbsr ShowHex
+	;; std <Value
+	;; ldd #$8080
+	;; std <Ptr
+	;; lbsr ShowHex
 
-	ldd Quint+1
-	std <Value
-	ldd #$8088
-	std <Ptr
-	lbsr ShowHex
+	;; ldd Quint+1
+	;; std <Value
+	;; ldd #$8088
+	;; std <Ptr
+	;; lbsr ShowHex
 
-	ldd Quint+3
-	std <Value
-	ldd #$8090
-	std <Ptr
-	lbsr ShowHex
+	;; ldd Quint+3
+	;; std <Value
+	;; ldd #$8090
+	;; std <Ptr
+	;; lbsr ShowHex
 
   rts
 
@@ -197,7 +194,7 @@ Tcp1Read
 * space for variables on stack
   leas -10,s
   leau ,s
-  inc   $8003
+  ;; inc   $8003
 
 * temp     rmb 2  ,u
 * rptr    rmb 2 2,u
@@ -210,37 +207,37 @@ Tcp1Read
   sty 8,u  ; exptectd bytes => len
 LoopW
 
-	ldd 6,u     ; rsize
-	std <Value
-	ldd #$8020
-	std <Ptr
-	lbsr ShowHex
+	;; ldd 6,u     ; rsize
+	;; std <Value
+	;; ldd #$8020
+	;; std <Ptr
+	;; lbsr ShowHex
 
-	ldd 8,u      ; len
-	std <Value
-	ldd #$8026
-	std <Ptr
-	lbsr ShowHex
+	;; ldd 8,u      ; len
+	;; std <Value
+	;; ldd #$8026
+	;; std <Ptr
+	;; lbsr ShowHex
 
-	ldd ,u      ; temp
-	std <Value
-	ldd #$802C
-	std <Ptr
-	lbsr ShowHex
+	;; ldd ,u      ; temp
+	;; std <Value
+	;; ldd #$802C
+	;; std <Ptr
+	;; lbsr ShowHex
 
-	ldd 4,u      ; roffset
-	std <Value
-	ldd #$8040
-	std <Ptr
-	lbsr ShowHex
+	;; ldd 4,u      ; roffset
+	;; std <Value
+	;; ldd #$8040
+	;; std <Ptr
+	;; lbsr ShowHex
 
-	ldd 2,u      ; rptr
-	std <Value
-	ldd #$8046
-	std <Ptr
-	lbsr ShowHex
+	;; ldd 2,u      ; rptr
+	;; std <Value
+	;; ldd #$8046
+	;; std <Ptr
+	;; lbsr ShowHex
 
-  inc   $8002
+  ;; inc   $8002
   ldd #S1_RX_RSR0
   std CIO0ADDR
   lda CIO0DATA
@@ -269,7 +266,7 @@ LoopW
 *    parts or one
 *  if(roffset + len > SKBUFMASK)
   sty ,u  ; exptectd bytes => temp
-  addd ,u  ; roffset + temp
+  addd ,u  ; roffset + temp  
   cmpd #SKBUFMASK
   ble once
 twice
@@ -292,7 +289,7 @@ twice
   std ,u ; temp
   puls d ; len
   subd 6,u ; rsize
-  tfr d,y
+  tfr d,y  
   bra doonce
 once
 * rgblkget(buf, sockp->skrbstrt + roffset, len)
@@ -324,9 +321,9 @@ advance
   std CIO0ADDR
   ldb CIO0DATA
 	bne @wait0
-
+  
 rxdone
-  inc   $8001
+  ;; inc   $8001
   leas 10,s
   puls u,pc
 
@@ -339,7 +336,7 @@ w51rd
   std CIO0ADDR
   bra @check
 loopRD
-  inc   $8000
+  ;; inc   $8000
   lda   CIO0DATA
   sta  ,x+
   leay -1,y
@@ -354,44 +351,57 @@ loopRD
 *
 **************************************************
 
-ShowHex
-  pshs a,b,x,u
-	ldu <Ptr
-	leax HexAlfa,pcr
+*ShowHex
+*  pshs a,b,x,u
+*	ldu <Ptr
+*	leax HexAlfa,pcr
+*
+*	ldb <Value
+*	lsrb
+*	lsrb
+*	lsrb
+*	lsrb
+*	lda b,x
+*	anda #63
+*	sta ,u
+*
+*  ldb <Value
+*	andb #$0f
+*	lda b,x
+*	anda #63
+*	sta 1,u
+*
+*	ldb <Value+1
+*	lsrb
+*	lsrb
+*	lsrb
+*	lsrb
+*	lda b,x
+*	anda #63
+*	sta 2,u
+*
+*  ldb <Value+1
+*	andb #$0f
+*	lda b,x
+*	anda #63
+*	sta 3,u
+*
+*	puls a,b,x,u,pc
+*
+*HexAlfa fcs /0123456789ABCDEFG/
 
-	ldb <Value
-	lsrb
-	lsrb
-	lsrb
-	lsrb
-	lda b,x
-	anda #63
-	sta ,u
-
-  ldb <Value
-	andb #$0f
-	lda b,x
-	anda #63
-	sta 1,u
-
-	ldb <Value+1
-	lsrb
-	lsrb
-	lsrb
-	lsrb
-	lda b,x
-	anda #63
-	sta 2,u
-
-  ldb <Value+1
-	andb #$0f
-	lda b,x
-	anda #63
-	sta 3,u
-
-	puls a,b,x,u,pc
-
-HexAlfa fcs /0123456789ABCDEFG/
+             IFGT      Level-1
+* L2 kernel file is composed of rel, boot, krn. The size of each of these
+* is controlled with filler, so that (after relocation):
+* rel  starts at $ED00 and is $130 bytes in size
+* boot starts at $EE30 and is $1D0 bytes in size
+* krn  starts at $F000 and ends at $FEFF (there is no 'emod' at the end
+*      of krn and so there are no module-end boilerplate bytes)
+*
+* Filler to get to a total size of $1D0. -3 represents the emod CRC size.
+* the filler: the end boilerplate for the module, fdb and fcb respectively.
+Filler         FILL      $39,$1D0-3-*
+             ENDC
 
          emod
 eom      equ   *
