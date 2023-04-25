@@ -32,7 +32,7 @@ to stress your CocoIO Card.
 
 	Add(31, 30, "L1 3.3.0 for M6809", &Card{
 		Launch: ".L1-330-M.ax",
-		Block0: ".L1-330-M.dsk",
+		Block0: ".L1-330-M-frobio.dsk",
 	})
 
 	Add(32, 30, "Nitros9 Level2", &Card{})
@@ -42,7 +42,7 @@ to stress your CocoIO Card.
 	})
 	Add(328, 32, "L2 3.3.0 for M6809", &Card{
 		Launch: ".L2-330-M.ax",
-		Block0: ".L2-330-M.dsk",
+		Block0: ".L2-330-M-frobio.dsk",
 	})
 
 	Add(33, 30, "Nitros9 EOU", &Card{})
