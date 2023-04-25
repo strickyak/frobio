@@ -2,7 +2,7 @@
 #define _FROB2_BOOTROM_BOOTROM_H_
 
 #define VERBOSE 3 // 9 // 6 // 3
-#define EMULATED 0
+// #define EMULATED 0
 #define PRINTK 1
 
 #define X220_NET 0

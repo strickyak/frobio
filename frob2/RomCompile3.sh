@@ -1,9 +1,16 @@
 #!/bin/bash
 set -eux
 
-alias gcc='gcc6809 -S -I.. -Os -fomit-frame-pointer --std=gnu99 -Wall -Werror'
-
-alias asm='lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource'
+case "$*" in
+  EMU*)
+    alias gcc='gcc6809 -S -I.. -Os -fomit-frame-pointer --std=gnu99 -Wall -DEMULATED=1'
+    alias asm='lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource'
+  ;;
+  *)
+    alias gcc='gcc6809 -S -I.. -Os -fomit-frame-pointer --std=gnu99 -Wall -Werror'
+    alias asm='lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource'
+  ;;
+esac
 
 asm bootrom/preboot3.asm --output=preboot3.o --list=preboot3.list
 

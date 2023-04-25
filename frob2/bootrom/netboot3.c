@@ -1,46 +1,10 @@
 #include "frob2/bootrom/bootrom3.h"
 
-void WizOpen(const struct sock* sockp, const struct proto* proto, word local_port ) {
-  WizPut1(B+SK_MR, proto->open_mode);
-  WizPut2(B+SK_PORTR0, local_port); // Set local port.
-  WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
-  WizIssueCommand(SOCK_AND SK_CR_OPEN);
-
-  WizWaitStatus(SOCK_AND proto->open_status);
-}
+void WizOpen(const struct sock* sockp, const struct proto* proto, word local_port );
+void TcpDial(const struct sock* sockp, const byte* host, word port);
+void TcpEstablish(PARAM_JUST_SOCK);
 
 // Only called for TCP Client.
-void TcpDial(const struct sock* sockp, const byte* host, word port) {
-  WizPut2(B+SK_TX_WR0, T); // does this help
-
-  WizPutN(B+SK_DIPR0, host, 4);
-  WizPut2(B+SK_DPORTR0, port);
-  WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
-  WizIssueCommand(SOCK_AND SK_CR_CONN);
-}
-
-// For Server or Client to accept/establish connection.
-void TcpEstablish(PARAM_JUST_SOCK) {
-  byte stuck = 250;
-  while(1) {
-    Delay(2000);
-    PutChar('+');
-    // Or we could wait for the connected interrupt bit,
-    // and not the disconnected nor the timeout bit.
-    byte status = WizGet1(B+SK_SR);
-    if (!--stuck) Fatal("TEZ", status);
-
-    if (status == SK_SR_ESTB) break;
-    if (status == SK_SR_INIT) continue;
-    if (status == SK_SR_SYNS) continue;
-
-    Fatal("TE", status);
-
-  };
-
-  WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
-}
-
 errnum WizCheck(PARAM_JUST_SOCK) {
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
       if (ir & SK_IR_TOUT) { // Timeout?
@@ -210,8 +174,9 @@ errnum LemmaClientS1() {
       switch ((byte)quint[0]) {
         case CMD_POKE:
           {
-            PrintH("POKE(%x@%x)", n, p);
+            PrintH("POKE(%x@%x)\n", n, p);
             TcpRecv(SOCK1_AND (char*)p, n);
+            PrintH("POKE DONE\n");
           }
           break;
         case CMD_PUTCHAR:
@@ -221,16 +186,18 @@ errnum LemmaClientS1() {
           break;
         case CMD_PEEK:
           {
-            PrintH("PEEK(%x@%x)", n, p);
+            PrintH("PEEK(%x@%x)\n", n, p);
 
             quint[0] = CMD_DATA;
             WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
             TcpSend(SOCK1_AND (char*)p, n);
+            PrintH("PEEK DONE\n");
           }
           break;
         case CMD_JSR:
           {
             func fn = (func)p;
+            PrintH("JSR(%x@%x)\n", p);
             fn();
           }
           break;
@@ -248,7 +215,8 @@ extern void DoKeyboardCommands();
 extern errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks);
 const char name4[] = "NONE"; // unused
 
-int main() {
+extern int main();
+int main2() {
     // Clear our global variables to zero.
     memset(Vars, 0, sizeof (struct vars));
     // From the address of main, we can determine if we
@@ -315,4 +283,23 @@ int main() {
     }
 
     return 0;
+}
+
+int CallWithNewStack(word new_stack, word func) {
+  asm volatile("ldx %0" : : "m" (new_stack));
+  asm volatile("ldy %0" : : "m" (func));
+  asm volatile("tfr x,s");
+  asm volatile("jsr ,y");
+  return 0;
+}
+
+int main() {
+    word s_reg = StackPointer();
+    word main_addr = (word)&main;
+
+    if ((s_reg&0xF000) == 0x7000 && (main_addr&0xF000) == 0x6000) {
+      return CallWithNewStack(0x0800, (word)&main2);
+    } else {
+      return main2();
+    }
 }

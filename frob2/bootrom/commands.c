@@ -132,6 +132,7 @@ static void SetMask(byte width) {
       Vars->ip_mask[3] = MaskBits((int)width-24);
 }
 
+#if !EMULATED
 static errnum DoNetwork(byte a, byte b) {
   byte tail;
   if (!GetNum1Byte(&tail)) {
@@ -330,3 +331,33 @@ void DoKeyboardCommands() {
   }
   PrintF("Launch... ");
 }
+
+#else // if EMULATED
+
+static void UseLoopbackForEmulator() {
+  Vars->ip_addr[0] = 127;
+  Vars->ip_addr[1] = 0;
+  Vars->ip_addr[2] = 0;
+  Vars->ip_addr[3] = 1;
+
+  Vars->ip_gateway[0] = 0;  // unusable.
+  Vars->ip_gateway[1] = 7;
+  Vars->ip_gateway[2] = 11;
+  Vars->ip_gateway[3] = 13;
+
+  Vars->ip_waiter[0] = 127;
+  Vars->ip_waiter[1] = 0;
+  Vars->ip_waiter[2] = 0;
+  Vars->ip_waiter[3] = 1;
+  Vars->waiter_port = WAITER_TCP_PORT;
+
+  SetMask(24);
+}
+
+void DoKeyboardCommands() {
+  UseLoopbackForEmulator();
+
+  PrintF("Use Loopback for Emulator.\n");
+  PrintF("Launch...\n");
+}
+#endif

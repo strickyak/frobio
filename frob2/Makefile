@@ -10,6 +10,7 @@ LIBS=wiz/wiz5100s.c froblib/buf.c froblib/flag.c froblib/format.c froblib/malloc
 .SUFFIXES:  # Use no builtin rules.
 
 3: chat255.loadm netboot3.l3k netboot3.dsk
+3.EMULATED: chat255.loadm netboot3.l3k.EMULATED netboot3.dsk
 
 chat255.loadm: chat255.c
 	gcc6809 -I.. --std=gnu99  -Os  -S chat255.c
@@ -18,7 +19,9 @@ chat255.loadm: chat255.c
 
 netboot3.l3k:
 	sh RomCompile3.sh
-netboot3.dsk: netboot3.l3k
+netboot3.l3k.EMULATED:
+	sh RomCompile3.sh EMULATED
+netboot3.dsk:
 	rm -f netboot3.dsk
 	decb dskini netboot3.dsk
 	decb copy -0 -b bootrom/GO.BAS netboot3.dsk,INSTALL4.BAS

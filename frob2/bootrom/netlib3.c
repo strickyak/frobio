@@ -148,7 +148,7 @@ void Delay(word n) {
 
 void PutChar(char ch) {
 #if EMULATED
-  PrintH("CH: %x %c", ch, (' ' <= ch && ch <= '~') ? ch : '?');
+  PrintH("CH: %x %c\n", ch, (' ' <= ch && ch <= '~') ? ch : '?');
   return;
 #endif
     if (ch == 13 || ch == 10) { // Carriage Return
@@ -341,9 +341,9 @@ word WizTicks() {
 
 void WizReset() {
   WIZ->command = 128; // Reset
-  Delay(9000);
+  Delay(5000);
   WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  Delay(9000);
+  Delay(1000);
 
   // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
 
@@ -382,4 +382,44 @@ void WizWaitStatus(const struct sock* sockp, byte want) {
     status = WizGet1(B+SK_SR);
     if (!--stuck) Fatal("W", status);
   } while (status != want);
+}
+
+void WizOpen(const struct sock* sockp, const struct proto* proto, word local_port ) {
+  WizPut1(B+SK_MR, proto->open_mode);
+  WizPut2(B+SK_PORTR0, local_port); // Set local port.
+  WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
+  WizIssueCommand(SOCK_AND SK_CR_OPEN);
+
+  WizWaitStatus(SOCK_AND proto->open_status);
+}
+
+void TcpDial(const struct sock* sockp, const byte* host, word port) {
+  WizPut2(B+SK_TX_WR0, T); // does this help
+
+  WizPutN(B+SK_DIPR0, host, 4);
+  WizPut2(B+SK_DPORTR0, port);
+  WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
+  WizIssueCommand(SOCK_AND SK_CR_CONN);
+}
+
+// For Server or Client to accept/establish connection.
+void TcpEstablish(PARAM_JUST_SOCK) {
+  byte stuck = 250;
+  while(1) {
+    Delay(2000);
+    PutChar('+');
+    // Or we could wait for the connected interrupt bit,
+    // and not the disconnected nor the timeout bit.
+    byte status = WizGet1(B+SK_SR);
+    if (!--stuck) Fatal("TEZ", status);
+
+    if (status == SK_SR_ESTB) break;
+    if (status == SK_SR_INIT) continue;
+    if (status == SK_SR_SYNS) continue;
+
+    Fatal("TE", status);
+
+  };
+
+  WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
 }
