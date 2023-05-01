@@ -15,11 +15,11 @@ esac
 asm bootrom/preboot3.asm --output=preboot3.o --list=preboot3.list
 
 gcc bootrom/romapi3.c -o __romapi3.s
-sed -e 's/[.]area [.]data$/.area api.data/' < __romapi3.s > romapi3.s
+sed -e 's/[.]area[ \t][.]data$/.area api.data/' < __romapi3.s > romapi3.s
 asm romapi3.s --output=romapi3.o --list=romapi3.list
 
 gcc bootrom/netlib3.c -o __netlib3.s
-sed -e 's/[.]area [.]text$/.area net.text/' < __netlib3.s > netlib3.s
+sed -e 's/[.]area[ \t][.]text$/.area net.text/' < __netlib3.s > netlib3.s
 asm netlib3.s --output=netlib3.o --list=netlib3.list
 
 gcc bootrom/dhcp3.c
