@@ -1,19 +1,3 @@
-// Decisions:
-//   1. There are too many verisons of standard C library.
-//      Many of them don't work, or have problems.
-//      So we will write our own replacement library.
-//      We will use capitalized names.  (Then even Unix
-//      can use our replacement library for testing it.)
-//   2. We will prefer unsigned byte and unsigned word.
-//      Migrate our libraries to use that.
-//   3. We will not support threads, for now.
-//   4. Therefore we can use static buffers, briefly.
-//   5. Therefore a global ErrNo, ErrLine, ErrFile, ErrBuf
-//      will suffice.
-//   6. Standard Logging framework.
-//   7. Standard GetOpt framework.
-
-
 #ifndef _FROB2_FROBLIB_H_
 #define _FROB2_FROBLIB_H_
 
@@ -21,28 +5,6 @@
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
-#ifdef unix
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <memory.h>
-#include <errno.h>
-#include <unistd.h>
-
-// Fundamental type definitions for nylib & frobio.
-#ifndef __cplusplus
-#define true 1
-#define false 0
-typedef unsigned char bool;  // use a byte for a bool.
-#endif
-typedef unsigned char byte;  // byte is 1 byte, unsigned.
-typedef unsigned long word;  // word is 8 bytes, unsigned.
-typedef unsigned long quad;  // quad is 8 bytes, unsigned, 4 bytes used.
-
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-#else
 
 #define EOF (-1)        // TODO not use this?
 
@@ -68,7 +30,6 @@ void putchar(char ch);
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
-#endif
 
 // Check a function call returning a bool result.
 #define CheckB(FN,ARGS) {\
@@ -348,46 +309,4 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
 
-
-//////// Notes.
-
-/*
-     1	#ifdef unix
-     2	#include <stdio.h>
-     3	#else
-     4	#include <cmoc.h>
-     5	#endif
-     6	int main() {
-     7	    printf("char : %d\n", (int)sizeof(char));
-     8	    printf("short : %d\n", (int)sizeof(short));
-     9	    printf("int : %d\n", (int)sizeof(int));
-    10	    printf("long : %d\n", (int)sizeof(long));
-    11	    printf("long long : %d\n", (int)sizeof(long long));
-    12	    printf("size_t : %d\n", (int)sizeof(size_t));
-    13	    printf("char* : %d\n", (int)sizeof(char*));
-    13
-    14	    return 0;
-    15	}
-
-*** cmoc --os9:  M6809
-
-char : 1
-short : 2
-int : 2
-long : 4
-long long : 4
-size_t : 2
-char* : 2
-
-*** cc: x86_64 x86_64 x86_64 GNU/Linux
-
-char : 1
-short : 2
-int : 4
-long : 8
-long long : 8
-size_t : 8
-char* : 8
-
-*/
 #endif // _FROB2_FROBLIB_H_

@@ -1,7 +1,6 @@
 // Let's pick some defines for platforms and start being consistent.
 //
 // For Operating Systems or Metal Platforms.
-//   FOR_LINUX  -- run (as much as possible) on modern Linux platforms.
 //   FOR_LEVEL2 -- OS9/NitrOS9, probably Level II.  (No level I project yet.)
 //   FOR_DECB   -- Assumes DECB basic ROMs.
 //   FOR_COCO   -- Assumes coco keyboard, PIAs, probably 32x16 screen at $0400.
@@ -18,11 +17,6 @@
 
 #ifndef _FROB2_FROBTYPE_H_
 #define _FROB2_FROBTYPE_H_
-
-/////////////////////////////////////
-
-
-/////////////////////////////////////
 
 // All compilers define stdarg for va_list.
 #include <stdarg.h>
@@ -45,16 +39,6 @@ typedef const char* prob;
 #define GOOD ((const char*)NULL)
 extern const char NotYet[]; // defined as "NotYet"
 
-
-#ifdef unix
-
-typedef unsigned char small;  // byte is 1 byte, unsigned.
-typedef unsigned char byte;  // byte is 1 byte, unsigned.
-typedef unsigned long word;  // word is 8 bytes, unsigned.
-typedef unsigned long quad;  // quad is 8 bytes, unsigned, 4 bytes used.
-
-#else // unix
-
 // Iteration variables over small ranges (under 255 loops) can use small.
 // gcc6809 can run out of byte-sized registers if it uses bytes for
 // iterations variables, so we offer small which is 2 bytes on gcc6809.
@@ -69,7 +53,5 @@ typedef unsigned int word;   // word is 2 bytes, unsigned.
 typedef unsigned long quad;  // quad is 4 bytes, unsigned.
 typedef unsigned int size_t;
 #define NULL ((void*)0)
-
-#endif // unix
 
 #endif // _FROB2_FROBTYPE_H_
