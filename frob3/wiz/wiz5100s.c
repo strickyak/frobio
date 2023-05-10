@@ -1,8 +1,8 @@
-#include "frob2/froblib.h"
-#include "frob2/frobnet.h"
-#include "frob2/frobos9.h"
-#include "frob2/wiz/wiz5100s.h"
-#include "frob2/wiz/w5100s_defs.h"
+#include "frob3/froblib.h"
+#include "frob3/frobnet.h"
+#include "frob3/frobos9.h"
+#include "frob3/wiz/wiz5100s.h"
+#include "frob3/wiz/w5100s_defs.h"
 
 // FORWARD of what-was-static:
 extern byte WizGet1(word reg);

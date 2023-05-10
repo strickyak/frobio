@@ -2,9 +2,9 @@
 // This module contains no global data, including no
 // const char* strings.
 
-#include "frob2/froblib.h"
-#include "frob2/frobos9.h"
-#include "frob2/os9/os9defs.h"
+#include "frob3/froblib.h"
+#include "frob3/frobos9.h"
+#include "frob3/os9/os9defs.h"
 
 byte disable_irq_count;
 

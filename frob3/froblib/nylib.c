@@ -1,7 +1,7 @@
 // ny: NitroYak: Yak Libs for NitrOS9
 
-#include "frob2/froblib.h"
-#include "frob2/frobos9.h"
+#include "frob3/froblib.h"
+#include "frob3/frobos9.h"
 
 // Hereafter, pp will point to a pointer to const char,
 // and will be an argument to all functions.

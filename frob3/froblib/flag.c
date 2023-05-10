@@ -1,6 +1,6 @@
 // ny: NitroYak: Yak Libs for NitrOS9
 
-#include "frob2/froblib.h"
+#include "frob3/froblib.h"
 
 #define ARGC (*p_argc)
 #define ARGV (*p_argv)

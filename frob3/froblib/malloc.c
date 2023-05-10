@@ -4,9 +4,9 @@
 // There is a free list for each power of two.
 // So if random sizes are used, we waste perhaps 25%.
 
-#include "frob2/froblib.h"
-#include "frob2/froblib/malloc.h"
-#include "frob2/frobos9.h"
+#include "frob3/froblib.h"
+#include "frob3/froblib/malloc.h"
+#include "frob3/frobos9.h"
 
 #define ZERO_MALLOC             // catch bugs faster.
 #define ZERO_FREE               // catch bugs faster.

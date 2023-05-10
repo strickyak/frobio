@@ -1,6 +1,4 @@
-LIB1 = $F/froblib/*.c  $F/wiz/*.c $F/os9/frobos9.c
-
-all: $(NET_CMDS)
+all: _net_cmds _ncl_cmds
 
 install: all _FORCE_
 	mkdir -p $(PREFIX)
@@ -8,5 +6,10 @@ install: all _FORCE_
 
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod __*
+	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
+	rm -f utility-*
+	rm -rf install
 
 _FORCE_:
+
+####

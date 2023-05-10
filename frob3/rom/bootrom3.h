@@ -1,5 +1,5 @@
-#ifndef _FROB2_BOOTROM_BOOTROM_H_
-#define _FROB2_BOOTROM_BOOTROM_H_
+#ifndef _FROB3_BOOTROM_BOOTROM_H_
+#define _FROB3_BOOTROM_BOOTROM_H_
 
 #define VERBOSE 3 // 9 // 6 // 3
 // #define EMULATED 0
@@ -248,4 +248,4 @@ void PrintH(const char* format, ...);
 #define print8 if (VERBOSE>=8) PrintF
 #define print9 if (VERBOSE>=9) PrintF
 
-#endif // _FROB2_BOOTROM_BOOTROM_H_
+#endif // _FROB3_BOOTROM_BOOTROM_H_

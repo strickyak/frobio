@@ -50,7 +50,17 @@ DECB    = $DECB
 GO      = $GO
 PREFIX  = $PREFIX
 
+FROBLIB_C = $(echo $F/froblib/*.c)
+WIZ_C = $(echo $F/wiz/*.c)
+OS9_C = $(echo $F/os9/frobos9.c)
+NCL_C = $(echo $F/ncl/*.c)
+NCL_H = $(echo $F/ncl/*.h)
+LIB1 = \$(FROBLIB_C) \$(WIZ_C) \$(OS9_C)
+HDRS = $(echo $F/*.h)
+
 ,,,
+
+cat $F/Makefile.in 
 
 NET_CMDS=
 for x in $F/net-cmds/f-*.c
@@ -63,16 +73,21 @@ $t.os9cmd: $x \$(LIB1) \$(HDRS)
 +bash \$F/Compile.bash $t $x \$(LIB1)
 
 ,,,
-done > __net_cmds.mk
+done ;# > __net_cmds.mk
 
-cat <<,,,
+sed -e 's/^[+]/\t/' <<,,,
+f.ncl.os9cmd:  \$(NCL_C) \$(NCL_H) \$(LIB1)
++bash \$F/Compile.bash f.ncl \$(NCL_C) \$(LIB1)
+
 NET_CMDS = $NET_CMDS
-LIB1 = $(echo $F/froblib/*.c  $F/wiz/*.c $F/os9/frobos9.c)
-HDRS = $(echo $F/*.h)
+_net_cmds: \$(NET_CMDS)
+
+NCL_CMDS = f.ncl.os9cmd
+_ncl_cmds: \$(NCL_CMDS)
 
 ,,,
 
-cat $F/Makefile.in 
-cat __net_cmds.mk
-rm __net_cmds.mk
+# cat __net_cmds.mk
+
+# rm __net_cmds.mk
 ) > Makefile

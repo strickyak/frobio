@@ -1,5 +1,5 @@
-#ifndef _FROBIO_FROB2_ROMAPI3_H_
-#define _FROBIO_FROB2_ROMAPI3_H_
+#ifndef _FROBIO_FROB3_ROMAPI3_H_
+#define _FROBIO_FROB3_ROMAPI3_H_
 
 #include "frob3/rom/bootrom3.h"
 
@@ -63,4 +63,4 @@ struct RomApi3 {
   void (*api_WizClose)(PARAM_JUST_SOCK);
 };
 
-#endif // _FROBIO_FROB2_ROMAPI3_H_
+#endif // _FROBIO_FROB3_ROMAPI3_H_

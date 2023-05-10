@@ -1,7 +1,7 @@
 #ifndef _FROBIO_WIZ_WIZ5100S_H
 #define _FROBIO_WIZ_WIZ5100S_H
 
-#include "frob2/froblib.h"
+#include "frob3/froblib.h"
 
 extern bool wiz_verbose;
 extern byte* WizHwPort;

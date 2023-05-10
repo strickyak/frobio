@@ -1,4 +1,4 @@
-// github.com/strickyak/frobio/frob2/wiz/w5100s_defs.h
+// github.com/strickyak/frobio/frob3/wiz/w5100s_defs.h
 // copied from github.com/n6il/cocoio-dw/tests/w5100s.h
 // Just the `#define`s.
 

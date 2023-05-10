@@ -1,7 +1,7 @@
 #ifndef _FROBIO_NCL_MALLOC_H_
 #define _FROBIO_NCL_MALLOC_H_
 
-#include "frob2/froblib.h"
+#include "frob3/froblib.h"
 
 // Buckets for malloc/free quanta.
 #define STACK_MARGIN 300        // paranoid gap between heap and stack.
