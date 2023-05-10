@@ -1,0 +1,78 @@
+#!/bin/bash
+
+function fail () {
+  echo "FAILURE: $*" >&2
+  exit 13
+}
+
+F=$(dirname $0)
+echo "FROB3 directory : $F"
+
+PREFIX=${PREFIX:-install}
+case $# in
+  1 )
+    case $1 in
+      --prefix=* )
+        PREFIX=$(expr match "X$1" 'X--prefix=\(.*\)')
+        echo "got PREFIX=$PREFIX"
+        ;;
+    esac
+    ;;
+esac
+
+echo "INSTALL prefix : $PREFIX"
+
+CMOC=$(which cmoc)
+GCC6809=$(which m6809-unknown-gcc)
+OS9=$(which os9)
+DECB=$(which decb)
+GO=$(which go)
+
+test -z "$CMOC" && fail "Cannot find 'cmoc' command."
+test -z "$GCC6809" && fail "Cannot find 'm6809-unknown-gcc' command."
+test -z "$OS9" && fail "Cannot find 'os9' command."
+test -z "$DECB" && fail "Cannot find 'decb' command."
+test -z "$GO" && fail "Cannot find 'go' command."
+
+echo Found cmoc at $CMOC
+echo Found m6809-unknown-gcc at $GCC6809
+echo Found os9 at $OS9
+echo Found decb at $DECB
+echo Found go at $GO
+
+( # Start writing Makefile.
+cat <<,,,
+F       = $F
+CMOC    = $CMOC
+GCC6809 = $GCC6809
+OS9     = $OS9
+DECB    = $DECB
+GO      = $GO
+PREFIX  = $PREFIX
+
+,,,
+
+NET_CMDS=
+for x in $F/net-cmds/f-*.c
+do
+  b=$(basename $x)
+  t=$(echo $b | sed -e 's/^f-/f./' -e 's/[.]c$//')
+  NET_CMDS="$NET_CMDS $t.os9cmd"
+  sed -e 's/^ /\t/' <<,,,
+$t.os9cmd: $x \$(LIB1) \$(HDRS)
+ bash \$F/Compile.bash $t $x \$(LIB1)
+
+,,,
+done > __net_cmds.mk
+
+cat <<,,,
+NET_CMDS = $NET_CMDS
+LIB1 = $(echo $F/froblib/*.c  $F/wiz/*.c $F/os9/frobos9.c)
+HDRS = $(echo $F/*.h)
+
+,,,
+
+cat $F/Makefile.in 
+cat __net_cmds.mk
+rm __net_cmds.mk
+) > Makefile

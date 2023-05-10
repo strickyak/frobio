@@ -72,11 +72,6 @@ x.trynewcaller.os9 : try_new_caller.c
 x.decb0.decb : x-decb0.c
 	HOW=$${HOW:-decb-cmoc} sh Compile.sh $@ $< $(LIBS)
 
-f.b-unix:
-	gcc -I.. -g -fsanitize=address -static-libasan   f-b.c $$(ls tweb/*.c | grep -v _test) froblib/*.c unix/*.c
-	./a.out -a tweb/testdata/index.fm
-
-
 netboots: netboot.cmoc.exp netboot.gcc.exp netboot.smallest.exp netboot.fastest.exp
 
 netboot.cmoc.exp:
