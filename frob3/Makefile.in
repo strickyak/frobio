@@ -2,9 +2,11 @@ LIB1 = $F/froblib/*.c  $F/wiz/*.c $F/os9/frobos9.c
 
 all: $(NET_CMDS)
 
-install: all
+install: all _FORCE_
 	mkdir -p $(PREFIX)
 	install -t $(PREFIX) *.os9cmd
 
-clean:
+clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod __*
+
+_FORCE_:

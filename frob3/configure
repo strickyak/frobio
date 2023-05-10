@@ -58,9 +58,9 @@ do
   b=$(basename $x)
   t=$(echo $b | sed -e 's/^f-/f./' -e 's/[.]c$//')
   NET_CMDS="$NET_CMDS $t.os9cmd"
-  sed -e 's/^ /\t/' <<,,,
+  sed -e 's/^[+]/\t/' <<,,,
 $t.os9cmd: $x \$(LIB1) \$(HDRS)
- bash \$F/Compile.bash $t $x \$(LIB1)
++bash \$F/Compile.bash $t $x \$(LIB1)
 
 ,,,
 done > __net_cmds.mk
