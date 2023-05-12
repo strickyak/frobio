@@ -40,7 +40,6 @@ int main(int argc, char* argv[]) {
       mask = NyParseDottedDecimalQuad(&p);
   } else {
       byte n = (byte)atoi(p);
-      unsigned quad tmp = 0xffffffffL;
       mask = ~(0xFFFFffffLU >> n);
       LogInfo("mask = %lx", mask);
   }

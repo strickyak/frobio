@@ -14,6 +14,10 @@
 #include "frob3/ncl/match.h"
 #include "frob3/ncl/regexp.h"
 
+//#undef OS9
+//#define HEAP_CHECKS
+//#define TEAR_DOWN
+
 // Global Interpreter State.
 struct picolCallFrame *Callframe;
 struct picolCmd *Commands;
@@ -1651,8 +1655,9 @@ int main(int argc, char* argv[]) {
 
     e = picolEval("if {catch {source $rcfile} rcval} {puts 2 \"Error sourcing $rcfile: $rcval\"}",
                   "__rc__");
-    if (e)
+    if (e) {
       LogFatal("RC");
+    }
 
     while (1) {
       PRINT(" >NCL> ");

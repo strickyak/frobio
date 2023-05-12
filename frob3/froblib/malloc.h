@@ -25,4 +25,7 @@ extern int buck_num_alloc[NBUCKETS];
 extern int buck_num_free[NBUCKETS];
 extern int buck_num_brk[NBUCKETS];
 
+// If heap checks are enabled:
+extern void heap_check_block(struct MallocHead *h, int cap);
+
 #endif // _FROBIO_NCL_MALLOC_H_

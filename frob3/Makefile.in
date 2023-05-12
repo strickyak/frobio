@@ -4,6 +4,19 @@ install: all _FORCE_
 	mkdir -p $(PREFIX)
 	install -t $(PREFIX) *.os9cmd
 
+install-disk: install _FORCE_
+	set -eux ;\
+	DISK=$(DISK) ;\
+	for x in $(PREFIX)/f.ncl.os9cmd ;\
+		do \
+		  b=$$(basename $$x .os9cmd) ;\
+			os9 copy $$x $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
+			os9 attr -e -pe $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
+		done
+
+
+
+
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod __*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k

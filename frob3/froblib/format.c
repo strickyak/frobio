@@ -447,7 +447,7 @@ void PutHex(byte c, word w) {
   *p++ = ':';
   p = staticQFormatLongHex(p, UpperHexAlphabet, w);
   *p++ = ']';
-  *p = '0';
+  *p = '\0';
   FPuts((char*)ShortStaticBuffer, StdErr);
 }
 

@@ -3,6 +3,8 @@
 # Usage:
 #    HOW=cmoc MAX_VERBOSE=9 bash Compile.bash object sources...
 
+source ./config.bash
+
 export FROB3=$(dirname $0)
 export FROBIO=$(cd $FROB3/.. ; /bin/pwd)
 
@@ -10,8 +12,8 @@ OBJECT="$(basename $1 .os9)"
 shift
 
 MAX_VERBOSE=${MAX_VERBOSE:-9}
-GCC_6809_CC=${GCC_6809_CC:-gcc6809}
-CMOC_CC=${CMOC_CC:-cmoc}
+GCC6809=${GCC6809:-need-to-define-GCC6809}
+CMOC=${CMOC:-need-to-define-CMOC}
 
 set -ex
 case $HOW in
@@ -19,7 +21,7 @@ case $HOW in
         # HINT: HOW=decb-gcc6809 make -B x.decb0.decb
         cat $(ls "$@" | grep -v os9/ | grep -v [.]asm$ ) decb/frob-decb.c decb/std4gcc.c> __combined-$OBJECT.c
 
-        $GCC_6809_CC --std=gnu99 -funsigned-char -funsigned-bitfields -Os -S -fwhole-program -I.. -DMAX_VERBOSE="$MAX_VERBOSE" __combined-$OBJECT.c
+        $GCC6809 --std=gnu99 -funsigned-char -funsigned-bitfields -Os -S -fwhole-program -I.. -DMAX_VERBOSE="$MAX_VERBOSE" __combined-$OBJECT.c
 
         lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource --list=combined.list --map=combined.map  -I.. -DFOR_DECB=1 -DBY_GCC=1 -DMAX_VERBOSE=9 -o __combined-x.decb0.decb.o  __combined-x.decb0.decb.s
 
@@ -28,14 +30,16 @@ case $HOW in
         echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/decb0.bin /media/strick/APRIL3/YDECB.DSK,DECB0.BIN ; sync' -- HINT
         ;;
     decb-cmoc )
-        $CMOC_CC --org=2000 -i --decb -I$FROBIO -DFOR_DECB=1 -DBY_GCC=1 -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" $(ls "$@" | grep -v os9/) decb/frob-decb.c
+        $CMOC --org=2000 -i --decb -I$FROBIO -DFOR_DECB=1 -DBY_GCC=1 -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" $(ls "$@" | grep -v os9/) decb/frob-decb.c
         mv "$OBJECT" "$OBJECT.decb"
         hd "$OBJECT.decb" | head -4
         ls -l "$OBJECT.decb"
         echo HINT -- 'decb copy -2 -b -r -c ~/sy/frobio/frob2/f.ticks.decb /media/strick/APRIL3/YDECB.DSK,TICKS.BIN ; sync' -- HINT
         ;;
     "" | cmoc )
-        $CMOC_CC $CMOC_PRE -i --os9 -I$FROBIO -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" "$@"
+        CMOCI=$(dirname $CMOC)/../share/cmoc/include
+        CMOCL=$(dirname $CMOC)/../share/cmoc/lib
+        $CMOC $CMOC_PRE -i --os9 -I$FROBIO -I$CMOCI -L$CMOCL -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE="$MAX_VERBOSE" -o "$OBJECT" "$@"
         mv "$OBJECT" "$OBJECT.os9cmd"
         os9 ident "$OBJECT.os9cmd"
         ;;
@@ -50,7 +54,7 @@ case $HOW in
           case "$x" in 
             *.c )
                 y=$(basename $x .c)
-                $GCC_6809_CC -DBY_GCC=1 -DFOR_LEVEL2=1 --std='gnu99' -f'pic' -f'no-builtin' -f'unsigned-char' -f'unsigned-bitfields' -I.. -Os -S "$x"
+                $GCC6809 -DBY_GCC=1 -DFOR_LEVEL2=1 --std='gnu99' -f'pic' -f'no-builtin' -f'unsigned-char' -f'unsigned-bitfields' -I$FROBIO -Os -S "$x"
                 lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource -o "$y.o" -l"$y.o.list" "$y.s"
                 ;;
             *.asm )
