@@ -37,8 +37,10 @@ char* strndup(const char* s, size_t n);
 int atoi(const char*);
 
 // void sprintf(char*, const char* fmt, ...); // DANGER
-void printf(const char* fmt, ...);  // The slow one.
-void putchar(char ch);
+#ifndef FOR_FIX
+void printf(const char* fmt, ...);  // The slow one. // WRONG
+void putchar(char ch); // WRONG
+#endif
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -134,8 +136,8 @@ int SnPrintf(char* dest, size_t max, const char* fmt, ...);
 char* StrFormat(const char* fmt, ...);
 
 extern byte ShortStaticBuffer[24];
-extern const byte* LowerHexAlphabet;
-extern const byte* UpperHexAlphabet;
+extern const char LowerHexAlphabet[];
+extern const char UpperHexAlphabet[];
 
 const char* StaticFormatSignedInt(int x);
 void BufAppStringQuoting(Buf* buf, const char* s, word precision);

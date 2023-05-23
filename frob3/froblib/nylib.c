@@ -130,6 +130,7 @@ byte NyDeHex(byte ch) {
     return ch - 'a' + 10;
   }
   Assert(0);
+  return 0; // NOT REACHED
 }
 
 void NyFormatDottedDecimalQuad(char* buffer, quad addr) {

@@ -6,7 +6,7 @@
 void staticBufFillGap(Buf* buf, word width, word n, bool fill0);
 byte* staticQFormatUnsignedLong(byte* p, unsigned long x);
 byte* staticQFormatSignedLong(byte* p, signed long x);
-byte* staticQFormatLongHex(byte* p, const byte* alphabet, unsigned long x);
+byte* staticQFormatLongHex(byte* p, const char* alphabet, unsigned long x);
 
 //chop
 
@@ -57,8 +57,8 @@ void BEncodeCurly(Buf* buf, byte* str, int n) {
 #endif
 
 // Hex Alphabets
-const byte* LowerHexAlphabet = "0123456789abcdef";
-const byte* UpperHexAlphabet = "0123456789ABCDEF";
+const char LowerHexAlphabet[] = "0123456789abcdef";
+const char UpperHexAlphabet[] = "0123456789ABCDEF";
 //chop
 
 void staticBufFillGap(Buf* buf, word width, word n, bool fill0) {
@@ -161,13 +161,13 @@ const char* StaticFormatSignedLong(int x) {
     return (const char*)ShortStaticBuffer;
 }
 
-byte* staticQFormatLongHex(byte* p, const byte* alphabet, unsigned long x) {
+byte* staticQFormatLongHex(byte* p, const char* alphabet, unsigned long x) {
   if (x > 15) {
     p = staticQFormatLongHex(p, alphabet, x >> 4);
     // TODO: report bug that (byte)x did not work.
-    *p++ = alphabet[ (byte)(word)x & (byte)15 ];
+    *p++ = (byte) alphabet[ (byte)(word)x & (byte)15 ];
   } else {
-    *p++ = alphabet[ (byte)x ];
+    *p++ = (byte) alphabet[ (byte)x ];
   }
   return (*p = 0), p;
 }
@@ -308,7 +308,6 @@ void BufFormat(Buf* buf, const char* format, ...) {
 // returns OKAY or ErrNo.
 errnum WritLnAll(int path, const char* s, word n) {
     ErrNo = OKAY;
-    word n0 = n;
     while (n>0) {
         int wrote = 0;
 #ifdef unix

@@ -15,7 +15,7 @@ int prefixed_atoi(const char *s) {
     s++;
     if (*s == 'x') {
       // hex if starts 0x
-      while ('0' <= *s && *s <= '9' || 'A' <= CharUp(*s) && CharUp(*s) <= 'F') {
+      while (('0' <= *s && *s <= '9') || ('A' <= CharUp(*s) && CharUp(*s) <= 'F')) {
         if ('0' <= *s && *s <= '9') {
           z = z * 16 + (*s - '0');
         } else {

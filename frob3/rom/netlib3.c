@@ -1,6 +1,8 @@
 #include "frob3/rom/bootrom3.h"
 #include "frob3/rom/romapi3.h"
 
+#if NEED_STDLIB_IN_NETLIB3
+
 ////////////////////////////////////////////////////////
 ///
 ///  GCC Standard Library Routines.
@@ -40,6 +42,7 @@ size_t strlen(const char *s) {
   while (*p) p++;
   return p-s;
 }
+#endif // NEED_STDLIB_IN_NETLIB3
 
 ////////////////////////////////////////////////////////
 const byte HexAlphabet[] = "0123456789abcdef";

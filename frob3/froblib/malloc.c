@@ -12,15 +12,34 @@
 #define ZERO_FREE               // catch bugs faster.
 // #define AUDIT_MALLOC_FREE  // for leak and unmatched malloc/free detection.
 
-extern word heap_min;
-extern word heap_here;
-extern word heap_max;
-extern bool heap_retry;  // Not thread-safe.
+struct Heap {
+    word h_heap_min;
+    word h_heap_here;
+    word h_heap_max;
+    bool h_heap_retry;  // Not thread-safe.
 
-extern struct MallocHead *buck_freelist[NBUCKETS];
-extern int buck_num_alloc[NBUCKETS];
-extern int buck_num_free[NBUCKETS];
-extern int buck_num_brk[NBUCKETS];
+    struct MallocHead *h_buck_freelist[NBUCKETS];
+    int h_buck_num_alloc[NBUCKETS];
+    int h_buck_num_free[NBUCKETS];
+    int h_buck_num_brk[NBUCKETS];
+};
+
+#ifdef FOR_FIX
+#define HEAP ((struct Heap *)0x100)
+#else
+struct Heap TheHeap;
+#define HEAP (&TheHeap)
+#endif
+
+#define heap_min  (HEAP->h_heap_min)
+#define heap_here  (HEAP->h_heap_here)
+#define heap_max  (HEAP->h_heap_max)
+#define heap_retry  (HEAP->h_heap_retry)
+
+#define buck_freelist  (HEAP->h_buck_freelist)
+#define buck_num_alloc  (HEAP->h_buck_num_alloc)
+#define buck_num_free  (HEAP->h_buck_num_free)
+#define buck_num_brk  (HEAP->h_buck_num_brk)
 
 #ifdef unix
 extern byte MemoryPoolForUnix[1024000];
@@ -32,17 +51,6 @@ extern byte which_bucket(int n, int *capP);
 extern void heap_check_block(struct MallocHead *h, int cap);
 
 // chop
-
-// Heap boundaries.
-word heap_min;
-word heap_here;
-word heap_max;
-bool heap_retry;  // Not thread-safe.
-
-struct MallocHead *buck_freelist[NBUCKETS];
-int buck_num_alloc[NBUCKETS];
-int buck_num_free[NBUCKETS];
-int buck_num_brk[NBUCKETS];
 
 #ifdef unix
 byte MemoryPoolForUnix[1024000];
