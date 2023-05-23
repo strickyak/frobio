@@ -50,6 +50,7 @@ typedef unsigned char bool;
 typedef unsigned char byte;
 typedef unsigned char errnum;
 typedef unsigned int word;
+typedef unsigned int size_t;
 
 #include "frob2/os9/os9defs.h"
 #include "frob2/fuse/fuse.h"
@@ -121,7 +122,7 @@ struct PathDesc {
         device_table_entry;   // PD.DEV = 3
   byte current_process_id;    // PD.CPR = 5
   struct Regs *regs;          // PD.RGS = 6
-  word daemon_buffer;         // PD.BUF = 8
+  word unused_daemon_buffer;  // PD.BUF = 8
   // offset 10 = PD.FST
   bool is_daemon;
   bool paused_proc_id;  // 0 if not paused.
@@ -135,82 +136,26 @@ struct PathDesc {
 
 /////////////////  Hypervisor Debugging Support
 
-asm HyperCoreDump() {
+#ifdef __GNUC__
+void
+#else
+asm
+#endif
+HyperCoreDump() {
 #ifdef HYPER_GOMAR
+#ifdef __GNUC__
+  asm volatile (
+      "  swi\n"
+      "  fcb 100"
+      : /*out*/
+      : /*in*/
+      : /*clobbers*/);
+#else
   asm {
     SWI
     FCB 100  ; hyperCoreDump
   }
 #endif
-}
-
-void HyperShowRegs() {
-#ifdef HYPER_GOMAR
-  asm {
-      swi
-      fcb 109
-  }
-#endif
-}
-
-void HyperShowMMU() {
-#ifdef HYPER_GOMAR
-  asm {
-      swi
-      fcb 102
-  }
-#endif
-}
-
-void ShowChar(char ch) {
-#ifdef HYPER_GOMAR
-  asm {
-    ldb ch
-      clra
-      swi
-      fcb 104
-  }
-#endif
-}
-
-void ShowStr(const char* str) {
-#ifdef HYPER_GOMAR
-  asm {
-    ldd str
-      swi
-      fcb 110
-  }
-#endif
-}
-
-void ShowHex(word num) {
-#ifdef HYPER_GOMAR
-  asm {
-    ldd num
-      swi
-      fcb 103
-  }
-#endif
-}
-
-void ShowRam(word addr) {
-#ifdef HYPER_GOMAR
-  asm {
-    ldd addr
-      swi
-      fcb 105
-  }
-#endif
-}
-
-void ShowTaskRam(byte task, word addr) {
-#ifdef HYPER_GOMAR
-  asm {
-    ldb task
-    ldx addr
-      swi
-      fcb 106
-  }
 #endif
 }
 
@@ -223,18 +168,26 @@ void PrintH(const char* format, ...) {
 #endif
 }
 
-asm void GameOver() {
+#ifdef __GNUC__
+void
+#else
+asm
+#endif
+GameOver() {
+#ifdef __GNUC__
+  asm volatile ("nop\nINF_LOOP bra INF_LOOP");
+#else
   asm {
 INF_LOOP bra INF_LOOP
   }
+#endif
 }
 
 ////////////////////////////////////////////////
 
-// For len is 255 or less.
-void bzero(void* addr, byte len) {
+void bzero(void* addr, size_t len) {
   char* p = (char*) addr;
-  for (byte i=0; i<len; i++) {
+  for (size_t i=0; i<len; i++) {
     *p++ = 0;
   }
 }
@@ -679,16 +632,11 @@ errnum CopyParsedName(word begin, word end, char* dest, word max_len) {
 
 void ShowParsedName(word current, word begin, word end) {
   byte task = Os9UserTask();
-  ShowChar('{');
   for (word p = current; p <= end; p++ ) {
     byte ch = 0;
     errnum err = Os9LoadByteFromTask(task, p, &ch);
     assert(!err);
-    if (p == begin) ShowChar('~');
-    if (p == end) ShowChar('~');
-    if (p != end) ShowChar(ch);
   }
-  ShowChar('}');
 }
 
 // Ignoring case is assumed, when Parsed Name is used.
@@ -812,11 +760,6 @@ errnum OpenDaemon(struct PathDesc* dae, word begin2, word end2) {
   dae->is_daemon = 1;
   dae->peer = NULL;
   dae->current_process_id = Os9CurrentProcessId();
-
-  dae->daemon_buffer = 0;
-  word size_out = 0;
-  errnum err = Os9SRqMem(0x100, &size_out, &dae->daemon_buffer);
-  assert(!err);
 
   CopyParsedName(begin2, end2, (char*)dae + DAEMON_NAME_OFFSET_IN_PD, DAEMON_NAME_MAX);
 
@@ -1153,8 +1096,6 @@ errnum CloseC(struct PathDesc* pd, struct Regs* regs) {
   if (pd->is_daemon) {
     struct PathDesc* dae = pd;
     CheckDaemon(dae);
-    errnum err = Os9SRtMem(0x100, dae->daemon_buffer);
-    assert(!err);
     bzero(DAEMON_NAME_OFFSET_IN_PD + (char*)dae, DAEMON_NAME_MAX);  // Wipe the daemon name.
     z = OKAY;
   } else {

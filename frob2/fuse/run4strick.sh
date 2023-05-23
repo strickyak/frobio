@@ -5,8 +5,8 @@
 
 set -ex
 
-WHAT=${WHAT:-cocosdc}
 WHAT=${WHAT:-80d}
+WHAT=${WHAT:-cocosdc}
 
 cd $(dirname $0)
 FUSE=$(pwd)         # Fuse Dir, absolute
@@ -33,7 +33,7 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/borges/" -glob '*.os9' .
   make
   make -C bootfiles clean
   make -C bootfiles
-  cat $FM/fuseman.os9 $FM/fuser.os9 $FM/fuse.os9 >> bootfiles/bootfile_$WHAT
+  cat $FM/fuseman.os9mod $FM/fuser.os9mod $FM/fuse.os9mod >> bootfiles/bootfile_$WHAT
   rm -f NOS9_6809_L2_v030300_coco3_$WHAT.dsk
   # This `make` depends on *not* re-making bootfiles.
   make  NOS9_6809_L2_v030300_coco3_$WHAT.dsk
@@ -43,9 +43,9 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/borges/" -glob '*.os9' .
 (
   cd daemons/demos
   make -B
-  for x in *.os9
+  for x in *.os9cmd
   do
-    y=$(basename $x .os9)
+    y=$(basename $x .os9cmd)
     os9 copy -r $x $T,CMDS/$y
     os9 attr -per $T,CMDS/$y
   done
@@ -57,15 +57,15 @@ $HOME/go/bin/borges -outdir "$GH/strickyak/doing_os9/borges/" -glob '*.os9' .
   make f.ncl.os9
   os9 copy -r -l ncl/nclrc.tcl $T,SYS/nclrc.tcl
 
-  make yadd.os9
-  os9 copy -r yadd.os9 $T,CMDS/yadd
-  os9 attr -per $T,CMDS/yadd
-  make yadd2.os9
-  os9 copy -r yadd2.os9 $T,CMDS/yadd2
-  os9 attr -per $T,CMDS/yadd2
-  make yadd2all.os9
-  os9 copy -r yadd2all.os9 $T,CMDS/yadd2all
-  os9 attr -per $T,CMDS/yadd2all
+  #make yadd.os9
+  #os9 copy -r yadd.os9 $T,CMDS/yadd
+  #os9 attr -per $T,CMDS/yadd
+  #make yadd2.os9
+  #os9 copy -r yadd2.os9 $T,CMDS/yadd2
+  #os9 attr -per $T,CMDS/yadd2
+  #make yadd2all.os9
+  #os9 copy -r yadd2all.os9 $T,CMDS/yadd2all
+  #os9 attr -per $T,CMDS/yadd2all
 
   for x in [fx].*.os9
   do
@@ -124,9 +124,9 @@ echo 'echo Nando' | os9 copy -r -l /dev/stdin $GH/strickyak/doing_os9/gomar/driv
 
   case $WHAT in
     80d )
-      go run -x --tags=coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
+      go run -x --tags=cocoio,coco3,level2 gomar.go -boot drive/boot2coco3 -disk drive/disk2 2>/dev/null
 
-      # go run -x --tags=coco3,level2,trace gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
+      # go run -x --tags=cocoio,coco3,level2,trace,d gomar.go -boot drive/boot2coco3 -disk drive/disk2 --borges "$GH/strickyak/doing_os9/borges/" --trigger_os9='(?i:fork.*file=.sleep)' 2>/tmp/_
       ;;
     cocosdc )
       test -d /media/strick/APRIL3/ && cp $T /media/strick/APRIL3/z ||
