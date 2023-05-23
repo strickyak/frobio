@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eux
+export SHELF=${SHELF:-$(cd ../.. ; /bin/pwd )}
 
 case "$*" in
   EMU*)
@@ -47,7 +48,7 @@ section .data
 section .bss
 HERE
 lwlink --decb --script=exoboot3.script preboot3.o romapi3.o netlib3.o netboot3.o commands.o dhcp3.o \
-    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc abort.o \
+    -L$SHELF/gcc-4.6.4-build/m6809-unknown/libgcc/ -lgcc abort.o \
     --output=exoboot3.loadm --map=exoboot3.map --entry=_main
 
 ls -l exoboot3.loadm
@@ -65,7 +66,7 @@ section .data
 section .bss
 HERE
 lwlink --decb --script=netboot3.script preboot3.o romapi3.o netlib3.o netboot3.o commands.o dhcp3.o \
-    -L/opt/yak/fuzix/lib/gcc/m6809-unknown/4.6.4/ -lgcc abort.o \
+    -L$SHELF/gcc-4.6.4-build/m6809-unknown/libgcc/ -lgcc abort.o \
     --output=netboot3.decb --map=netboot3.map
 
 (cc -g -o decb-to-rom bootrom/decb-to-rom.c )
