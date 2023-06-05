@@ -44,7 +44,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-//#define HYPER_GOMAR 1
+#define HYPER_GOMAR 0
 
 typedef unsigned char bool;
 typedef unsigned char byte;
@@ -136,13 +136,14 @@ struct PathDesc {
 
 /////////////////  Hypervisor Debugging Support
 
+#if HYPER_GOMAR
+
 #ifdef __GNUC__
 void
 #else
 asm
 #endif
 HyperCoreDump() {
-#ifdef HYPER_GOMAR
 #ifdef __GNUC__
   asm volatile (
       "  swi\n"
@@ -156,17 +157,22 @@ HyperCoreDump() {
     FCB 100  ; hyperCoreDump
   }
 #endif
-#endif
 }
 
 void PrintH(const char* format, ...) {
-#ifdef HYPER_GOMAR
   asm {
       swi
       fcb 108
   }
-#endif
 }
+
+#else // HYPER_GOMAR
+
+#define HyperCoreDump() {while (1) {}}
+#define PrintH(format, ...) {}
+
+#endif // HYPER_GOMAR
+
 
 #ifdef __GNUC__
 void
