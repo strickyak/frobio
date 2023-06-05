@@ -9,7 +9,7 @@ set BOOT2_MODS {
   snddrv_cc3.sb
   joydrv_joy.sb
   cowin.io
-  term_vdg.dt
+  term_win80.dt
 
   w.dw
   w1.dw
