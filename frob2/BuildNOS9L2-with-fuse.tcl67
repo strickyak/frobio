@@ -1,0 +1,89 @@
+set BOOT2_MODS {
+  krnp2
+  ioman
+  init
+  rbf.mn
+  scf.mn
+  vtio.dr
+  keydrv_cc3.sb
+  snddrv_cc3.sb
+  joydrv_joy.sb
+  cowin.io
+  term_win80.dt
+
+  w.dw
+  w1.dw
+  w2.dw
+  w3.dw
+  w4.dw
+  w5.dw
+  w6.dw
+  w7.dw
+
+  clock_60hz
+  clock2_soft
+  sysgo_dd
+
+  drivers/../fuse/modules/fuseman.os9
+  drivers/../fuse/modules/fuser.os9
+  drivers/../fuse/modules/fuse.os9
+  drivers/n_fuse.os9
+
+  drivers/rblemma.os9
+  drivers/y0.os9
+}
+  # ../cmds/shell_21
+
+  #../cmds/shellplus
+  #../cmds/mdir
+  #../cmds/mfree
+  #../cmds/procs
+  #../cmds/echo
+
+proc Quint {c n p} {
+  binary format cSS $c $n $p
+}
+
+set M /home/strick/OS9/one-nitros9/level2/coco3/modules
+set F /home/strick/go/src/github.com/strickyak/frobio/frob2
+
+foreach x {rel_80 boot_lemma krn} {
+  append Boot1 [binary readfile $M/$x]
+}
+
+foreach x $BOOT2_MODS {
+  if [string match drivers/* $x] {
+    append Boot2 [binary readfile $F/$x]
+  } else {
+    append Boot2 [binary readfile $M/$x]
+  }
+}
+set Size1 [string length $Boot1]
+set Size2 [string length $Boot2]
+
+log 3 "=== Size1 $Size1 Size2 $Size2 ==="
+
+foreach x [split {
+  Quint 0 16 0xFFF0
+  binary readfile $M/vectors
+  Quint 0 $Size1 0x2600
+  set Boot1
+  Quint 255 0 0x2602
+} "\n"] {
+  log 3 "=== appending output of $x ==="
+  append Output [eval $x]
+  log 3 "=== Output size [string length $Output] =="
+}
+
+append Output [Quint 211 $Size2 0]
+foreach chunk [binary split $Boot2 444] {
+  set chunkSize [string length $chunk]
+  append Output [Quint 212 $chunkSize 0]
+  log 3 "=== Output size [string length $Output] =="
+  append Output $chunk
+  log 3 "=== Output size [string length $Output] =="
+}
+append Output [Quint 213 $Size2 0]
+log 3 "=== Output size [string length $Output] =="
+
+binary writefile /tmp/out1 $Output
