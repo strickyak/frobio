@@ -44,7 +44,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-//#define HYPER_GOMAR 1
+#define HYPER_GOMAR 0
 
 typedef unsigned char bool;
 typedef unsigned char byte;
@@ -136,13 +136,14 @@ struct PathDesc {
 
 /////////////////  Hypervisor Debugging Support
 
+#if HYPER_GOMAR
+
 #ifdef __GNUC__
 void
 #else
 asm
 #endif
 HyperCoreDump() {
-#ifdef HYPER_GOMAR
 #ifdef __GNUC__
   asm volatile (
       "  swi\n"
@@ -156,17 +157,24 @@ HyperCoreDump() {
     FCB 100  ; hyperCoreDump
   }
 #endif
-#endif
 }
 
 void PrintH(const char* format, ...) {
-#ifdef HYPER_GOMAR
+#if __CMOC__
   asm {
       swi
       fcb 108
   }
 #endif
 }
+
+#else // HYPER_GOMAR
+
+#define HyperCoreDump() {while (1) {}}
+#define PrintH(format, ...) {}
+
+#endif // HYPER_GOMAR
+
 
 #ifdef __GNUC__
 void
@@ -1032,8 +1040,8 @@ errnum CreateOrOpenC(struct PathDesc* pd, struct Regs* regs) {
   // Split the path to find 2nd (begin1/end1) and
   // 3rd (begin2/end2) words.  Ignore the 1st ("FUSE").
   word begin1=0, end1=0, begin2=0, end2=0;
-  byte i = 0;
   errnum err = OKAY;
+  byte i = 0;
   for (; i<99; i++) {
     word begin = 0, end = 0;
     word current = regs->rx;
@@ -1044,10 +1052,17 @@ errnum CreateOrOpenC(struct PathDesc* pd, struct Regs* regs) {
     PrintH("Parse[%d]: begin=%x end=%x ", i, begin, end);
     ShowParsedName(current, begin, end);
     PrintH("\n");
-
+SWITCH:
     switch (i) {
       case 0:
-        break; // ignore "FUSE".
+        if (!ParsedNameEquals(begin, end, "FUSE")) {
+          // Starts with something other than FUSE,
+          // so treat the starting name as the second name,
+          // which chooses the daemon.
+          i = 1;
+          goto SWITCH;
+        }
+        break;
       case 1:
         begin1 = begin;
         end1 = end;
@@ -1065,18 +1080,9 @@ errnum CreateOrOpenC(struct PathDesc* pd, struct Regs* regs) {
   errnum z;
   if (i==3 && ParsedNameEquals(begin1, end1, "DAEMON")) {
     z = OpenDaemon(pd, begin2, end2);
-  } else if (i > 1) {
-    struct Opening o = {
-      /*begin1*/ begin1,
-      /*end1*/ end1,
-      /*begin2*/ begin2,
-      /*end2*/ end2,
-      /*original_rx*/ original_rx,
-    };
-    z = ClientOperationC(pd, OP_OPEN, &o);
   } else {
-    PrintH("\nFATAL: CreateOrOpenC: BAD NAME\n");
-    z = E_BNAM;
+    struct Opening o = { begin1, end1, begin2, end2, original_rx };
+    z = ClientOperationC(pd, OP_OPEN, &o);
   }
   PrintH("@ CreateOrOpenC/ret pd=%x links=%x cpr=%x z=%x\n", pd, pd->link_count, pd->current_process_id, z);
   return z;

@@ -1,3 +1,5 @@
+// #define EMULATED 1
+
 #include "frob2/bootrom/bootrom3.h"
 
 #define BUF (Vars->line_buf)
@@ -50,25 +52,10 @@ void DoError(errnum e) {
   PrintF(" *** ERROR %d\n", e);
 }
 
+#if !EMULATED
 static void SkipWhite() {
   while (*PTR == ' ' || *PTR == '.' || *PTR == '/' || *PTR == ':') ++PTR;
 }
-
-#if 0
-// *num_out is set to 0, if no number.
-static bool GetNum1Byte(byte* num_out) {
-  SkipWhite();
-  bool gotnum = false;
-  byte x = 0;
-  while ('0' <= *PTR && *PTR <= '9') {
-    x = x * 10 + (*PTR - '0');
-    gotnum = true;
-    ++PTR;
-  }
-  *num_out = x;
-  return gotnum;
-}
-#endif
 
 static bool GetNum2Bytes(word* num_out) {
   SkipWhite();
@@ -96,6 +83,7 @@ static bool GetNum2Bytes(word* num_out) {
   *num_out = x;
   return gotnum;
 }
+
 static bool GetNum1Byte(byte* num_out) {
   word x;
   bool b = GetNum2Bytes(&x);
@@ -113,6 +101,7 @@ static bool GetAddyInXid() {
   }
   return false;
 }
+#endif
 
 static byte MaskBits(int n) {
   byte z = 0;

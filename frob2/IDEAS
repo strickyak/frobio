@@ -1058,5 +1058,63 @@ kwikgen
   :echo [m-s]*
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+RETURN OKAY: OS9KERNEL0 OS9$28 <F$SRqMem> {size=6a97} #416842 -> size $6b00 addr $8200 #418149
 
+Block Offset Size Typ Rev Attr  Use Module Name
+----- ------ ---- --- --- ---- ---- ------------
+  3F    D06   12A  C1   5 r...    0 REL
+  3F    E30   1D0  C1   1 r...    1 Boot
+  3F   1000   EDF  C0   A r...    0 Krn
+   1    200   D41  C0   0 r...    1 KrnP2
+   1    F41   91A  C1   5 r...    1 IOMan
+   1   185B    77  C0   0 r...    2 Init
+   1   18D2  12EE  D1   3 r...    D RBF
+   1   2BC0   77C  D1   0 r...    4 SCF
+   1   333C   949  E1   0 r...    4 VTIO
+   1   3C85   24C  C1   0 r...    1 KeyDrv
+   1   3ED1    BF  C1   0 r...    1 SndDrv
+   1   3F90   19A  C1   0 r...    1 JoyDrv
+   1   412A  1F52  C1   0 r...    1 CoWin
+   1   607C    44  F1   0 r...    4 Term
+   1   60C0    41  F1   0 r...    0 W
+   1   6101    42  F1   0 r...    0 W1
+   1   6143    42  F1   0 r...    0 W2
+   1   6185    42  F1   0 r...    0 W3
+   1   61C7    42  F1   0 r...    0 W4
+   1   6209    42  F1   0 r...    0 W5
+   1   624B    42  F1   0 r...    0 W6
+   1   628D    42  F1   0 r...    0 W7
+   1   62CF   207  C1   5 r...    1 Clock
+   1   64D6    66  21   0 r...    1 Clock2
+   1   653C   1FF  11   3 r...    1 SysGo
+   1   673B   537  E1   1 r...    D RBLemma
+   1   6C72    25  F1   0 r...    D DD
+   5      0  2332  C1   1 r...    1 GrfDrv
+   8      0  1B57  11   0 r...    2 Shell
+   8   1B57    F1  11   0 r...    0 Date
+   8   1C48    53  11   0 r...    0 DeIniz
+   8   1C9B    22  11   1 r...    0 Echo
+   8   1CBD    47  11   0 r...    0 Iniz
+   8   1D04    2C  11   0 r...    0 Link
+   8   1D30    24  11   0 r...    0 Load
+   8   1D54    67  11   0 r...    0 Save
+   8   1DBB    27  11   0 r...    0 Unlink
+   C      0   1FF  11   0 r...    1 Attr
+   C    1FF    54  11   0 r...    0 Build
+   C    253   5BD  11   0 r...    0 Copy
+   C    810    67  11   0 r...    0 Del
+   C    877   272  11   0 r...    0 Deldir
+   C    AE9   3A1  11   0 r...    0 Dir
+   C    E8A    FE  11   1 r...    0 Display
+   C    F88    4F  11   0 r...    0 List
+   C    FD7    AF  11   0 r...    0 MakDir
+   C   1086   2ED  11   1 r...    1 MDir
+   C   1373    DD  11   0 r...    0 Merge
+   C   1450   1EA  11   0 r...    0 Mfree
+   C   163A   337  11   0 r...    0 Procs
+   C   1971   11D  11   0 r...    0 Rename
+   C   1A8E   2A4  11   0 r...    0 TMode
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

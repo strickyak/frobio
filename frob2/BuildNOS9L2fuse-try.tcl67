@@ -9,7 +9,7 @@ set BOOT2_MODS {
   snddrv_cc3.sb
   joydrv_joy.sb
   cowin.io
-  term_vdg.dt
+  term_win80.dt
 
   w.dw
   w1.dw
@@ -24,16 +24,19 @@ set BOOT2_MODS {
   clock2_soft
   sysgo_dd
 
-  pipeman.mn
-  piper.dr
-  pipe.dd
-
   drivers/rblemma.os9
   drivers/ddb0.os9
-  drivers/../../built/fuse-2023-01-31/modules/fuseman.os9
-  drivers/../../built/fuse-2023-01-31/modules/fuser.os9
-  drivers/../../built/fuse-2023-01-31/modules/fuse.os9
+  drivers/../fuse/modules/fuseman.os9mod
+  drivers/../fuse/modules/fuser.os9mod
+  drivers/../fuse/modules/fuse.os9mod
 }
+  # pipeman.mn
+  # piper.dr
+  # pipe.dd
+  # drivers/../../built/fuse-2023-01-31/modules/fuseman.os9
+  # drivers/../../built/fuse-2023-01-31/modules/fuser.os9
+  # drivers/../../built/fuse-2023-01-31/modules/fuse.os9
+
   # term_win80.dt
 
   # ../cmds/shell_21
@@ -49,7 +52,7 @@ proc Quint {c n p} {
 }
 
 set M /home/strick/OS9/one-nitros9/level2/coco3/modules
-set F /home/strick/go/src/github.com/strickyak/frobio/frob2
+set F .
 
 foreach x {rel_80 boot_lemma krn} {
   append Boot1 [binary readfile $M/$x]
@@ -90,4 +93,5 @@ foreach chunk [binary split $Boot2 444] {
 append Output [Quint 213 $Size2 0]
 log 3 "=== Output size [string length $Output] =="
 
-binary writefile /tmp/BuildNOS9L2fuse-try.tcl67.lemma $Output
+# binary writefile /tmp/BuildNOS9L2fuse-try.tcl67.lemma $Output
+binary writefile /tmp/out1 $Output
