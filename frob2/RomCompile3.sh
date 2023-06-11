@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eux
-export SHELF=${SHELF:-$(cd ../.. ; /bin/pwd )}
+export SHELF=${SHELF:-please_define_environment_variable_SHELF}
 
 case "$*" in
   EMU*)
