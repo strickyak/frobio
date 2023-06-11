@@ -51,6 +51,7 @@ proc Quint {c n p} {
   binary format cSS $c $n $p
 }
 
+# TODO: use env SHELF
 set M /home/strick/OS9/one-nitros9/level2/coco3/modules
 set F .
 
