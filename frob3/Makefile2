@@ -1,0 +1,127 @@
+include config.bash
+
+FROBLIB_C = ../froblib/buf.c ../froblib/flag.c ../froblib/format.c ../froblib/malloc.c ../froblib/nylib.c ../froblib/nystdio.c ../froblib/std.c
+WIZ_C = ../wiz/wiz5100s.c
+OS9_C = ../os9/frobos9.c
+NCL_C = ../ncl/match.c ../ncl/ncl.c ../ncl/ncl_os9.c ../ncl/regexp.c
+NCL_H = ../ncl/match.h ../ncl/ncl.h ../ncl/ncl_os9.h ../ncl/regexp.h
+LIB1 = $(FROBLIB_C) $(WIZ_C) $(OS9_C)
+HDRS = ../froblib.h ../frobnet.h ../frobos9.h ../frobtype.h
+####
+CMOCI=/home/strick/coco-shelf/bin/../share/cmoc/include
+CMOCL=/home/strick/coco-shelf/bin/../share/cmoc/lib
+####
+
+
+#all: _net_cmds _ncl_cmds
+all: _net_cmds
+
+axiom-whole.rom:
+	cat  ../axiom/axiom.c ../axiom/commands.c ../axiom/dhcp3.c ../axiom/netlib3.c ../axiom/romapi3.c > _axiom_whole.c
+	gcc6809 -S -I../.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
+	cat ../axiom/preboot3.asm _axiom_whole.s > _work.s
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
+	lwlink --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
+	lwobjdump _work.o > _work.objdump
+	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
+	lwlink --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
+	go run ../helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
+
+
+install: all _FORCE_
+	mkdir -p $(PREFIX)
+	install -t $(PREFIX) *.os9cmd
+
+install-disk: install _FORCE_
+	set -eux ;\
+	DISK=$(DISK) ;\
+	for x in $(PREFIX)/f.ncl.os9cmd ;\
+		do \
+		  b=$$(basename $$x .os9cmd) ;\
+			os9 copy $$x $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
+			os9 attr -e -pe $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
+		done
+
+
+
+
+clean: _FORCE_
+	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod __*
+	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
+	rm -f utility-*
+	rm -rf install
+
+_FORCE_:
+
+C_FILES_FOR_NET_CMDS = ../froblib/buf.c ../froblib/flag.c ../froblib/format.c ../froblib/malloc.c ../froblib/nylib.c ../froblib/nystdio.c ../froblib/std.c ../wiz/wiz5100s.c ../os9/frobos9.c
+O_FILES_FOR_NET_CMDS = buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
+
+COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I$F/../../frobio -I$(CMOCI) -L$(CMOCL) -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
+
+COMPILE_NET_CMD = $(CMOC) -i --os9 -I$F/../../frobio -I$(CMOCI) -L$(CMOCL) -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
+
+buf.o: ../froblib/buf.c
+	$(COMPILE_NET_LIB) -o $@ $<
+flag.o: ../froblib/flag.c
+	$(COMPILE_NET_LIB) -o $@ $<
+format.o: ../froblib/format.c
+	$(COMPILE_NET_LIB) -o $@ $<
+malloc.o: ../froblib/malloc.c
+	$(COMPILE_NET_LIB) -o $@ $<
+nylib.o: ../froblib/nylib.c
+	$(COMPILE_NET_LIB) -o $@ $<
+nystdio.o: ../froblib/nystdio.c
+	$(COMPILE_NET_LIB) -o $@ $<
+std.o: ../froblib/std.c
+	$(COMPILE_NET_LIB) -o $@ $<
+wiz5100s.o: ../wiz/wiz5100s.c
+	$(COMPILE_NET_LIB) -o $@ $<
+frobos9.o: ../os9/frobos9.c
+	$(COMPILE_NET_LIB) -o $@ $<
+
+f.arp.os9cmd: ../net-cmds/f-arp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.config.os9cmd: ../net-cmds/f-config.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.dhcp.os9cmd: ../net-cmds/f-dhcp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.dig.os9cmd: ../net-cmds/f-dig.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.dump.os9cmd: ../net-cmds/f-dump.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.ntp.os9cmd: ../net-cmds/f-ntp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.ping.os9cmd: ../net-cmds/f-ping.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.recv.os9cmd: ../net-cmds/f-recv.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.send.os9cmd: ../net-cmds/f-send.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.telnetd0.os9cmd: ../net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.tget.os9cmd: ../net-cmds/f-tget.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.ticks.os9cmd: ../net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+f.ncl.os9cmd:  $(NCL_C) $(NCL_H) $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD) -o $@ $^
+
+NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.ticks.os9cmd
+_net_cmds: $(NET_CMDS)
+
+NCL_CMDS = f.ncl.os9cmd
+_ncl_cmds: $(NCL_CMDS)
+

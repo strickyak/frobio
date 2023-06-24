@@ -45,7 +45,11 @@ echo Found go at $GO
 
 cat <<,,, >config.bash
 export F=$F
+
 export CMOC=$CMOC
+export CMOCI=$(dirname $(dirname $CMOC))/share/cmoc/include
+export CMOCL=$(dirname $(dirname $CMOC))/share/cmoc/lib
+
 export GCC6809=$GCC6809
 export OS9=$OS9
 export DECB=$DECB
@@ -53,6 +57,11 @@ export GO=$GO
 export BUILD=$BUILD
 export PREFIX=$PREFIX
 ,,,
+
+############################
+cp -v $F/Makefile2 Makefile
+exit 0
+############################
 
 ( # Start writing Makefile.
 cat <<,,,

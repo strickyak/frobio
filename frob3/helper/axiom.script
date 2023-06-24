@@ -1,8 +1,3 @@
 section preboot     load 0xC000
 section .text
-section .text.startup
-section .data
-section data
-section .bss
-section bss
 section *

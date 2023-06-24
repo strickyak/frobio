@@ -12,10 +12,7 @@ axiom-whole.rom:
 	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
 	lwlink --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
-
-
-	#sed -n '/.*[.]area.*[.]text[.]startup/,$$p' _axiom_whole.s >> _work.s
-	#sed -n '1,/.*[.]area.*[.]text[.]startup/p' _axiom_whole.s >> _work.s
+	go run ../helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
 
 utility-decb-to-rom.unix: $(F)/tools/utility-decb-to-rom.c
 	cc -o utility-decb-to-rom.unix $(F)/tools/utility-decb-to-rom.c
