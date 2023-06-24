@@ -1,4 +1,4 @@
-#include "frob3/rom/bootrom3.h"
+#include "frob3/axiom/bootrom3.h"
 
 void WizOpen(const struct sock* sockp, const struct proto* proto, word local_port );
 void TcpDial(const struct sock* sockp, const byte* host, word port);
@@ -216,7 +216,7 @@ extern errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks);
 const char name4[] = "NONE"; // unused
 
 extern int main();
-int main2() {
+void main2() {
     // Clear our global variables to zero.
     memset(Vars, 0, sizeof (struct vars));
     // From the address of main, we can determine if we
@@ -281,16 +281,10 @@ int main2() {
         errnum e = LemmaClientS1();
         if (e) Fatal("BOTTOM", e);
     }
-
-    return 0;
 }
 
-int CallWithNewStack(word new_stack, word func) {
-  asm volatile("ldx %0" : : "m" (new_stack));
-  asm volatile("ldy %0" : : "m" (func));
-  asm volatile("tfr x,s");
-  asm volatile("jsr ,y");
-  return 0;
+void CallWithNewStack(word new_stack, word func) {
+  asm volatile("ldx %0\n  ldy %1\n  tfr x,s\n  jsr ,y" : : "m" (new_stack), "m" (func));
 }
 
 int main() {
@@ -298,8 +292,8 @@ int main() {
     word main_addr = (word)&main;
 
     if ((s_reg&0xF000) == 0x7000 && (main_addr&0xF000) == 0x6000) {
-      return CallWithNewStack(0x0800, (word)&main2);
+      CallWithNewStack(0x0800, (word)&main2);
     } else {
-      return main2();
+      main2();
     }
 }

@@ -1,5 +1,5 @@
-#include "frob3/rom/bootrom3.h"
-#include "frob3/rom/romapi3.h"
+#include "frob3/axiom/bootrom3.h"
+#include "frob3/axiom/romapi3.h"
 
 #if NEED_STDLIB_IN_NETLIB3
 
@@ -99,7 +99,7 @@ void PrintH(const char* format, ...) {
 word StackPointer() {
   word result;
 #ifdef __GNUC__
-    asm ("tfr s,%0" : "=g" (result));
+    asm ("tfr s,%0" : "=r" (result));
 #else
     asm {
       tfr s,x

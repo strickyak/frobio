@@ -1,7 +1,8 @@
 #ifndef _FROBIO_FROB3_ROMAPI3_H_
 #define _FROBIO_FROB3_ROMAPI3_H_
 
-#include "frob3/rom/bootrom3.h"
+#if 0
+#include "frob3/axiom/bootrom3.h"
 
 struct RomApi3 {
   #define ROM_API3_MAGIC 0x5233
@@ -62,5 +63,6 @@ struct RomApi3 {
   errnum (*api_TcpSend)(PARAM_SOCK_AND  char* p, size_t n);
   void (*api_WizClose)(PARAM_JUST_SOCK);
 };
+#endif
 
 #endif // _FROBIO_FROB3_ROMAPI3_H_

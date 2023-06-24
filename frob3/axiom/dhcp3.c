@@ -1,4 +1,4 @@
-#include "frob3/rom/bootrom3.h"
+#include "frob3/axiom/bootrom3.h"
 
 #define D {PrintF("D%u;", __LINE__); Delay(3000);}
 

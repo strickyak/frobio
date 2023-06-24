@@ -1,4 +1,4 @@
-#include "frob3/rom/bootrom3.h"
+#include "frob3/axiom/bootrom3.h"
 
 #define BUF (Vars->line_buf)
 #define PTR (Vars->line_ptr)

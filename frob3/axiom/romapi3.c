@@ -1,5 +1,7 @@
-#include "frob3/rom/bootrom3.h"
-#include "frob3/rom/romapi3.h"
+#if 0
+
+#include "frob3/axiom/bootrom3.h"
+#include "frob3/axiom/romapi3.h"
 
 struct RomApi3 RomApi = {
     ROM_API3_MAGIC,
@@ -57,3 +59,4 @@ struct RomApi3 RomApi = {
     TcpSend,
     WizClose,
 };
+#endif

@@ -31,9 +31,9 @@
 		fcb 'K'
 
     EXPORT program_start
-    EXPORT _preboot
+    EXPORT _abort
+
 program_start
-_preboot
     orcc #$50   ; disable interrupts
     ;;;;; lds #$0400  ; 1KB stack in lowest memory
 
@@ -52,8 +52,8 @@ id_loop
 
     lbsr _main  ; and call main with no args, which probably never returns.
 
-*** Show id backwards if RomMain returns, and get stuck.
-not_reached
+*** Show id backwards if RomMain returns or aborts, and get stuck.
+_abort
     orcc #$50   ; disable interrupts
     leax id_string,pcr
     ldy #$0500  ; middle of screen
@@ -67,6 +67,8 @@ di_stuck
     bra di_stuck
 
 id_string  fcs / -- STRICKYAK FROBIO PREBOOT -- /
+
+    fill $FF,256-.  ; avoid unusable second half of $C000.
 
 *** Notice https://github.com/beretta42/sdboot/blob/master/rom.asm
 *** that second halves of $C000 and $C800 are unusable.
