@@ -5,7 +5,10 @@ function fail () {
   exit 13
 }
 
+BUILD="$PWD"
+echo "BUILD directory : $BUILD"
 F=$(dirname $0)
+# FLONG=$(cd $(dirname $0) && pwd || fail Cannot determine directory of script: $0 )
 echo "FROB3 directory : $F"
 
 PREFIX=${PREFIX:-install}
@@ -47,8 +50,8 @@ export GCC6809=$GCC6809
 export OS9=$OS9
 export DECB=$DECB
 export GO=$GO
+export BUILD=$BUILD
 export PREFIX=$PREFIX
-####
 ,,,
 
 ( # Start writing Makefile.
@@ -73,6 +76,37 @@ HDRS = $(echo $F/*.h)
 ,,,
 
 cat $F/Makefile.in 
+
+AXIOM_CFILES=
+AXIOM_MODS=
+for x in $F/axiom/[a-t]*.c
+do
+  b=$(basename $x .c)
+  AXIOM_CFILES="$AXIOM_CFILES $x"
+  AXIOM_MODS="$AXIOM_MODS $b.o"
+  sed -e 's/^[+]/\t/' <<,,,
+
+$b.s: $x  \$(LIB1) \$(HDRS)
++gcc6809 -S -I$F/.. -Os -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $x
+
+$b.o: $b.s
++lwasm  --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource -l'$b.list' -o $b.o $b.s
+
+,,,
+done
+
+sed -e 's/^[+]/\t/' <<,,,
+
+GCC6809LIB = -L'$(dirname $GCC6809)/../lib/gcc/m6809-unknown/4.6.4/' -lgcc
+
+axiom.temp: $AXIOM_MODS
++lwlink -b -o axiom.temp  $AXIOM_MODS  \$(GCC6809LIB)
+
+axiom-whole: $AXIOM_CFILES
++cat $AXIOM_CFILES > _axiom_whole.c
++gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
+
+,,,
 
 NET_CMDS=
 for x in $F/net-cmds/f-*.c

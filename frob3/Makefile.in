@@ -1,4 +1,27 @@
-all: _net_cmds _ncl_cmds
+#all: _net_cmds _ncl_cmds
+all: _net_cmds
+
+axiom-whole.rom:
+	cat  ../axiom/axiom.c ../axiom/commands.c ../axiom/dhcp3.c ../axiom/netlib3.c ../axiom/romapi3.c > _axiom_whole.c
+	gcc6809 -S -I../.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
+	cat ../axiom/preboot3.asm _axiom_whole.s > _work.s
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
+	lwlink --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
+	lwobjdump _work.o > _work.objdump
+	: go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --objdump _work.objdump -o _rework.s
+	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
+	lwlink --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
+
+
+	#sed -n '/.*[.]area.*[.]text[.]startup/,$$p' _axiom_whole.s >> _work.s
+	#sed -n '1,/.*[.]area.*[.]text[.]startup/p' _axiom_whole.s >> _work.s
+
+utility-decb-to-rom.unix: $(F)/tools/utility-decb-to-rom.c
+	cc -o utility-decb-to-rom.unix $(F)/tools/utility-decb-to-rom.c
+utility-rom-to-decb3000.unix: $(F)/tools/utility-rom-to-decb3000.c
+	cc -o utility-rom-to-decb3000.unix $(F)/tools/utility-rom-to-decb3000.c
+
 
 install: all _FORCE_
 	mkdir -p $(PREFIX)
