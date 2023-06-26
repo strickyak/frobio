@@ -16,7 +16,7 @@ NITROS9=${NITROS9DIR:-$(dirname $F)/nitros9}
 case $# in
   1)
     case $1 in
-      --nitros9=* ) 
+      --nitros9=* )
         NITROS9=$(expr match "$1" : '--nitros9=\(.*\)') ;;
         * ) fail Bad argument: $1 ;;
     esac ;;

@@ -1,6 +1,14 @@
 include config.txt
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom result
+all: all-the-things results
+all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom
+
+# Quick assertion that we have the right number of things.
+# Change these when you add more things.
+NUM_CMDS = 15
+NUM_MODULES = 10
+
+###############################################
 
 VPATH = $F $F/axiom $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds
 
@@ -17,15 +25,17 @@ CMOCL=/home/strick/coco-shelf/bin/../share/cmoc/lib
 
 ###############################################
 
-results: all _FORCE_
+results: all-the-things _FORCE_
 	rm -rf results
 	mkdir -p results results/CMDS results/MODULES
-	set -x; for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
-	set -x; for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
+	for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
+	for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
+	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
+	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
 install-on-disk: results _FORCE_
 	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
-	test -s '$(DISK)' || os9 format -l'524288' '$(DISK)' && os9 makdir "$(DISK),CMDS" "$(DISK),MODULES"
+	test -s '$(DISK)' || os9 format -l'65000' '$(DISK)' && os9 makdir "$(DISK),CMDS" "$(DISK),MODULES"
 	for x in results/CMDS/* ; do os9 copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
 	for x in results/CMDS/* ; do os9 attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
 	for x in results/MODULES/* ; do os9 copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
@@ -149,7 +159,7 @@ f.ncl.os9cmd:  $(NCL_C) $(NCL_H) $(O_FILES_FOR_NET_CMDS)
 
 all-fuse-modules: fuseman.os9mod fuser.os9mod fuse.os9mod
 
-LWASM_FOR_FUSE_MODULE =	$(LWASM) --6809 --format=os9 -l'$@.list' -I'$F/..' -D'H6309=0' -o '$@' $<
+LWASM_FOR_FUSE_MODULE =	$(LWASM) --6809 --format=os9 -l'$@.list' -I'$F' -D'H6309=0' -o '$@' $<
 
 _generated_from_fusec_.s : fusec.c fuse.h
 	$(CMOC) -S -i --os9 -O2 --function-stack=0 --switch=ifelse -I'$F/..' $<
@@ -169,7 +179,7 @@ fuse.os9mod: fuse.asm defsfile fuse.h
 
 all-drivers: rblemma.os9mod dd.b0.os9mod b0.os9mod b1.os9mod b2.os9mod b3.os9mod n.fuse.os9mod
 
-LWASM_FOR_DRIVER	= $(LWASM) -o $@  --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export  -DH6309=0   -I$(NITROS9)/level1/coco1/cmds/ -I$(NITROS9)/defs/  --format=os9 --list=$@.list $<
+LWASM_FOR_DRIVER	= $(LWASM) -o $@  --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export  -DH6309=0 -I'$F'  --format=os9 --list=$@.list $<
 
 rblemma.os9mod: $F/drivers/rblemmac.c $F/drivers/rblemmac.h $F/drivers/rblemma.asm
 _generated_from_rblemmac.s: rblemmac.c rblemmac.h rblemma.asm
