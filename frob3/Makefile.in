@@ -1,6 +1,6 @@
 include config.txt
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom result
 
 VPATH = $F $F/axiom $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds
 
@@ -15,8 +15,31 @@ HDRS = $F/froblib.h $F/frobnet.h $F/frobos9.h $F/frobtype.h
 CMOCI=/home/strick/coco-shelf/bin/../share/cmoc/include
 CMOCL=/home/strick/coco-shelf/bin/../share/cmoc/lib
 
-# TODO
-NITROS9=$F/../../nitros9
+###############################################
+
+results: all _FORCE_
+	rm -rf results
+	mkdir -p results results/CMDS results/MODULES
+	set -x; for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
+	set -x; for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
+
+install-on-disk: results _FORCE_
+	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
+	test -s '$(DISK)' || os9 format -l'524288' '$(DISK)' && os9 makdir "$(DISK),CMDS" "$(DISK),MODULES"
+	for x in results/CMDS/* ; do os9 copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
+	for x in results/CMDS/* ; do os9 attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
+	for x in results/MODULES/* ; do os9 copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
+	for x in results/MODULES/* ; do os9 attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
+
+###############################################
+
+clean: _FORCE_
+	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
+	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
+	rm -f utility-*
+	rm -rf results
+
+_FORCE_:
 
 ###############################################
 
@@ -32,34 +55,9 @@ axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
 	lwlink --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
+
 axiom-whole.l3k: axiom-whole.rom
 	go run $F/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
-
-###############################################
-
-install: all _FORCE_
-	mkdir -p $(PREFIX)
-	install -t $(PREFIX) *.os9cmd
-
-install-disk: install _FORCE_
-	set -eux ;\
-	DISK=$(DISK) ;\
-	for x in $(PREFIX)/f.ncl.os9cmd ;\
-		do \
-		  b=$$(basename $$x .os9cmd) ;\
-			os9 copy $$x $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
-			os9 attr -e -pe $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
-		done
-
-###############################################
-
-clean: _FORCE_
-	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
-	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
-	rm -f utility-*
-	rm -rf install
-
-_FORCE_:
 
 ###############################################
 
@@ -140,6 +138,7 @@ fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS)
 
 #######################################################################################
 
+# NCL is currently broken (link errors).
 NCL_CMDS = f.ncl.os9cmd
 _ncl_cmds: $(NCL_CMDS) _NOT_WORKING_YET_
 
@@ -168,26 +167,33 @@ fuse.os9mod: fuse.asm defsfile fuse.h
 
 #######################################################################################
 
-all-drivers: rblemma.os9 dd_b0.os9 b0.os9 b1.os9 b2.os9 b3.os9 n_fuse.os9
+all-drivers: rblemma.os9mod dd.b0.os9mod b0.os9mod b1.os9mod b2.os9mod b3.os9mod n.fuse.os9mod
 
 LWASM_FOR_DRIVER	= $(LWASM) -o $@  --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export  -DH6309=0   -I$(NITROS9)/level1/coco1/cmds/ -I$(NITROS9)/defs/  --format=os9 --list=$@.list $<
 
-rblemma.os9: $F/drivers/rblemmac.c $F/drivers/rblemmac.h $F/drivers/rblemma.asm
+rblemma.os9mod: $F/drivers/rblemmac.c $F/drivers/rblemmac.h $F/drivers/rblemma.asm
 _generated_from_rblemmac.s: rblemmac.c rblemmac.h rblemma.asm
 	$(CMOC)  -i --os9 -O2 --function-stack=0 --switch=ifelse -S -I$F/.. -o rblemmac.s $<
 	sed -n '/SECTION.[cr]od[ea]/, /ENDSECTION/ p' < rblemmac.s | egrep -v 'SECTION|EXPORT|IMPORT' > _generated_from_rblemmac.s
-rblemma.os9: rblemma.asm _generated_from_rblemmac.s
+rblemma.os9mod: rblemma.asm _generated_from_rblemmac.s
 	$(LWASM_FOR_DRIVER) -I'.'
-dd_b0.os9: dd_b0.asm
+dd.b0.os9mod: dd_b0.asm
 	$(LWASM_FOR_DRIVER)
-b0.os9: b0.asm
+b0.os9mod: b0.asm
 	$(LWASM_FOR_DRIVER)
-b1.os9: b1.asm
+b1.os9mod: b1.asm
 	$(LWASM_FOR_DRIVER)
-b2.os9: b2.asm
+b2.os9mod: b2.asm
 	$(LWASM_FOR_DRIVER)
-b3.os9: b3.asm
+b3.os9mod: b3.asm
+	$(LWASM_FOR_DRIVER)
+n.fuse.os9mod : n_fuse.asm
 	$(LWASM_FOR_DRIVER)
 
-n_fuse.os9 : n_fuse.asm
-	$(LWASM_FOR_DRIVER)
+#######################################################################################
+# Disable RCS & SCCS patterns.
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%

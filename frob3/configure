@@ -12,6 +12,17 @@ echo "BUILD directory : $BUILD"
 F=$(dirname $0)
 echo "FROB3 directory : $F"
 
+NITROS9=${NITROS9DIR:-$(dirname $F)/nitros9}
+case $# in
+  1)
+    case $1 in
+      --nitros9=* ) 
+        NITROS9=$(expr match "$1" : '--nitros9=\(.*\)') ;;
+        * ) fail Bad argument: $1 ;;
+    esac ;;
+esac
+echo "NITROS9 directory : $NITROS9"
+
 LWASM=$(which lwasm || fail "Cannot find 'lwasm' command.")
 LWLINK=$(which lwlink || fail "Cannot find 'lwlink' command.")
 CMOC=$(which cmoc || fail "Cannot find 'cmoc' command.")
@@ -39,6 +50,7 @@ echo Found go at $GO
 echo Writing config.txt
 cat <<,,,,,,,, >config.txt
 export F=$F
+export NITROS9=$NITROS9
 
 export LWASM=$LWASM
 export LWLINK=$LWLINK
