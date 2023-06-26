@@ -1,24 +1,41 @@
-#all: _net_cmds _ncl_cmds
-all: _net_cmds
+include config.txt
 
-axiom-whole.rom:
-	cat  ../axiom/axiom.c ../axiom/commands.c ../axiom/dhcp3.c ../axiom/netlib3.c ../axiom/romapi3.c > _axiom_whole.c
-	gcc6809 -S -I../.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
-	cat ../axiom/preboot3.asm _axiom_whole.s > _work.s
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom
+
+VPATH = $F $F/axiom $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds
+
+FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
+WIZ_C = $F/wiz/wiz5100s.c
+OS9_C = $F/os9/frobos9.c
+NCL_C = $F/ncl/match.c $F/ncl/ncl.c $F/ncl/ncl_os9.c $F/ncl/regexp.c
+NCL_H = $F/ncl/match.h $F/ncl/ncl.h $F/ncl/ncl_os9.h $F/ncl/regexp.h
+LIB1 = $(FROBLIB_C) $(WIZ_C) $(OS9_C)
+HDRS = $F/froblib.h $F/frobnet.h $F/frobos9.h $F/frobtype.h
+
+CMOCI=/home/strick/coco-shelf/bin/../share/cmoc/include
+CMOCL=/home/strick/coco-shelf/bin/../share/cmoc/lib
+
+# TODO
+NITROS9=$F/../../nitros9
+
+###############################################
+
+all-axiom: axiom-whole.rom axiom-whole.l3k
+
+axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
+	cat  $^ > _axiom_whole.c
+	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
+	cat $F/axiom/preboot3.asm _axiom_whole.s > _work.s
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
 	lwlink --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
 	lwobjdump _work.o > _work.objdump
-	: go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --objdump _work.objdump -o _rework.s
 	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
 	lwlink --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc 
-	go run ../helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
+axiom-whole.l3k: axiom-whole.rom
+	go run $F/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
 
-utility-decb-to-rom.unix: $(F)/tools/utility-decb-to-rom.c
-	cc -o utility-decb-to-rom.unix $(F)/tools/utility-decb-to-rom.c
-utility-rom-to-decb3000.unix: $(F)/tools/utility-rom-to-decb3000.c
-	cc -o utility-rom-to-decb3000.unix $(F)/tools/utility-rom-to-decb3000.c
-
+###############################################
 
 install: all _FORCE_
 	mkdir -p $(PREFIX)
@@ -34,15 +51,143 @@ install-disk: install _FORCE_
 			os9 attr -e -pe $${DISK:-/you/must/set/the/DISK/variable/},$$b ;\
 		done
 
-
-
+###############################################
 
 clean: _FORCE_
-	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod __*
+	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f utility-*
 	rm -rf install
 
 _FORCE_:
 
-####
+###############################################
+
+NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.ticks.os9cmd
+all-net-cmds: $(NET_CMDS)
+
+O_FILES_FOR_NET_CMDS = buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
+
+COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I$F/../../frobio -I$(CMOCI) -L$(CMOCL) -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9 -o $@ $<
+
+COMPILE_NET_CMD = $(CMOC) -i --os9 -I$F/../../frobio -I$(CMOCI) -L$(CMOCL) -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9 -o $@ $^
+
+buf.o: $F/froblib/buf.c
+	$(COMPILE_NET_LIB)
+flag.o: $F/froblib/flag.c
+	$(COMPILE_NET_LIB)
+format.o: $F/froblib/format.c
+	$(COMPILE_NET_LIB)
+malloc.o: $F/froblib/malloc.c
+	$(COMPILE_NET_LIB)
+nylib.o: $F/froblib/nylib.c
+	$(COMPILE_NET_LIB)
+nystdio.o: $F/froblib/nystdio.c
+	$(COMPILE_NET_LIB)
+std.o: $F/froblib/std.c
+	$(COMPILE_NET_LIB)
+wiz5100s.o: $F/wiz/wiz5100s.c
+	$(COMPILE_NET_LIB)
+frobos9.o: $F/os9/frobos9.c
+	$(COMPILE_NET_LIB)
+
+f.arp.os9cmd: $F/net-cmds/f-arp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.config.os9cmd: $F/net-cmds/f-config.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.dhcp.os9cmd: $F/net-cmds/f-dhcp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.dig.os9cmd: $F/net-cmds/f-dig.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.dump.os9cmd: $F/net-cmds/f-dump.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.ntp.os9cmd: $F/net-cmds/f-ntp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.ping.os9cmd: $F/net-cmds/f-ping.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.recv.os9cmd: $F/net-cmds/f-recv.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.send.os9cmd: $F/net-cmds/f-send.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.telnetd0.os9cmd: $F/net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.tget.os9cmd: $F/net-cmds/f-tget.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.ticks.os9cmd: $F/net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+all-fuse-daemons: fuse.n.os9cmd fuse.ramfile.os9cmd fuse.tftp.os9cmd
+
+fuse.n.os9cmd: $F/fuse-daemons/fuse-n.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+fuse.ramfile.os9cmd: $F/fuse-daemons/fuse-ramfile.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+#######################################################################################
+
+NCL_CMDS = f.ncl.os9cmd
+_ncl_cmds: $(NCL_CMDS) _NOT_WORKING_YET_
+
+f.ncl.os9cmd:  $(NCL_C) $(NCL_H) $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+#######################################################################################
+
+all-fuse-modules: fuseman.os9mod fuser.os9mod fuse.os9mod
+
+LWASM_FOR_FUSE_MODULE =	$(LWASM) --6809 --format=os9 -l'$@.list' -I'$F/..' -D'H6309=0' -o '$@' $<
+
+_generated_from_fusec_.s : fusec.c fuse.h
+	$(CMOC) -S -i --os9 -O2 --function-stack=0 --switch=ifelse -I'$F/..' $<
+	sed -n '/SECTION.[cr]od[ea]/, /ENDSECTION/ p' < fusec.s | egrep -v 'SECTION|EXPORT' > _generated_from_fusec_.s
+
+fuseman.os9mod: fuseman.asm defsfile _generated_from_fusec_.s
+	: note : fuseman.asm will use _generated_from_fusec_.s
+	$(LWASM_FOR_FUSE_MODULE) -I'.'
+
+fuser.os9mod: fuser.asm defsfile fuse.h
+	$(LWASM_FOR_FUSE_MODULE)
+
+fuse.os9mod: fuse.asm defsfile fuse.h
+	$(LWASM_FOR_FUSE_MODULE)
+
+#######################################################################################
+
+all-drivers: rblemma.os9 dd_b0.os9 b0.os9 b1.os9 b2.os9 b3.os9 n_fuse.os9
+
+LWASM_FOR_DRIVER	= $(LWASM) -o $@  --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export  -DH6309=0   -I$(NITROS9)/level1/coco1/cmds/ -I$(NITROS9)/defs/  --format=os9 --list=$@.list $<
+
+rblemma.os9: $F/drivers/rblemmac.c $F/drivers/rblemmac.h $F/drivers/rblemma.asm
+_generated_from_rblemmac.s: rblemmac.c rblemmac.h rblemma.asm
+	$(CMOC)  -i --os9 -O2 --function-stack=0 --switch=ifelse -S -I$F/.. -o rblemmac.s $<
+	sed -n '/SECTION.[cr]od[ea]/, /ENDSECTION/ p' < rblemmac.s | egrep -v 'SECTION|EXPORT|IMPORT' > _generated_from_rblemmac.s
+rblemma.os9: rblemma.asm _generated_from_rblemmac.s
+	$(LWASM_FOR_DRIVER) -I'.'
+dd_b0.os9: dd_b0.asm
+	$(LWASM_FOR_DRIVER)
+b0.os9: b0.asm
+	$(LWASM_FOR_DRIVER)
+b1.os9: b1.asm
+	$(LWASM_FOR_DRIVER)
+b2.os9: b2.asm
+	$(LWASM_FOR_DRIVER)
+b3.os9: b3.asm
+	$(LWASM_FOR_DRIVER)
+
+n_fuse.os9 : n_fuse.asm
+	$(LWASM_FOR_DRIVER)

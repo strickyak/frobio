@@ -110,17 +110,18 @@ func SlurpAsm() {
 	p.name = "-LAST"
 	Pieces["-LAST"] = p
 
-	log.Printf("===============================")
+	//log.Printf("===============================")
 	for k, v := range Pieces {
 		a, _ := SymbolMap[k]
 		b, _ := SymbolMap[v.next]
 		v.begin, v.end, v.size = a, b, b-a
-		log.Printf("==== PIECE %q %04x   (next %q %04x)  size %04x", k, a, v.next, b, v.size)
+		//log.Printf("==== PIECE %q %04x   (next %q %04x)  size %04x", k, a, v.next, b, v.size)
 		for _, line := range v.lines {
-			log.Printf(".......... %s", line)
+			_ = line
+			//log.Printf(".......... %s", line)
 		}
 	}
-	log.Printf("===============================")
+	//log.Printf("===============================")
 }
 
 func Emit(w io.Writer, p *Piece) {
