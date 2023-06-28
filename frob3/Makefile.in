@@ -228,3 +228,13 @@ install-on-disk: _FORCE_
 %:: RCS/%
 %:: s.%
 %:: SCCS/s.%
+#######################################################################################
+# Two Bugs:
+#   1.  We're leaving out stack300.
+#   2.  We're leaving out FUSE.  And PIPE.  What about the SDC?
+# Needed Soon:
+#   3.  BigBoot Technique, replacing REL, boot_lemma, and Boot2 chunks.  Regain their space.
+#        (boot with all code and data and stack in $2000-$3fff page.  That can clear
+#        the $0000-$1fff page, and even initialize the memory map (AnteNitros).
+#   4.  Non-PIC compilation of Kernel Modules, for much tighter GCC optimizations,
+#        without encountering the PIC bugs.
