@@ -1,7 +1,7 @@
 include config.txt
 
-all: all-the-things results
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom
+all: all-the-things
+all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results all-lemma
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -25,21 +25,13 @@ CMOCL=/home/strick/coco-shelf/bin/../share/cmoc/lib
 
 ###############################################
 
-results: all-the-things _FORCE_
+results:
 	rm -rf results
 	mkdir -p results results/CMDS results/MODULES
 	for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
 	for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
-
-install-on-disk: results _FORCE_
-	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
-	test -s '$(DISK)' || os9 format -l'65000' '$(DISK)' && os9 makdir "$(DISK),CMDS" "$(DISK),MODULES"
-	for x in results/CMDS/* ; do os9 copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
-	for x in results/CMDS/* ; do os9 attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
-	for x in results/MODULES/* ; do os9 copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
-	for x in results/MODULES/* ; do os9 attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
 
 ###############################################
 
@@ -199,6 +191,32 @@ b3.os9mod: b3.asm
 	$(LWASM_FOR_DRIVER)
 n.fuse.os9mod : n_fuse.asm
 	$(LWASM_FOR_DRIVER)
+
+#######################################################################################
+
+all-lemma: all-disks all-lemmings
+
+all-lemmings:
+	go run $F/lemmings/*.go --nitros9dir='$(NITROS9)'
+
+all-disks:
+	cd '$(NITROS9)' && make PORTS=coco2 dsk
+	cd '$(NITROS9)' && make PORTS=coco3 dsk
+	cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
+	cp -v '$(NITROS9)/level2/coco3/NOS9_6809_L2_v030300_coco3_cocosdc.dsk' Nitros9Level2_6809.dsk
+	make --directory=. install-on-disk DISK=Nitros9Level2_6809.dsk
+
+#######################################################################################
+
+install-on-disk: _FORCE_
+	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
+	: test -s '$(DISK)' || os9 format -l'65000' '$(DISK)'
+	os9 dir '$(DISK),CMDS' 2>/dev/null || os9 makdir '$(DISK),CMDS'
+	for x in results/CMDS/* ; do os9 copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
+	for x in results/CMDS/* ; do os9 attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
+	os9 dir '$(DISK),MODULES' 2>/dev/null || os9 makdir '$(DISK),MODULES'
+	for x in results/MODULES/* ; do os9 copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
+	for x in results/MODULES/* ; do os9 attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
 
 #######################################################################################
 # Disable RCS & SCCS patterns.
