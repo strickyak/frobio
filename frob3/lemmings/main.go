@@ -43,8 +43,8 @@ func ChunksOf(bb []byte) [][]byte {
 	var z [][]byte
 	for len(bb) > 0 {
 		var n int
-		if len(bb) < 1024 {
-			n = 1024
+		if len(bb) > 444 {
+			n = 444
 		} else {
 			n = len(bb)
 		}
