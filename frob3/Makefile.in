@@ -204,10 +204,10 @@ all-lemmings:
 	go run $F/lemmings/*.go --nitros9dir='$(NITROS9)'
 
 all-disks:
-	cd '$(NITROS9)' && make PORTS=coco1 dsk
-	cd '$(NITROS9)' && make PORTS=coco2 dsk
-	cd '$(NITROS9)' && make PORTS=coco3 dsk
-	cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
+	: #cd '$(NITROS9)' && make PORTS=coco1 dsk
+	: #cd '$(NITROS9)' && make PORTS=coco2 dsk
+	: #cd '$(NITROS9)' && make PORTS=coco3 dsk
+	: #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
 	cp -v '$(NITROS9)/level2/coco3/NOS9_6809_L2_cocosdc.dsk' Nitros9_Coco3_M6809_Level2.dsk
 	cp -v '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_cocosdc.dsk' Nitros9_Coco3_H6309_Level2.dsk
 	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2.dsk
