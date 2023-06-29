@@ -5,7 +5,7 @@ var Nitros9_Coco3_H6309_Level2_Cf = &Os9ConfigForLemma{
 	Level: "level2",
 	Port:  "coco3_6309",
 	Boot1Mods: []string{
-		"rel_80", "boot_lemma", "krn",
+		"rel_80", "./boot.lemma", "krn",
 	},
 	Boot2Mods: []string{
 		"krnp2",
@@ -32,6 +32,19 @@ var Nitros9_Coco3_H6309_Level2_Cf = &Os9ConfigForLemma{
 		"clock_60hz",
 		"clock2_soft",
 		"sysgo_dd",
+
+		"pipeman.mn",
+		"piper.dr",
+		"pipe.dd",
+
+		"rbsuper.dr",
+		"llcocosdc.dr",
+		"sd0_cocosdc.dd",
+		"sd1_cocosdc.dd",
+
+		"./fuseman",
+		"./fuser",
+		"./fuse",
 
 		"./rblemma",
 		"./dd.b0",

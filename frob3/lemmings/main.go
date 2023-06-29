@@ -64,6 +64,7 @@ func SlurpFilename(cf *Os9ConfigForLemma, filename string) []byte {
 	if err != nil {
 		log.Panicf("Cannot read filename %q: %v", filename, err)
 	}
+	log.Printf("Read %d bytes from %q", len(bb), filename)
 	return bb
 }
 
@@ -96,6 +97,7 @@ func BuildConfig(cf *Os9ConfigForLemma) {
 		log.Panicf("Cannot create %q: %v", cf.Name, err)
 	}
 	defer w.Close()
+	log.Printf("==== Writing to %q ====", cf.Name)
 
 	b1, b2 := cf.SlurpBoots()
 

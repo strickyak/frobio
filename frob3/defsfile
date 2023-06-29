@@ -1,10 +1,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-
-* EOU_Beta610_(6809_ONLY)_05-09-2021 : /sourcecode/asm/nitros9/os9defs
-
-; Level1 works for our purposes, as of now.
-Level EQU 1
-
+;
+; copied from
+;   EOU_Beta610_(6809_ONLY)_05-09-2021 : /sourcecode/asm/nitros9/os9defs
+;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 * Mods added by Curtis, May 11 to sync Alan's and mine.

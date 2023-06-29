@@ -12,7 +12,7 @@ echo "BUILD directory : $BUILD"
 F=$(dirname $0)
 echo "FROB3 directory : $F"
 
-NITROS9=${NITROS9DIR:-$(dirname $F)/nitros9}
+NITROS9=${NITROS9DIR:-$(dirname $(dirname $F))/nitros9}
 case $# in
   1)
     case $1 in
