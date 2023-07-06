@@ -88,6 +88,8 @@ func main() {
 		nitros9dirFlag = &dir
 	}
 	BuildConfig(Nitros9_Coco3_M6809_Level2_Cf)
+	BuildConfig(Nitros9_Coco3_M6809_Level2_N_Cf)
+	BuildConfig(Nitros9_Coco3_M6809_Level2_Nminus_Cf)
 	BuildConfig(Nitros9_Coco3_H6309_Level2_Cf)
 }
 

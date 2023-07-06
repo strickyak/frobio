@@ -250,7 +250,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLFatal <= MAX_VERBOSE
 #define LogFatal(fmt,...) do { \
     if (LLFatal <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLFatal, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLFatal, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogFatal(fmt,...) {}
@@ -259,7 +259,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLError <= MAX_VERBOSE
 #define LogError(fmt,...) do { \
     if (LLError <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLError, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLError, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogError(fmt,...) {}
@@ -268,7 +268,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLStatus <= MAX_VERBOSE
 #define LogStatus(fmt,...) do { \
     if (LLStatus <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLStatus, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLStatus, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogStatus(fmt,...) {}
@@ -277,7 +277,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLStep <= MAX_VERBOSE
 #define LogStep(fmt,...) do { \
     if (LLStep <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLStep, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLStep, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogStep(fmt,...) {}
@@ -286,7 +286,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLInfo <= MAX_VERBOSE
 #define LogInfo(fmt,...) do { \
     if (LLInfo <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLInfo, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLInfo, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogInfo(fmt,...) {}
@@ -295,7 +295,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLDetail <= MAX_VERBOSE
 #define LogDetail(fmt,...) do { \
     if (LLDetail <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLDetail, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLDetail, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogDetail(fmt,...) {}
@@ -304,7 +304,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 #if LLDebug <= MAX_VERBOSE
 #define LogDebug(fmt,...) do { \
     if (LLDebug <= Verbosity) \
-        Logger(__FILE__, __LINE__, LLDebug, (fmt), ##__VA_ARGS__); \
+        Logger(BASENAME, __LINE__, LLDebug, (fmt), ##__VA_ARGS__); \
   } while (false)
 #else
 #define LogDebug(fmt,...) {}
@@ -315,7 +315,7 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...);
 // Assert() logs Fatal if the cond is not met.
 #define Assert(cond) do { if (!(cond)) { \
   LogFatal("ASSERT FAILED: %s:%u\n", \
-      __FILE__, __LINE__); } } while(false) 
+      BASENAME, __LINE__); } } while(false) 
 
 
 //////// Macros.

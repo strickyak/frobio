@@ -121,12 +121,14 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			log.Printf("ReadfiveLoop terminating with panic: %v", r)
+			log.Printf("ReadfiveLoop terminating with recovered: %v", r)
 		}
-		if block0 != nil {
-			log.Printf("ReadfiveLoop closing block0: %q", block0.Name())
-			block0.Close()
-		}
+		/*
+			if block0 != nil {
+				log.Printf("ReadfiveLoop closing block0: %q", block0.Name())
+				block0.Close()
+			}
+		*/
 	}()
 
 	quint := make([]byte, 5)
