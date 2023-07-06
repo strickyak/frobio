@@ -62,10 +62,10 @@ name     fcs   /FuseMan/
 
 start    lbra  _CreateOrOpenA
          lbra  _CreateOrOpenA
-         lbra  ManMakDir
-         lbra  ManChgDir
-         lbra  ManDelete
-         lbra  ManSeek
+         lbra  _MakDirA
+         lbra  _ChgDirA
+         lbra  _DeleteA
+         lbra  _SeekA
          lbra  _ReadA
          lbra  _WriteA
          lbra  _ReadLnA
@@ -74,190 +74,15 @@ start    lbra  _CreateOrOpenA
          lbra  _SetStatA
          lbra  _CloseA
 
+BackToAssembly
+    CLRA     ; clear the carry bit.
+    TSTB     ; we want to set carry if B nonzero.
+    BEQ SkipComA  ; skip the COMA
+    COMA     ; sets the carry bit.
+SkipComA
+    PULS PC,U,Y
 
-*
-* I$Create Entry Point
-*
-* Entry: A = access mode desired
-*        B = file attributes (for Create, not for Open)
-*        X = address of the pathlist
-*
-* Exit:  A = pathnum
-*        X = last byte of pathlist address
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManCreateOrOpen
-	lbsr _CreateOrOpenA
-
-ReturnEither
-  orb #0
-	bne ReturnError
-ReturnOk
-  clrb  ; clear carry
-	rts
-
-ReturnBug
-  ldb #E$Bug
-ReturnError
-  coma  ; set carry
-	rts
-
-
-*
-* I$MakDir Entry Point
-*
-* Entry: X = address of the pathlist
-*
-* Exit:  X = last byte of pathlist address
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManMakDir
-         lbra ReturnBug
-
-
-*
-* I$Close Entry Point
-*
-* Entry: A = path number
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManClose
-         lbra _CloseA
-
-
-*
-* I$ChgDir Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManChgDir
-         lbra ReturnBug
-
-
-*
-* I$Delete Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManDelete   
-         lbra ReturnBug
-
-
-*
-* I$Seek Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManSeek     
-         lbra ReturnBug
-
-
-*
-* I$ReadLn Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManReadLn
-         lbra _ReadLnA
-         
-
-*
-* I$Read Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManRead     
-         lbra _ReadA
-
-
-*
-* I$WritLn Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManWriteLn  
-         lbra _WritLnA
-
-
-*
-* I$Write Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManWrite    
-         lbra _WriteA
-
-*
-* I$GetStat Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManGetStat  
-         lbra ReturnOk
-
-
-
-*
-* I$SetStat Entry Point
-*
-* Entry:
-*
-* Exit:
-*
-* Error: CC Carry set
-*        B = errcode
-*
-ManSetStat  
-         lbra ReturnOk
-
+* Include compiled "fusec.c"
 
          use _generated_from_fusec_.s
 

@@ -160,7 +160,7 @@ HyperCoreDump() {
 }
 
 void PrintH(const char* format, ...) {
-#if __CMOC__
+#if 1 // __CMOC__
   asm {
       swi
       fcb 108
@@ -175,6 +175,16 @@ void PrintH(const char* format, ...) {
 
 #endif // HYPER_GOMAR
 
+void PrintK(const char* format, ...) {
+#define PrintK(format, ...) {}
+
+#if 1 // __CMOC__
+  asm {
+      swi
+      fcb 108
+  }
+#endif
+}
 
 #ifdef __GNUC__
 void
@@ -638,12 +648,14 @@ errnum CopyParsedName(word begin, word end, char* dest, word max_len) {
   return OKAY;
 }
 
-void ShowParsedName(word current, word begin, word end) {
+void ShowParsedName(const char* label, word begin, word end) {
+  PrintK("=%q %x..%x", label, begin, end);
   byte task = Os9UserTask();
-  for (word p = current; p <= end; p++ ) {
+  for (word p = begin; p <= end; p++ ) {
     byte ch = 0;
     errnum err = Os9LoadByteFromTask(task, p, &ch);
     assert(!err);
+    PrintK("=%q=%x(%c)", label, ch, ch);
   }
 }
 
@@ -653,16 +665,20 @@ void ShowParsedName(word current, word begin, word end) {
 // The other string s is an upper-case 0-terminated
 // C string, in normal memory, with no high bits.
 bool ParsedNameEquals(word begin, word end, const char*s) {
-  PrintH("ParsedNameEquals(b=%x, e=%x, s=%x)\n", begin, end, s);
+  PrintK("ddt:(b=%x, e=%x, s=%x)\n", begin, end, s);
   byte task = Os9UserTask();
   word p = begin;
+  for (int i = 0; i < 6; i++) {
+    PrintK("?%x(%c)", s[i], s[i]);
+  }
   for (; *s && p < end; p++, s++) {
     byte ch = 0;
     errnum err = Os9LoadByteFromTask(task, p, &ch);
     assert(!err);
 
+    PrintK("ddt: (%c)%x?%x(%c)", ch, ch, *s, *s);
     if (ToUpper(ch) != *s) {
-      PrintH("  ->FALSE");
+      PrintK("ddt: F");
       return FALSE;  // does not match.
     }
   }
@@ -670,7 +686,7 @@ bool ParsedNameEquals(word begin, word end, const char*s) {
   // If both termination conditions are true,
   // strings are equal.
   bool z = (p==end) && ((*s)==0);
-  PrintH("  ->%x (%x,%x)", z, (p==end) ,((*s)==0));
+  PrintK("ddt: ->%x (%x,%x)", z, (p==end) ,((*s)==0));
   return z;
 }
 
@@ -680,16 +696,20 @@ bool ParsedNameEquals(word begin, word end, const char*s) {
 // (3) is a daemon path (the parent_pd is null),
 // (4) has the name indicated by begin/end.
 struct PathDesc* FindDaemon(struct DeviceTableEntry* dte, word begin, word end) {
+  ShowParsedName("FD", begin, end);
+  PrintK("FD dte=%x,%x b=%x e=%x", dte, dte->dt_fileman, begin, end);
   struct PathDesc* got = NULL;
   byte* table = Os9PathDescBaseTable();
   for (byte i = 0; i < 64; i++) {  // how big can it get?
     byte page = table[i];
+    PrintK("p%d %x", i, page);
     if (!page) continue;
     word addr = (word)page << 8;
     for (byte j = 0; j<4; j++) {
       if (i!=0 || j!=0) {
         struct PathDesc* pd = (struct PathDesc*)addr;
-        if (pd->path_num && pd->device_table_entry == dte) {
+        PrintK("j%d %x fd=%x dte=%x,%x %x", j, pd, pd->path_num, pd->device_table_entry, dte->dt_fileman, pd->is_daemon);
+        if (pd->path_num && pd->device_table_entry->dt_fileman == dte->dt_fileman) {
           assert(pd->path_num == 4*i+j);
 
           if (pd->is_daemon) {
@@ -703,12 +723,12 @@ struct PathDesc* FindDaemon(struct DeviceTableEntry* dte, word begin, word end) 
       addr += 64;
     }
   }
-  // PrintH("FindDaemon => NOT FOUND\n");
+  PrintK("FD 0");
   return NULL;
 
 GOT_IT:
-  // PrintH("FindDaemon => got\n");
-  return got; // NULL;
+  PrintK("FD %x", got);
+  return got;
 }
 
 void SwitchProcess(struct PathDesc* from, struct PathDesc* to) {
@@ -756,12 +776,14 @@ void ClearPeer(struct PathDesc* subject, struct PathDesc* object) {
 ///////////  DAEMON  ///////////////////////////
 
 errnum OpenDaemon(struct PathDesc* dae, word begin2, word end2) {
+    PrintK("\nddt:%d\n", __LINE__);
   PrintH("OpenDeamon dae=%x entry\n", dae);
 
   // Must not already be a daemon on this name.
   struct PathDesc *already = FindDaemon(dae->device_table_entry, begin2, end2);
   if (already) {
-    PrintH("\nBAD: OpenDeamon already open => err %x\n", E_SHARE);
+    PrintK("ddt:%d", __LINE__);
+    PrintH("BAD: OpenDeamon already open => err %x", E_SHARE);
     return E_SHARE;
   }
 
@@ -931,20 +953,30 @@ errnum DaemonWriteC(struct PathDesc* dae) {
 /////////// CLIENT ////////////////////////
 
 errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) {
+    PrintK("\nddt:%d o=%x\n", __LINE__, opening);
   cli->current_process_id = Os9CurrentProcessId();
   cli->is_daemon = 0;
 
   struct PathDesc *dae = NULL;
 
   if (opening) {
+    PrintK("oC %x,%x,%x,%x,%x",
+       opening->begin1,
+       opening->end1,
+       opening->begin2,
+       opening->end2,
+       opening->original_rx);
+    ShowParsedName("openC", opening->begin1, opening->end1);
+    ShowParsedName("openC", opening->begin2, opening->end2);
     // Daemon must already be open.
     dae = FindDaemon(cli->device_table_entry, opening->begin1, opening->end1);
     if (!dae) {
+      PrintK("openC->B");
       PrintH("BAD: daemon not open yet => err %x\n", E_SHARE);
       return E_SHARE;
     }
     assert(dae->is_daemon);
-    PrintH("ClOp: found daemon %x", dae);
+    PrintK("ClOp: found daemon %x", dae);
 
     SetPeer(cli, dae);  // Client links to Daemon.
   } else {
@@ -953,7 +985,7 @@ errnum ClientOperationC(struct PathDesc* cli, byte op, struct Opening* opening) 
     CheckPeer(cli, dae);  // Client is already linked to Daemon.
   }
   SetPeer(dae, cli);  // Daemon links to Client during the client operation.
-  PrintH("ClOp op=%x cli=%x dae=%x entry\n", op, cli, dae);
+  PrintK("ClOp op=%x cli=%x dae=%x entry\n", op, cli, dae);
 
 
 
@@ -1050,7 +1082,7 @@ errnum CreateOrOpenC(struct PathDesc* pd, struct Regs* regs) {
     if (err) break;
 
     PrintH("Parse[%d]: begin=%x end=%x ", i, begin, end);
-    ShowParsedName(current, begin, end);
+    ShowParsedName("open", begin, end);
     PrintH("\n");
 SWITCH:
     switch (i) {
@@ -1251,17 +1283,18 @@ asm CreateOrOpenA() {
     PSHS Y,U ; Push U=regs then Y=pathdesc, as args to C fn, and to restore Y and U later.
     LDU #0   ; Terminate frame pointer chain for CMOC.
     LBSR _CreateOrOpenC  ; Call C function to do the work.
+    LBRA BackToAssembly
 
 ; Shared by all `asm ...A()` functions:
 ; Returning from the XxxxC() routines,
 ; the status is in the B register.
-BackToAssembly
-    CLRA     ; clear the carry bit.
-    TSTB     ; we want to set carry if B nonzero.
-    BEQ SkipComA  ; skip the COMA
-    COMA     ; sets the carry bit.
-SkipComA
-    PULS PC,U,Y
+;; BackToAssembly
+;;     CLRA     ; clear the carry bit.
+;;     TSTB     ; we want to set carry if B nonzero.
+;;     BEQ SkipComA  ; skip the COMA
+;;     COMA     ; sets the carry bit.
+;; SkipComA
+;;     PULS PC,U,Y
   }
 }
 asm CloseA() {

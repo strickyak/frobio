@@ -83,6 +83,7 @@ const char* RequestedFileName() {
   return (const char*)s;
 }
 
+#if 0
 errnum DoOpenWrite() {
   const char* name = RequestedFileName();
   LogInfo("DoOpenWrite: path=%x file=%q", Request.header.path_num, name);
@@ -96,10 +97,15 @@ errnum DoOpenRead() {
   Free((void*)name);
   return 0;
 }
+#endif
 
 void DoOpen(bool unused_create) {
-  errnum e;
-  switch (Request.header.a_reg) {
+  const char* name = RequestedFileName();
+  LogInfo("DoCreat/Open: mode=%x path=%x file=%q", Request.header.a_reg, Request.header.path_num, name);
+  Free((void*)name);
+  errnum e = 0;
+#if 0
+  switch (/*mode*/Request.header.a_reg) {
     case 1: // Read
         e = DoOpenRead();
         break;
@@ -109,7 +115,7 @@ void DoOpen(bool unused_create) {
     default:
         e = E_BMODE; // "Bad Mode"
   }
-
+#endif
   Reply.header.status = e;
   Reply.header.size = 0;
 }
@@ -124,12 +130,11 @@ void DoRead(bool linely) {
   errnum e = 0;
   LogInfo("DoRead%s path=%x", (linely? "ln" : ""), Request.header.path_num);
 
-  memcpy(Reply.payload, "\r", 1);
+  memcpy(Reply.payload, "OK\r", 4);
   Reply.header.status = 0;
-  Reply.header.size = 1;
+  Reply.header.size = 3;
   return;
 }
-
 
 void DoWrite(bool linely) {
   errnum e = 0;
@@ -138,8 +143,20 @@ void DoWrite(bool linely) {
   HexDump(Request.payload, Request.header.size);
 
   Reply.header.status = 0;
-  Reply.header.size = Request.header.size;
+  Reply.header.size = 0;
   return;
+}
+
+void DoGetStat() {
+  LogInfo("DoGetStat p=%x op=%x\n");
+  Reply.header.status = 0;
+  Reply.header.size = 0;
+}
+
+void DoSetStat() {
+  LogInfo("DoSetStat p=%x op=%x\n");
+  Reply.header.status = 0;
+  Reply.header.size = 0;
 }
 
 //////////////////////////////////////////
@@ -203,6 +220,8 @@ int main(int argc, char* argv[]) {
       case OP_READLN: DoRead(true); n += Reply.header.size; break;
       case OP_WRITE: DoWrite(false); break;
       case OP_WRITLN: FixSizeForWritLn(); DoWrite(true); break;
+      case OP_GETSTAT: DoGetStat(); break;
+      case OP_SETSTAT: DoSetStat(); break;
       default:
         Reply.header.status = E_UNKSVC;
         Reply.header.size = 0;
