@@ -3,6 +3,8 @@
 #define BUF (Vars->line_buf)
 #define PTR (Vars->line_ptr)
 
+#define maybe_static
+
 void NativeMode() {
   asm volatile("ldmd #1");
 }
@@ -50,13 +52,13 @@ void DoError(errnum e) {
   PrintF(" *** ERROR %d\n", e);
 }
 
-static void SkipWhite() {
+maybe_static void SkipWhite() {
   while (*PTR == ' ' || *PTR == '.' || *PTR == '/' || *PTR == ':') ++PTR;
 }
 
 #if 0
 // *num_out is set to 0, if no number.
-static bool GetNum1Byte(byte* num_out) {
+maybe_static bool GetNum1Byte(byte* num_out) {
   SkipWhite();
   bool gotnum = false;
   byte x = 0;
@@ -70,7 +72,7 @@ static bool GetNum1Byte(byte* num_out) {
 }
 #endif
 
-static bool GetNum2Bytes(word* num_out) {
+maybe_static bool GetNum2Bytes(word* num_out) {
   SkipWhite();
   bool gotnum = false;
   word x = 0;
@@ -96,14 +98,14 @@ static bool GetNum2Bytes(word* num_out) {
   *num_out = x;
   return gotnum;
 }
-static bool GetNum1Byte(byte* num_out) {
+maybe_static bool GetNum1Byte(byte* num_out) {
   word x;
   bool b = GetNum2Bytes(&x);
   *num_out = (byte)x;
   return b;
 }
 
-static bool GetAddyInXid() {
+maybe_static bool GetAddyInXid() {
   memset(Vars->xid, 0, 4);
   if (GetNum1Byte(Vars->xid+0) && 
       GetNum1Byte(Vars->xid+1) && 
@@ -114,7 +116,7 @@ static bool GetAddyInXid() {
   return false;
 }
 
-static byte MaskBits(int n) {
+maybe_static byte MaskBits(int n) {
   byte z = 0;
   while (n>0) {
     z = (z >> 1) | 0x80;
@@ -123,7 +125,7 @@ static byte MaskBits(int n) {
   return z;
 }
 
-static void SetMask(byte width) {
+maybe_static void SetMask(byte width) {
       if (width == 0) width = 24;
       Vars->mask_num = width;
       Vars->ip_mask[0] = MaskBits((int)width);
@@ -132,8 +134,37 @@ static void SetMask(byte width) {
       Vars->ip_mask[3] = MaskBits((int)width-24);
 }
 
-#if !EMULATED
-static errnum DoNetwork(byte a, byte b) {
+#if __GOMAR__
+maybe_static void UseLoopbackForEmulator() {
+  Vars->ip_addr[0] = 127;
+  Vars->ip_addr[1] = 0;
+  Vars->ip_addr[2] = 0;
+  Vars->ip_addr[3] = 1;
+
+  Vars->ip_gateway[0] = 0;  // unusable.
+  Vars->ip_gateway[1] = 7;
+  Vars->ip_gateway[2] = 11;
+  Vars->ip_gateway[3] = 13;
+
+  Vars->ip_waiter[0] = 127;
+  Vars->ip_waiter[1] = 0;
+  Vars->ip_waiter[2] = 0;
+  Vars->ip_waiter[3] = 1;
+  Vars->waiter_port = WAITER_TCP_PORT;
+
+  SetMask(24);
+}
+
+void DoKeyboardCommands() {
+  UseLoopbackForEmulator();
+
+  PrintF("Use Loopback for Emulator.\n");
+  PrintF("Launch...\n");
+}
+
+#else // __GOMAR__
+
+maybe_static errnum DoNetwork(byte a, byte b) {
   byte tail;
   if (!GetNum1Byte(&tail)) {
     tail = 30 + (byte)(WizTicks() % 200u);  // random 30..229
@@ -157,7 +188,7 @@ static errnum DoNetwork(byte a, byte b) {
   return OKAY;
 }
 
-static void GetHostname() {
+maybe_static void GetHostname() {
   byte* h = Vars->hostname;
   byte n = sizeof(Vars->hostname);
 
@@ -172,7 +203,7 @@ static void GetHostname() {
   }
 }
 
-static void ShowNetwork() {
+maybe_static void ShowNetwork() {
   if ((word)Vars->wiz_port == 0xFF78) {
     PrintF("u\1\n");
   }
@@ -296,7 +327,7 @@ END:
   return done;
 }
 
-static char CountdownOrInitialChar() {
+maybe_static char CountdownOrInitialChar() {
   PrintF("\n\nTo take control, hit space bar.\n\n");
   for (byte i = 0; i < 3; i++) {
     PrintF("%d... ", 3-i);
@@ -309,7 +340,7 @@ static char CountdownOrInitialChar() {
   return '\0';
 }
 
-static const byte waiter_default [4] = { 134, 122, 16, 44 }; // lemma.yak.net
+maybe_static const byte waiter_default [4] = { 134, 122, 16, 44 }; // lemma.yak.net
 void DoKeyboardCommands() {
   memcpy(Vars->ip_waiter, waiter_default, 4);
   Vars->waiter_port = WAITER_TCP_PORT;
@@ -332,32 +363,4 @@ void DoKeyboardCommands() {
   PrintF("Launch... ");
 }
 
-#else // if EMULATED
-
-static void UseLoopbackForEmulator() {
-  Vars->ip_addr[0] = 127;
-  Vars->ip_addr[1] = 0;
-  Vars->ip_addr[2] = 0;
-  Vars->ip_addr[3] = 1;
-
-  Vars->ip_gateway[0] = 0;  // unusable.
-  Vars->ip_gateway[1] = 7;
-  Vars->ip_gateway[2] = 11;
-  Vars->ip_gateway[3] = 13;
-
-  Vars->ip_waiter[0] = 127;
-  Vars->ip_waiter[1] = 0;
-  Vars->ip_waiter[2] = 0;
-  Vars->ip_waiter[3] = 1;
-  Vars->waiter_port = WAITER_TCP_PORT;
-
-  SetMask(24);
-}
-
-void DoKeyboardCommands() {
-  UseLoopbackForEmulator();
-
-  PrintF("Use Loopback for Emulator.\n");
-  PrintF("Launch...\n");
-}
-#endif
+#endif // __GOMAR__

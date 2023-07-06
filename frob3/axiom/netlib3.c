@@ -77,7 +77,7 @@ const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 ////////////////////////////////////////////////////////
 
-#if EMULATED
+#if __GOMAR__
 #undef PrintH
 void PrintH(const char* format, ...) {
   const char ** fmt_ptr = &format;
@@ -111,7 +111,7 @@ word StackPointer() {
 
 char PolCat() {
   char inkey = 0;
-#if !EMULATED
+#if !__GOMAR__
 #ifdef __GNUC__
   asm volatile (R"(
     jsr [$A000]
@@ -128,7 +128,7 @@ char PolCat() {
 }
 
 void Delay(word n) {
-#if !EMULATED
+#if !__GOMAR__
   while (n--) {
 #ifdef __GNUC__
     asm volatile ("mul" : : : "d", "b", "a");
@@ -150,7 +150,7 @@ void Delay(word n) {
 }
 
 void PutChar(char ch) {
-#if EMULATED
+#if __GOMAR__
   PrintH("CH: %x %c\n", ch, (' ' <= ch && ch <= '~') ? ch : '?');
   return;
 #endif

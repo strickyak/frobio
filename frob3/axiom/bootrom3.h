@@ -2,7 +2,6 @@
 #define _FROB3_BOOTROM_BOOTROM_H_
 
 #define VERBOSE 3 // 9 // 6 // 3
-// #define EMULATED 0
 #define PRINTK 1
 
 #define X220_NET 0
@@ -230,7 +229,7 @@ void AssertLE(word a, word b);
 
 // hyper
 
-#if EMULATED
+#if __GOMAR__
 void PrintH(const char* format, ...);
 #else
 #define PrintH(FMT,...) /*nothing*/
