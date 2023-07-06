@@ -30,5 +30,6 @@ Trying...
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+go run /sy/doing_os9/gomar/borges/borges.go -glob '*.list' -outdir ~/sy/doing_os9/borges/  .
 
-
+;;;;;;;;;;;;;;;;;;;;;;;
