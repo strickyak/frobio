@@ -49,6 +49,15 @@ word WizGet2(word reg) {
   LogDebug("[%4x=>%4x]", reg, z);
   return z;
 }
+void WizGetN(word reg, char* data, word size) {
+    DisableIrqsCounting();
+  P1 = (byte)(reg >> 8);
+  P2 = (byte)(reg);
+  for (word i=0; i<size; i++) {
+    *data++ = (char) P3;
+  }
+  EnableIrqsCounting();
+}
 void WizPut1(word reg, byte value) {
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
@@ -645,19 +654,25 @@ prob TcpEstablishOrNotYet(byte socknum) {
   return GOOD;
 }
 
-prob TcpRecvOrNotYet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out) {
+prob TcpRecvOrNotYet(byte socknum, char* buf, size_t n, size_t *num_bytes_out) {
   word base = ((word)socknum + 4) << 8;
   word rxbuf = RX_BUF(socknum);
 
-  word get_size = WizGet2(base+SK_RX_RSR0);
-  if (get_size == 0) {
+  Assert ( n < 1200 );
+  LogInfo("TCPRecvOrNotYet 1 b=%x rx=%x n=%x", base, rxbuf, n);
+
+  word bytes_waiting = WizGet2(base+SK_RX_RSR0);
+  *num_bytes_out = bytes_waiting;
+  LogInfo("TCPRecvOrNotYet 2 bytes_waiting=%x", bytes_waiting);
+  if (bytes_waiting == 0) {
     return NotYet;
   }
 
+#if 0
   word get_offset = WizGet2(base+SK_RX_RD0) & RX_MASK;
   word get_start_address = rxbuf + get_offset;
 
-  word n = MIN(get_size, buflen);
+  word n = MIN(bytes_waiting, buflen);
 
   // Read from Wiz rxbuf into caller's buf.
   word p = get_offset;
@@ -669,6 +684,32 @@ prob TcpRecvOrNotYet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_o
 
   // advance the receive Read pointer.
   WizPut2(base+SK_RX_RD0, n + WizGet2(base+SK_RX_RD0));
+#else
+
+  // TODO -- assimilate!
+
+#define RING_SIZE 2048
+#define RING_MASK (RING_SIZE - 1)
+
+  word rd = WizGet2(base+SK_RX_RD0);
+  word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
+  word end = begin + bytes_waiting;    // end: Sum may not be beneath RING_SIZE.
+  LogInfo("TCPRecvOrNotYet 3 rd=%x b=%x e=%x", rd, begin, end);
+
+  if (end >= RING_SIZE) {
+    word first_n = RING_SIZE - begin;
+    word second_n = bytes_waiting - first_n;
+    LogInfo("TCPRecvOrNotYet 4 1st=%x 2nd=%x", first_n, second_n);
+    WizGetN(rxbuf+begin, buf, first_n);
+    WizGetN(rxbuf, buf+first_n, second_n);
+  } else {
+    LogInfo("TCPRecvOrNotYet 5");
+    WizGetN(rxbuf+begin, buf, bytes_waiting);
+  }
+
+  LogInfo("TCPRecvOrNotYet 6 put=%x", rd + bytes_waiting);
+  WizPut2(base+SK_RX_RD0, rd + bytes_waiting);
+#endif
 
   bool ok = Wiz__sock_command(base, SK_CR_RECV, SK_SR_ESTB);
   if (!ok) return "TcpRecvRequestBad";

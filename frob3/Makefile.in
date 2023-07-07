@@ -5,7 +5,7 @@ all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-a
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
-NUM_CMDS = 15
+NUM_CMDS = 16
 NUM_MODULES = 11
 
 ###############################################
@@ -74,7 +74,7 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 
 ###############################################
 
-NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.ticks.os9cmd
+NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd
 all-net-cmds: $(NET_CMDS)
 
 O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
@@ -138,6 +138,9 @@ f.telnetd0.os9cmd: $F/net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 f.tget.os9cmd: $F/net-cmds/f-tget.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.wget.os9cmd: $F/net-cmds/f-wget.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 f.ticks.os9cmd: $F/net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS)
