@@ -1,16 +1,15 @@
 // OS9 System Calls, lightly wrapped for calling from C.
 // This module contains no global data, including no
 // const char* strings.
+// For CMOC only -- gcc will not work.
 
 #include "frob3/froblib.h"
 #include "frob3/frobos9.h"
 #include "frob3/os9/os9defs.h"
 
+//chop
+
 byte disable_irq_count;
-
-#if !defined(__GNUC__)
-
-
 void DisableIrqsCounting() {
   // If you use -v9 for Verbosity, you're really debugging
   // and you really want to see all debug logs.
@@ -33,7 +32,7 @@ IrqCounterOverflow ; if overflow, re-enable and exit(13).
 
 DisableIrqsEND
   }
-}
+} // nochop
 
 void EnableIrqsCounting() {
   if (Verbosity >= 9) return;
@@ -69,6 +68,7 @@ ExitLOOP
 
 asm errnum Os9Create(const char* path, int mode, int attrs, int* fd) {
     asm {
+Os9Err IMPORT
         pshs y,u
         ldx 6,s      ; buf
         lda 9,s      ; mode
@@ -88,6 +88,7 @@ asm errnum Os9Create(const char* path, int mode, int attrs, int* fd) {
 
 asm errnum Os9Open(const char* path, int mode, int* fd) {
     asm {
+Os9Err IMPORT
         pshs y,u
         ldx 6,s      ; buf
         lda 9,s      ; mode
@@ -106,6 +107,7 @@ asm errnum Os9Open(const char* path, int mode, int* fd) {
 
 asm errnum Os9Delete(const char* path) {
     asm {
+ZeroOrErr IMPORT
         pshs y,u
         ldx 6,s      ; path
         swi2
@@ -116,6 +118,7 @@ asm errnum Os9Delete(const char* path) {
 
 asm errnum Os9ChgDir(const char* path, int mode) {
     asm {
+ZeroOrErr IMPORT
         pshs y,u
         ldx 6,s      ; path
         lda 9,s      ; mode
@@ -127,6 +130,7 @@ asm errnum Os9ChgDir(const char* path, int mode) {
 
 asm errnum Os9MakDir(const char* path, int mode) {
     asm {
+ZeroOrErr IMPORT
         pshs y,u
         ldx 6,s      ; path
         ldb 9,s      ; dir attrs
@@ -138,6 +142,7 @@ asm errnum Os9MakDir(const char* path, int mode) {
 
 asm errnum Os9GetStt(int path, int func, int* dOut, int* x_inout, int* u_inout) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s      ; path
         ldb 9,s      ; func
@@ -156,6 +161,7 @@ asm errnum Os9GetStt(int path, int func, int* dOut, int* x_inout, int* u_inout) 
 
 asm errnum Os9SetStt(int path, int func, int* dOut, int* x_inout, int* u_inout) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s      ; path
         ldb 9,s      ; func
@@ -174,6 +180,7 @@ asm errnum Os9SetStt(int path, int func, int* dOut, int* x_inout, int* u_inout) 
 
 asm errnum Os9Read(int path, char* buf, int buflen, int* bytes_read) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s      ; path
         ldx 8,s      ; buf
@@ -189,6 +196,7 @@ asm errnum Os9Read(int path, char* buf, int buflen, int* bytes_read) {
 
 asm errnum Os9ReadLn(int path, char* buf, int buflen, int* bytes_read) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s      ; path
         ldx 8,s      ; buf
@@ -204,6 +212,7 @@ asm errnum Os9ReadLn(int path, char* buf, int buflen, int* bytes_read) {
 
 asm errnum Os9Write(int path, const char* buf, int max, int* bytes_written) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s      ; path
         ldx 8,s      ; buf
@@ -218,6 +227,7 @@ asm errnum Os9Write(int path, const char* buf, int max, int* bytes_written) {
 
 asm errnum Os9WritLn(int path, const char* buf, int max, int* bytes_written) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s      ; path
         ldx 8,s      ; buf
@@ -233,6 +243,7 @@ asm errnum Os9WritLn(int path, const char* buf, int max, int* bytes_written) {
 
 asm errnum Os9Dup(int path, int* new_path) {
     asm {
+Os9Err IMPORT
         pshs y,u
         lda 7,s  ; old path.
         swi2
@@ -248,6 +259,7 @@ asm errnum Os9Dup(int path, int* new_path) {
 
 asm errnum Os9Close(int path) {
     asm {
+ZeroOrErr IMPORT
         pshs y,u
         lda 7,s  ; path.
         swi2
@@ -258,6 +270,8 @@ asm errnum Os9Close(int path) {
 
 asm errnum Os9Sleep(int secs) {
     asm {
+ZeroOrErr EXPORT
+Os9Err    EXPORT
         pshs y,u
         ldx 6,s  ; ticks
         swi2
@@ -281,6 +295,7 @@ OUTPUT: (A) = Deceased child process's process ID
 
 asm errnum Os9Wait(int* child_id_and_exit_status) {
     asm {
+Os9Err IMPORT
         pshs y,u
         swi2
         fcb 0x04 ; F$Wait
@@ -306,6 +321,7 @@ ERROR OUTPUT: (CC) = C bit set. (B) = Appropriate error code.
 
 asm errnum Os9Fork(const char* program, const char* params, int paramlen, int lang_type, int mem_size, int* child_id) {
     asm {
+Os9Err IMPORT
         pshs y,u
         ldx 6,s  ; program
         ldu 8,s  ; params
@@ -340,6 +356,7 @@ asm errnum Os9Chain(const char* program, const char* params, int paramlen, int l
 
 asm errnum Os9Send(int process_id, int signal_code) {
     asm {
+ZeroOrErr IMPORT
         pshs y,u
         lda 7,s      ; process_id
         ldb 9,s      ; signal_code
@@ -503,7 +520,6 @@ void GomarHyperExit(errnum status) {
   Os9Exit(status);
 }
 
-#if ONLY_IN_KERNEL_MODE
 // 64-byte block routines.
 errnum Os9All64(word base, word* base_out, word* block_addr, byte* block_num) {
     errnum err = OKAY;
@@ -567,6 +583,3 @@ RET64OK
     }
     return err;
 }
-#endif // ONLY_IN_KERNEL_MODE
-
-#endif // !defined(__GNUC__)

@@ -38,6 +38,7 @@ results:
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
+	rm -f *.dsk *.lem *.a
 	rm -f utility-*
 	rm -rf results
 
@@ -79,12 +80,17 @@ all-net-cmds: $(NET_CMDS)
 
 O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
 
-LIB_CDEFS = -D"BASENAME=\"$$(basename $@ .o)\"" -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
-CMD_CDEFS = -D"BASENAME=\"$$(basename $@ .os9cmd)\"" -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
+CDEFS = -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
+LIB_CDEFS = -D"BASENAME=\"$$(basename $@ .o)\"" $(CDEFS)
+CMD_CDEFS = -D"BASENAME=\"$$(basename $@ .os9cmd)\"" $(CDEFS)
 
-COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I$F/../../frobio -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
+COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
 
-COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I$F/../../frobio -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
+COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
+
+C_FILES_FOR_CMOC_ARCHIVE = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c $F/wiz/wiz5100s.c $F/os9/frobos9.c
+_chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
+	sh $F/helper/cmoc-chopped.sh _chopped.a "$^" $(CDEFS) -I$F/..
 
 stack300.o: $F/froblib/stack300.asm
 	$(LWASM) --obj -o $@ $<

@@ -298,13 +298,6 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
         }
     }
 }
-void BufFormat(Buf* buf, const char* format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    BufFormatVA(buf, format, ap);
-    va_end(ap);
-}
-
 // returns OKAY or ErrNo.
 errnum WritLnAll(int path, const char* s, word n) {
     ErrNo = OKAY;
@@ -434,6 +427,13 @@ char* StrFormat(const char* fmt, ...) {
     va_end(ap);
 
     return BufFinish(&buf);
+}
+
+void BufFormat(Buf* buf, const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    BufFormatVA(buf, fmt, ap);
+    va_end(ap);
 }
 
 // Debugging routines should not call Buf or Malloc.

@@ -100,6 +100,7 @@ typedef struct { int fd; } File;
 // {
 // Low Level: These do not invoke Malloc, Fail, Printf, Buf, etc.
 //
+// nystdio
 // FPuts returns length of str, or -1 on error.
 int FPuts(const char *str, File *f);
 void PutHex(byte c, word w);
@@ -109,6 +110,8 @@ void PC_Trace(byte c, const void* w);
 void PError(const char* str);
 // PErrorFatal is like PError but also exits 127.
 void PErrorFatal(const char* str); // exits 127.
+void PErrNum(errnum e);
+
 // }
 
 
