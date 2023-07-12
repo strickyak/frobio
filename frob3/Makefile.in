@@ -20,8 +20,8 @@ NCL_H = $F/ncl/match.h $F/ncl/ncl.h $F/ncl/ncl_os9.h $F/ncl/regexp.h
 LIB1 = $(FROBLIB_C) $(WIZ_C) $(OS9_C)
 HDRS = $F/froblib.h $F/frobnet.h $F/frobos9.h $F/frobtype.h
 
-CMOCI=/home/strick/coco-shelf/bin/../share/cmoc/include
-CMOCL=/home/strick/coco-shelf/bin/../share/cmoc/lib
+CMOCI=$F/../../share/cmoc/include
+CMOCL=$F/../../share/cmoc/lib
 
 ###############################################
 
@@ -269,3 +269,17 @@ install-on-disk: _FORCE_
 #        the $0000-$1fff page, and even initialize the memory map (AnteNitros).
 #   4.  Non-PIC compilation of Kernel Modules, for much tighter GCC optimizations,
 #        without encountering the PIC bugs.
+
+# Experimental level0:
+level0.loadm: $F/level0/level0c.c $F/level0/lib0.c $F/level0/level0.asm $F/level0/abort.asm
+	cat  $F/level0/level0c.c $F/level0/lib0.c > _level0_whole.c
+	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _level0_whole.c
+	(echo '  .area .text'; echo '  jmp _main'; sed 's/.text.startup/.text/' < _level0_whole.s) > level0.s
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/level0.asm --output=level0.o --list=level0.list
+	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/abort.asm --output=abort.o --list=abort.list
+	lwlink --entry=_main --format=decb --output=level0.bin --map=level0.map --script=$F/helper/level0.script level0.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc abort.o
+
+
+#cmoc_level0.loadm: ../level0/level0c.c ../axiom/netlib3.c
+#	$(CMOC) -c -i -I../.. $^
+#	$(LWLINK) --format=decb --output=cmoc_level0.bin  --map=cmoc_level0.map -L$F/../../share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb level0c.o netlib3.o
