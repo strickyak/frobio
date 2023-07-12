@@ -72,7 +72,7 @@ const struct proto BroadcastUdpProto = {
   true,
   SK_CR_SEND+1,
 };
-const char SixFFs[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+const char SixFFs[6] = {(char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF};
 const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 ////////////////////////////////////////////////////////
