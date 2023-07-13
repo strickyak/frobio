@@ -85,8 +85,8 @@ func ExtractName(bb []byte, i int, filename string) string {
 	var buf bytes.Buffer
 	for {
 		ch := 127 & bb[i]
-		AssertLT('.'-1, ch, filename, i, ch)
-		AssertLT(ch, 'z'+1, filename, i, ch)
+		AssertLE('-', ch, filename, i, ch)
+		AssertLE(ch, 'z', filename, i, ch)
 		buf.WriteByte(127 & bb[i])
 		if 128 <= bb[i] {
 			break

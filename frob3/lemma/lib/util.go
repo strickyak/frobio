@@ -33,7 +33,17 @@ func Assert(b bool, args ...any) {
 
 func AssertLT[N Number](a, b N, args ...any) {
 	if a >= b {
-		s := fmt.Sprintf("AssertLT Fails: %v < %v", a, b)
+		s := fmt.Sprintf("AssertLT Fails: (%v .LT. %v)", a, b)
+		for _, x := range args {
+			s += fmt.Sprintf(" ; %v", x)
+		}
+		log.Panic(s)
+	}
+}
+
+func AssertLE[N Number](a, b N, args ...any) {
+	if a > b {
+		s := fmt.Sprintf("AssertLE Fails: (%v .LE. %v)", a, b)
 		for _, x := range args {
 			s += fmt.Sprintf(" ; %v", x)
 		}
