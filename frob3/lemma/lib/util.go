@@ -21,20 +21,32 @@ type Number interface {
 	~byte | ~rune | ~int | ~uint | ~int64
 }
 
-func Assert(b bool) {
+func Assert(b bool, args ...any) {
 	if b {
-		log.Panic("Assert Fails")
+		s := "Assert Fails"
+		for _, x := range args {
+			s += fmt.Sprintf(" ; %v", x)
+		}
+		log.Panic(s)
 	}
 }
 
-func AssertLT[N Number](a, b N) {
+func AssertLT[N Number](a, b N, args ...any) {
 	if a >= b {
-		log.Panicf("AssertLT Fails: %v < %v", a, b)
+		s := fmt.Sprintf("AssertLT Fails: %v < %v", a, b)
+		for _, x := range args {
+			s += fmt.Sprintf(" ; %v", x)
+		}
+		log.Panic(s)
 	}
 }
 
-func Check(err error) {
+func Check(err error, args ...any) {
 	if err != nil {
-		log.Panicf("Check Fail: %v", err)
+		s := fmt.Sprintf("Check Fails: %v", err)
+		for _, x := range args {
+			s += fmt.Sprintf(" ; %v", x)
+		}
+		log.Panic(s)
 	}
 }
