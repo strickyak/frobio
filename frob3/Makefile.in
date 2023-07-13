@@ -277,7 +277,7 @@ level0.loadm: $F/level0/level0c.c $F/level0/lib0.c $F/level0/level0.asm $F/level
 	(echo '  .area .text'; echo '  jmp _main'; sed 's/.text.startup/.text/' < _level0_whole.s) > level0.s
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/level0.asm --output=level0.o --list=level0.list
 	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/abort.asm --output=abort.o --list=abort.list
-	lwlink --entry=_main --format=decb --output=level0.bin --map=level0.map --script=$F/helper/level0.script level0.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc abort.o
+	lwlink --entry=Boot0 --format=decb --output=level0.bin --map=level0.map --script=$F/helper/level0.script level0.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc abort.o
 
 
 #cmoc_level0.loadm: ../level0/level0c.c ../axiom/netlib3.c

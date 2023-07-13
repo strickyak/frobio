@@ -1,12 +1,8 @@
-* _main IMPORT
-* _SayReturnToLemma IMPORT
-_SayAbort EXPORT
-*  .area .constants
-  SECTION code
+*** SECTION code
 
 ; (Tentative Initial) Memory Conventions
 ; System Stack from Lemma: $7FFF and downward.
-  org 0
+***  org 0
 Sys_Data equ $7E00  ; and upward
 Sys_Load equ $7000  ; and upward
 
@@ -40,16 +36,32 @@ IV_NMI  equ  $FFFC
 IV_RESTART  equ  $FFFE
 
   .area .text
+Boot0 EXPORT
 Boot0:
   orcc #$50        ; disable interrupts
   sts  G_SysSP     ; remember our return stack
 
+  ; make sure ROM is copied to RAM
+	ldx #$7000
+	ldy #$8000
+bloop:
+  lda ,y
+	sta ,y+
+	leax -1,x
+	bne bloop
+
+	clr $FFD4        ; bit P1 "SamPage" := 0
+	clr $FFDF        ; bit TY "AllRam" := 1 (low 32k = low ram, up 32k = up ram)
+
 	ldx #Do_SWI3
 	stx IV_SWI3
+	ldy IV_SWI3
 	ldx #Do_SWI2
 	stx IV_SWI2
+	ldy IV_SWI2
 	ldx #Do_FIRQ
 	stx IV_FIRQ
+	ldy IV_FIRQ
 	ldx #Do_IRQ
 	stx IV_IRQ
 	ldx #Do_SWI
@@ -58,6 +70,7 @@ Boot0:
 	stx IV_NMI
 	ldx #Do_RESTART
 	stx IV_RESTART
+	ldy IV_RESTART
 
 	jsr _main
 
@@ -98,8 +111,29 @@ Do_Interrupt:
   jsr _SayReturnToLemma
 	sts G_UsrSP
   lds G_SysSP     ; remember our return stack
+
+  ldb #1    ; first byte input goes in B.
+	jsr _SockNumber
+
+	ldy #5    ; size of Quint (third arg)
+	ldd #YieldingQuint  ; packet (second arg)
+	pshs d,y  ; socket pointer still in X (first arg)
+	jsr _TcpSend
+	leas 4,s  ; undo pshs d,y
+	tstb
+	bne Abort
+
 	rts             ; return to Lemma Loop.
-  ENDSECTION
+
+YieldingQuint
+	fcb 199   ; 199 means Level0 yields.
+	fill 4,0
+
+Abort:
+  bra Abort
+
+
+***  ENDSECTION
 
 	use level0.s
 

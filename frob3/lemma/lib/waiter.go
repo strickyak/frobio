@@ -23,6 +23,7 @@ var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
 var DEMO = flag.String("demo", "", "run a demo")
 var CARDS = flag.Bool("cards", false, "run the cards")
 var READONLY = flag.String("ro", "", "read only resource directory")
+var LEVEL0 = flag.String("level0", "", "level0.bin (decb) to upload")
 
 var Block0 *os.File
 
@@ -289,6 +290,10 @@ func Serve(conn net.Conn) {
 			log.Panicf("Unknown demo: %q", *DEMO)
 		}
 		demo(conn)
+	} else if *LEVEL0 != "" {
+		go ReadFiveLoop(conn, nil)
+		time.Sleep(time.Second) // Handle anything pushed, first.
+		UploadProgram(conn, *LEVEL0)
 	} else if *PROGRAM != "" {
 		go ReadFiveLoop(conn, nil)
 		time.Sleep(time.Second) // Handle anything pushed, first.

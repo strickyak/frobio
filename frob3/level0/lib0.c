@@ -1,5 +1,6 @@
 #include "frob3/axiom/bootrom3.h"
 #include "frob3/axiom/romapi3.h"
+#define __GOMAR__ 1
 
 #if NEED_STDLIB_IN_NETLIB3
 
@@ -351,10 +352,13 @@ void WizWaitStatus(const struct sock* sockp, byte want) {
 // Only called for TCP Client.
 errnum WizCheck(PARAM_JUST_SOCK) {
       byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
+  PrintH("WizCheck: B=%x SK_IR=%x ir=%x", B, SK_IR, ir);
       if (ir & SK_IR_TOUT) { // Timeout?
+        PrintH(" WC:TImeout ");
         return SK_IR_TOUT;
       }
       if (ir & SK_IR_DISC) { // Disconnect?
+        PrintH(" WC:Disconn ");
         return SK_IR_DISC;
       }
       return OKAY;
@@ -458,7 +462,9 @@ void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t
 }
 
 errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
+  PrintH("WizSendChunk");
   errnum e = WizCheck(JUST_SOCK);
+  if (e) { PrintH("WizCheck->%x", e); }
   if (e) return e;
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
@@ -466,6 +472,7 @@ errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* 
   return OKAY;
 }
 errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
+  PrintH("TcpSend: sockp=%x p=%x n=%x", sockp, p, n);
   while (n) {
     word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
     errnum e = WizSendChunk(SOCK_AND &TcpProto, p, chunk);
@@ -476,3 +483,6 @@ errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
   return OKAY;
 }
 
+const struct sock* SockNumber(byte i) {
+  return Socks+i;
+}

@@ -67,7 +67,7 @@ struct sock_vars {
 };
 
 struct vars {
-  struct wiz_port wiz_port[4];
+  volatile struct wiz_port *wiz_port;
   struct sock_vars sock_vars[4];
   word vdg_begin;
   word vdg_end;
@@ -189,6 +189,7 @@ void ShowLine(word line);
 void PrintF(const char* format, ...);
 void AssertEQ(word a, word b);
 void AssertLE(word a, word b);
+const struct sock* SockNumber(byte i);
 
 // hyper
 

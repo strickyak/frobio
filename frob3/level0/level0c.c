@@ -1,3 +1,5 @@
+// for gcc(6809)
+
 #include "frob3/level0/lib0.h"
 
 void Using(void* p) {
@@ -19,6 +21,8 @@ int main() {
   PrintH("level0c main");
   Using(&SayReturnToLemma);
   Using(&SayAbort);
+  Using(&SockNumber);
+  Using(&TcpSend);
 
   for (word p=VDG_RAM+32; p<VDG_END; p++) {
     *(char*)p = '-';
@@ -26,9 +30,10 @@ int main() {
   Vars->vdg_begin = VDG_RAM + 32;
   Vars->vdg_end = VDG_END - 32;
   Vars->vdg_ptr = VDG_RAM + 128;
+  Vars->wiz_port = (struct wiz_port*) 0xff68;
 
-  PutChar('@');
-  Fatal("END", 0xFFFF);
+  PrintF("Inside main()\n");
+  PrintF("... \n");
 
   return 0;
 }
