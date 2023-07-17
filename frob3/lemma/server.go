@@ -11,5 +11,6 @@ func main() {
 	flag.Parse()
 	log.SetFlags(0)
 	log.SetPrefix("# ")
+	lib.L0Init()
 	lib.Listen()
 }

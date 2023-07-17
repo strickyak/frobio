@@ -1,5 +1,6 @@
 #include "frob3/axiom/bootrom3.h"
 #include "frob3/axiom/romapi3.h"
+#define __GOMAR__ 1
 
 #if NEED_STDLIB_IN_NETLIB3
 
@@ -60,20 +61,6 @@ const struct proto TcpProto = {
   false,
   SK_CR_SEND,
 };
-const struct proto UdpProto = {
-  SK_MR_UDP, // UDP Protocol mode.
-  SK_SR_UDP,
-  false,
-  SK_CR_SEND,
-};
-const struct proto BroadcastUdpProto = {
-  SK_MR_UDP, // UDP Protocol mode.
-  SK_SR_UDP,
-  true,
-  SK_CR_SEND+1,
-};
-const char SixFFs[6] = {(char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF};
-const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 ////////////////////////////////////////////////////////
 
@@ -207,11 +194,15 @@ void PutStr(const char* s) {
     while (*s) PutChar(*s++);
 }
 
-void PutHex(word x) {
+void PutHexRecurse(word x) {
   if (x > 15u) {
-    PutHex(x >> 4u);
+    PutHexRecurse(x >> 4u);
   }
   PutChar( HexAlphabet[ 15u & x ] );
+}
+void PutHex(word x) {
+  PutChar('$');
+  PutHexRecurse(x);
 }
 void PutDec(word x) {
   if (x > 9u) {
@@ -223,7 +214,6 @@ void PutDec(word x) {
 void Fatal(const char* wut, word arg) {
     PutStr(" *FATAL* <");
     PutStr(wut);
-    PutChar('$');
     PutHex(arg);
     PutStr("> ");
     while (1) continue;
@@ -337,34 +327,6 @@ void WizPutN(word reg, const void* data, word size) {
   }
 }
 
-// WizTicks: 0.1ms but may have readbyte,readbyte error?
-word WizTicks() {
-    return WizGet2(0x0082/*TCNTR Tick Counter*/);
-}
-
-void WizReset() {
-  WIZ->command = 128; // Reset
-  Delay(5000);
-  WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  Delay(1000);
-
-  // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
-
-  // Interval until retry: 1 second.
-  WizPut2(RTR0, 10000 /* Tenths of milliseconds. */ );
-  // Number of retries: 10 x 1sec = 10sec.
-  // Sometimes reset-to-carrier takes over 5 seconds.
-  WizPut1(RCR, 10);
-}
-
-void WizConfigure() {
-  WizPutN(0x0001/*gateway*/, Vars->ip_gateway, 4);
-  WizPutN(0x0005/*mask*/, Vars->ip_mask, 4);
-  WizPutN(0x000f/*ip_addr*/, Vars->ip_addr, 4);
-  WizPutN(0x0009/*ether_mac*/, Vars->mac_addr, 6);
-  PrintF(" Config a=%a m=%a g=%a MAC=%d.%d.%a; ", Vars->ip_addr, Vars->ip_mask, Vars->ip_gateway, Vars->mac_addr[0], Vars->mac_addr[1], Vars->mac_addr+2);
-}
-
 /////////////////////////////////////////////////////////////////////////////////////
 
 void WizIssueCommand(const struct sock* sockp, byte cmd) {
@@ -387,42 +349,140 @@ void WizWaitStatus(const struct sock* sockp, byte want) {
   } while (status != want);
 }
 
-void WizOpen(const struct sock* sockp, const struct proto* proto, word local_port ) {
-  WizPut1(B+SK_MR, proto->open_mode);
-  WizPut2(B+SK_PORTR0, local_port); // Set local port.
-  WizPut1(B+SK_IR, 0xFF); // Clear all interrupts.
-  WizIssueCommand(SOCK_AND SK_CR_OPEN);
-
-  WizWaitStatus(SOCK_AND proto->open_status);
+// Only called for TCP Client.
+errnum WizCheck(PARAM_JUST_SOCK) {
+      byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
+  PrintH("WizCheck: B=%x SK_IR=%x ir=%x", B, SK_IR, ir);
+      if (ir & SK_IR_TOUT) { // Timeout?
+        PrintH(" WC:TImeout ");
+        return SK_IR_TOUT;
+      }
+      if (ir & SK_IR_DISC) { // Disconnect?
+        PrintH(" WC:Disconn ");
+        return SK_IR_DISC;
+      }
+      return OKAY;
 }
 
-void TcpDial(const struct sock* sockp, const byte* host, word port) {
-  WizPut2(B+SK_TX_WR0, T); // does this help
+errnum WizRecvGetBytesWaiting(const struct sock* sockp, word* bytes_waiting_out) {
+  errnum e = WizCheck(JUST_SOCK);
+  if (e) return e;
 
-  WizPutN(B+SK_DIPR0, host, 4);
-  WizPut2(B+SK_DPORTR0, port);
-  WizPut1(B+SK_IR, 0xFF); // Clear Interrupt bits.
-  WizIssueCommand(SOCK_AND SK_CR_CONN);
+  *bytes_waiting_out = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
+  return OKAY;
 }
 
-// For Server or Client to accept/establish connection.
-void TcpEstablish(PARAM_JUST_SOCK) {
-  byte stuck = 250;
-  while(1) {
-    Delay(2000);
-    PutChar('+');
-    // Or we could wait for the connected interrupt bit,
-    // and not the disconnected nor the timeout bit.
-    byte status = WizGet1(B+SK_SR);
-    if (!--stuck) Fatal("TEZ", status);
+errnum WizRecvChunkTry(const struct sock* sockp, char* buf, size_t n) {
+  word bytes_waiting = 0;
+  errnum e = WizRecvGetBytesWaiting(SOCK_AND &bytes_waiting);
+  if (e) return e;
+  if( bytes_waiting < n) return NOTYET;
 
-    if (status == SK_SR_ESTB) break;
-    if (status == SK_SR_INIT) continue;
-    if (status == SK_SR_SYNS) continue;
+  word rd = WizGet2(B+SK_RX_RD0);
+  word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
+  word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
 
-    Fatal("TE", status);
+  if (end >= RING_SIZE) {
+    word first_n = RING_SIZE - begin;
+    word second_n = n - first_n;
+    WizGetN(R+begin, buf, first_n);
+    WizGetN(R, buf+first_n, second_n);
+  } else {
+    WizGetN(R+begin, buf, n);
+  }
 
-  };
+  WizPut2(B+SK_RX_RD0, rd + n);
+  WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
+  return OKAY;
+}
 
-  WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
+errnum WizRecvChunk(const struct sock* sockp, char* buf, size_t n) {
+  errnum e;
+  do {
+    e = WizRecvChunkTry(SOCK_AND buf, n);
+  } while (e == NOTYET);
+  return e;
+}
+errnum WizRecvChunkBytes(const struct sock* sockp, byte* buf, size_t n) {
+  return WizRecvChunk(sockp, (char*)buf, n);
+}
+errnum TcpRecv(const struct sock* sockp, char* p, size_t n) {
+  while (n) {
+    word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
+    errnum e = WizRecvChunk(SOCK_AND  p, chunk);
+    if (e) return e;
+    n -= chunk;
+    p += chunk;
+  }
+  return OKAY;
+}
+void WizReserveToSend(const struct sock* sockp,  size_t n) {
+  PrintH("ResTS %x;", n);
+  // Wait until free space is available.
+  word free_size;
+  do {
+    free_size = WizGet2(B+SK_TX_FSR0);
+    PrintH("Res free %x;", free_size);
+  } while (free_size < n);
+
+  struct sock_vars *sv = SV;
+  sv->tx_ptr = WizGet2(B+SK_TX_WR0) & RING_MASK;
+  sv->tx_to_go = n;
+}
+
+void WizBytesToSend(const struct sock* sockp, const byte* data, size_t n) {
+  WizDataToSend(SOCK_AND (char*)data, n);
+}
+void WizDataToSend(const struct sock* sockp, const char* data, size_t n) {
+  struct sock_vars *sv = SV;
+  AssertLE(n, sv->tx_to_go);  // Must have already reserved.
+
+  word begin = sv->tx_ptr;  // begin: Beneath RING_SIZE.
+  word end = begin + n;       // end:  Sum may not be beneath RING_SIZE.
+
+  if (end >= RING_SIZE) {
+    word first_n = RING_SIZE - begin;
+    word second_n = n - first_n;
+    WizPutN(T+begin, data, first_n);
+    WizPutN(T, data+first_n, second_n);
+  } else {
+    WizPutN(T+begin, data, n);
+  }
+  sv->tx_to_go -= n;
+  sv->tx_ptr = (n + sv->tx_ptr) & RING_MASK;
+}
+
+void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t n) {
+  struct sock_vars *sv = SV;
+  word tx_wr = WizGet2(B+SK_TX_WR0);
+  tx_wr += n;
+  WizPut2(B+SK_TX_WR0, tx_wr);
+  AssertEQ(sv->tx_to_go, 0);
+  WizIssueCommand(SOCK_AND  proto->send_command);
+}
+
+errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
+  PrintH("WizSendChunk");
+  errnum e = WizCheck(JUST_SOCK);
+  if (e) { PrintH("WizCheck->%x", e); }
+  if (e) return e;
+  WizReserveToSend(SOCK_AND  n);
+  WizDataToSend(SOCK_AND data, n);
+  WizFinalizeSend(SOCK_AND proto, n);
+  return OKAY;
+}
+errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
+  PrintH("TcpSend: sockp=%x p=%x n=%x", sockp, p, n);
+  while (n) {
+    word chunk = (n < TCP_CHUNK_SIZE) ? n : TCP_CHUNK_SIZE;
+    errnum e = WizSendChunk(SOCK_AND &TcpProto, p, chunk);
+    if (e) return e;
+    n -= chunk;
+    p += chunk;
+  }
+  return OKAY;
+}
+
+const struct sock* SockNumber(byte i) {
+  return Socks+i;
 }

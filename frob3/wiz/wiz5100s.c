@@ -18,6 +18,13 @@ void Wiz__command(word base, byte cmd);
 byte Wiz__advance(word base, byte old_status);
 bool Wiz__sock_command(word base, byte cmd, byte want);
 
+prob UdpRecvCommon(byte socknum, byte* payload, word* size_in_out, quad* from_addr_out, word* from_port_out, bool wait);
+word WizGetNUntil(word reg, char* data, word size, char until);
+
+#define LogRecv LogDebug
+#define WIZ_RING_SIZE 2048
+#define WIZ_RING_MASK (WIZ_RING_SIZE - 1)
+
 //chop
 
 // Global storage.
@@ -49,7 +56,7 @@ word WizGet2(word reg) {
   LogDebug("[%4x=>%4x]", reg, z);
   return z;
 }
-void WizGetN(word reg, char* data, word size) {
+void WizGetN(word reg, char* data, word size, char until) {
     DisableIrqsCounting();
   P1 = (byte)(reg >> 8);
   P2 = (byte)(reg);
@@ -57,6 +64,22 @@ void WizGetN(word reg, char* data, word size) {
     *data++ = (char) P3;
   }
   EnableIrqsCounting();
+}
+word WizGetNUntil(word reg, char* data, word size, char until) {
+    DisableIrqsCounting();
+  P1 = (byte)(reg >> 8);
+  P2 = (byte)(reg);
+  word count = 0;
+  for (word i=0; i<size; i++) {
+    char ch = (char) P3;
+    *data++ = ch;
+    count++;
+    if (ch == until) {
+      break;
+    }
+  }
+  EnableIrqsCounting();
+  return count;
 }
 void WizPut1(word reg, byte value) {
     DisableIrqsCounting();
@@ -654,15 +677,15 @@ prob TcpEstablishOrNotYet(byte socknum) {
   return GOOD;
 }
 
-prob TcpRecvOrNotYet(byte socknum, char* buf, size_t n, size_t *num_bytes_out) {
+prob TcpRecvUntilOrNotYet(byte socknum, char* buf, size_t n, char until, size_t *num_bytes_out) {
   word base = ((word)socknum + 4) << 8;
   word rxbuf = RX_BUF(socknum);
 
   Assert ( n < 1200 );
-  LogInfo("TCPRecvOrNotYet 1 b=%x rx=%x n=%x", base, rxbuf, n);
+  LogRecv("TCPRecvUntilOrNotYet 1 b=%x rx=%x n=%x", base, rxbuf, n);
 
   word bytes_waiting = WizGet2(base+SK_RX_RSR0);
-  LogInfo("TCPRecvOrNotYet 2 bytes_waiting=%x", bytes_waiting);
+  LogRecv("TCPRecvUntilOrNotYet 2 bytes_waiting=%x", bytes_waiting);
   if (bytes_waiting == 0) {
     *num_bytes_out = 0;
     return NotYet;
@@ -672,32 +695,71 @@ prob TcpRecvOrNotYet(byte socknum, char* buf, size_t n, size_t *num_bytes_out) {
   }
   *num_bytes_out = bytes_waiting;
 
-  // TODO -- assimilate!
-
-#define RING_SIZE 2048
-#define RING_MASK (RING_SIZE - 1)
-
   word rd = WizGet2(base+SK_RX_RD0);
-  word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
-  word end = begin + bytes_waiting;    // end: Sum may not be beneath RING_SIZE.
-  LogInfo("TCPRecvOrNotYet 3 rd=%x b=%x e=%x", rd, begin, end);
+  word begin = rd & WIZ_RING_MASK; // begin: Beneath WIZ_RING_SIZE.
+  word end = begin + bytes_waiting;    // end: Sum may not be beneath WIZ_RING_SIZE.
+  LogRecv("TCPRecvUntilOrNotYet 3 rd=%x b=%x e=%x", rd, begin, end);
 
-  if (end >= RING_SIZE) {
-    word first_n = RING_SIZE - begin;
+  word count = 0;
+  if (end >= WIZ_RING_SIZE) {
+    word first_n = WIZ_RING_SIZE - begin;
     word second_n = bytes_waiting - first_n;
-    LogInfo("TCPRecvOrNotYet 4 1st=%x 2nd=%x", first_n, second_n);
-    WizGetN(rxbuf+begin, buf, first_n);
-    WizGetN(rxbuf, buf+first_n, second_n);
+    LogRecv("TCPRecvUntilOrNotYet 4 1st=%x 2nd=%x", first_n, second_n);
+    word cc = WizGetNUntil(rxbuf+begin, buf, first_n, /*until*/0);
+    count = cc;
+    if (buf[cc-1] != until) {
+      cc = WizGetNUntil(rxbuf, buf+first_n, second_n, /*until*/0);
+      count += cc;
+    }
   } else {
-    LogInfo("TCPRecvOrNotYet 5");
-    WizGetN(rxbuf+begin, buf, bytes_waiting);
+    LogRecv("TCPRecvUntilOrNotYet 5");
+    word cc = WizGetNUntil(rxbuf+begin, buf, bytes_waiting, /*until*/0);
+    count = cc;
+  }
+  *num_bytes_out = count;
+
+  LogRecv("TCPRecvUntilOrNotYet 6 put=%x", rd + count);
+  WizPut2(base+SK_RX_RD0, rd + count);
+
+  bool ok = Wiz__sock_command(base, SK_CR_RECV, SK_SR_ESTB);
+  if (!ok) return "TcpRecvBad";
+  return GOOD;
+}
+prob TcpRecvOrNotYet(byte socknum, char* buf, size_t n, size_t *num_bytes_out) {
+  word base = ((word)socknum + 4) << 8;
+  word rxbuf = RX_BUF(socknum);
+
+  Assert ( n < 1200 );
+  LogRecv("TCPRecvOrNotYet 1 b=%x rx=%x n=%x", base, rxbuf, n);
+
+  word bytes_waiting = WizGet2(base+SK_RX_RSR0);
+  *num_bytes_out = bytes_waiting;
+  LogRecv("TCPRecvOrNotYet 2 bytes_waiting=%x", bytes_waiting);
+  if (bytes_waiting == 0) {
+    return NotYet;
   }
 
-  LogInfo("TCPRecvOrNotYet 6 put=%x", rd + bytes_waiting);
+  word rd = WizGet2(base+SK_RX_RD0);
+  word begin = rd & WIZ_RING_MASK; // begin: Beneath WIZ_RING_SIZE.
+  word end = begin + bytes_waiting;    // end: Sum may not be beneath WIZ_RING_SIZE.
+  LogRecv("TCPRecvOrNotYet 3 rd=%x b=%x e=%x", rd, begin, end);
+
+  if (end >= WIZ_RING_SIZE) {
+    word first_n = WIZ_RING_SIZE - begin;
+    word second_n = bytes_waiting - first_n;
+    LogRecv("TCPRecvOrNotYet 4 1st=%x 2nd=%x", first_n, second_n);
+    WizGetNUntil(rxbuf+begin, buf, first_n, /*until*/0);
+    WizGetNUntil(rxbuf, buf+first_n, second_n, /*until*/0);
+  } else {
+    LogRecv("TCPRecvOrNotYet 5");
+    WizGetNUntil(rxbuf+begin, buf, bytes_waiting, /*until*/0);
+  }
+
+  LogRecv("TCPRecvOrNotYet 6 put=%x", rd + bytes_waiting);
   WizPut2(base+SK_RX_RD0, rd + bytes_waiting);
 
   bool ok = Wiz__sock_command(base, SK_CR_RECV, SK_SR_ESTB);
-  if (!ok) return "TcpRecvRequestBad";
+  if (!ok) return "TcpRecvBad";
   return GOOD;
 }
 

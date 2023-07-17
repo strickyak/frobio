@@ -67,6 +67,7 @@ prob TcpDial(byte socknum, quad host, word port);
 prob TcpListen(byte socknum, word listen_port);
 prob TcpEstablishOrNotYet(byte socknum); // may return NotYet
 prob TcpRecvOrNotYet(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
+prob TcpRecvUntilOrNotYet(byte socknum, char* buf, size_t buflen, char until, size_t *num_bytes_out);
 prob TcpSendOrNotYet(byte socknum, const char* buf, size_t num_bytes_to_send);
 prob TcpEstablishBlocking(byte socknum); // may return NotYet
 prob TcpRecvBlocking(byte socknum, char* buf, size_t buflen, size_t *num_bytes_out);
