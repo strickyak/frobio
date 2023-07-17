@@ -34,14 +34,18 @@ byte HttpOpen(quad host, word port) {
 }
 
 void SendStr(byte socknum, char* bb, word bblen) {
+  LogInfo("SendStr: <<<%s>>>", bb);
   while (1) {
   prob ps = TcpSendOrNotYet(socknum, bb, bblen);
+  LogInfo("ps: <<%s>>", ps);
   if (ps == NotYet) {
     FPuts("=", StdErr);
     Os9Sleep(1);
     continue;
   }
+  #if 0
   if (ps) LogFatal("cannot TcpSend");
+  #endif
   FPuts(">", StdErr);
   return;
   }
@@ -56,24 +60,39 @@ const char RequestTemplate2[] =
     "Host: %d.%d.%d.%d:%d\r\n"
     "\r\n";
 
-void SendRequest(byte socknum, quad host, word port, const char* urlpath) {
-  const char* tpl = (urlpath[0]=='/') ? RequestTemplate1 : RequestTemplate2;
-  byte* hp = (byte*)&host;
-  SPrintf(packet, tpl, urlpath, hp[0], hp[1], hp[2], hp[3], port);
+const char RequestTemplate3[] =
+    "GET %s HTTP/1.0\r\n"
+    "Host: %s\r\n"
+    "\r\n";
+const char RequestTemplate4[] =
+    "GET /%s HTTP/1.0\r\n"
+    "Host: %s\r\n"
+    "\r\n";
+
+void SendRequest(byte socknum, quad host, word port, const char* hostname, const char* urlpath) {
+  if (hostname) {
+      const char* tpl = (urlpath[0]=='/') ? RequestTemplate3 : RequestTemplate4;
+      SPrintf(packet, tpl, urlpath, hostname, port);
+  } else {
+      const char* tpl = (urlpath[0]=='/') ? RequestTemplate1 : RequestTemplate2;
+      byte* hp = (byte*)&host;
+      SPrintf(packet, tpl, urlpath, hp[0], hp[1], hp[2], hp[3], port);
+  }
   SendStr(socknum, packet, strlen(packet));
 }
 
-void WGet(byte socknum, quad server_host, word server_port, const char* urlpath, const char* localfile) {
+void WGet(byte socknum, quad server_host, word server_port, const char* hostname, const char* urlpath, const char* localfile) {
   errnum err;
   prob ps;
   int fd = -1;
   err = Os9Create(localfile, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
   if (err) LogFatal("Cannot create %q: %s", localfile, err);
 
-  SendRequest(socknum, server_host, server_port, urlpath);
+  SendRequest(socknum, server_host, server_port, hostname, urlpath);
 
   word expected_block = 1;
   quad total_bytes = 0;
+  word count_not_yets = 0;
   while (1) {
     memset(packet, 0, sizeof packet);
     word cc;
@@ -84,14 +103,19 @@ void WGet(byte socknum, quad server_host, word server_port, const char* urlpath,
     // Assume the world is faster than the coco.
     // TODO -- find the Closed bit.
     // TODO -- make it work in Gomar!
-    if (total_bytes > 0 && cc == 0) break; // TODO Maybe too early!
+    // prefer count_not_yets // if (total_bytes > 0 && cc == 0) break; // TODO Maybe too early!
 
     if (ps == NotYet) {
       FPuts(".", StdErr);
+      ++count_not_yets;
+      LogInfo("NotYets=%d", count_not_yets);
+      if (count_not_yets >= 5) break;
       Os9Sleep(1);
       continue;
     }
+    #if 0
     if (ps) LogFatal("cannot TcpRecv: %s", ps);
+    #endif
 
     if (cc==0) break;
     if (packet[0]==0) break;
@@ -106,10 +130,9 @@ void WGet(byte socknum, quad server_host, word server_port, const char* urlpath,
       LogFatal("ERROR, short write: errnum %d", err);
     }
 
-    // Stop after one packet.
     FPuts(" LOOP\r", StdErr);
   }
-  FPuts("\r", StdErr);
+  FPuts(" END LOOP\r", StdErr);
 
   err = Os9Close(fd);
   if (err) {
@@ -127,10 +150,14 @@ static void FatalUsage() {
 }
 
 int main(int argc, char* argv[]) {
+  const char* hostname = NULL;
   SkipArg(&argc, &argv); // Discard argv[0], unused on OS-9.
-  while (GetFlag(&argc, &argv, "v:w:")) {
+  while (GetFlag(&argc, &argv, "h:v:w:")) {
     // GetFlag sets FlagChar & FlagArg.
     switch (FlagChar) {
+      case 'h':
+         hostname = FlagArg;
+         break;
       case 'v':
          Verbosity = (byte)prefixed_atoi(FlagArg);
          break;
@@ -149,6 +176,6 @@ int main(int argc, char* argv[]) {
   word server_port = DEFAULT_SERVER_PORT;
   quad server_addy = NyParseDottedDecimalQuadAndPort(&p, &server_port); 
   byte socknum = HttpOpen(server_addy, server_port);
-  WGet(socknum, server_addy, server_port, /*urlpath*/ argv[1], /*out filename*/argv[2]);
+  WGet(socknum, server_addy, server_port, hostname, /*urlpath*/ argv[1], /*out filename*/argv[2]);
   return 0;
 }
