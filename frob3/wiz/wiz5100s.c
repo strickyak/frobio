@@ -662,29 +662,15 @@ prob TcpRecvOrNotYet(byte socknum, char* buf, size_t n, size_t *num_bytes_out) {
   LogInfo("TCPRecvOrNotYet 1 b=%x rx=%x n=%x", base, rxbuf, n);
 
   word bytes_waiting = WizGet2(base+SK_RX_RSR0);
-  *num_bytes_out = bytes_waiting;
   LogInfo("TCPRecvOrNotYet 2 bytes_waiting=%x", bytes_waiting);
   if (bytes_waiting == 0) {
+    *num_bytes_out = 0;
     return NotYet;
   }
-
-#if 0
-  word get_offset = WizGet2(base+SK_RX_RD0) & RX_MASK;
-  word get_start_address = rxbuf + get_offset;
-
-  word n = MIN(bytes_waiting, buflen);
-
-  // Read from Wiz rxbuf into caller's buf.
-  word p = get_offset;
-  for (size_t i = 0; i < n; i++) {
-    buf[i] = WizGet1(rxbuf + p);
-    p = (p+1) & RX_MASK;
+  if (bytes_waiting > n) {
+    bytes_waiting = n;
   }
-  *num_bytes_out = n;
-
-  // advance the receive Read pointer.
-  WizPut2(base+SK_RX_RD0, n + WizGet2(base+SK_RX_RD0));
-#else
+  *num_bytes_out = bytes_waiting;
 
   // TODO -- assimilate!
 
@@ -709,7 +695,6 @@ prob TcpRecvOrNotYet(byte socknum, char* buf, size_t n, size_t *num_bytes_out) {
 
   LogInfo("TCPRecvOrNotYet 6 put=%x", rd + bytes_waiting);
   WizPut2(base+SK_RX_RD0, rd + bytes_waiting);
-#endif
 
   bool ok = Wiz__sock_command(base, SK_CR_RECV, SK_SR_ESTB);
   if (!ok) return "TcpRecvRequestBad";
