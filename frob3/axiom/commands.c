@@ -329,9 +329,9 @@ END:
 
 maybe_static char CountdownOrInitialChar() {
   PrintF("\n\nTo take control, hit space bar.\n\n");
-  for (byte i = 0; i < 3; i++) {
-    PrintF("%d... ", 3-i);
-    for (word j = 0; j < 1200; j++) {
+  for (byte i = 0; i < 5; i++) {
+    PrintF("%d... ", 5-i);
+    for (word j = 0; j < 1500; j++) {
       char initialChar = PolCat();
       if (initialChar) return initialChar;
     }

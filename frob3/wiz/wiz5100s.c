@@ -690,6 +690,10 @@ prob TcpRecvUntilOrNotYet(byte socknum, char* buf, size_t n, char until, size_t 
     *num_bytes_out = 0;
     return NotYet;
   }
+  if (bytes_waiting > n) {
+    bytes_waiting = n;
+  }
+  *num_bytes_out = bytes_waiting;
 
   word rd = WizGet2(base+SK_RX_RD0);
   word begin = rd & WIZ_RING_MASK; // begin: Beneath WIZ_RING_SIZE.
