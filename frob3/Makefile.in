@@ -52,12 +52,12 @@ axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_whole.c
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
 	cat $F/axiom/preboot3.asm _axiom_whole.s > _work.s
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
-	lwlink --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	lwobjdump _work.o > _work.objdump
-	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
-	lwlink --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
+	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
+	$(LWOBJDUMP) _work.o > _work.objdump
+	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
+	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
 axiom-whole.l3k: axiom-whole.rom
 	go run $F/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
@@ -66,12 +66,12 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_gomar.c
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'__GOMAR__' -D'NEED_STDLIB_IN_NETLIB3' _axiom_gomar.c
 	cat $F/axiom/preboot3.asm _axiom_gomar.s > _work.s
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
-	lwlink --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	lwobjdump _work.o > _work.objdump
-	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o _rework.s
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _rework.s --output=_rework.o --list=_rework.list
-	lwlink --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script _rework.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
+	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
+	$(LWOBJDUMP) _work.o > _work.objdump
+	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-gomar.s --output=axiom-gomar.o --list=axiom-gomar.list
+	$(LWLINK) --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script axiom-gomar.o  -L/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
 ###############################################
 
@@ -243,14 +243,14 @@ all-disks:
 install-on-disk: _FORCE_
 	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
 	: test -s '$(DISK)' || os9 format -l'65000' '$(DISK)'
-	os9 dir '$(DISK),CMDS' 2>/dev/null || os9 makdir '$(DISK),CMDS'
-	set -x; for x in results/CMDS/* ; do os9 copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
-	set -x; for x in results/CMDS/* ; do os9 attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
-	os9 dir '$(DISK),MODULES' 2>/dev/null || os9 makdir '$(DISK),MODULES'
-	set -x; for x in results/MODULES/* ; do os9 copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
-	set -x; for x in results/MODULES/* ; do os9 attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
-	os9 copy -r $(NITROS9)/level2/coco3/cmds/telnet '$(DISK),CMDS/telnet'
-	os9 attr -e -pe '$(DISK),CMDS/telnet'
+	$(OS9) dir '$(DISK),CMDS' 2>/dev/null || $(OS9) makdir '$(DISK),CMDS'
+	set -x; for x in results/CMDS/* ; do $(OS9) copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
+	set -x; for x in results/CMDS/* ; do $(OS9) attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
+	$(OS9) dir '$(DISK),MODULES' 2>/dev/null || $(OS9) makdir '$(DISK),MODULES'
+	set -x; for x in results/MODULES/* ; do $(OS9) copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
+	set -x; for x in results/MODULES/* ; do $(OS9) attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
+	$(OS9) copy -r $(NITROS9)/level2/coco3/cmds/telnet '$(DISK),CMDS/telnet'
+	$(OS9) attr -e -pe '$(DISK),CMDS/telnet'
 
 #######################################################################################
 # Disable RCS & SCCS patterns.
@@ -275,9 +275,9 @@ level0.loadm: $F/level0/level0c.c $F/level0/lib0.c $F/level0/level0.asm $F/level
 	cat  $F/level0/level0c.c $F/level0/lib0.c > _level0_whole.c
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _level0_whole.c
 	(echo '  .area .text'; echo '  jmp _main'; sed 's/.text.startup/.text/' < _level0_whole.s) > level0.s
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/level0.asm --output=level0.o --list=level0.list
-	lwasm --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/abort.asm --output=abort.o --list=abort.list
-	lwlink --entry=Boot0 --format=decb --output=level0.bin --map=level0.map --script=$F/helper/level0.script level0.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc abort.o
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/level0.asm --output=level0.o --list=level0.list
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/abort.asm --output=abort.o --list=abort.list
+	$(LWLINK) --entry=Boot0 --format=decb --output=level0.bin --map=level0.map --script=$F/helper/level0.script level0.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc abort.o
 
 
 #cmoc_level0.loadm: ../level0/level0c.c ../axiom/netlib3.c

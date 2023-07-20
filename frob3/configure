@@ -27,6 +27,7 @@ echo "NITROS9 directory : $NITROS9"
 LWASM=$(which lwasm || fail "Cannot find 'lwasm' command.")
 LWAR=$(which lwar || fail "Cannot find 'lwar' command.")
 LWLINK=$(which lwlink || fail "Cannot find 'lwlink' command.")
+LWOBJDUMP=$(which lwobjdump || fail "Cannot find 'lwobjdump' command.")
 CMOC=$(which cmoc || fail "Cannot find 'cmoc' command.")
 GCC6809=$(which m6809-unknown-gcc || fail "Cannot find 'm6809-unknown-gcc' command.")
 OS9=$(which os9 || fail "Cannot find 'os9' command.")
@@ -36,6 +37,7 @@ GO=$(which go || fail "Cannot find 'go' command.")
 test -x "$LWASM" || fail "Cannot find 'lwasm' command."
 test -x "$LWAR" || fail "Cannot find 'lwar' command."
 test -x "$LWLINK" || fail "Cannot find 'lwlink' command."
+test -x "$LWOBJDUMP" || fail "Cannot find 'lwobjdump' command."
 test -x "$CMOC" || fail "Cannot find 'cmoc' command."
 test -x "$GCC6809" || fail "Cannot find 'm6809-unknown-gcc' command."
 test -x "$OS9" || fail "Cannot find 'os9' command."
@@ -53,22 +55,24 @@ echo Found go at $GO
 
 echo Writing config.txt
 cat <<,,,,,,,, >config.txt
-export F=$F
-export NITROS9=$NITROS9
+export SHELL:="/bin/bash"
 
-export LWASM=$LWASM
-export LWAR=$LWAR
-export LWLINK=$LWLINK
+export F:=$F
+export NITROS9:=$NITROS9
 
-export CMOC=$CMOC
-export CMOCI=$(dirname $(dirname $CMOC))/share/cmoc/include
-export CMOCL=$(dirname $(dirname $CMOC))/share/cmoc/lib
+export LWASM:=$LWASM
+export LWAR:=$LWAR
+export LWLINK:=$LWLINK
 
-export GCC6809=$GCC6809
-export OS9=$OS9
-export DECB=$DECB
-export GO=$GO
-export BUILD=$BUILD
+export CMOC:=$CMOC
+export CMOCI:=$(dirname $(dirname $CMOC))/share/cmoc/include
+export CMOCL:=$(dirname $(dirname $CMOC))/share/cmoc/lib
+
+export GCC6809:=$GCC6809
+export OS9:=$OS9
+export DECB:=$DECB
+export GO:=$GO
+export BUILD:=$BUILD
 ,,,,,,,,
 
 cp -v $F/Makefile.in Makefile
