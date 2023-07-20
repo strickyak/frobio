@@ -63,6 +63,7 @@ export NITROS9:=$NITROS9
 export LWASM:=$LWASM
 export LWAR:=$LWAR
 export LWLINK:=$LWLINK
+export LWOBJDUMP:=$LWOBJDUMP
 
 export CMOC:=$CMOC
 export CMOCI:=$(dirname $(dirname $CMOC))/share/cmoc/include
