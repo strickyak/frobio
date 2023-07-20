@@ -55,7 +55,7 @@ echo Found go at $GO
 
 echo Writing config.txt
 cat <<,,,,,,,, >config.txt
-export SHELL:="/bin/bash"
+export SHELL := /bin/bash
 
 export F:=$F
 export NITROS9:=$NITROS9
