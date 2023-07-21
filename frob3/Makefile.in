@@ -1,6 +1,8 @@
 include config.txt
 
 all: all-the-things
+	find *.dsk *.lem results -type f -print | LC_ALL=C sort
+
 all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results all-lemma
 
 # Quick assertion that we have the right number of things.
