@@ -63,6 +63,22 @@ size_t strlen(const char *s);
 //
 //////////////////////////////////////////////////
 
+// for-experimental-jump {
+struct regs6809 {
+  byte CC; // 7FF0
+  word D; // 7FF1
+  byte DP; // 7FF3
+  word X; // 7FF4
+  word Y; // 7FF6
+  word U; // 7FF8
+  word PC; // S points here for RTI. // 7FFA
+  word S;  // Not consumed by RTI. // 7FFC
+  word Z;  // temp PC and padding for 16 bytes. // 7FFE
+};
+
+typedef byte jmp_buf[16];  // matching struct regs6809.
+// for-experimental-jump }
+
 struct wiz_port {
   byte command;
   word addr;
@@ -75,8 +91,12 @@ struct sock_vars {
 };
 
 struct vars {
-    struct RomApi3 *rom_api_3;
+    struct RomApi3 *rom_api_3_DEPRECATED;
     word vars_magic;
+// for-experimental-jump {
+    void (*rejoin_loop)();
+    jmp_buf rejoin_loop_buf;
+// for-experimental-jump }
     word s_reg;  // Original Stack Pointer, for idea of mem size.
     volatile struct wiz_port* wiz_port;
     byte hostname[8];
@@ -155,6 +175,9 @@ enum Commands {
   CMD_DATA = 204,
   CMD_SP_PC = 205,
   CMD_REV = 206,
+// for-experimental-jump {
+  CMD_RTI = 214,
+// for-experimental-jump }
   CMD_JSR = 255,
 };
 

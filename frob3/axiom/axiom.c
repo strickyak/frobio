@@ -49,10 +49,13 @@ errnum WizRecvChunkTry(const struct sock* sockp, char* buf, size_t n) {
 }
 
 errnum WizRecvChunk(const struct sock* sockp, char* buf, size_t n) {
+  PrintH("WizRecvChunk %x...", n);
   errnum e;
   do {
     e = WizRecvChunkTry(SOCK_AND buf, n);
   } while (e == NOTYET);
+  PrintH("WRC %x: %x %x %x %x %x.", n,
+      buf[0], buf[1], buf[2], buf[3], buf[4]);
   return e;
 }
 errnum WizRecvChunkBytes(const struct sock* sockp, byte* buf, size_t n) {
@@ -127,11 +130,14 @@ void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t
 }
 
 errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
+  PrintH("Ax WizSendChunk %x@%x : %x %x %x %x %x", n, data, 
+      data[0], data[1], data[2], data[3], data[4]);
   errnum e = WizCheck(JUST_SOCK);
   if (e) return e;
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND proto, n);
+  PrintH("Ax WSC.");
   return OKAY;
 }
 errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
@@ -153,18 +159,42 @@ void WizClose(PARAM_JUST_SOCK) {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-errnum LemmaClientS1() {
+ #if FOR_EXPERIMENTAL_JUMP
+extern void sys_rti();
+extern void sys_rti_setjmp();
+
+void RejoinLoop() {
+    memcpy((void*)0x7FF0, (void*)Vars->rejoin_loop_buf,
+           sizeof (jmp_buf));
+}
+
+void LemmaClientS1Loop() { // new style loops, because setjmp.
+ #else
+errnum LemmaClientS1() {  // old style does not loop.
+ #endif
   char quint[5];
   char inkey;
-  bool e;
+  errnum e;  // was bool e, but that was a mistake.
+
+ #if FOR_EXPERIMENTAL_JUMP
+  while (1) {
+    sys_rti_setjmp();
+    memcpy((void*)Vars->rejoin_loop_buf, (void*)0x7FF0,
+        sizeof (jmp_buf));
+ #endif
 
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
       quint[4] = inkey;
+ #if FOR_EXPERIMENTAL_JUMP
+      e = TcpSend(SOCK1_AND quint, sizeof quint);
+      if (e) goto Fail;
+ #else
       e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
       if (e) return e;
+ #endif
     }
 
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
@@ -190,10 +220,24 @@ errnum LemmaClientS1() {
 
             quint[0] = CMD_DATA;
             WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
+ #if FOR_EXPERIMENTAL_JUMP
+            PrintH("PEEK sent 5\n", n, p);
+            e = TcpSend(SOCK1_AND (char*)p, n);
+            if (e) goto Fail;
+            PrintH("PEEK sent %d, DONE\n", n);
+ #else
             TcpSend(SOCK1_AND (char*)p, n);
             PrintH("PEEK DONE\n");
+ #endif
           }
           break;
+ #if FOR_EXPERIMENTAL_JUMP
+        case CMD_RTI:
+          {
+            sys_rti();
+            break;
+          }
+ #endif
         case CMD_JSR:
           {
             func fn = (func)p;
@@ -205,8 +249,17 @@ errnum LemmaClientS1() {
           Fatal("WUT?", quint[0]);
           break;
       } // switch
+ #if FOR_EXPERIMENTAL_JUMP
+    } else if (e != NOTYET) {
+      goto Fail;
+    }
+  }
+Fail:
+  Fatal("BOTTOM", e);
+ #else
     }
     return (e==NOTYET) ? OKAY : e;
+ #endif
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -221,8 +274,11 @@ void main2() {
     memset(Vars, 0, sizeof (struct vars));
     // From the address of main, we can determine if we
     // are netboot3 at $Cxxx or exoboot3 at $6xxx.
-    Vars->rom_api_3 = (struct RomApi3*)(
-        ((word)(&main) & 0xE000) | 0x0100);
+ #if FOR_EXPERIMENTAL_JUMP
+    Vars->rejoin_loop = &RejoinLoop;
+ #endif
+    // Deprecated // Vars->rom_api_3 = (struct RomApi3*)(
+    // Deprecated //     ((word)(&main) & 0xE000) | 0x0100);
 
     Vars->vars_magic = VARS_MAGIC;
     Vars->wiz_port = (struct wiz_port*) WIZ_PORT;
@@ -277,10 +333,14 @@ void main2() {
     PrintF(" CONN; ");
     Delay(50000);
 
+ #if FOR_EXPERIMENTAL_JUMP
+    LemmaClientS1Loop();  // never returns.
+ #else
     while (1) {
         errnum e = LemmaClientS1();
         if (e) Fatal("BOTTOM", e);
     }
+ #endif
 }
 
 void CallWithNewStack(word new_stack, word func) {

@@ -20,11 +20,7 @@
 *** But it is intended that this will eventually call
 *** the RomMain() routine for the netboot ROM.
 
-*		IFNE WHOLE_PROGRAM
-*    IMPORT _main
-*		ELSE
     IMPORT _RomMain
-*		ENDC
 
     SECTION preboot
 		fcb 'D'
@@ -32,6 +28,9 @@
 
     EXPORT program_start
     EXPORT _abort
+** for-experimental-jump {
+    EXPORT _sys_rti
+** for-experimental-jump }
 
 program_start
     orcc #$50   ; disable interrupts
@@ -65,6 +64,51 @@ di_loop
     bpl di_loop
 di_stuck
     bra di_stuck
+
+** for-experimental-jump {
+; Saves state.
+; But first, turns off interrupts.
+_sys_rti_setjmp
+    stu $7ff8 ; for U
+		ldu #$7ff8
+		orcc #$D0 ; set bits I, F, E.
+		pshu y,x,dp,b,a,cc
+
+		ldu _sys_rti_setjmp_comefrom,pcr
+		stu $7ffa ; for PC
+
+		sts $7ffc ; for S
+
+    ldu $7ff8 ; restore U
+
+_sys_rti_setjmp_comefrom
+    rts
+
+*** sys_rti() uses 0x7FF0..0x7FFF for desired struct regs6809.
+* struct regs6809 {
+*   byte CC; // 7FF0
+*   word D; // 7FF1
+*   byte DP; // 7FF3
+*   word X; // 7FF4
+*   word Y; // 7FF6
+*   word U; // 7FF8
+*   word PC; // S points here for RTI. // 7FFA
+*   word S;  // Not consumed by RTI. // 7FFC
+*   word Z;  // temp PC and padding for 16 bytes. // 7FFE
+* };
+* typedef byte jmp_buf[16];  // matching struct regs6809.
+_sys_rti
+    ldx $7FFA  ; desired PC, first in struct regs6809.
+		stx $7FFE  ; save in Z slot.
+		ldx #rti_finisher
+    stx $7FFA  ; substitute our finisher for PC slot.
+		lds #$7FF0 ; prepare S for RTI.
+		rti
+rti_finisher
+    lds $7FFC   ; desired S slot.
+    jmp [$7FFE] ; desired PC is in Z slot..
+; and now we're running the user program.
+** for-experimental-jump }
 
 id_string  fcs / -- STRICKYAK FROBIO PREBOOT -- /
 
