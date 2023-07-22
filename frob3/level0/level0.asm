@@ -3,6 +3,7 @@
 ; (Tentative Initial) Memory Conventions
 ; System Stack from Lemma: $7FFF and downward.
 ***  org 0
+Sys_RTI equ $7FF0  ; and upward 16 bytes.
 Sys_Data equ $7E00  ; and upward
 Sys_Load equ $7000  ; and upward
 
@@ -11,6 +12,8 @@ Usr_Stack equ $2FF0 ; and downward
 Usr_Data  equ $0800 ; and upward
 
 VDG_Text equ $400  ; and upward thru $5FF
+
+CASBUF equ $01DA ; where Lemma puts Vars
 
 ; Above $8000 (ROM space) was problematic?
 ; $0600-$07FF is unused, I think.
@@ -123,11 +126,16 @@ Do_Interrupt:
 	tstb
 	bne Abort
 
-	rts             ; return to Lemma Loop.
+  jsr [CASBUF+2] ; Return To Lemma
+stuck
+	bra stuck  ; or get stuck.
 
 YieldingQuint
 	fcb 199   ; 199 means Level0 yields.
-	fill 4,0
+	fcb 0
+	fcb 0
+	fcb 0
+	fcb 0
 
 Abort:
   bra Abort

@@ -462,13 +462,14 @@ void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t
 }
 
 errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
-  PrintH("WizSendChunk");
+  PrintH("Lib0WizSendChunk %x:%x %x %x %x %x...", n, data[0], data[1], data[2], data[3], data[4] );
   errnum e = WizCheck(JUST_SOCK);
-  if (e) { PrintH("WizCheck->%x", e); }
+  if (e) { PrintH("Lib0WizCheck-> ERR %x", e); }
   if (e) return e;
   WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND data, n);
   WizFinalizeSend(SOCK_AND proto, n);
+  PrintH("Lib0WizSendChunk %x:%x Sent.", n, data[0]);
   return OKAY;
 }
 errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
@@ -480,6 +481,7 @@ errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
     n -= chunk;
     p += chunk;
   }
+  PrintH("TcpSend: Sent.");
   return OKAY;
 }
 

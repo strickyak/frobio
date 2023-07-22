@@ -31,6 +31,8 @@ const (
 	CMD_POKE = 0
 	CMD_CALL = 255
 
+	CMD_LEVEL0 = 199 // when Level0 needs attention, it sends 199.
+
 	CMD_LOG     = 200
 	CMD_INKEY   = 201
 	CMD_PUTCHAR = 202
@@ -46,6 +48,8 @@ const (
 	CMD_BOOT_BEGIN  = 211 // boot_lemma
 	CMD_BOOT_CHUNK  = 212 // boot_lemma
 	CMD_BOOT_END    = 213 // boot_lemma
+
+	CMD_RTI = 214
 )
 
 var Demos map[string]func(net.Conn)
@@ -62,12 +66,35 @@ func Lo(x uint) byte {
 	return 255 & byte(x)
 }
 
-func WriteFive(conn net.Conn, cmd byte, a uint, b uint) {
-	log.Printf("WriteFive: %x %x %x", cmd, a, b)
-	_, err := conn.Write([]byte{cmd, Hi(a), Lo(a), Hi(b), Lo(b)}) // == WriteFull
+func WriteFive(conn net.Conn, cmd byte, n uint, p uint) {
+	log.Printf("WriteFive: %d.=%x %x %x", cmd, cmd, n, p)
+	_, err := conn.Write([]byte{cmd, Hi(n), Lo(n), Hi(p), Lo(p)}) // == WriteFull
 	if err != nil {
 		log.Panicf("writeFive: stopping due to error: %v", err)
 	}
+}
+func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
+	quint := make([]byte, 5)
+	log.Printf("ReadFive...")
+	_, err := io.ReadFull(conn, quint)
+	if err != nil {
+		log.Panicf("ReadFive: stopping due to error: %v", err)
+	}
+	cmd = quint[0]
+	n = HiLo(quint[1], quint[2])
+	p = HiLo(quint[3], quint[4])
+	log.Printf("ReadFive: %d.=%02x %04x %04x", cmd, cmd, n, p)
+	return
+}
+
+func ReadN(conn net.Conn, n uint) []byte {
+	bb := make([]byte, n)
+	log.Printf("ReadN...")
+	_, err := io.ReadFull(conn, bb)
+	if err != nil {
+		log.Panicf("ReadN=%d.: stopping due to error: %v", n, err)
+	}
+	return bb
 }
 
 func PokeRam(conn net.Conn, addr uint, data []byte) {
@@ -119,29 +146,25 @@ func SeekSectorReturnLSN(block *os.File, n uint, p uint) int64 {
 func ReadFiveLoop(conn net.Conn, ses *Session) {
 	var block0 *os.File
 
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Printf("ReadfiveLoop terminating with recovered: %v", r)
-		}
-		/*
-			if block0 != nil {
-				log.Printf("ReadfiveLoop closing block0: %q", block0.Name())
-				block0.Close()
+	/*
+		defer func() {
+			r := recover()
+			if r != nil {
+				log.Printf("ReadfiveLoop terminating with recovered: %v", r)
 			}
-		*/
-	}()
+		}()
+	*/
 
 	quint := make([]byte, 5)
 	for {
-		log.Printf("for: ddt will ReadFive")
-		_, err := io.ReadFull(conn, quint)
-		if err != nil {
-			log.Panicf("ReadFive: stopping due to error: %v", err)
-		}
-		log.Printf("ddt ReadFive %#v", quint)
+		log.Printf("for: ddt will Read5")
+		//_, err := io.ReadFull(conn, quint)
+		//if err != nil {
+		//log.Panicf("ReadFive: stopping due to error: %v", err)
+		//}
+		//log.Printf("ddt ReadFive %#v", quint)
 
-		cmd, n, p := quint[0], HiLo(quint[1], quint[2]), HiLo(quint[3], quint[4])
+		cmd, n, p := ReadFive(conn)
 		log.Printf("ReadFive: cmd=%02x n=%04x p=%04x ...", cmd, n, p)
 
 		switch cmd {
@@ -244,6 +267,9 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
 
 			}
+		case CMD_LEVEL0:
+			Level0Control(conn, ses)
+
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
 		} // end switch

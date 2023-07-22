@@ -4,11 +4,16 @@
 #define VERBOSE 3 // 9 // 6 // 3
 #define PRINTK 1
 
-#define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
+#define VDG_RAM  0x0400  // default 32x16 64-char screen
+#define VDG_END  0x0600
+#define VARS_RAM 0x0610
+#define SYS_RTI  0x7FF0  // and upward 16 bytes.
 
+#define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
 #define WIZ_PORT  0xFF68   // Hardware port.
 
-#define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
+#define CASBUF 0x01DA
+#define RETURN ( (void (*)()) (CASBUF+2) )
 
 // Conventional types and constants for Frobio
 typedef unsigned char bool;
@@ -66,6 +71,18 @@ struct sock_vars {
   word tx_to_go;
 };
 
+struct regs6809 {
+  word PC; // S points here for RTI.
+  word U;
+  word Y;
+  word X;
+  byte DP;
+  word D;
+  byte CC;
+  word S;  // Not consumed by RTI.
+  word Z;  // padding for 16 bytes.
+};
+
 struct vars {
   volatile struct wiz_port *wiz_port;
   struct sock_vars sock_vars[4];
@@ -74,14 +91,8 @@ struct vars {
   word vdg_ptr;
 };
 
-#define VARS_MAGIC 0x0756 /* ^G V global vars */
-
-#define VARS_RAM (CASBUF)
 #define Vars ((struct vars*)VARS_RAM)
 #define WIZ  (Vars->wiz_port)
-
-#define VDG_RAM  0x0400  // default 32x16 64-char screen
-#define VDG_END  0x0600
 
 // This was an indication of waiting in loops.
 // #define LIVENESS(N) {++ *(byte*)(VDG_RAM+N);}
