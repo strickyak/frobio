@@ -167,6 +167,11 @@ fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS)
 
 #######################################################################################
 
+octet2.o: $F/octet/octet2.c $F/octet/octet2.h
+	$(COMPILE_NET_LIB)
+
+#######################################################################################
+
 # NCL is currently broken (link errors).
 NCL_CMDS = f.ncl.os9cmd
 _ncl_cmds: $(NCL_CMDS) _NOT_WORKING_YET_
