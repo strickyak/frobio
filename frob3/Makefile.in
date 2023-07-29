@@ -25,6 +25,9 @@ HDRS = $F/froblib.h $F/frobnet.h $F/frobos9.h $F/frobtype.h
 CMOCI=$F/../../share/cmoc/include
 CMOCL=$F/../../share/cmoc/lib
 
+#LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  
+LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport
+
 ###############################################
 
 results:
@@ -169,6 +172,24 @@ fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS)
 
 octet2.o: $F/octet/octet2.c $F/octet/octet2.h
 	$(COMPILE_NET_LIB)
+
+#######################################################################################
+
+wc.os9cmd: /sy/gosub/demo/wc.go octet2.o
+	d=$$(pwd) && cd /sy/gosub/ && $(GO) build gosub.go && cp gosub $$d/
+	t=$$(basename $@ .os9cmd).gosub && rm -rf $$t && mkdir $$t $$t/runtime
+	t=$$(basename $@ .os9cmd).gosub && cd $$t && ../gosub <"$<" --libdir /sy/gosub/lib > ___.defs.h 2>___.err
+	t=$$(basename $@ .os9cmd).gosub && cp -av $$(ls /sy/gosub/runtime/*.[ch] | grep -v /unix_) $$t/runtime
+	set -ex; t=$$(basename $@ .os9cmd).gosub && cd $$t && set -x; for x in *.c ; do $(CMOC) -i -I. -I../../frobio/ -S $$x ; done
+	set -ex; t=$$(basename $@ .os9cmd).gosub && cd $$t && set -x; for x in runtime/*.c ; do $(CMOC) -i -I. -I../../frobio/ -S $$x ; done
+	#-- t=$$(basename $@ .os9cmd).gosub && $(CMOC) -i --os9 --function-stack=0 -I../frobio/ $$t/*.s --#
+	set -ex; t=$$(basename $@ .os9cmd).gosub && cd $$t && for x in *.s; do $(LWASM_C) -o $$(basename $$x .s).o $$x ; done
+	# set -ex; t=$$(basename $@ .os9cmd).gosub && cd $$t && for x in *.s; do $(LWASM_C) $$x ; done
+	set -ex; t=$$(basename $@ .os9cmd).gosub && ls . && ls $$t
+	set -ex; t=$$(basename $@ .os9cmd).gosub && lwar -c lib$@.a $$t/*.o
+	set -ex; $(LWLINK) $(O_FILES_FOR_NET_CMDS) octet2.o -L. -l$@  -L../frobio/frob3/../../share/cmoc/lib -L/home/strick/coco-shelf/share/cmoc/lib -lcmoc-crt-os9 -lcmoc-std-os9 
+
+
 
 #######################################################################################
 
