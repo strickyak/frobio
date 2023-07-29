@@ -80,9 +80,9 @@ typedef byte jmp_buf[16];  // matching struct regs6809.
 // for-experimental-jump }
 
 struct wiz_port {
-  byte command;
-  word addr;
-  byte data;
+  volatile byte command;
+  volatile word addr;
+  volatile byte data;
 };
 
 struct sock_vars {

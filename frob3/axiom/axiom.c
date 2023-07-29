@@ -294,7 +294,7 @@ void main2() {
 
     // Record Vars->s_reg, to give some idea of memory size.
     word s_reg = StackPointer();
-    PrintF("main=%x stack=%x\n", &main, s_reg);
+    PrintF("main=%x stack=%x nando=0729\n", &main, s_reg);
     Vars->s_reg = s_reg;
 
     DoKeyboardCommands();
