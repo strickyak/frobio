@@ -1,9 +1,9 @@
 include config.txt
 
 all: all-the-things
-	find *.dsk *.lem results -type f -print | LC_ALL=C sort
+	find results -type f -print | LC_ALL=C sort
 
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results all-lemma
+all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom all-disks all-lemmings results
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -29,11 +29,24 @@ CMOCL=$F/../../share/cmoc/lib
 
 results:
 	rm -rf results
-	mkdir -p results results/CMDS results/MODULES
+	mkdir -p results results/CMDS results/MODULES results/BOOTING results/OS9DISKS results/LEMMINGS
 	set -x; for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
+	:
+	ln *.dsk results/OS9DISKS
+	ln *.lem results/LEMMINGS
+	:
+	cp -v $F/booting/README.md results/BOOTING/README.md
+	decb dskini results/BOOTING/netboot3.dsk
+	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS
+	decb copy -3 -a $F/booting/README.md results/BOOTING/netboot3.dsk,README.md
+	decb copy -2 -b axiom-whole.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
+	decb copy -2 -b axiom-whole6k.decb results/BOOTING/netboot3.dsk,EXOBOOT.BIN
+	decb dir results/BOOTING/netboot3.dsk
+	ls -l results/BOOTING/
+
 
 ###############################################
 
@@ -48,7 +61,7 @@ _FORCE_:
 
 ###############################################
 
-all-axiom: axiom-whole.rom axiom-whole.l3k
+all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
 
 axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_whole.c
@@ -60,6 +73,9 @@ axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
 	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+
+axiom-whole6k.decb: axiom-whole.rom
+	$(LWLINK) --output=axiom-whole6k.decb --map=axiom-whole6k.map --decb --script=$F/helper/axiom6k.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
 axiom-whole.l3k: axiom-whole.rom
 	go run $F/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
@@ -228,8 +244,6 @@ boot.lemma.os9mod : boot_lemma.asm
 	$(LWASM_FOR_DRIVER)
 
 #######################################################################################
-
-all-lemma: all-disks all-lemmings
 
 all-lemmings:
 	go run $F/lemmings/*.go --nitros9dir='$(NITROS9)'
