@@ -1,9 +1,11 @@
-include config.txt
+# This file `frob3.mk` lives in frobio/frob3 but is included
+# from the directory where you actually build (whose Makefile
+# is created and configured by ./configure).
 
 all: all-the-things
 	find results -type f -print | LC_ALL=C sort
 
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom all-disks all-lemmings results
+all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 all-disks all-lemmings results2
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -30,17 +32,18 @@ LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importu
 
 ###############################################
 
-results:
+results1:
 	rm -rf results
-	mkdir -p results results/CMDS results/MODULES results/BOOTING results/OS9DISKS results/LEMMINGS
+	mkdir -p results/CMDS results/MODULES
 	set -x; for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
-	:
+
+results2: results1
+	mkdir -p results/BOOTING results/OS9DISKS results/LEMMINGS
 	ln *.dsk results/OS9DISKS
 	ln *.lem results/LEMMINGS
-	:
 	cp -v $F/booting/README.md results/BOOTING/README.md
 	decb dskini results/BOOTING/netboot3.dsk
 	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS

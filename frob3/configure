@@ -7,7 +7,7 @@ function fail () {
   exit 13
 }
 
-BUILD="$PWD"
+BUILD="$(/bin/pwd)"
 echo "BUILD directory : $BUILD"
 F=$(dirname $0)
 echo "FROB3 directory : $F"
@@ -54,7 +54,7 @@ echo Found decb at $DECB
 echo Found go at $GO
 
 echo Writing config.txt
-cat <<,,,,,,,, >config.txt
+cat <<,,,,,,,, >Makefile
 export SHELL := /bin/bash
 
 export F:=$F
@@ -73,8 +73,9 @@ export GCC6809:=$GCC6809
 export OS9:=$OS9
 export DECB:=$DECB
 export GO:=$GO
-export BUILD:=$BUILD
+#notused# export BUILD:=$BUILD
+
+include \$F/frob3.mk
 ,,,,,,,,
 
-cp -v $F/Makefile.in Makefile
 echo "OKAY."
