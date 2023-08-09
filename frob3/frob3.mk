@@ -5,7 +5,7 @@
 all: all-the-things
 	find results -type f -print | LC_ALL=C sort
 
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 all-disks all-lemmings results2
+all-the-things: all-gen-api all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 all-disks all-lemmings results2
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -29,6 +29,8 @@ CMOCL=$F/../../share/cmoc/lib
 
 #LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  
 LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport
+
+NOMOD = GO111MODULE=off
 
 ###############################################
 
@@ -67,6 +69,14 @@ _FORCE_:
 
 ###############################################
 
+all-gen-api: _generated_os9api_for_cmoc.h _generated_os9api_for_cmoc.asm
+
+_generated_os9api_for_cmoc.h:
+	$(GO) run $A/helper/api-generator/*.go
+
+_generated_os9api_for_cmoc.asm: _generated_os9api_for_cmoc.h
+  
+
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
 
 axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
@@ -76,7 +86,7 @@ axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
 	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 	$(LWOBJDUMP) _work.o > _work.objdump
-	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
+	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
 	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
@@ -84,7 +94,7 @@ axiom-whole6k.decb: axiom-whole.rom
 	$(LWLINK) --output=axiom-whole6k.decb --map=axiom-whole6k.map --decb --script=$F/helper/axiom6k.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
 axiom-whole.l3k: axiom-whole.rom
-	go run $F/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
+	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
 
 axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_gomar.c
@@ -93,7 +103,7 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
 	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 	$(LWOBJDUMP) _work.o > _work.objdump
-	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
+	$(NOMOD) $(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-gomar.s --output=axiom-gomar.o --list=axiom-gomar.list
 	$(LWLINK) --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script axiom-gomar.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
@@ -102,20 +112,22 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd
 all-net-cmds: $(NET_CMDS)
 
-O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
+O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o _generated_os9api_for_cmoc.o
 
 CDEFS = -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
 LIB_CDEFS = -D"BASENAME=\"$$(basename $@ .o)\"" $(CDEFS)
 CMD_CDEFS = -D"BASENAME=\"$$(basename $@ .os9cmd)\"" $(CDEFS)
 
-COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
+COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
 
-COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
+COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
 
 C_FILES_FOR_CMOC_ARCHIVE = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c $F/wiz/wiz5100s.c $F/os9/frobos9.c
 _chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
 	sh $F/helper/cmoc-chopped.sh _chopped.a "$^" $(CDEFS) -I$F/..
 
+_generated_os9api_for_cmoc.o: _generated_os9api_for_cmoc.asm
+	$(LWASM) --obj -o $@ $<
 stack300.o: $F/froblib/stack300.asm
 	$(LWASM) --obj -o $@ $<
 buf.o: $F/froblib/buf.c
@@ -270,7 +282,7 @@ boot.lemma.os9mod : boot_lemma.asm
 #######################################################################################
 
 all-lemmings:
-	go run $F/lemmings/*.go --nitros9dir='$(NITROS9)'
+	$(NOMOD) $(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)'
 
 all-disks:
 	: # These should have already been done by the Shelf....
@@ -280,9 +292,13 @@ all-disks:
 	: #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
 	: # .....................................................
 	cp -v '$(NITROS9)/level2/coco3/NOS9_6809_L2_cocosdc.dsk' Nitros9_Coco3_M6809_Level2.dsk
+	bash /frob3/helper/make-big-floppy.sh '$(NITROS9)/level2/coco3/NOS9_6809_L2_80d.dsk' Nitros9_Coco3_M6809_Level2_80d_big.dsk
 	cp -v '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_cocosdc.dsk' Nitros9_Coco3_H6309_Level2.dsk
+	bash /frob3/helper/make-big-floppy.sh '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_80d.dsk' Nitros9_Coco3_H6309_Level2_80d_big.dsk
 	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2.dsk
+	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2_80d_big.dsk
 	make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2.dsk
+	make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2_80d_big.dsk
 
 #######################################################################################
 

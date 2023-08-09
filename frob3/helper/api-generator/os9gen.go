@@ -6,10 +6,27 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+  "strings"
 )
 
 func main() {
 	PrintCalls()
+}
+
+func XType(s string) string {
+  vec := strings.Split(s, ":")
+  if len(vec)==2 {
+    return vec[0]
+  }
+  return "word"
+}
+
+func XName(s string) string {
+  vec := strings.Split(s, ":")
+  if len(vec)==2 {
+    return vec[1]
+  }
+  return s
 }
 
 // assumes all args are on stack.
@@ -32,7 +49,7 @@ func (c *call) FormatArgsForCmoc() string {
 		off += 2
 	}
 	if c.x != "" {
-		Fprintf(&bb, "    /*%d*/ word %s,\n", off, c.x)
+		Fprintf(&bb, "    /*%d*/ %s %s,\n", off, XType(c.x), XName(c.x))
 		c.x_off = off
 		off += 2
 	}
@@ -61,7 +78,7 @@ func (c *call) FormatArgsForCmoc() string {
 		c.rd_off = off
 		off += 2
 	}
-	if c.rx != "" {
+	if c.rx != "" && !strings.HasPrefix(c.rx, "OMIT_") {
 		Fprintf(&bb, "    /*%d*/ word* %s_out,\n", off, c.rx)
 		c.rx_off = off
 		off += 2
@@ -94,8 +111,8 @@ func PrintAsmForCmoc(c *call, w io.Writer) {
 	P("")
 	P("*** %#v", c)
 	P("")
-	P("   EXPORT _NewOs9%s", c.name[2:])
-	P("_NewOs9%s", c.name[2:])
+	P("   EXPORT _Os9%s", c.name[2:])
+	P("_Os9%s", c.name[2:])
 
 	// Always save and restore Y,U
 	P("    pshs Y,U")
@@ -136,7 +153,7 @@ func PrintAsmForCmoc(c *call, w io.Writer) {
 	if c.rd != "" {
 		P("    std [%d,s]  ; %s", base+c.rd_off, c.rd)
 	}
-	if c.rx != "" {
+	if c.rx != "" && !strings.HasPrefix(c.rx, "OMIT_") {
 		P("    stx [%d,s]  ; %s", base+c.rx_off, c.rx)
 	}
 	if c.ry != "" {
@@ -159,7 +176,7 @@ func PrintCalls() {
 	Fprintf(&gen_hdr, "#include \"frob3/froblib.h\"\n")
 
 	for _, c := range Calls {
-		Fprintf(&gen_hdr, "\nextern errnum NewOs9%s(\n", c.name[2:])
+		Fprintf(&gen_hdr, "\nextern errnum Os9%s(\n", c.name[2:])
 		Fprintf(&gen_hdr, "%s);\n", c.FormatArgsForCmoc())
 	}
 	Fprintf(&gen_hdr, "#endif\n")

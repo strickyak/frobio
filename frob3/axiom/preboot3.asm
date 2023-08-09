@@ -74,7 +74,8 @@ _sys_rti_setjmp
 		orcc #$D0 ; set bits I, F, E.
 		pshu y,x,dp,b,a,cc
 
-		ldu _sys_rti_setjmp_comefrom,pcr
+		****wrong***leau*** ldu _sys_rti_setjmp_comefrom,pcr
+		leau _sys_rti_setjmp_comefrom,pcr
 		stu $7ffa ; for PC
 
 		sts $7ffc ; for S

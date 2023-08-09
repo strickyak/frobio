@@ -1,7 +1,13 @@
 *** SECTION code
 
+; An indirect jump to rejoin the main2 program.
+REJOIN_MAIN2 EQU $07FE ; Just before $0800.
+USER_SREG EQU $07FC ; The interrupted user Stack Pointer, for RTI.
+WHICH_INTERRUPT EQU $07FB ; one byte to ID interrupt.
+SYS_STACK EQU $07F8
+
 ; (Tentative Initial) Memory Conventions
-; System Stack from Lemma: $7FFF and downward.
+; System Stack from Lemma: $7FFF and downward, or $07F8 and downward.
 ***  org 0
 Sys_RTI equ $7FF0  ; and upward 16 bytes.
 Sys_Data equ $7E00  ; and upward
@@ -21,9 +27,9 @@ CASBUF equ $01DA ; where Lemma puts Vars
 ; $0000-$03FF unused except CASBUF at $01DA
 
 ; Global Vars
-G_SysSP equ $7E00  ; word
-G_UsrSP equ $7E02  ; word
-G_Which  equ $7E04  ; which interrupt vector
+;XX; G_SysSP equ $7E00  ; word
+;XX; G_UsrSP equ $7E02  ; word
+;XX; G_Which  equ $7E04  ; which interrupt vector
 
 G_Quint  equ $7E10  ; Quint Buffer, 5 bytes.
 G_QuintN equ $7E11  ; N inside Quint
@@ -42,7 +48,7 @@ IV_RESTART  equ  $FFFE
 Boot0 EXPORT
 Boot0:
   orcc #$50        ; disable interrupts
-  sts  G_SysSP     ; remember our return stack
+;XX;  sts  G_SysSP     ; remember our return stack
 
   ; make sure ROM is copied to RAM
 	ldx #$7000
@@ -83,37 +89,39 @@ bloop:
 
 Do_SWI3:
 	ldb #7&(IV_SWI3/2)
-	stb G_Which
+	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_FIRQ:
 	ldb #7&(IV_FIRQ/2)
-	stb G_Which
+	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_IRQ:
 	ldb #7&(IV_IRQ/2)
-	stb G_Which
+	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_SWI:
 	ldb #7&(IV_SWI/2)
-	stb G_Which
+	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_NMI:
 	ldb #7&(IV_NMI/2)
-	stb G_Which
+	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_RESTART:
 	ldb #7&(IV_RESTART/2)
-	stb G_Which
+	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_SWI2:
 	ldb #7&(IV_SWI2/2)
-	stb G_Which
-  bra Do_Interrupt ; or fall through
+	stb WHICH_INTERRUPT
+  ; bra Do_Interrupt ; or fall through
 
 Do_Interrupt:
+  stb YieldingQuint+2
+  sts YieldingQuint+3
+	sts USER_SREG    ; Remember where User Stacked, for later RTI.
+  ; lds #SYS_STACK   ; Restart on System Stack.
   jsr _SayReturnToLemma
-	sts G_UsrSP
-  lds G_SysSP     ; remember our return stack
 
   ldb #1    ; first byte input goes in B.
 	jsr _SockNumber
@@ -126,19 +134,19 @@ Do_Interrupt:
 	tstb
 	bne Abort
 
-  jsr [CASBUF+2] ; Return To Lemma
+  jsr [REJOIN_MAIN2] ; Return To Lemma
 stuck
 	bra stuck  ; or get stuck.
 
 YieldingQuint
 	fcb 199   ; 199 means Level0 yields.
 	fcb 0
-	fcb 0
-	fcb 0
+	fcb 0  ; byte: which interrupt
+	fcb 0  ; word: S register.
 	fcb 0
 
 Abort:
-  bra Abort
+  bra Abort  ; get stuck.
 
 
 ***  ENDSECTION

@@ -118,7 +118,7 @@ void *Malloc(word n) {
 #else
        word new_memory_size = 0;
        word end_of_new_mem = 0;
-       errnum err = Os9Mem(&new_memory_size, &end_of_new_mem);
+       errnum err = Os9Mem(new_memory_size, &new_memory_size, &end_of_new_mem);
        if (err) MallocOOM(err, n, 0);
        //printf(" *** 1st Os9Mem e=%x => %x %x\n", err, new_memory_size, end_of_new_mem);
        heap_min = end_of_new_mem;
@@ -127,7 +127,7 @@ void *Malloc(word n) {
        // round up to multiple of 0x2000, and get approval for that.
        // HARDWIRED CONSTANTS FOR COCO3/MOOH 8K MEMORY PAGES.
        new_memory_size = (end_of_new_mem + 0x2000) & 0xE000;
-       err = Os9Mem(&new_memory_size, &end_of_new_mem);
+       err = Os9Mem(new_memory_size, &new_memory_size, &end_of_new_mem);
        //printf(" *** 2nd Os9Mem e=%x => %x %x\n", err, new_memory_size, end_of_new_mem);
        if (err) MallocOOM(err, n, 0);
        heap_max = end_of_new_mem;
@@ -170,7 +170,7 @@ void *Malloc(word n) {
     // Add another 0x2000 page.
     word new_memory_size = heap_max + 0x2000;
     word end_of_new_mem = 0;
-    errnum err = Os9Mem(&new_memory_size, &end_of_new_mem);
+    errnum err = Os9Mem(new_memory_size, &new_memory_size, &end_of_new_mem);
     //printf(" *** Os9Mem e=%x => %x %x\n", err, new_memory_size, end_of_new_mem);
     if (err) MallocOOM(err, n, cap);
     heap_max = new_memory_size;

@@ -52,8 +52,8 @@ void SendRequest(byte socknum, quad host, word port, word opcode, const char* fi
 void TGet(byte socknum, quad server_host, word server_port, const char* filename, const char* localfile) {
   errnum err;
   prob ps;
-  int fd = -1;
-  err = Os9Create(localfile, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
+  byte fd = 255;
+  err = Os9Create(2/*=WRITE*/, 3/*=READ+WRITE*/, localfile, &fd);
   if (err) LogFatal("Cannot create %q: %s", localfile, err);
 
   SendRequest(socknum, server_host, server_port, OP_READ, filename, /*ascii=*/0);

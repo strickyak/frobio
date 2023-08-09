@@ -26,7 +26,7 @@ struct Rep {
   char payload[PAYSIZ];
 } Reply;
 
-int DaemonFd;
+byte DaemonFd;
 
 //////////////////////////////////////////
 
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
   // and the third component "N" is which fuse we will serve.
   // Clients opening "/Fuse/N/..." or "/N/..." will send their
   // filesystem operations to this daemon.
-  CheckE(Os9Create, (DAEMON, /*mode=*/READ_WRITE, /*attrs=*/SHARABLE_RW, &DaemonFd));
+  CheckE(Os9Create, (/*mode=*/READ_WRITE, /*attrs=*/SHARABLE_RW, DAEMON, &DaemonFd));
 
   // Now go into an infinite loop calling Os9Read to get the request
   // and then Os9Write to send the reply.
@@ -236,7 +236,7 @@ int main(int argc, char* argv[]) {
       HexDump(Reply.payload, n - sizeof Reply.header);
     }
 
-    CheckE(Os9Write, (DaemonFd, (char*)&Reply, n, &cc));
+    CheckE(Os9Write, (DaemonFd, (word)&Reply, n, &cc));
     LogInfo("Wrote Reply.");
   }
   // NOTREACHED

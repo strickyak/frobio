@@ -159,42 +159,24 @@ void WizClose(PARAM_JUST_SOCK) {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
- #if FOR_EXPERIMENTAL_JUMP
-extern void sys_rti();
-extern void sys_rti_setjmp();
-
-void RejoinLoop() {
-    memcpy((void*)0x7FF0, (void*)Vars->rejoin_loop_buf,
-           sizeof (jmp_buf));
+void sys_rti() {
+  asm volatile("daa ; LemmaClientS1" : : : "d");
+  asm volatile("lds [$07FC] \n  rti");
 }
 
-void LemmaClientS1Loop() { // new style loops, because setjmp.
- #else
 errnum LemmaClientS1() {  // old style does not loop.
- #endif
   char quint[5];
   char inkey;
   errnum e;  // was bool e, but that was a mistake.
 
- #if FOR_EXPERIMENTAL_JUMP
-  while (1) {
-    sys_rti_setjmp();
-    memcpy((void*)Vars->rejoin_loop_buf, (void*)0x7FF0,
-        sizeof (jmp_buf));
- #endif
-
+  asm volatile("daa ; LemmaClientS1" : : : "d");
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
       quint[4] = inkey;
- #if FOR_EXPERIMENTAL_JUMP
-      e = TcpSend(SOCK1_AND quint, sizeof quint);
-      if (e) goto Fail;
- #else
       e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
       if (e) return e;
- #endif
     }
 
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
@@ -220,24 +202,18 @@ errnum LemmaClientS1() {  // old style does not loop.
 
             quint[0] = CMD_DATA;
             WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
- #if FOR_EXPERIMENTAL_JUMP
-            PrintH("PEEK sent 5\n", n, p);
-            e = TcpSend(SOCK1_AND (char*)p, n);
-            if (e) goto Fail;
-            PrintH("PEEK sent %d, DONE\n", n);
- #else
             TcpSend(SOCK1_AND (char*)p, n);
             PrintH("PEEK DONE\n");
- #endif
           }
           break;
- #if FOR_EXPERIMENTAL_JUMP
+
         case CMD_RTI:
           {
+            asm volatile("daa ; LemmaClientS1" : : : "d");
             sys_rti();
             break;
           }
- #endif
+
         case CMD_JSR:
           {
             func fn = (func)p;
@@ -249,17 +225,8 @@ errnum LemmaClientS1() {  // old style does not loop.
           Fatal("WUT?", quint[0]);
           break;
       } // switch
- #if FOR_EXPERIMENTAL_JUMP
-    } else if (e != NOTYET) {
-      goto Fail;
-    }
-  }
-Fail:
-  Fatal("BOTTOM", e);
- #else
     }
     return (e==NOTYET) ? OKAY : e;
- #endif
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -269,16 +236,19 @@ extern errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks);
 const char name4[] = "NONE"; // unused
 
 extern int main();
+void main3() {
+    while (1) {
+        errnum e = LemmaClientS1();
+        if (e) Fatal("BOTTOM", e);
+    }
+}
+
 void main2() {
+  asm volatile("nop ; main2");
+  asm volatile("nop ; main2");
+  asm volatile("nop ; main2");
     // Clear our global variables to zero.
     memset(Vars, 0, sizeof (struct vars));
-    // From the address of main, we can determine if we
-    // are netboot3 at $Cxxx or exoboot3 at $6xxx.
- #if FOR_EXPERIMENTAL_JUMP
-    Vars->rejoin_loop = &RejoinLoop;
- #endif
-    // Deprecated // Vars->rom_api_3 = (struct RomApi3*)(
-    // Deprecated //     ((word)(&main) & 0xE000) | 0x0100);
 
     Vars->vars_magic = VARS_MAGIC;
     Vars->wiz_port = (struct wiz_port*) WIZ_PORT;
@@ -333,27 +303,28 @@ void main2() {
     PrintF(" CONN; ");
     Delay(50000);
 
- #if FOR_EXPERIMENTAL_JUMP
-    LemmaClientS1Loop();  // never returns.
- #else
-    while (1) {
-        errnum e = LemmaClientS1();
-        if (e) Fatal("BOTTOM", e);
-    }
- #endif
+    main3(); // never returns.
 }
 
+#if 0
 void CallWithNewStack(word new_stack, word func) {
   asm volatile("ldx %0\n  ldy %1\n  tfr x,s\n  jsr ,y" : : "m" (new_stack), "m" (func));
 }
+#endif
+
+#define INTO_C_D_ROM(FN) (((word)FN & 0x1fff) | 0xC000)
+
+void CallMain3WithStack0800() {
+  asm volatile("nop ; CallMain3WithStack0800");
+  asm volatile("nop ; CallMain3WithStack0800");
+
+  word fn = (word)&main3;
+  asm volatile("ldy %0\n  lds #$07F8\n  daa\n  jmp ,y": : "m" (fn): "y");
+}
 
 int main() {
-    word s_reg = StackPointer();
-    word main_addr = (word)&main;
-
-    if ((s_reg&0xF000) == 0x7000 && (main_addr&0xF000) == 0x6000) {
-      CallWithNewStack(0x0800, (word)&main2);
-    } else {
-      main2();
-    }
+  word* rejoiner = (word*)REJOIN_MAIN3;
+  *rejoiner = INTO_C_D_ROM(&CallMain3WithStack0800);
+  asm volatile("nop ; main");
+  main2();
 }

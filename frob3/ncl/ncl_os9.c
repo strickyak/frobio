@@ -107,7 +107,7 @@ int picolCommand9Create(int argc, char **argv, void *pd) {
   int attrs = atoi(argv[3]);
   int fd = 0;
 
-  int e = Os9Create(path, mode, attrs, &fd);
+  int e = Os9Create(mode, attrs, path, &fd);
   return IntOrErrorNum(e, argv, fd);
 }
 
@@ -117,7 +117,7 @@ int picolCommand9Open(int argc, char **argv, void *pd) {
   int mode = atoi(argv[2]);
   int fd = 0;
 
-  int e = Os9Open(path, mode, &fd);
+  int e = Os9Open(mode, path, &fd);
   return IntOrErrorNum(e, argv, fd);
 }
 

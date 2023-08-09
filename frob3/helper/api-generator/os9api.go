@@ -1,5 +1,7 @@
 package main
 
+// The rx string can start with "OMIT_" to omit that return parameter.
+
 type call struct {
 	name                   string
 	desc                   string
@@ -13,14 +15,42 @@ type call struct {
 
 var Calls = []*call{
 	{
+		name:   "F$Exit",
+		desc:   "Terminate the calling process",
+		number: 0x06,
+		b:      "status",
+  },
+	{
+		name:   "F$Fork",
+		desc:   "Link a memory module",
+		number: 0x03,
+		a:      "lang_and_type",
+		b:      "num_data_pages",
+		x:      "const char*:module_or_filename",
+		y:      "num_param_bytes",
+		u:      "param_pages_ptr",
+		ra:     "new_proc_id",
+		rx:     "OMIT_after_module_name",
+	},
+	{
+		name:   "F$Chain",
+		desc:   "Link a memory module",
+		number: 0x05,
+		a:      "lang_and_type",
+		b:      "num_data_pages",
+		x:      "const char*:module_or_filename",
+		y:      "num_param_bytes",
+		u:      "param_pages_ptr",
+	},
+	{
 		name:   "F$Link",
 		desc:   "Link a memory module",
 		number: 0x00,
 		a:      "lang_and_type",
-		x:      "module_name_ptr",
+		x:      "const char*:module_name_ptr",
 		ra:     "lang_and_type",
 		rb:     "attr_and_rev",
-		rx:     "after_module_name",
+		rx:     "OMIT_after_module_name",
 		ry:     "absolute_entry_addr",
 		ru:     "absolute_header_addr",
 	},
@@ -29,12 +59,19 @@ var Calls = []*call{
 		desc:   "Load a module from a file",
 		number: 0x01,
 		a:      "lang_and_type_code",
-		x:      "module_name_ptr",
+		x:      "const char*:module_name_ptr",
 		ra:     "lang_and_type",
 		rb:     "attr_and_rev",
-		rx:     "after_module_name",
+		rx:     "OMIT_after_module_name",
 		ry:     "absolute_entry_addr",
 		ru:     "absolute_header_addr",
+	},
+	{
+		name:   "F$ID",
+		desc:   "Get caller's Process and User ID",
+		number: 0x0C,
+		ra:     "process_id",
+		ry:     "user_id",
 	},
 	{
 		name:   "F$MapBlk",
@@ -78,24 +115,24 @@ var Calls = []*call{
 		number: 0x83,
 		a:      "access_mode",
 		b:      "attrs",
-		x:      "pathname",
+		x:      "const char*:pathname",
 		ra:     "path",
-		rx:     "after_pathname",
+		rx:     "OMIT_after_pathname",
 	},
 	{
 		name:   "I$Delete",
 		desc:   "Delete a file",
 		number: 0x87,
-		x:      "pathname",
-		rx:     "after_pathname",
+		x:      "const char*:pathname",
+		rx:     "OMIT_after_pathname",
 	},
 	{
 		name:   "I$DeleteX",
 		desc:   "Delete a file from cwd or cxd",
 		number: 0x87,
 		a:      "access_mode",
-		x:      "pathname",
-		rx:     "after_pathname",
+		x:      "const char*:pathname",
+		rx:     "OMIT_after_pathname",
 	},
 	{
 		name:   "I$Dup",
@@ -109,8 +146,8 @@ var Calls = []*call{
 		desc:   "Create a directory",
 		number: 0x85,
 		b:      "function_code",
-		x:      "pathname",
-		rx:     "after_pathname",
+		x:      "const char*:pathname",
+		rx:     "OMIT_after_pathname",
 	},
 	{
 		name:   "I$ModDsc", // EOU Beta 5
@@ -125,9 +162,9 @@ var Calls = []*call{
 		desc:   "Open a file",
 		number: 0x84,
 		a:      "access_mode",
-		x:      "pathname",
+		x:      "const char*:pathname",
 		ra:     "path",
-		rx:     "after_pathname",
+		rx:     "OMIT_after_pathname",
 	},
 	{
 		name:   "I$Read",
@@ -201,4 +238,23 @@ var Calls = []*call{
 		ry:     "y_result",
 		ru:     "u_result",
 	},
+	{
+		name:   "F$Send",
+		desc:   "Send a signal to a process",
+		number: 0x08,
+		a:      "process",
+		b:      "signal",
+  },
+  {
+		name:   "F$Time",
+		desc:   "Get the system time and date",
+		number: 0x15,
+		x:      "six_byte_packet",
+  },
+  {
+		name:   "F$STime",
+		desc:   "Set the system time and date",
+		number: 0x16,
+		x:      "six_byte_packet",
+  },
 }

@@ -35,11 +35,16 @@ void EnableIrqsCounting();
 #endif
 #endif
 
+
+#if 1
+#include "_generated_os9api_for_cmoc.h"
+#else
+
 IF_os9_THEN_asm void Os9Exit(byte status);
 
-IF_os9_THEN_asm errnum Os9Create(const char* path, int mode, int attrs, int* fd);
+IF_os9_THEN_asm errnum Os9Create(int mode, int attrs, const char* path, int* fd);
 
-IF_os9_THEN_asm errnum Os9Open(const char* path, int mode, int* fd);
+IF_os9_THEN_asm errnum Os9Open(int mode, const char* path, int* fd);
 
 IF_os9_THEN_asm errnum Os9Delete(const char* path);
 
@@ -72,6 +77,7 @@ IF_os9_THEN_asm errnum Os9Fork(const char* program, const char* params, int para
 
 IF_os9_THEN_asm errnum Os9Chain(const char* program, const char* params, int paramlen, int lang_type, int mem_size);
 
+
 IF_os9_THEN_asm errnum Os9Send(int process_id, int signal_code);
 errnum Os9STime(byte* time_packet);
 
@@ -80,6 +86,8 @@ errnum Os9AllRam(byte num_blocks, word* start_block_out);
 errnum Os9DelRam(byte num_blocks, word start_block);
 errnum Os9MapBlk(word starting_block, byte num_blocks, word* first_address_out);
 errnum Os9ClrBlk(byte num_blocks, word first_address);
+
+#endif
 
 #if ONLY_IN_KERNEL_MODE
 // 64-byte block routines.

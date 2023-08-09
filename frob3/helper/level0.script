@@ -1,0 +1,2 @@
+section .text load 0x7000
+section *

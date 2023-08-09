@@ -1,6 +1,10 @@
 #ifndef _FROB3_BOOTROM_BOOTROM_H_
 #define _FROB3_BOOTROM_BOOTROM_H_
 
+// Jump indirect via this address, to rejoin main2().
+#define REJOIN_MAIN3 0x07FE /* just before 0x0800 */
+#define USER_SREG 0x07FC /* where to save the User SP */
+
 #define VERBOSE 3 // 9 // 6 // 3
 #define PRINTK 1
 

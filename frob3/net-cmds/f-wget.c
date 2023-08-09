@@ -7,6 +7,7 @@
 #define DEFAULT_SERVER_PORT 80 /* HTTP */
 
 char packet[666];
+word unused_word;
 
 byte HttpOpen(quad host, word port) {
   byte socknum = 0;
@@ -23,7 +24,7 @@ byte HttpOpen(quad host, word port) {
     ps = TcpEstablishOrNotYet(socknum);
     if (ps == NotYet) {
       FPuts("-", StdErr);
-      Os9Sleep(1);
+      Os9Sleep(1, &unused_word);
     } else {
       break;
     }
@@ -40,7 +41,7 @@ void SendStr(byte socknum, char* bb, word bblen) {
   LogInfo("ps: <<%s>>", ps);
   if (ps == NotYet) {
     FPuts("=", StdErr);
-    Os9Sleep(1);
+    Os9Sleep(1, &unused_word);
     continue;
   }
   #if 0
@@ -84,8 +85,8 @@ void SendRequest(byte socknum, quad host, word port, const char* hostname, const
 void WGet(byte socknum, quad server_host, word server_port, const char* hostname, const char* urlpath, const char* localfile) {
   errnum err;
   prob ps;
-  int fd = -1;
-  err = Os9Create(localfile, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
+  byte fd = 255;
+  err = Os9Create(2/*=WRITE*/, 3/*=READ+WRITE*/, localfile, &fd);
   if (err) LogFatal("Cannot create %q: %s", localfile, err);
 
   SendRequest(socknum, server_host, server_port, hostname, urlpath);
@@ -110,7 +111,7 @@ void WGet(byte socknum, quad server_host, word server_port, const char* hostname
       ++count_not_yets;
       LogInfo("NotYets=%d", count_not_yets);
       if (count_not_yets >= 5) break;
-      Os9Sleep(1);
+      Os9Sleep(1, &unused_word);
       continue;
     }
     #if 0
@@ -122,7 +123,7 @@ void WGet(byte socknum, quad server_host, word server_port, const char* hostname
 
     FPuts(":", StdErr);
     int bytes_written = 0;
-    err = Os9Write(fd, packet, cc, &bytes_written);
+    err = Os9Write(fd, (word)packet, cc, &bytes_written);
     if (err) {
       LogFatal("ERROR, Cannot write file: errnum %d", err);
     }

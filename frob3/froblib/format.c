@@ -299,15 +299,15 @@ void BufFormatVA(Buf* buf, const char* format, va_list ap) {
     }
 }
 // returns OKAY or ErrNo.
-errnum WritLnAll(int path, const char* s, word n) {
+errnum WritLnAll(byte path, const char* s, word n) {
     ErrNo = OKAY;
     while (n>0) {
-        int wrote = 0;
+        word wrote = 0;
 #ifdef unix
         wrote = write(path, s, n);
         ErrNo = wrote < 1 ? errno : 0;
 #else
-        ErrNo = Os9WritLn(path, s, n, &wrote);
+        ErrNo = Os9WritLn(path, (word)s, n, &wrote);
 #endif
         if (ErrNo) return ErrNo;
         s += wrote;
@@ -373,12 +373,14 @@ int FPrintf(File* f, const char* fmt, ...) {
     BufFinish(&buf);
     int bytes_written = buf.n;
     errnum e = 0;
+
     #ifdef unix
     bytes_written = write(1, buf.s, buf.n);
     if (bytes_written <= 0) e = errno;
     #else
-    WritLnAll(f->fd, buf.s, buf.n);
+    WritLnAll( (byte)f->fd, buf.s, buf.n);
     #endif
+
     BufDel(&buf);
     return (e) ? -1 : bytes_written;
 }

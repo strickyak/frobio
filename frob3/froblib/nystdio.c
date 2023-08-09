@@ -20,19 +20,18 @@ File* FOpen(const char* pathname, const char* mode) {
     Assert(pathname);
     Assert(mode);
     Assert(mode[1]=='\0' && (mode[0]=='r'||mode[0]=='w'));
-    int fd = -1;
+    byte fd = 255;
 
     if (mode[0] == 'r') {
-      ErrNo = Os9Open(pathname, 1/*=READ*/, &fd);
+      ErrNo = Os9Open(1/*=READ*/, pathname, &fd);
       if (ErrNo) LogDebug("Os9Open returned %x", ErrNo);
       if (ErrNo) return NULL;
     } else if (mode[0] == 'w') {
       Os9Delete(pathname);
-      ErrNo = Os9Create(pathname, 2/*=WRITE*/, 3/*=READ+WRITE*/, &fd);
+      ErrNo = Os9Create(2/*=WRITE*/, 3/*=READ+WRITE*/, pathname, &fd);
       if (ErrNo) LogDebug("Os9Create returned %x", ErrNo);
       if (ErrNo) return NULL;
     }
-    Assert (fd>=0);
 
     File* f = (File*) Malloc(sizeof *f);
     f->fd = fd;
@@ -45,8 +44,8 @@ word FGets(char *buf, int size, File *f) {
     Assert(buf);
     Assert(size);
     Assert(f);
-    int bytes_read = 0;
-    ErrNo = Os9ReadLn(f->fd, buf, size-1, &bytes_read);
+    word bytes_read = 0;
+    ErrNo = Os9ReadLn((byte)f->fd, (word)buf, size-1, &bytes_read);
     if (ErrNo == E_EOF) {
       ErrNo = OKAY;
       bytes_read = 0;
@@ -61,14 +60,14 @@ int FPuts(const char *str, File *f) {
     Assert(str);
     Assert(f);
     int n = strlen(str);
-    ErrNo = WritLnAll(f->fd, str, n);
+    ErrNo = WritLnAll((byte)f->fd, (word)str, n);
     return (ErrNo) ? -1 : n;
 }
 
 // returns 0, or -1 on error.
 int FClose(File *f) {
     Assert(f);
-    ErrNo = Os9Close(f->fd);
+    ErrNo = Os9Close((byte)f->fd);
     if (ErrNo) return -1;
     f->fd = -1;
     Free(f);

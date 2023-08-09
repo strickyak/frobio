@@ -146,7 +146,7 @@ const char* StaticFormatSignedInt(int x);
 void BufAppStringQuoting(Buf* buf, const char* s, word precision);
 void BufFormat(Buf* buf, const char* format, ...);
 void BufFormatVA(Buf* buf, const char* format, va_list ap);
-errnum WritLnAll(int path, const char* s, word n);
+errnum WritLnAll(byte path, const char* s, word n);
 
 // CharUp(c): convert to upper case for 26 ascii letters.
 char CharUp(char c);
