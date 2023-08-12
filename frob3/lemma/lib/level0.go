@@ -38,8 +38,6 @@ type Regs6809 struct {
 	Y  word
 	U  word
 	PC word // S starts here for RTI.
-	S  word // Not consumed by RTI.
-	Z  word // Extra padding for 16 bytes (used for temp PC).
 }
 
 type L0Proc struct {
@@ -88,10 +86,13 @@ func FindModule(name string) (*L0Module, error) {
 }
 
 func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Proc, error) {
-	log.Printf("HELLO Launch %v %v %v", module, params, parent)
+	log.Printf("XYX HELLO Launch %q %q %#v", module, params, parent)
+	log.Printf("XYX HELLO Launch %q %q %#v", module, params, parent)
+	log.Printf("XYX HELLO Launch %q %q %#v", module, params, parent)
 
 	mod, err := FindModule(module)
-	if mod == nil {
+	if err != nil {
+	    log.Printf("XYX CANNOT FIND MODULE: Launch %q -> %#v %v", module, nil, err)
 		return nil, err
 	}
 	nextPid++
@@ -111,27 +112,29 @@ func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Pro
 		module:  mod,
 		modaddr: Usr_Load,
 	}
-	log.Printf("launch: %#v", *p)
+
+	log.Printf("XYX launch: %#v", *p)
 	PokeRam(conn, Usr_Load, mod.contents)
-	log.Printf("uploaded")
+	log.Printf("XYX uploaded")
+
 	regs := Regs6809{
 		CC: 0xD0, /* sets interrupt disables and entire flag */
 		D:  0x1234,
 		DP: byte(p.data >> 8),
-		U:  p.data,
 		X:  p.stack,
 		Y:  Usr_Stack,
+		U:  p.data,
 		PC: word(Usr_Load + mod.Exec()),
-		S:  p.stack,
 	}
+
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, regs)
 	bb := buf.Bytes()
-	AssertEQ(len(bb), 16)
-	log.Printf("block...")
-	PokeRam(conn, 0x7FF0, bb)
-	log.Printf("sent RTI block")
-	WriteFive(conn, CMD_RTI, 0, 0x7FF0)
+	AssertEQ(len(bb), 12)
+	log.Printf("XYX block...")
+	PokeRam(conn, uint(p.stack-12), bb)
+	log.Printf("XYX sent RTI block")
+	WriteFive(conn, CMD_RTI, 0, uint(p.stack-12))
 	return p, nil
 }
 
@@ -169,9 +172,9 @@ func AttemptToLoadModule(filename string) {
 			filename: filename,
 			contents: bb,
 		}
-		log.Printf("Loaded module %q len %d named %q.", filename, hlen, name)
+		log.Printf("XYX Loaded module %q len %d named %q.", filename, hlen, name)
 	} else {
-		log.Printf("Not a module %q (wrong header)", filename)
+		log.Printf("XYX Not a module %q (wrong header)", filename)
 	}
 }
 
@@ -195,13 +198,19 @@ func Level0Control(conn net.Conn, ses *Session) {
 	const LEN = 16
 
 	log.Printf("Level0Entryx")
-	globals := Peek(conn, 0x7E00, LEN)
-	log.Printf("globals: %x", globals)
-	userSP := HiLo(globals[2], globals[3])
-	// whichInterrupt := globals[4]
+
+	oldglobals := Peek(conn, 0x7E00, LEN)
+	log.Printf("oldglobals: %x %v", oldglobals, oldglobals)
+
+	globals := Peek(conn, 0x07F0, LEN)
+	log.Printf("globals: %x %v", globals, globals)
+
+	userSP := HiLo(globals[12], globals[13])
+	whichInterrupt := globals[11]
+	log.Printf("user_stack: %04x which %04x", userSP, whichInterrupt)
 
 	stacked := Peek(conn, userSP, LEN)
-	log.Printf("stacked: %x", stacked)
+	log.Printf("stacked: %x %v", stacked, stacked)
 
 	Launch(conn, "date" /*module*/, "\r" /*params*/, nil /*parent*/)
 	log.Printf("done Launch")

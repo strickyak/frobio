@@ -1,9 +1,12 @@
 TO TRY LEVEL0:
 
-/bf$ make all level0.loadm   axiom-gomar.rom  -B 
+ : /bf
+make all level0.loadm   axiom-gomar.rom  -B 
 
-~/coco-shelf/frobio/frob3/lemma$ GOPATH=/home/strick/coco-shelf go run server.go --program /bf/level0.bin 
+ : ~/coco-shelf/frobio/frob3/lemma
+HOME=/home/strick/coco-shelf GOPATH=/home/strick/coco-shelf /opt/go/bin/go run -x server.go --program /bf/level0.bin -l0_module_dir /home/strick/coco-shelf/nitros9/level1/coco1/cmds/
 
-/sy/doing_os9/gomar$ go run --tags=coco3,level2,cocoio,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  /bf/axiom-gomar.rom  -t=1  2>/l 
+ : /sy/doing_os9/gomar
+go run --tags=coco3,level2,cocoio,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  /bf/axiom-gomar.rom  -t=1  2>/l 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

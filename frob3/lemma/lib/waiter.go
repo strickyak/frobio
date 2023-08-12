@@ -105,9 +105,12 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 		panic(err)
 	}
 
-	_, err = conn.Write(data) // == WriteFull
+	cc, err := conn.Write(data) // == WriteFull
 	if err != nil {
 		panic(err)
+	}
+	if cc != len(data) {
+		panic("short write")
 	}
 }
 

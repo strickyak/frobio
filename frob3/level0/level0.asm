@@ -4,6 +4,7 @@
 REJOIN_MAIN2 EQU $07FE ; Just before $0800.
 USER_SREG EQU $07FC ; The interrupted user Stack Pointer, for RTI.
 WHICH_INTERRUPT EQU $07FB ; one byte to ID interrupt.
+SWI2_POSTBYTE EQU $07FA ; one byte for OS9 system call number.
 SYS_STACK EQU $07F8
 
 ; (Tentative Initial) Memory Conventions
@@ -112,14 +113,17 @@ Do_RESTART:
 	stb WHICH_INTERRUPT
   bra Do_Interrupt
 Do_SWI2:
+    ldx 10,s  ; User PC
 	ldb #7&(IV_SWI2/2)
-	stb WHICH_INTERRUPT
-  ; bra Do_Interrupt ; or fall through
+    lda ,x+ ; Postbyte: which os9 SWI2 number
+    std SWI2_POSTBYTE ; and WHICH_INTERRUPT.
+    stx 10,s  ; Store advanced User PC
+  ; Fall through to Do_Interrupt.
 
 Do_Interrupt:
-  stb YieldingQuint+2
+  std YieldingQuint+1
   sts YieldingQuint+3
-	sts USER_SREG    ; Remember where User Stacked, for later RTI.
+  sts USER_SREG      ; Remember where User Stacked, for later RTI.
   ; lds #SYS_STACK   ; Restart on System Stack.
   jsr _SayReturnToLemma
 

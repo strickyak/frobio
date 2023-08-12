@@ -159,9 +159,8 @@ void WizClose(PARAM_JUST_SOCK) {
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-void sys_rti() {
-  asm volatile("daa ; LemmaClientS1" : : : "d");
-  asm volatile("lds [$07FC] \n  rti");
+void sys_rti(word sp) {
+  asm volatile("tfr %0,s \n  rti" : : "x"(sp) );
 }
 
 errnum LemmaClientS1() {  // old style does not loop.
@@ -209,8 +208,8 @@ errnum LemmaClientS1() {  // old style does not loop.
 
         case CMD_RTI:
           {
-            asm volatile("daa ; LemmaClientS1" : : : "d");
-            sys_rti();
+            PrintH("SYS_RTI(%x)\n", p);
+            sys_rti(p);
             break;
           }
 
@@ -306,12 +305,6 @@ void main2() {
     main3(); // never returns.
 }
 
-#if 0
-void CallWithNewStack(word new_stack, word func) {
-  asm volatile("ldx %0\n  ldy %1\n  tfr x,s\n  jsr ,y" : : "m" (new_stack), "m" (func));
-}
-#endif
-
 #define INTO_C_D_ROM(FN) (((word)FN & 0x1fff) | 0xC000)
 
 void CallMain3WithStack0800() {
@@ -319,7 +312,7 @@ void CallMain3WithStack0800() {
   asm volatile("nop ; CallMain3WithStack0800");
 
   word fn = (word)&main3;
-  asm volatile("ldy %0\n  lds #$07F8\n  daa\n  jmp ,y": : "m" (fn): "y");
+  asm volatile("ldy %0\n  lds #$07F0\n  daa\n  jmp ,y": : "m" (fn): "y");
 }
 
 int main() {
@@ -328,3 +321,9 @@ int main() {
   asm volatile("nop ; main");
   main2();
 }
+
+#if 0
+void CallWithNewStack(word new_stack, word func) {
+  asm volatile("ldx %0\n  ldy %1\n  tfr x,s\n  jsr ,y" : : "m" (new_stack), "m" (func));
+}
+#endif
