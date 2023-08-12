@@ -67,7 +67,7 @@ func Lo(x uint) byte {
 }
 
 func WriteFive(conn net.Conn, cmd byte, n uint, p uint) {
-	log.Printf("WriteFive: %d.=%x %x %x", cmd, cmd, n, p)
+	log.Printf("WriteFive: %d.=%x=%q <<<<< %x %x", cmd, cmd, CmdToStr(cmd), n, p)
 	_, err := conn.Write([]byte{cmd, Hi(n), Lo(n), Hi(p), Lo(p)}) // == WriteFull
 	if err != nil {
 		log.Panicf("writeFive: stopping due to error: %v", err)
@@ -83,7 +83,7 @@ func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
 	cmd = quint[0]
 	n = HiLo(quint[1], quint[2])
 	p = HiLo(quint[3], quint[4])
-	log.Printf("ReadFive: %d.=%02x %04x %04x", cmd, cmd, n, p)
+	log.Printf("ReadFive: %d.=%02x=%q >>>>> %04x %04x", cmd, cmd, CmdToStr(cmd), n, p)
 	return
 }
 
@@ -112,6 +112,8 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	if cc != len(data) {
 		panic("short write")
 	}
+
+    log.Printf("Poke(%x@%x) <- %x", len(data), addr, data)
 }
 
 func GetBlockDevice(ses *Session) *os.File {
@@ -160,29 +162,23 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 	quint := make([]byte, 5)
 	for {
-		log.Printf("for: ddt will Read5")
-		//_, err := io.ReadFull(conn, quint)
-		//if err != nil {
-		//log.Panicf("ReadFive: stopping due to error: %v", err)
-		//}
-		//log.Printf("ddt ReadFive %#v", quint)
+		log.Printf("====== for: ddt will Read5 ======")
 
 		cmd, n, p := ReadFive(conn)
-		log.Printf("ReadFive: cmd=%02x n=%04x p=%04x ...", cmd, n, p)
 
 		switch cmd {
 
 		case CMD_SP_PC:
-			log.Printf("ReadFive: sp=%x pc=%x", n, p)
+			log.Printf("CMD_SP_PC: sp=%x pc=%x", n, p)
 
 		case CMD_LOG:
 			{
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
 				if err != nil {
-					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
+					log.Panicf("DATA: stopping due to error: %v", err)
 				}
-				log.Printf("ReadFive: LOG %q", data)
+				log.Printf("LOG %q", data)
 			}
 
 		case CMD_REV:
@@ -190,21 +186,21 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
 				if err != nil {
-					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
+					log.Panicf("DATA: stopping due to error: %v", err)
 				}
-				log.Printf("ReadFive: REV %q", data)
+				log.Printf("REV %q", data)
 			}
 
 		case CMD_INKEY:
-			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+			log.Printf("inkey $%02x %q", quint[4], quint[4:])
 
 		case CMD_DATA:
 			{
-				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
+				log.Printf("DATA $%x @ $%x", n, p)
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
 				if err != nil {
-					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
+					log.Panicf("DATA: stopping due to error: %v", err)
 				}
 				for i := uint(0); i < n; i++ {
 					LogicalRamImage[p+i] = data[i]
@@ -271,12 +267,11 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 			}
 		case CMD_LEVEL0:
-			Level0Control(conn, ses)
+			Level0Control(conn, ses, n, p)
 
 		default:
-			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
+			log.Panicf("BAD COMMAND $%x: %#v", quint[0], quint)
 		} // end switch
-		log.Printf("next")
 	} // end for
 } // end ReadFiveLoop
 
@@ -359,14 +354,31 @@ func Listen() {
 	}
 }
 
-/*
-	                   // Add this code to save a snapshot of Ram that we've seen:
+func CmdToStr(cmd byte) string {
+  switch cmd {
+	case CMD_POKE: return "POKE"
+	case CMD_CALL: return "CALL"
 
-			if p == 0xFE00 && n == 256 {
-				const RamFile = "/tmp/coco.ram"
-				err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
-				if err != nil {
-					log.Panicf("ReadFive: DATA: writing %q: %v", RamFile, err)
-				}
-			}
-*/
+	case CMD_LEVEL0: return "LEVEL0"
+
+	case CMD_LOG    : return "LOG"
+	case CMD_INKEY  : return "INKEY"
+	case CMD_PUTCHAR: return "PUTCHAR"
+	case CMD_PEEK   : return "PEEK"
+	case CMD_DATA   : return "DATA"
+	case CMD_SP_PC  : return "SP_PC"
+	case CMD_REV    : return "REV"
+
+	case CMD_BLOCK_READ : return "BLOCK_READ"
+	case CMD_BLOCK_WRITE: return "BLOCK_WRITE"
+	case CMD_BLOCK_ERROR: return "BLOCK_ERROR"
+	case CMD_BLOCK_OKAY : return "BLOCK_OKAY"
+	case CMD_BOOT_BEGIN : return "BOOT_BEGIN"
+	case CMD_BOOT_CHUNK : return "BOOT_CHUNK"
+	case CMD_BOOT_END   : return "BOOT_END"
+
+	case CMD_RTI: return "RTI"
+  }
+  log.Panicf("Bad CMD byte: %d.=$%x", cmd)
+  panic(0)
+}
