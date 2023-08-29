@@ -1,6 +1,7 @@
 package lib
 
 import (
+    "fmt"
 	"bytes"
 	"encoding/binary"
 	"flag"
@@ -11,7 +12,13 @@ import (
 	"strconv"
 	"strings"
     "time"
+
+    "github.com/strickyak/frobio/frob3/lemma/sym"
+    . "github.com/strickyak/frobio/frob3/lemma/lib"
 )
+
+var F = fmt.Sprintf
+var L = log.Printf
 
 var FlagL0ModuleDirPath = flag.String("l0_module_dir", "", "where to find commands for Level0")
 
@@ -42,25 +49,41 @@ type Regs6809 struct {
 	PC word // S starts here for RTI.
 }
 
+var Cur *L0Proc
+
 type L0Proc struct {
-	pid     word
-	ppid    word
+	pid      byte
 	stack   word // downward
 	params  word
 	data    word // data address
 	uid     word
 	state   word
 	modaddr word
+    icptCall word  // F$ICPT
+    icptData word  // F$ICPT
+
+	parent    *L0Proc
+	deadKids  []*L0Proc
 
 	module  *L0Module
 	parambb []byte
 
 	files [16]*L0File
+    cwd *L0File
+    cxd *L0File
 }
 
+type L0Device interface {
+    Open(mode byte, pathname string) (fd byte, errnum byte)
+}
+
+var Devices = make(map[string]L0Device)
+
 type L0File struct {
-	num  word
 	name string
+    mode byte
+    isDir bool
+    isTerm bool
 }
 
 type L0Module struct {
@@ -76,8 +99,17 @@ func (m L0Module) Rev() byte      { return m.contents[6] & 15 }
 func (m L0Module) Exec() uint     { return HiLo(m.contents[9], m.contents[10]) }
 func (m L0Module) DataSize() uint { return HiLo(m.contents[11], m.contents[12]) }
 
+func (p L0Proc) String() string     { return F("L0Proc<%d,%s>", p.pid, p.module.name) }
+func (f L0File) String() string     { return F("L0File<%s>", f.name) }
+func (m L0Module) String() string     { return F("L0Module<%s>", m.name) }
+
+func (r * Regs6809) A() byte { return Hi(uint(r.D)) }
+func (r * Regs6809) B() byte { return Lo(uint(r.D)) }
+func (r * Regs6809) SetA(a byte) { r.D = word(HiLo(a, r.B())) }
+func (r * Regs6809) SetB(b byte) { r.D = word(HiLo(r.A(), b)) }
+
 var ModuleMap map[string]*L0Module
-var nextPid = word(0)
+var nextPid = byte(0)
 
 func L0Init() {
 	ModuleMap = make(map[string]*L0Module)
@@ -101,35 +133,57 @@ func FindModule(name string) (*L0Module, error) {
 	return m, nil
 }
 
+func (p *L0Proc) DoExit(status byte) {
+    if p.parent == nil {
+        log.Panicf("Orphan Death status %x", status)
+    }
+    panic("exit TODO")
+}
+
 func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Proc, error) {
-	log.Printf("XYX HELLO Launch %q %q %#v", module, params, parent)
+	log.Printf("LLL HELLO Launch %q %q %#v", module, params, parent)
+
+    cwd := &L0File{
+        name: "/DD",
+        isDir: true,
+    }
+
+    cxd := &L0File{
+        name: "/DD/CMDS",
+        isDir: true,
+    }
+
+    term := &L0File{
+        name: "/TERM",
+        isTerm: true,
+    }
 
 	mod, err := FindModule(module)
 	if err != nil {
-	    log.Printf("XYX CANNOT FIND MODULE: Launch %q -> %#v %v", module, nil, err)
+	    log.Printf("LLL CANNOT FIND MODULE: Launch %q -> %#v %v", module, nil, err)
 		return nil, err
 	}
-	nextPid++
-	ppid := word(0)
-	if parent != nil {
-		ppid = parent.pid
-	}
+	nextPid++  // todo -- overflow? pick new pid?
 	p := &L0Proc{
 		pid:     nextPid,
-		ppid:    ppid,
+		parent:    parent,
 		stack:   word(Usr_Stack - len(params)),
 		parambb: []byte(params),
 		params:  word(Usr_Stack - len(params)),
 		data:    Usr_Data,
 		state:   Ready,
+        cwd: cwd,
+        cxd: cxd,
 
 		module:  mod,
 		modaddr: Usr_Load,
+
+        files: [16]*L0File{term, term, term, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
 	}
 
-	log.Printf("XYX launch: %v", *p)
-	PokeRam(conn, Usr_Load, mod.contents)
-	log.Printf("XYX uploaded")
+	log.Printf("LLL launch: %v", *p)
+	PokeRam(conn, Usr_Load, mod.contents) // Upload program module to RAM.
+	log.Printf("LLL uploaded")
 
 	regs := &Regs6809{
 		CC: 0xD0, /* sets interrupt disables and entire flag */
@@ -144,10 +198,11 @@ func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Pro
 	bb := RegsToBytes(regs)
 	AssertEQ(len(bb), 12)
 
-	log.Printf("XYX block...")
+	log.Printf("LLL regs12...")
 	PokeRam(conn, uint(p.stack-12), bb)
-	log.Printf("XYX sent RTI block")
+	log.Printf("LLL sending RTI")
 	WriteFive(conn, CMD_RTI, 0, uint(p.stack-12))
+    Cur = p
 	return p, nil
 }
 
@@ -174,7 +229,24 @@ func ExtractName(bb []byte, i uint, filename string) string {
 		ch := 127 & bb[i]
 		AssertLE('-', ch, filename, i, ch)
 		AssertLE(ch, 'z', filename, i, ch)
-		buf.WriteByte(127 & bb[i])
+		buf.WriteByte(ch)
+		if 128 <= bb[i] {
+			break
+		}
+		i++
+	}
+	return buf.String()
+}
+
+func ExtractFileName(bb []byte) string {
+	var buf bytes.Buffer
+    i := 0
+	for {
+        // stop at \0 \n \r ...
+		ch := 127 & bb[i]
+        if ch < '!' { break }
+		buf.WriteByte(ch)
+        // stop when high bit was set.
 		if 128 <= bb[i] {
 			break
 		}
@@ -234,6 +306,46 @@ func ChopLine(a []byte) []byte {
         }
     }
     return z.Bytes()
+}
+
+func NextFileDesc() (fd byte, errnum byte) {
+    for i := byte(0); i < 16; i++ {
+        if Cur.files[i] == nil {
+            return i, 0
+        }
+    }
+    return 0, sym.E_PthFul
+}
+
+func internalOpen(mode byte, filename string) *L0File {
+    return &L0File{
+        mode: mode,
+        name: filename,
+    }
+}
+
+func Do_I_Read(conn net.Conn, ses *Session, regs *Regs6809) (errnum byte) {
+/*
+    f := Cur.files[regs.A()]
+*/
+    L("I_Read: %v", regs)
+    panic("TODO read")
+}
+
+func Do_I_Open(conn net.Conn, ses *Session, regs *Regs6809) (fd byte, errnum byte) {
+    mode := regs.A()
+    pathBegin := regs.X
+    bb := Peek(conn , uint(pathBegin), 80 )
+    filename := ExtractFileName(bb)
+    log.Printf("Open($%x, %q)", mode, filename)
+
+    fd, errnum = NextFileDesc()
+    if errnum > 0 {
+        return 0, errnum
+    }
+
+    Cur.files[fd] = internalOpen(mode, filename)
+    return fd, errnum
 }
 
 func Do_I_WritLn(conn net.Conn, ses *Session, regs *Regs6809) byte {
@@ -304,18 +416,47 @@ func Level0Control(conn net.Conn, ses *Session, n uint, p uint) {
     switch interrupt {
     case 2:
         switch postbyte {
+        case 0x06: // F$Exit
+            Cur.DoExit(regs.B())
+
+        case 0x09: // F$ICPT
+            Cur.icptCall = regs.X
+            Cur.icptData = regs.U
+            ReturnFromOs9Call(conn, ses, userSP, regs, 0)
+
+        case 0x0C: // F$ID
+            regs.SetA ( Cur.pid )
+            regs.Y = 0 // userid
+            ReturnFromOs9Call(conn, ses, userSP, regs, 0)
+
         case 0x15: // F$Time
             errbyte := Do_F_Time(conn, ses, regs)
+            ReturnFromOs9Call(conn, ses, userSP, regs, errbyte)
+
+        case 0x84: // I$Open
+            fd, errbyte := Do_I_Open(conn, ses, regs)
+            if errbyte == 0 {
+                regs.SetA(fd)
+            }
+            ReturnFromOs9Call(conn, ses, userSP, regs, errbyte)
+        case 0x89: // I$Read
+            errbyte := Do_I_Read(conn, ses, regs)
+            if errbyte == 0 {
+                //regs.SetA(fd)
+            }
             ReturnFromOs9Call(conn, ses, userSP, regs, errbyte)
 
         case 0x8c: // I$WritLn
             errbyte := Do_I_WritLn(conn, ses, regs)
             ReturnFromOs9Call(conn, ses, userSP, regs, errbyte)
 
-        case 255:
-	        log.Printf("gonna Launch DATE...")
-	        Launch(conn, "DATE" /*module*/, "\r" /*params*/, nil /*parent*/)
-	        log.Printf("...done Launch DATE.")
+        case 0x8d: // I$GetStt
+            ReturnFromOs9Call(conn, ses, userSP, regs, 255)
+
+        case 255: // Initial program launch.
+	        log.Printf("gonna Launch First...")
+	        Launch(conn, "SHELL" /*module*/, "\r" /*params*/, nil /*parent*/)
+	        log.Printf("...done Launch First.")
             return // Explicit return to skip extra RTI.
 
         default:
@@ -326,4 +467,9 @@ func Level0Control(conn net.Conn, ses *Session, n uint, p uint) {
     }
 
     // TODO move here. ReturnFromOs9Call(conn, ses, bb, errbyte)
+}
+
+func init() {
+    Dispatch[CMD_LEVEL0] = Level0Control
+    DispatchInit[CMD_LEVEL0] = L0Init
 }

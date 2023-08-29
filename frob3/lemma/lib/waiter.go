@@ -66,6 +66,11 @@ func Lo(x uint) byte {
 	return 255 & byte(x)
 }
 
+type HANDLER func(conn net.Conn, ses *Session, n uint, p uint)
+
+var Dispatch = make([]HANDLER, 256)
+var DispatchInit = make([]func(), 256)
+
 func WriteFive(conn net.Conn, cmd byte, n uint, p uint) {
 	log.Printf("WriteFive: %d.=%x=%q <<<<< %x %x", cmd, cmd, CmdToStr(cmd), n, p)
 	_, err := conn.Write([]byte{cmd, Hi(n), Lo(n), Hi(p), Lo(p)}) // == WriteFull
@@ -266,11 +271,18 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
 
 			}
+            /*
 		case CMD_LEVEL0:
 			Level0Control(conn, ses, n, p)
+            */
 
 		default:
-			log.Panicf("BAD COMMAND $%x: %#v", quint[0], quint)
+            fn := Dispatch[cmd]
+            if fn == nil {
+			    log.Panicf("BAD COMMAND $%x: %#v", quint[0], quint)
+            }
+			fn(conn, ses, n, p)
+
 		} // end switch
 	} // end for
 } // end ReadFiveLoop
@@ -337,6 +349,11 @@ func Serve(conn net.Conn) {
 ///////////////////////////////////////////////////
 
 func Listen() {
+    for i := 0; i < 256; i++ {
+        if fn := DispatchInit[i]; fn != nil {
+            fn()
+        }
+    }
 	l, err := net.Listen("tcp", Format(":%d", *PORT))
 	if err != nil {
 		log.Panicf("Cannot Listen(): %v", err)
