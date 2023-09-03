@@ -1,8 +1,6 @@
 ********************************************************************
 * Boot - NitrOS-9 Lemma Boot Module
 *
-* $Id: boot_lemma.asm,v 1.6 2023/04/25 03:48:23 strick Exp strick $
-*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------
