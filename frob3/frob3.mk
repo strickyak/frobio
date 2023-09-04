@@ -5,7 +5,7 @@
 all: all-the-things
 	find results -type f -print | LC_ALL=C sort
 
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 all-disks all-lemmings results2
+all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results2
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -42,7 +42,7 @@ results1:
 
 results2: results1
 	mkdir -p results/BOOTING results/OS9DISKS results/LEMMINGS
-	ln *.dsk results/OS9DISKS
+	: TODO : ln *.dsk results/OS9DISKS
 	ln *.lem results/LEMMINGS
 	cp -v $F/booting/README.md results/BOOTING/README.md
 	decb dskini results/BOOTING/netboot3.dsk
@@ -59,7 +59,7 @@ results2: results1
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
-	rm -f *.dsk *.lem *.a
+	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin
 	rm -f utility-*
 	rm -rf results
 
@@ -76,7 +76,7 @@ axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
 	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 	$(LWOBJDUMP) _work.o > _work.objdump
-	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
+	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
 	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
@@ -84,7 +84,7 @@ axiom-whole6k.decb: axiom-whole.rom
 	$(LWLINK) --output=axiom-whole6k.decb --map=axiom-whole6k.map --decb --script=$F/helper/axiom6k.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
 axiom-whole.l3k: axiom-whole.rom
-	go run $F/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
+	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
 
 axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_gomar.c
@@ -93,7 +93,7 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
 	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 	$(LWOBJDUMP) _work.o > _work.objdump
-	go run $F/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
+	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-gomar.s --output=axiom-gomar.o --list=axiom-gomar.list
 	$(LWLINK) --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script axiom-gomar.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 
@@ -108,9 +108,9 @@ CDEFS = -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
 LIB_CDEFS = -D"BASENAME=\"$$(basename $@ .o)\"" $(CDEFS)
 CMD_CDEFS = -D"BASENAME=\"$$(basename $@ .os9cmd)\"" $(CDEFS)
 
-COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
+COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
 
-COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
+COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
 
 C_FILES_FOR_CMOC_ARCHIVE = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c $F/wiz/wiz5100s.c $F/os9/frobos9.c
 _chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
@@ -270,23 +270,17 @@ boot.lemma.os9mod : boot_lemma.asm
 #######################################################################################
 
 all-lemmings:
-	go run $F/lemmings/*.go --nitros9dir='$(NITROS9)'
+	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)'
 
-all-disks:
-	: # These should have already been done by the Shelf....
-	: #cd '$(NITROS9)' && make PORTS=coco1 dsk
-	: #cd '$(NITROS9)' && make PORTS=coco2 dsk
-	: #cd '$(NITROS9)' && make PORTS=coco3 dsk
-	: #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
-	: # .....................................................
-	cp -v '$(NITROS9)/level2/coco3/NOS9_6809_L2_cocosdc.dsk' Nitros9_Coco3_M6809_Level2.dsk
-	cp -v '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_cocosdc.dsk' Nitros9_Coco3_H6309_Level2.dsk
-	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2.dsk
-	make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2.dsk
-
-#######################################################################################
-
-install-on-disk: _FORCE_
+# # These should have already been done by the Shelf....
+# #cd '$(NITROS9)' && make PORTS=coco1 dsk
+# #cd '$(NITROS9)' && make PORTS=coco2 dsk
+# #cd '$(NITROS9)' && make PORTS=coco3 dsk
+# #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
+# # .....................................................
+TODO-all-disks:
+	echo TODO
+TODO-install-on-disk: _FORCE_
 	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
 	: test -s '$(DISK)' || os9 format -l'65000' '$(DISK)'
 	$(OS9) dir '$(DISK),CMDS' 2>/dev/null || $(OS9) makdir '$(DISK),CMDS'
@@ -297,8 +291,8 @@ install-on-disk: _FORCE_
 	set -x; for x in results/MODULES/* ; do $(OS9) attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
 	$(OS9) copy -r $(NITROS9)/level2/coco3/cmds/telnet '$(DISK),CMDS/telnet'
 	$(OS9) attr -e -pe '$(DISK),CMDS/telnet'
-
 #######################################################################################
+
 # Disable RCS & SCCS patterns.
 %:: %,v
 %:: RCS/%,v
@@ -306,26 +300,3 @@ install-on-disk: _FORCE_
 %:: s.%
 %:: SCCS/s.%
 #######################################################################################
-# Two Bugs:
-# FIXED We're leaving out stack300.
-# FIXED We're leaving out FUSE.  And PIPE.  What about the SDC?
-# Needed Soon:
-#   3.  BigBoot Technique, replacing REL, boot_lemma, and Boot2 chunks.  Regain their space.
-#        (boot with all code and data and stack in $2000-$3fff page.  That can clear
-#        the $0000-$1fff page, and even initialize the memory map (AnteNitros).
-#   4.  Non-PIC compilation of Kernel Modules, for much tighter GCC optimizations,
-#        without encountering the PIC bugs.
-
-# Experimental level0:
-level0.loadm: $F/level0/level0c.c $F/level0/lib0.c $F/level0/level0.asm $F/level0/abort.asm
-	cat  $F/level0/level0c.c $F/level0/lib0.c > _level0_whole.c
-	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _level0_whole.c
-	(echo '  .area .text'; echo '  jmp _main'; sed 's/.text.startup/.text/' < _level0_whole.s) > level0.s
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/level0.asm --output=level0.o --list=level0.list
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  -I. $F/level0/abort.asm --output=abort.o --list=abort.list
-	$(LWLINK) --entry=Boot0 --format=decb --output=level0.bin --map=level0.map --script=$F/helper/level0.script level0.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc abort.o
-
-
-#cmoc_level0.loadm: ../level0/level0c.c ../axiom/netlib3.c
-#	$(CMOC) -c -i -I../.. $^
-#	$(LWLINK) --format=decb --output=cmoc_level0.bin  --map=cmoc_level0.map -L$F/../../share/cmoc/lib -lcmoc-crt-ecb -lcmoc-std-ecb level0c.o netlib3.o
