@@ -11,6 +11,8 @@ BUILD="$(/bin/pwd)"
 echo "BUILD directory : $BUILD"
 F=$(dirname $0)
 echo "FROB3 directory : $F"
+A=$(cd $F; /bin/pwd)
+echo "FROB3 absolute directory : $A"
 
 NITROS9=${NITROS9DIR:-$F/../../nitros9}
 case $# in
@@ -53,11 +55,12 @@ echo Found os9 at $OS9
 echo Found decb at $DECB
 echo Found go at $GO
 
-echo Writing config.txt
+echo Writing Makefile
 cat <<,,,,,,,, >Makefile
 export SHELL := /bin/bash
 
 export F:=$F
+export A:=$A
 export NITROS9:=$NITROS9
 
 export LWASM:=$LWASM
