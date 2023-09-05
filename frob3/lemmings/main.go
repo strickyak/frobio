@@ -78,6 +78,12 @@ func Emit(w io.Writer, bb []byte) {
 	}
 }
 
+var Os9Configs []*Os9ConfigForLemma
+
+func Os9(cf *Os9ConfigForLemma) {
+	Os9Configs = append(Os9Configs, cf)
+}
+
 func main() {
 	flag.Parse()
 	if *nitros9dirFlag == "" {
@@ -87,10 +93,14 @@ func main() {
 		}
 		nitros9dirFlag = &dir
 	}
-	BuildConfig(Nitros9_Coco3_M6809_Level2_Cf)
-	BuildConfig(Nitros9_Coco3_M6809_Level2_N_Cf)
-	BuildConfig(Nitros9_Coco3_M6809_Level2_Nminus_Cf)
-	BuildConfig(Nitros9_Coco3_H6309_Level2_Cf)
+	//BuildConfig(Nitros9_Coco3_M6809_Level2_Cf)
+	//BuildConfig(Nitros9_Coco3_M6809_Level2_N_Cf)
+	//BuildConfig(Nitros9_Coco3_M6809_Level2_Nminus_Cf)
+	//BuildConfig(Nitros9_Coco3_H6309_Level2_Cf)
+	for _, cf := range Os9Configs {
+		log.Printf("Building Os9Config: %q", cf.Name)
+		BuildConfig(cf)
+	}
 }
 
 func BuildConfig(cf *Os9ConfigForLemma) {
