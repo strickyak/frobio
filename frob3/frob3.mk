@@ -5,7 +5,7 @@
 all: all-the-things
 	find results -type f -print | LC_ALL=C sort
 
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results2
+all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results3
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -53,6 +53,9 @@ results2: results1
 	decb dir results/BOOTING/netboot3.dsk
 	ls -l results/BOOTING/
 
+results3: results2
+	cp $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
+	cp $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
 
 ###############################################
 
