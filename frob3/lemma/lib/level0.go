@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var FlagL0ModuleDirPath = flag.String("l0_module_dir", "", "where to find commands for Level0")
+var FlagL0ModuleDirPath = flag.String("l0_module_dir", "", "[experimental] where to find commands for Level0")
 
 const (
 	Sys_Data = 0x7E00 // and upward

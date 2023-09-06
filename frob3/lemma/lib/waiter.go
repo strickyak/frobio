@@ -18,12 +18,12 @@ import (
 var Format = fmt.Sprintf
 
 var PORT = flag.Int("port", 2319, "Listen on this TCP port")
-var PROGRAM = flag.String("program", "", "Program to upload to COCOs")
-var BLOCK0 = flag.String("block0", "", "filename of block drive 0")
-var DEMO = flag.String("demo", "", "run a demo")
-var CARDS = flag.Bool("cards", false, "run the cards")
-var READONLY = flag.String("ro", "", "read only resource directory")
-var LEVEL0 = flag.String("level0", "", "level0.bin (decb) to upload")
+var PROGRAM = flag.String("program", "", "[one program mode] Program to upload to COCOs")
+var BLOCK0 = flag.String("block0", "", "[one program mode] filename of block drive 0")
+var DEMO = flag.String("demo", "", "[demo mode] run a demo")
+var CARDS = flag.Bool("cards", false, "Preferred mode: Present numbered pages to choose what to boot.")
+var READONLY = flag.String("ro", "", "read only resource directory, for -cards mode.")
+var LEVEL0 = flag.String("level0", "", "[experimental Level0 mode] level0.bin (decb) to upload")
 
 var Block0 *os.File
 

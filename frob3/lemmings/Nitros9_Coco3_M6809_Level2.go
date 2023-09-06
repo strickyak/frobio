@@ -2,9 +2,10 @@ package main
 
 func init() {
 	Os9(&Os9ConfigForLemma{
-		Name:  "Nitros9_Coco3_M6809_Level2",
-		Level: "level2",
-		Port:  "coco3",
+		Name:        "Nitros9_Coco3_M6809_Level2",
+		Level:       "level2",
+		Port:        "coco3",
+		DefaultDisk: "nitros9/level2/coco3/NOS9_6809_L2_cocosdc.dsk",
 		Boot1Mods: []string{
 			"rel_80", "./boot.lemma", "krn",
 		},
@@ -25,27 +26,27 @@ func init() {
 			"w1.dw",
 			"w2.dw",
 			"w3.dw",
-			"w4.dw",
-			"w5.dw",
-			"w6.dw",
-			"w7.dw",
+			// "w4.dw",
+			// "w5.dw",
+			// "w6.dw",
+			// "w7.dw",
 
 			"clock_60hz",
 			"clock2_soft",
 			"sysgo_dd",
 
-			"pipeman.mn",
-			"piper.dr",
-			"pipe.dd",
+			// "pipeman.mn",
+			// "piper.dr",
+			// "pipe.dd",
 
-			"rbsuper.dr",
-			"llcocosdc.dr",
-			"sd0_cocosdc.dd",
-			"sd1_cocosdc.dd",
+			// "rbsuper.dr",
+			// "llcocosdc.dr",
+			// "sd0_cocosdc.dd",
+			// "sd1_cocosdc.dd",
 
-			"./fuseman",
-			"./fuser",
-			"./fuse",
+			// "./fuseman",
+			// "./fuser",
+			// "./fuse",
 
 			"./rblemma",
 			"./dd.b0",

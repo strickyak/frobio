@@ -10,25 +10,47 @@ import (
 	"strings"
 )
 
+const TODO_shelf = "../"
+
+var shelfFlag = flag.String("shelf", "", "coco-shelf directory")
+var nitros9dirFlag = flag.String("nitros9dir", "", "root of nitros9 sources")
+
 type Os9ConfigForLemma struct {
-	Name      string
-	Level     string
-	Port      string
-	Boot1Mods []string
-	Boot2Mods []string
+	Name        string
+	Level       string
+	Port        string
+	DefaultDisk string
+	Boot1Base   string
+	Boot1Mods   []string
+	Boot2Base   string
+	Boot2Mods   []string
 }
 
 func (cf *Os9ConfigForLemma) SlurpBoots() (b1 []byte, b2 []byte) {
+	var base1 map[string][]byte
+	if cf.Boot1Base != "" {
+		path1 := filepath.Join(*shelfFlag, cf.Boot1Base)
+		track := GetBootTrackOf(path1)
+		base1 = splitModules(track)
+		log.Printf("Boot1 Base %q len=$%x=%d.", path1, len(track), len(track))
+	}
 	for _, filename := range cf.Boot1Mods {
-		b1 = append(b1, SlurpFilename(cf, filename)...)
+		b1 = append(b1, SlurpFilename(cf, base1, filename)...)
+	}
+
+	var base2 map[string][]byte
+	if cf.Boot2Base != "" {
+		path2 := filepath.Join(*shelfFlag, cf.Boot2Base)
+		track := getOs9BootOf(path2)
+		base2 = splitModules(track)
+		log.Printf("Boot2 Base %q len=$%x=%d.", path2, len(track), len(track))
 	}
 	for _, filename := range cf.Boot2Mods {
-		b2 = append(b2, SlurpFilename(cf, filename)...)
+		b2 = append(b2, SlurpFilename(cf, base2, filename)...)
 	}
+
 	return b1, b2
 }
-
-var nitros9dirFlag = flag.String("nitros9dir", "", "root of nitros9 sources")
 
 func Quint(cmd byte, n int, p int) []byte {
 	return []byte{
@@ -54,18 +76,36 @@ func ChunksOf(bb []byte) [][]byte {
 	return z
 }
 
-func SlurpFilename(cf *Os9ConfigForLemma, filename string) []byte {
-	if strings.HasPrefix(filename, "./") {
-		filename = filepath.Join("results/MODULES/", filename)
+func SlurpFilename(cf *Os9ConfigForLemma, base map[string][]byte, filename string) []byte {
+	if strings.HasPrefix(filename, "<") {
+		key := strings.ToUpper(filename[1:])
+		mod, ok := base[key]
+		if !ok {
+			log.Panicf("Module %q not found in %q", key, cf.Boot2Base)
+		}
+		return mod
 	} else {
-		filename = filepath.Join(*nitros9dirFlag, cf.Level, cf.Port, "modules", filename)
+		// Determine the true filename
+		if strings.HasPrefix(filename, "/") {
+			filename = filename
+		} else if strings.HasPrefix(filename, "SHELF/") {
+			filename = filepath.Join(*shelfFlag, filename[6:])
+		} else if strings.HasPrefix(filename, "./") {
+			filename = filepath.Join("results/MODULES/", filename)
+		} else {
+			filename = filepath.Join(*nitros9dirFlag, cf.Level, cf.Port, "modules", filename)
+		}
+
+		// Slurp the file.
+		bb, err := ioutil.ReadFile(filename)
+		if err != nil {
+			log.Panicf("Cannot read filename %q: %v", filename, err)
+		}
+		log.Printf("Read $%x=%d. bytes from %q", len(bb), len(bb), filename)
+
+		// Return the contents.
+		return bb
 	}
-	bb, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Panicf("Cannot read filename %q: %v", filename, err)
-	}
-	log.Printf("Read %d bytes from %q", len(bb), filename)
-	return bb
 }
 
 func Emit(w io.Writer, bb []byte) {
@@ -104,18 +144,19 @@ func main() {
 }
 
 func BuildConfig(cf *Os9ConfigForLemma) {
-	w, err := os.Create(cf.Name + ".lem")
+	name := cf.Name + ".lem"
+	w, err := os.Create(name)
 	if err != nil {
-		log.Panicf("Cannot create %q: %v", cf.Name, err)
+		log.Panicf("Cannot create %q: %v", name, err)
 	}
 	defer w.Close()
-	log.Printf("==== Writing to %q ====", cf.Name)
+	log.Printf("==== Writing to %q ====", name)
 
 	b1, b2 := cf.SlurpBoots()
 
 	// Set interrupt vectors.
 	Emit(w, Quint(0, 16, 0xFFF0))
-	Emit(w, SlurpFilename(cf, "vectors"))
+	Emit(w, SlurpFilename(cf, nil, "vectors"))
 
 	// Load binary b1 at $2600.
 	Emit(w, Quint(0, len(b1), 0x2600))
@@ -131,4 +172,10 @@ func BuildConfig(cf *Os9ConfigForLemma) {
 		Emit(w, chunk)
 	}
 	Emit(w, Quint(213, len(b2), 0))
+
+	if cf.DefaultDisk != "" {
+		in := filepath.Join(*shelfFlag, cf.DefaultDisk)
+		out := cf.Name + ".dsk"
+		Run("dd", "bs=1024000", "if="+in, "of="+out)
+	}
 }

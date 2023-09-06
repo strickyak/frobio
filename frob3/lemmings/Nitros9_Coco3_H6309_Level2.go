@@ -2,9 +2,10 @@ package main
 
 func init() {
 	Os9(&Os9ConfigForLemma{
-		Name:  "Nitros9_Coco3_H6309_Level2",
-		Level: "level2",
-		Port:  "coco3_6309",
+		Name:        "Nitros9_Coco3_H6309_Level2",
+		Level:       "level2",
+		Port:        "coco3_6309",
+		DefaultDisk: "nitros9/level2/coco3_6309/NOS9_6309_L2_cocosdc.dsk",
 		Boot1Mods: []string{
 			"rel_80", "./boot.lemma", "krn",
 		},

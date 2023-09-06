@@ -31,27 +31,27 @@ to stress your CocoIO Card.
 	Add(30, 0, "Nitros-9", &Card{})
 
 	Add(31, 30, "L1 3.3.0 for M6809", &Card{
-		Launch: ".L1-330-M.ax",
-		Block0: ".L1-330-M-frobio.dsk",
+		Launch: ".Nitros9_Coco1_M6809_Level1.lem",
+		Block0: ".Nitros9_Coco1_M6809_Level1.dsk",
 	})
 
 	Add(32, 30, "Nitros9 Level2", &Card{})
 	Add(323, 32, "L2 3.3.0 for H6309", &Card{
-		Launch: ".L2-330-H.ax",
-		Block0: ".L2-330-H.dsk",
+		Launch: ".Nitros9_Coco3_H6309_Level2.lem",
+		Block0: ".Nitros9_Coco3_H6309_Level2.dsk",
 	})
 	Add(328, 32, "L2 3.3.0 for M6809", &Card{
-		Launch: ".L2-330-M.ax",
-		Block0: ".L2-330-M-frobio.dsk",
+		Launch: ".Nitros9_Coco3_M6809_Level2.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
 
-	Add(33, 30, "Nitros9 EOU", &Card{})
-	Add(333, 33, "Nitros9 EOU 1.0.0 for H6309", &Card{
-		Launch: ".EOU-100-H.ax",
-		Block0: ".EOU-100-H.dsk",
+	Add(33, 30, "(Broken) Nitros9 EOU", &Card{})
+	Add(333, 33, "(Broken) Nitros9 EOU 1.0.0 for H6309", &Card{
+		Launch: ".EOU_H6309.lem",
+		Block0: ".EOU_H6309.dsk",
 	})
-	Add(338, 33, "Nitros9 EOU 1.0.0 for M6809", &Card{
-		Launch: ".EOU-100-M.ax",
-		Block0: ".EOU-100-M.dsk",
+	Add(338, 33, "(Broken) Nitros9 EOU 1.0.0 for M6809", &Card{
+		Launch: ".EOU_M6809.lem",
+		Block0: ".EOU_M6809.dsk",
 	})
 }

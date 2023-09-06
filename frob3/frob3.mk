@@ -4,6 +4,7 @@
 
 all: all-the-things
 	find results -type f -print | LC_ALL=C sort
+	sync
 
 all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results3
 
@@ -43,7 +44,8 @@ results1:
 results2: results1
 	mkdir -p results/BOOTING results/OS9DISKS results/LEMMINGS
 	: TODO : ln *.dsk results/OS9DISKS
-	ln *.lem results/LEMMINGS
+	ln *.lem results/LEMMINGS/
+	ln *.dsk results/LEMMINGS/
 	cp -v $F/booting/README.md results/BOOTING/README.md
 	decb dskini results/BOOTING/netboot3.dsk
 	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS
@@ -273,7 +275,11 @@ boot.lemma.os9mod : boot_lemma.asm
 #######################################################################################
 
 all-lemmings:
-	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)'
+	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
+
+#	mkdir results/LEMMINGS
+#	cp *.lem results/LEMMINGS
+#	cp *.dsk results/LEMMINGS
 
 # # These should have already been done by the Shelf....
 # #cd '$(NITROS9)' && make PORTS=coco1 dsk
@@ -303,3 +309,7 @@ TODO-install-on-disk: _FORCE_
 %:: s.%
 %:: SCCS/s.%
 #######################################################################################
+
+run-lemma: all
+	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
+	$(SHELF)/bin/server  -cards -ro results/LEMMINGS

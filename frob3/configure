@@ -14,6 +14,8 @@ echo "FROB3 directory : $F"
 A=$(cd $F; /bin/pwd)
 echo "FROB3 absolute directory : $A"
 
+SHELF="$(cd ${SHELF:-$F/../../} && /bin/pwd )"
+echo "SHELF directory : $SHELF"
 NITROS9=${NITROS9DIR:-$F/../../nitros9}
 case $# in
   1)
@@ -59,6 +61,7 @@ echo Writing Makefile
 cat <<,,,,,,,, >Makefile
 export SHELL := /bin/bash
 
+export SHELF:=$SHELF
 export F:=$F
 export A:=$A
 export NITROS9:=$NITROS9

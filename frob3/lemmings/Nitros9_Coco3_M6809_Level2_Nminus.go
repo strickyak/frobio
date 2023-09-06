@@ -1,5 +1,6 @@
 package main
 
+/*
 func init() {
 	Os9(&Os9ConfigForLemma{
 		Name:  "Nitros9_Coco3_M6809_Level2_Nminus",
@@ -53,3 +54,4 @@ func init() {
 		},
 	})
 }
+*/
