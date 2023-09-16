@@ -44,6 +44,10 @@ to stress your CocoIO Card.
 		Launch: ".Nitros9_Coco3_M6809_Level2.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
+	Add(328001, 32, "(untested) L2 3.3.0 for M6809 with LEMMAN", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2_L.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
+	})
 
 	Add(33, 30, "(Broken) Nitros9 EOU", &Card{})
 	Add(333, 33, "(Broken) Nitros9 EOU 1.0.0 for H6309", &Card{
