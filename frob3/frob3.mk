@@ -11,7 +11,7 @@ all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-a
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
 NUM_CMDS = 16
-NUM_MODULES = 11
+NUM_MODULES = 14
 
 ###############################################
 
@@ -247,7 +247,7 @@ fuse.os9mod: fuse.asm defsfile fuse.h
 
 #######################################################################################
 
-all-drivers: rblemma.os9mod dd.b0.os9mod b0.os9mod b1.os9mod b2.os9mod b3.os9mod n.fuse.os9mod boot.lemma.os9mod
+all-drivers: rblemma.os9mod dd.b0.os9mod b0.os9mod b1.os9mod b2.os9mod b3.os9mod n.fuse.os9mod boot.lemma.os9mod all-lemman
 
 LWASM_FOR_DRIVER	= t=$$(basename $@ .os9mod); $(LWASM) -o $$t --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export -D'Level=2' -D'H6309=0' -I'.' -I'$F' -I'$F/wiz'  --format=os9 --list=$@.list $< && mv -v $$t $@
 
@@ -271,6 +271,25 @@ n.fuse.os9mod : n_fuse.asm
 	$(LWASM_FOR_DRIVER)
 boot.lemma.os9mod : boot_lemma.asm
 	$(LWASM_FOR_DRIVER)
+
+all-lemman: lemman.os9mod lemmer.os9mod lem.os9mod
+	echo '*** WARNING *** UNTESTED ***'
+
+_generated_from_lemmanc.s: lemmanc.c lemmanc.h lemman.asm
+	$(CMOC)  -i --os9 -O2 --function-stack=0 --switch=ifelse -S -I$F/.. -o lemmanc.s $<
+	sed -n '/SECTION.[cr]od[ea]/, /ENDSECTION/ p' < lemmanc.s | egrep -v 'SECTION|EXPORT|IMPORT' > _generated_from_lemmanc.s
+	echo '*** WARNING *** UNTESTED ***'
+lemman.os9mod: lemman.asm _generated_from_lemmanc.s $F/drivers/lemmanc.c $F/drivers/lemmanc.h $F/drivers/lemman.asm
+	$(LWASM_FOR_DRIVER)
+	echo '*** WARNING *** UNTESTED ***'
+
+lemmer.os9mod: lemmer.asm defsfile
+	$(LWASM_FOR_DRIVER)
+	echo '*** WARNING *** UNTESTED ***'
+
+lem.os9mod: lem.asm defsfile
+	$(LWASM_FOR_DRIVER)
+	echo '*** WARNING *** UNTESTED ***'
 
 #######################################################################################
 
