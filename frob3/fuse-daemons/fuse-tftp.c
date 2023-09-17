@@ -11,7 +11,7 @@
 #include "frob3/fuse.h"
 
 #define DAEMON "/Fuse/Daemon/TFTP"
-#define PAYSIZ 2048
+#define PAYSIZ 600
 #define READ_WRITE 03
 #define SHARABLE_RW 0133
 

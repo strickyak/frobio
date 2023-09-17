@@ -6,8 +6,8 @@ import (
 	"log"
 )
 
-func DumpHexLines(label string, offset uint, bb []byte) {
-	for i := uint(0); i < uint(len(bb)); i += 32 {
+func DumpHexLines(label string, offset Word, bb []byte) {
+	for i := Word(0); i < Word(len(bb)); i += 32 {
 		DumpHexLine(fmt.Sprintf("%s $%04x", label, offset+i), bb[i:i+32])
 	}
 }

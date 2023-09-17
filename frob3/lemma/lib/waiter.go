@@ -27,6 +27,8 @@ var LEVEL0 = flag.String("level0", "", "level0.bin (decb) to upload")
 
 var Block0 *os.File
 
+type Word uint16
+
 const (
 	CMD_POKE = 0
 	CMD_CALL = 255
@@ -56,29 +58,29 @@ var Demos map[string]func(net.Conn)
 
 var LogicalRamImage [0x10000]byte // capture coco image.
 
-func HiLo(a, b byte) uint {
-	return (uint(a) << 8) | uint(b)
+func HiLo(a, b byte) Word {
+	return (Word(a) << 8) | Word(b)
 }
-func Hi(x uint) byte {
-	return 255 & byte(x>>8)
+func Hi(x Word) byte {
+	return byte(x>>8)
 }
-func Lo(x uint) byte {
-	return 255 & byte(x)
+func Lo(x Word) byte {
+	return byte(x)
 }
 
-type HANDLER func(conn net.Conn, ses *Session, n uint, p uint)
+type HANDLER func(conn net.Conn, ses *Session, n Word, p Word)
 
 var Dispatch = make([]HANDLER, 256)
 var DispatchInit = make([]func(), 256)
 
-func WriteFive(conn net.Conn, cmd byte, n uint, p uint) {
+func WriteFive(conn net.Conn, cmd byte, n Word, p Word) {
 	log.Printf("WriteFive: %d.=%x=%q <<<<< %x %x", cmd, cmd, CmdToStr(cmd), n, p)
 	_, err := conn.Write([]byte{cmd, Hi(n), Lo(n), Hi(p), Lo(p)}) // == WriteFull
 	if err != nil {
 		log.Panicf("writeFive: stopping due to error: %v", err)
 	}
 }
-func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
+func ReadFive(conn net.Conn) (cmd byte, n Word, p Word) {
 	quint := make([]byte, 5)
 	log.Printf("ReadFive...")
 	_, err := io.ReadFull(conn, quint)
@@ -92,7 +94,7 @@ func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
 	return
 }
 
-func ReadN(conn net.Conn, n uint) []byte {
+func ReadN(conn net.Conn, n Word) []byte {
 	bb := make([]byte, n)
 	log.Printf("ReadN...")
 	_, err := io.ReadFull(conn, bb)
@@ -102,8 +104,8 @@ func ReadN(conn net.Conn, n uint) []byte {
 	return bb
 }
 
-func PokeRam(conn net.Conn, addr uint, data []byte) {
-	n := uint(len(data))
+func PokeRam(conn net.Conn, addr Word, data []byte) {
+	n := Word(len(data))
 
 	_, err := conn.Write([]byte{CMD_POKE, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
 	if err != nil {
@@ -141,7 +143,7 @@ func GetBlockDevice(ses *Session) *os.File {
 	return ses.Block0
 }
 
-func SeekSectorReturnLSN(block *os.File, n uint, p uint) int64 {
+func SeekSectorReturnLSN(block *os.File, n Word, p Word) int64 {
 	var err error
 	lsn := (int64(n&255) << 16) | int64(p)
 	log.Printf("block READ LSN %d. =$%x (%q)", lsn, lsn, block.Name())
@@ -207,7 +209,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				if err != nil {
 					log.Panicf("DATA: stopping due to error: %v", err)
 				}
-				for i := uint(0); i < n; i++ {
+				for i := Word(0); i < n; i++ {
 					LogicalRamImage[p+i] = data[i]
 				}
 				DumpHexLines("M", p, data)

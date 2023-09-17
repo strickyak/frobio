@@ -506,16 +506,17 @@ prob UdpRecvCommon(byte socknum, byte* payload, word* size_in_out, quad* from_ad
   WizPut2(base+0x000e, 0); // ...
   WizPut2(base+0x0010, 0); // clear Dest port addr
 
-  WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
-  WizPut1(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
-  Wiz__wait(base+SockCommand, 0, 500);
+  // WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
+  // WizPut1(base+SockCommand, 0x40/*=RECV*/);  // RECV command.
+  Wiz__command(base, 0x40/*RECV*/);
+  // Wiz__wait(base+SockCommand, 0, 500);
   LogDebug("status->%x ", WizGet1(base+SockStatus));
 
   LogDebug(" ====== WAIT ====== ");
   while(1) {
     byte irq = WizGet1(base+SockInterrupt);
     if (irq) {
-      WizPut1(base+SockInterrupt, 0x1f);  // Reset interrupts.
+      WizPut1(base+SockInterrupt, 0x04);  // Reset interrupts.
       if (irq != 0x04 /*=RECEIVED*/) {
         return "BadRecv";
       }
@@ -555,6 +556,10 @@ prob UdpRecvCommon(byte socknum, byte* payload, word* size_in_out, quad* from_ad
   LogDebug("nando RX lib: base=%x rs=%x rd=%x wr=%x hdr.len=%x new_rx_rd=%x", base, recv_size, rx_rd, rx_wr, hdr.len,
                                    RX_MASK & (rx_rd + recv_size));
   WizPut2(base+0x0028/*_RX_RD*/, RX_MASK & (rx_rd + recv_size));
+
+  // Tue Aug 29 14:43:59 PDT 2023
+  // don't we need this
+  Wiz__command(base, 0x40/*RECV*/);
 
   return GOOD;
 }

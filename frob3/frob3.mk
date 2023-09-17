@@ -9,7 +9,7 @@ all-the-things: all-gen-api all-net-cmds all-fuse-modules all-fuse-daemons all-d
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
-NUM_CMDS = 16
+NUM_CMDS = 17
 NUM_MODULES = 11
 
 ###############################################
@@ -61,7 +61,7 @@ results2: results1
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
-	rm -f *.dsk *.lem *.a
+	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin
 	rm -f utility-*
 	rm -rf results
 
@@ -188,7 +188,7 @@ f.wget.os9cmd: $F/net-cmds/f-wget.c $(O_FILES_FOR_NET_CMDS)
 f.ticks.os9cmd: $F/net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
-all-fuse-daemons: fuse.n.os9cmd fuse.ramfile.os9cmd fuse.tftp.os9cmd
+all-fuse-daemons: fuse.n.os9cmd fuse.ramfile.os9cmd fuse.tftp.os9cmd fuse.tnfs.os9cmd
 
 fuse.n.os9cmd: $F/fuse-daemons/fuse-n.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
@@ -197,6 +197,9 @@ fuse.ramfile.os9cmd: $F/fuse-daemons/fuse-ramfile.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+fuse.tnfs.os9cmd: $F/fuse-daemons/fuse-tnfs.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 #######################################################################################
@@ -284,23 +287,35 @@ boot.lemma.os9mod : boot_lemma.asm
 all-lemmings:
 	$(NOMOD) $(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)'
 
+# # These should have already been done by the Shelf....
+# #cd '$(NITROS9)' && make PORTS=coco1 dsk
+# #cd '$(NITROS9)' && make PORTS=coco2 dsk
+# #cd '$(NITROS9)' && make PORTS=coco3 dsk
+# #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
+# # .....................................................
 all-disks:
-	: # These should have already been done by the Shelf....
-	: #cd '$(NITROS9)' && make PORTS=coco1 dsk
-	: #cd '$(NITROS9)' && make PORTS=coco2 dsk
-	: #cd '$(NITROS9)' && make PORTS=coco3 dsk
-	: #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
-	: # .....................................................
-	cp -v '$(NITROS9)/level2/coco3/NOS9_6809_L2_cocosdc.dsk' Nitros9_Coco3_M6809_Level2.dsk
-	bash /frob3/helper/make-big-floppy.sh '$(NITROS9)/level2/coco3/NOS9_6809_L2_80d.dsk' Nitros9_Coco3_M6809_Level2_80d_big.dsk
-	cp -v '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_cocosdc.dsk' Nitros9_Coco3_H6309_Level2.dsk
-	bash /frob3/helper/make-big-floppy.sh '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_80d.dsk' Nitros9_Coco3_H6309_Level2_80d_big.dsk
-	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2.dsk
-	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2_80d_big.dsk
-	make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2.dsk
-	make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2_80d_big.dsk
+	$(GO) run $A/helper/drop-os9boot-mods/main.go < '$(NITROS9)/level2/coco3/bootfiles/bootfile_80d' > bootfile_80fuse pipeman piper pipe
+	cat fuseman.os9mod fuser.os9mod fuse.os9mod >> bootfile_80fuse
+	bash $F/helper/make-big-floppy.sh --os9boot bootfile_80fuse '$(NITROS9)/level2/coco3/NOS9_6809_L2_80d.dsk' Nitros9_Coco3_M6809_Level2_80d_big.dsk
+	bash $F/helper/add-cmds.sh Nitros9_Coco3_M6809_Level2_80d_big.dsk *.os9cmd
+	exit
+
+#	cp -v '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_cocosdc.dsk' Nitros9_Coco3_H6309_Level2.dsk
+#	bash /frob3/helper/make-big-floppy.sh '$(NITROS9)/level2/coco3_6309/NOS9_6309_L2_80d.dsk' Nitros9_Coco3_H6309_Level2_80d_big.dsk
+#	: : : make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2.dsk
+#	make --directory=. install-on-disk DISK=Nitros9_Coco3_M6809_Level2_80d_big.dsk
+#	: : : make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2.dsk
+#	make --directory=. install-on-disk DISK=Nitros9_Coco3_H6309_Level2_80d_big.dsk
+#	: : :
+#	: : : bash $F/helper/forge-disk.sh Nitros9_Coco3_M6809_Level2_80d_big_fuse.dsk  '$(NITROS9)/level2/coco3/NOS9_6809_L2_80d.dsk' '$(NITROS9)/level2/coco3/bootfiles/kernel_1773' -pipeman -piper -pipe +fuseman.os9mod +fuser.os9mod +fuse.os9mod 
+#X#: : :
+#X#os9 copy -r '$(NITROS9)/level2/coco3/NOS9_6809_L2_d80.dsk,os9boot' m_d80.os9boot
+#X#os9 ident m_d80.os9boot
+#X#$(NOMOD) $(GO) run $A/helper/drop-os9boot-mods/main.go <m_d80.os9boot >m_d80_fuse.os9boot pipeman piper pipe
+#X#cat fuseman.os9mod fuser.os9mod fuse.os9mod >>m_d80_fuse.os9boot
 
 #######################################################################################
+
 
 install-on-disk: _FORCE_
 	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }

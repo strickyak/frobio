@@ -1,4 +1,4 @@
-package lib
+package level0
 
 import (
     "fmt"
@@ -37,30 +37,28 @@ const ( // state:
 	Blocked = 3
 )
 
-type word uint16
-
 type Regs6809 struct {
 	CC byte
-	D  word
+	D  Word
 	DP byte
-	X  word
-	Y  word
-	U  word
-	PC word // S starts here for RTI.
+	X  Word
+	Y  Word
+	U  Word
+	PC Word // S starts here for RTI.
 }
 
 var Cur *L0Proc
 
 type L0Proc struct {
 	pid      byte
-	stack   word // downward
-	params  word
-	data    word // data address
-	uid     word
-	state   word
-	modaddr word
-    icptCall word  // F$ICPT
-    icptData word  // F$ICPT
+	stack   Word // downward
+	params  Word
+	data    Word // data address
+	uid     Word
+	state   Word
+	modaddr Word
+    icptCall Word  // F$ICPT
+    icptData Word  // F$ICPT
 
 	parent    *L0Proc
 	deadKids  []*L0Proc
@@ -96,17 +94,17 @@ func (m L0Module) Kind() byte     { return m.contents[5] >> 4 }
 func (m L0Module) Lang() byte     { return m.contents[5] & 15 }
 func (m L0Module) Attr() byte     { return m.contents[6] >> 4 }
 func (m L0Module) Rev() byte      { return m.contents[6] & 15 }
-func (m L0Module) Exec() uint     { return HiLo(m.contents[9], m.contents[10]) }
-func (m L0Module) DataSize() uint { return HiLo(m.contents[11], m.contents[12]) }
+func (m L0Module) Exec() Word     { return HiLo(m.contents[9], m.contents[10]) }
+func (m L0Module) DataSize() Word { return HiLo(m.contents[11], m.contents[12]) }
 
 func (p L0Proc) String() string     { return F("L0Proc<%d,%s>", p.pid, p.module.name) }
 func (f L0File) String() string     { return F("L0File<%s>", f.name) }
 func (m L0Module) String() string     { return F("L0Module<%s>", m.name) }
 
-func (r * Regs6809) A() byte { return Hi(uint(r.D)) }
-func (r * Regs6809) B() byte { return Lo(uint(r.D)) }
-func (r * Regs6809) SetA(a byte) { r.D = word(HiLo(a, r.B())) }
-func (r * Regs6809) SetB(b byte) { r.D = word(HiLo(r.A(), b)) }
+func (r * Regs6809) A() byte { return Hi(r.D) }
+func (r * Regs6809) B() byte { return Lo(r.D) }
+func (r * Regs6809) SetA(a byte) { r.D = HiLo(a, r.B()) }
+func (r * Regs6809) SetB(b byte) { r.D = HiLo(r.A(), b) }
 
 var ModuleMap map[string]*L0Module
 var nextPid = byte(0)
@@ -167,9 +165,9 @@ func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Pro
 	p := &L0Proc{
 		pid:     nextPid,
 		parent:    parent,
-		stack:   word(Usr_Stack - len(params)),
+		stack:   Word(Usr_Stack - len(params)),
 		parambb: []byte(params),
-		params:  word(Usr_Stack - len(params)),
+		params:  Word(Usr_Stack - len(params)),
 		data:    Usr_Data,
 		state:   Ready,
         cwd: cwd,
@@ -192,16 +190,16 @@ func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Pro
 		X:  p.stack,
 		Y:  Usr_Stack,
 		U:  p.data,
-		PC: word(Usr_Load + mod.Exec()),
+		PC: Word(Usr_Load + mod.Exec()),
 	}
 
 	bb := RegsToBytes(regs)
 	AssertEQ(len(bb), 12)
 
 	log.Printf("LLL regs12...")
-	PokeRam(conn, uint(p.stack-12), bb)
+	PokeRam(conn, p.stack-12, bb)
 	log.Printf("LLL sending RTI")
-	WriteFive(conn, CMD_RTI, 0, uint(p.stack-12))
+	WriteFive(conn, CMD_RTI, 0, p.stack-12)
     Cur = p
 	return p, nil
 }
@@ -223,7 +221,7 @@ func BytesToRegs(bb []byte) *Regs6809 {
     return regs
 }
 
-func ExtractName(bb []byte, i uint, filename string) string {
+func ExtractName(bb []byte, i Word, filename string) string {
 	var buf bytes.Buffer
 	for {
 		ch := 127 & bb[i]
@@ -280,7 +278,7 @@ func AttemptToLoadModule(filename string) {
 	}
 }
 
-func Peek(conn net.Conn, addr uint, n uint) []byte {
+func Peek(conn net.Conn, addr Word, n Word) []byte {
 	WriteFive(conn, CMD_PEEK, n, addr)
 	cmd, m, p := ReadFive(conn)
 	if cmd != CMD_DATA || m != n || p != addr {
@@ -335,7 +333,7 @@ func Do_I_Read(conn net.Conn, ses *Session, regs *Regs6809) (errnum byte) {
 func Do_I_Open(conn net.Conn, ses *Session, regs *Regs6809) (fd byte, errnum byte) {
     mode := regs.A()
     pathBegin := regs.X
-    bb := Peek(conn , uint(pathBegin), 80 )
+    bb := Peek(conn , pathBegin, 80 )
     filename := ExtractFileName(bb)
     log.Printf("Open($%x, %q)", mode, filename)
 
@@ -349,10 +347,10 @@ func Do_I_Open(conn net.Conn, ses *Session, regs *Regs6809) (fd byte, errnum byt
 }
 
 func Do_I_WritLn(conn net.Conn, ses *Session, regs *Regs6809) byte {
-    block := Peek(conn, uint(regs.X), uint(regs.Y))
+    block := Peek(conn, regs.X, regs.Y)
     line := ChopLine(block)
-    log.Printf("WritLn(%d.) ===>>> %q", Hi(uint(regs.D)), line)
-    regs.Y = word(len(line))
+    log.Printf("WritLn(%d.) ===>>> %q", Hi(regs.D), line)
+    regs.Y = Word(len(line))
     return 0
 }
 
@@ -372,11 +370,11 @@ func Do_F_Time(conn net.Conn, ses *Session, regs *Regs6809) byte {
             bb = append(bb, byte(n))
         }
     }
-    PokeRam(conn, uint(regs.X), bb)
+    PokeRam(conn, regs.X, bb)
     return 0
 }
 
-func   ReturnFromOs9Call(conn net.Conn, ses *Session, userSP uint, regs *Regs6809, errbyte byte) {
+func   ReturnFromOs9Call(conn net.Conn, ses *Session, userSP Word, regs *Regs6809, errbyte byte) {
     const carryBit = 0x01
     if errbyte==0 {
         regs.CC &^= carryBit // clear the carry bit
@@ -390,7 +388,7 @@ func   ReturnFromOs9Call(conn net.Conn, ses *Session, userSP uint, regs *Regs680
 	WriteFive(conn, CMD_RTI, 0, userSP)
 }
 
-func Level0Control(conn net.Conn, ses *Session, n uint, p uint) {
+func Level0Control(conn net.Conn, ses *Session, n Word, p Word) {
 	// First read the globals.
 	const LEN = 16
 

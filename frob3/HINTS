@@ -33,3 +33,16 @@ Trying...
 go run /sy/doing_os9/gomar/borges/borges.go -glob '*.list' -outdir ~/sy/doing_os9/borges/  .
 
 ;;;;;;;;;;;;;;;;;;;;;;;
+
+f.mount /d1 -u=myke -p=sando -m=vol1
+f.mount /d1 -h=1.2.3.4:2318 -u=strick -p=nando -m=vol88
+    -- ties up another TCP Client Socket.
+    -- requires a waiter server in passive mode (port 2318).
+f.umount /d1
+
+;;;;;;;;;;;;;;;;;;;;;;;
+
+strick@strick-ThinkPad-X220:/sy/doing_os9/gomar$ m -p '[[] 402' ,
+strick@strick-ThinkPad-X220:/sy/doing_os9/gomar$ ( echo t ; echo "fuse.tnfs aaa 127.0.0.1 . . . &" ; echo "dir -e cmds" ; echo "list /fuse/tnfs/aaa/Dockerfile" ) | os9 copy -l -r /dev/stdin /home/strick/coco-shelf/build-frobio/Nitros9_Coco3_M6809_Level2_80d_big.dsk,startup
+strick@strick-ThinkPad-X220:/sy/doing_os9/gomar$ go run -x --tags=coco3,level2,cocoio,trace,d  gomar.go -boot drive/boot2coco3 -disk /home/strick/coco-shelf/build-frobio/Nitros9_Coco3_M6809_Level2_80d_big.dsk --borges ../borges/   2>&1 | tee ,
+

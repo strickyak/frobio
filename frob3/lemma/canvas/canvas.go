@@ -74,7 +74,7 @@ func (can *Canvas) Render(conn net.Conn) {
 }
 func (can *Canvas) Verify(conn net.Conn) {
 	const PeekChunkSize = 1024
-	for i := uint(0); i < 3072/PeekChunkSize; i++ {
+	for i := lem.Word(0); i < 3072/PeekChunkSize; i++ {
 		lem.WriteFive(conn, lem.CMD_PEEK, PeekChunkSize, PeekChunkSize*i+ScreenLoc)
 
 	HDR:
@@ -121,7 +121,7 @@ func (can *Canvas) Verify(conn net.Conn) {
 			panic("short read")
 		}
 
-		for j := uint(0); j < PeekChunkSize; j++ {
+		for j := lem.Word(0); j < PeekChunkSize; j++ {
 			want := can.bm[j+PeekChunkSize*i]
 			if v[j] != want {
 				log.Panicf("Diff [%d]: %x vs %x", j+PeekChunkSize*i, v[j], want)
@@ -160,10 +160,10 @@ func G6CMode(conn net.Conn) {
 	MustWrite(conn, []byte{0xE8})
 }
 
-func SetVdgScreenAddr(conn net.Conn, addr uint) {
+func SetVdgScreenAddr(conn net.Conn, addr lem.Word) {
 	addr >>= 10
-	reg := uint(0xFFC8)
-	for i := 0; i < 7; i++ {
+	reg := lem.Word(0xFFC8)
+	for i := lem.Word(0); i < 7; i++ {
 		lobit := addr & 1
 		lem.WriteFive(conn, lem.CMD_POKE, 1, reg+lobit)
 		MustWrite(conn, []byte{anything})

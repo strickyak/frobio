@@ -15,7 +15,7 @@ import (
 
 type Quint [5]byte // Quintabyte commands.
 
-func NewQuint(cmd byte, n uint, p uint) Quint {
+func NewQuint(cmd byte, n Word, p Word) Quint {
 	var q Quint
 	q[0] = cmd
 	q[1] = Hi(n)
@@ -28,10 +28,10 @@ func NewQuint(cmd byte, n uint, p uint) Quint {
 func (q Quint) Command() byte {
 	return q[0]
 }
-func (q Quint) N() uint {
+func (q Quint) N() Word {
 	return HiLo(q[1], q[2])
 }
-func (q Quint) P() uint {
+func (q Quint) P() Word {
 	return HiLo(q[3], q[4])
 }
 
@@ -77,7 +77,7 @@ func (ax *AxScreen) Clear() {
 	}
 }
 func (ax *AxScreen) PutChar(ch byte) {
-	q := NewQuint(CMD_PUTCHAR, 0, uint(ch))
+	q := NewQuint(CMD_PUTCHAR, 0, Word(ch))
 	_, err := ax.Ses.Conn.Write(q[:])
 	Check(err)
 }
