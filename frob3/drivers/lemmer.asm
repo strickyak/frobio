@@ -21,7 +21,7 @@ PreDeviceVars  rmb 6   ; 6 bytes of predefined struct DeviceVars.
 base_of_ram64  rmb 2   ; base page of 64-byte allocs.
 static_ram_sz  equ .   ; will be rounded up to 256 anyway.
 
-         fcb   READ.+WRITE.
+         fcb   READ.+WRITE.+DIR.
 
 name     fcs   /Lemmer/
          fcb   edition

@@ -30,8 +30,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define HYPER_GOMAR 0
-
 // typedef unsigned char bool;
 // typedef unsigned char byte;
 // typedef unsigned char errnum;
@@ -48,7 +46,7 @@ SOFTWARE.
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
-#define assert(C) { if (!(C)) { PrintH(" *ASSERT* %s:%d *FAILED*\n", __FILE__,  __LINE__); HyperCoreDump(); GameOver(); } }
+#define assert(C) { if (!(C)) { PrintHH(" *ASSERT* %s:%d *FAILED*\n", __FILE__,  __LINE__); HyperCoreDump(); GameOver(); } }
 
 enum Commands {
   CMD_POKE = 0,
@@ -66,8 +64,8 @@ enum Commands {
   CMD_BOOT_BEGIN = 211,  // boot_lemma
   CMD_BOOT_CHUNK = 212,  // boot_lemma
   CMD_BOOT_END = 213,  // boot_lemma
-  CMD_IOMAN_REQUEST = 214,
-  CMD_IOMAN_REPLY = 215,
+  CMD_LEMMAN_REQUEST = 214,
+  CMD_LEMMAN_REPLY = 215,
   CMD_JSR = 255,
 };
 
@@ -106,7 +104,7 @@ struct PathDesc {
         device_table_entry;   // PD.DEV = 3
   byte current_process_id;    // PD.CPR = 5
   struct Regs *regs;          // PD.RGS = 6
-  word unused_daemon_buffer;  // PD.BUF = 8
+  word buffer;                // PD.BUF = 8
   // offset 10 = PD.FST
 
   bool is_poisoned;  // TODO: error handling and path poisoning.
@@ -114,7 +112,8 @@ struct PathDesc {
 
 /////////////////  Hypervisor Debugging Support
 
-#if HYPER_GOMAR
+#define __GOMAR__ 1
+#if __GOMAR__
 
 #ifdef __GNUC__
 void
@@ -137,11 +136,13 @@ HyperCoreDump() {
 #endif
 }
 
-void PrintH(const char* format, ...) {
+void PrintHH(const char* format, ...) {
 #if 1 // __CMOC__
+  const char ** fmt_ptr = &format;
   asm {
+      ldx fmt_ptr
       swi
-      fcb 108
+      fcb 111  // PrintH2 in emu/hyper.go
   }
 #endif
 }
@@ -175,6 +176,13 @@ void bzero(void* addr, size_t len) {
   for (size_t i=0; i<len; i++) {
     *p++ = 0;
   }
+}
+
+void* memcpy(void* dest, const void* src, word len) {
+  for (byte i=0; i<(byte)len; i++) {
+    ((char*)dest)[i] = ((char*)src)[i];
+  }
+  return dest;
 }
 
 asm IrqDisable() {
@@ -278,7 +286,7 @@ StoreByteBad
 }
 
 errnum Os9Move(word count, word src, byte srcMap, word dest, byte destMap) {
-  PrintH("Os9Move c=%x s=%x/%x d=%x/%x\n", count, src, srcMap, dest, destMap);
+  PrintHH("Os9Move c=%x s=%x/%x d=%x/%x\n", count, src, srcMap, dest, destMap);
 
   errnum err;
   word dreg = ((word)srcMap << 8) | destMap;
@@ -392,7 +400,7 @@ errnum TcpRecvDataTry(char* buf, size_t n) {
 
   word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
   word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
-  PrintH("TTn=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
+  PrintHH("TTn=%x^*%x^r%x^w%x^b/%x^e/%x", n, bytes_waiting, rd, wr, begin, end);
 
   if (bytes_waiting < n) return E_NOT_YET;
 
@@ -412,19 +420,21 @@ errnum TcpRecvDataTry(char* buf, size_t n) {
 errnum TcpRecvData(char* buf, size_t n) {
   errnum e;
   do {
+PrintHH("TcpRecvData(%x,%x)...", buf, n);
     e = TcpRecvDataTry(buf, n);
+PrintHH(" ->%d.", e);
   } while (e == E_NOT_YET);
   return e;
 }
 
 errnum WizReserveToSend(size_t n) {
-  PrintH("ResTS %x", n);
+  PrintHH("ResTS %x", n);
   // Wait until free space is available.
   word free_size;
   do {
     // TcpCheck();
     free_size = WizGet2(BASE+SK_TX_FSR0);
-    PrintH("Res free %x", free_size);
+    PrintHH("Res free %x", free_size);
   } while (free_size < n);
   return OKAY;
 }
@@ -474,9 +484,17 @@ struct quint {
 
 ////////////////////////////////////////////////
 
-struct ioman_request {
+struct req {
   struct quint quint;
-  byte ioman_op;
+  byte fileman_op;
+  struct Regs regs;
+  word payload_size;
+  // Payload data follows this struct.
+};
+
+struct reply {
+  struct quint quint;
+  byte fileman_status;
   struct Regs regs;
   word payload_size;
   // Payload data follows this struct.
@@ -486,30 +504,126 @@ struct ioman_request {
 ///
 ///  GENERIC "C" FUNCTIONS: could be Daemon or Client.
 
-errnum Bridge(word ioman_op, word unused_x, struct PathDesc* pd, struct Regs* regs) { // YAK
+#define MAX_PATH_LEN 64
+
+errnum Bridge(word fileman_op, word unused_x, struct PathDesc* pd, struct Regs* regs) { // YAK
   pd->device_table_entry->dt_num_users = 16; // ARTIFICIALLY KEEP THIS OPEN.
   assert(pd->regs == regs);
 
-  struct ioman_request req;
-  req.quint.command = CMD_IOMAN_REQUEST;
-  req.quint.n = sizeof req - sizeof req.quint; // size that follows quint.
+  struct req req;
+  bzero((char*)&req, sizeof req);
+  req.quint.command = CMD_LEMMAN_REQUEST;
   req.quint.p = (word)pd;
-  req.ioman_op = (byte) ioman_op;
+  req.fileman_op = (byte) fileman_op;
   req.payload_size = 0;
+  memcpy((char*)&req.regs, (char*)regs, sizeof req.regs);
+  word orig_rx = regs->rx;
 
-  // -- errnum Os9Move(word count, word src, byte srcMap, word dest, byte destMap) --
   byte user_task = Os9UserTask();
   byte sys_task = Os9SystemTask();
-  errnum e = Os9Move(sizeof req.regs,
-                     /* src */ (word)regs, user_task,
-                     /* dest */ (word)&req.regs, sys_task);
-  if (e) return e;
 
+  switch (req.fileman_op) {
+    case 1: // Create
+    case 2: // Open
+    case 3: // MakDir
+    case 4: // ChgDir
+    case 5: // Delete
+    {
+      req.payload_size = MAX_PATH_LEN;
+      assert(orig_rx < 0xFE80U);  // dont allow overflow into IO page $FF
+      {
+        errnum e = Os9Move(MAX_PATH_LEN,
+                           orig_rx, user_task,
+                           pd->buffer, sys_task);
+        if (e) return e;
+      }
+    }
+    break;
+    case 8: // Write
+    case 10: // WritLn
+    {
+        assert(regs->ry <= 256);  // dont overflow pd->buffer
+        req.payload_size = regs->ry;
+        {
+          errnum e = Os9Move(regs->ry,
+                             orig_rx, user_task,
+                             pd->buffer, sys_task);
+          if (e) return e;
+        }
+    }
+    break;
+    case 12: // SetStt
+    {
+      // A = path; B = SetStt op
+
+      switch (regs->rb) {
+      }
+    }
+    break;
+    default:
+    {
+      req.payload_size = 0;
+    }
+    break;
+  }
+
+  req.quint.n = sizeof req - sizeof req.quint + req.payload_size;
   // -- errnum WizSend(char* data, size_t n) --
-  e = WizSend((char*)&req, sizeof req);
+  {
+    errnum e = WizSend((char*)&req, sizeof req);
+    if (e) return e;
+  }
+
+  if (req.payload_size) {
+    errnum e = WizSend((char*)pd->buffer, req.payload_size);
+    if (e) return e;
+  }
+
+  // Expect a response.
+  // -- errnum TcpRecvData(char* buf, size_t n) --
+
+  struct reply reply;
+PrintHH("gonna Recv Reply");
+  errnum e = TcpRecvData((char*)&reply, sizeof reply);
   if (e) return e;
+  assert (reply.quint.n >= sizeof reply - sizeof reply.quint);
+PrintHH("reply.quint.n = %d", reply.quint.n);
 
-  // TODO -- expect a response.
+  if (reply.payload_size) {
+    errnum e = TcpRecvData((char*)pd->buffer, reply.payload_size);
+    if (e) return e;
 
-  return OKAY;
+    switch (fileman_op) {
+      case /*Read*/7:
+      case /*ReadLn*/9:
+
+      {
+        errnum e = Os9Move(reply.quint.n,
+                           pd->buffer, sys_task,
+                           orig_rx, user_task);
+        if (e) return e;
+      }
+
+      break;
+      case /*GetStt*/11:
+      {
+         // A = path; B = GetStt op
+        switch (regs->rb) {
+          case 0x20: // SS.FDInf (file descriptor info)
+          {
+              errnum e = Os9Move(255 & regs->ry,
+                           pd->buffer, sys_task,
+                           orig_rx, user_task);
+              if (e) return e;
+          }
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  memcpy((char*)regs, (const char*)&reply.regs, sizeof reply.regs);
+
+  return reply.fileman_status;
 }

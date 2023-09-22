@@ -41,13 +41,15 @@ const (
 	CMD_SP_PC   = 205
 	CMD_REV     = 206
 
-	CMD_BLOCK_READ  = 207 // block device
-	CMD_BLOCK_WRITE = 208 // block device
-	CMD_BLOCK_ERROR = 209 // nack
-	CMD_BLOCK_OKAY  = 210 // ack
-	CMD_BOOT_BEGIN  = 211 // boot_lemma
-	CMD_BOOT_CHUNK  = 212 // boot_lemma
-	CMD_BOOT_END    = 213 // boot_lemma
+	CMD_BLOCK_READ     = 207 // block device
+	CMD_BLOCK_WRITE    = 208 // block device
+	CMD_BLOCK_ERROR    = 209 // nack
+	CMD_BLOCK_OKAY     = 210 // ack
+	CMD_BOOT_BEGIN     = 211 // boot_lemma
+	CMD_BOOT_CHUNK     = 212 // boot_lemma
+	CMD_BOOT_END       = 213 // boot_lemma
+	CMD_LEMMAN_REQUEST = 214 // LemMan
+	CMD_LEMMAN_REPLY   = 215 // LemMan
 
 	CMD_RTI = 214
 )
@@ -141,6 +143,38 @@ func SeekSectorReturnLSN(block *os.File, n uint, p uint) int64 {
 		log.Panicf("SSRL: Cannot Seek for Block device to LSN %d.: %q: %v", lsn, block.Name(), err)
 	}
 	return lsn
+}
+
+var LemManNames = []string{
+	"Lem_UNKNOWN_ZERO", // 0
+	"Lem_Create",       // 1
+	"Lem_Open",         // 2
+	"Lem_MakDir",       // 3
+	"Lem_ChgDir",       // 4
+	"Lem_Delete",       // 5
+	"Lem_Seek",         // 6
+	"Lem_Read",         // 7
+	"Lem_Write",        // 8
+	"Lem_ReadLn",       // 9
+	"Lem_WritLn",       // 10
+	"Lem_GetStat",      // 11
+	"Lem_SetStat",      // 12
+	"Lem_Close",        // 13
+}
+
+func LemManCommandName(b byte) string {
+	if int(b) >= len(LemManNames) {
+		log.Panicf("Lem_UKNOWN_%d", b)
+	}
+	return LemManNames[b]
+}
+func RegsString(b []byte) string {
+	return Format("cc=%02x D=%04x dp=%02x  X=%04x Y=%04x  U=%04x PC=%04x",
+		b[0], HiLo(b[1], b[2]), b[3],
+		HiLo(b[4], b[5]),
+		HiLo(b[6], b[7]),
+		HiLo(b[8], b[9]),
+		HiLo(b[10], b[11]))
 }
 
 func ReadFiveLoop(conn net.Conn, ses *Session) {
@@ -267,11 +301,44 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
 
 			}
+		case CMD_LEMMAN_REQUEST:
+			{
+				buf := make([]byte, n)
+				{
+					cc, err := io.ReadFull(conn, buf)
+					if err != nil {
+						log.Panicf("CMD_LEMMAN_REQUEST: error reading %d bytes from conn: %v", n, err)
+					}
+					if uint(cc) != n {
+						log.Panicf("CMD_LEMMAN_REQUEST: short read, got %d, want %d bytes from conn: %v", cc, n, err)
+					}
+				}
+
+				log.Printf("@@@@@@@@@@@@@@ LemMan %d = %q :: %q :: %02x", buf[0], LemManCommandName(buf[0]), RegsString(buf[1:13]), buf)
+				const headerLen = 15
+				if len(buf) > headerLen {
+					DumpHexLines("PAYLOAD", 0, buf[headerLen:])
+				}
+
+				reply := DoLemMan(conn, buf, p)
+				WriteFive(conn, CMD_LEMMAN_REPLY, uint(len(reply)), p)
+
+				{
+					cc, err := conn.Write(reply)
+					if err != nil {
+						log.Panicf("CMD_LEMMAN_REPLY: error reading %d bytes from conn: %v", n, err)
+					}
+					if cc != len(reply) {
+						log.Panicf("CMD_LEMMAN_REPLY: short read, got %d, want %d bytes from conn: %v", cc, n, err)
+					}
+				}
+			}
+
 		case CMD_LEVEL0:
 			Level0Control(conn, ses)
 
 		default:
-			log.Panicf("ReadFive: BAD COMMAND $%x: %#v", quint[0], quint)
+			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
 		} // end switch
 		log.Printf("next")
 	} // end for

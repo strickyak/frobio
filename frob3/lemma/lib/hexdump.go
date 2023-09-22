@@ -8,7 +8,8 @@ import (
 
 func DumpHexLines(label string, offset uint, bb []byte) {
 	for i := uint(0); i < uint(len(bb)); i += 32 {
-		DumpHexLine(fmt.Sprintf("%s $%04x", label, offset+i), bb[i:i+32])
+		n := Min(uint(len(bb))-i, 32)
+		DumpHexLine(fmt.Sprintf("%s $%04x: ", label, offset+i), bb[i:i+n])
 	}
 }
 

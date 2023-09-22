@@ -34,8 +34,8 @@ enum Commands {
   CMD_BOOT_BEGIN = 211,  // boot_lemma
   CMD_BOOT_CHUNK = 212,  // boot_lemma
   CMD_BOOT_END = 213,  // boot_lemma
-  CMD_IOMAN_REQUEST = 214,
-  CMD_IOMAN_REPLY = 215,
+  CMD_LEMMAN_REQUEST = 214,
+  CMD_LEMMAN_REPLY = 215,
   CMD_JSR = 255,
 };
 

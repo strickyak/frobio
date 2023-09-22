@@ -13,6 +13,20 @@ func Cond[T any](a bool, b T, c T) T {
 	return c
 }
 
+func Min[T Number](b T, c T) T {
+	if b < c {
+		return b
+	}
+	return c
+}
+
+func Max[T Number](b T, c T) T {
+	if b > c {
+		return b
+	}
+	return c
+}
+
 func Errorf(f string, args ...any) error {
 	return errors.New(fmt.Sprintf(f, args...))
 }

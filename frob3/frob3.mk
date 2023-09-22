@@ -342,8 +342,13 @@ run-lemma: all
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
-	$(SHELF)/bin/server --program ./Nitros9_Coco3_M6809_Level2_L.lem --block0 Nitros9_Coco3_M6809_Level2.dsk
+	$(SHELF)/bin/server --program ./Nitros9_Coco3_M6809_Level2_L.lem --block0 Nitros9_Coco3_M6809_Level2.dsk -lemman_fs=$F/testdata
 
 run-axiom-L:
 	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log
+
+trace-axiom-L:
+	go run /sy/doing_os9/gomar/borges/borges.go --outdir /sy/doing_os9/borges/ -glob '*.list,*.lst' .
+	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  --borges ../borges --trigger_os9='(?i:fork.*file=.dir)'  2>/tmp/log
+
 	#cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,trace,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log

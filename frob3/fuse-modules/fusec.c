@@ -588,18 +588,8 @@ RET64OK
 }
 
 void memcpy(char* dest, const char* src, word len) {
-  asm {
-    pshs d,x,y,u
-  }
   for (byte i=0; i<(byte)len; i++) {
     dest[i] = src[i];
-  }
-  asm {
-    puls d,x,y,u
-  }
-  return;
-  asm {
-memcpy bra _memcpy
   }
 }
 
