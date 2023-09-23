@@ -28,7 +28,7 @@ HDRS = $F/froblib.h $F/frobnet.h $F/frobos9.h $F/frobtype.h
 CMOCI=$F/../../share/cmoc/include
 CMOCL=$F/../../share/cmoc/lib
 
-#LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  
+#LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource
 LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport
 
 ###############################################
@@ -211,7 +211,7 @@ wc.os9cmd: /sy/gosub/demo/wc.go octet2.o
 	# set -ex; t=$$(basename $@ .os9cmd).gosub && cd $$t && for x in *.s; do $(LWASM_C) $$x ; done
 	set -ex; t=$$(basename $@ .os9cmd).gosub && ls . && ls $$t
 	set -ex; t=$$(basename $@ .os9cmd).gosub && lwar -c lib$@.a $$t/*.o
-	set -ex; $(LWLINK) $(O_FILES_FOR_NET_CMDS) octet2.o -L. -l$@  -L../frobio/frob3/../../share/cmoc/lib -L/home/strick/coco-shelf/share/cmoc/lib -lcmoc-crt-os9 -lcmoc-std-os9 
+	set -ex; $(LWLINK) $(O_FILES_FOR_NET_CMDS) octet2.o -L. -l$@  -L../frobio/frob3/../../share/cmoc/lib -L/home/strick/coco-shelf/share/cmoc/lib -lcmoc-crt-os9 -lcmoc-std-os9
 
 
 
@@ -342,6 +342,7 @@ run-lemma: all
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
+	(echo t; echo dir; echo date -t ; echo setime 2020/12/25 01:02:03 ; echo date -t ; echo dir /lem; echo dir -e /lem; echo dir -e /lem/foo )| os9 copy -l -r /dev/stdin Nitros9_Coco3_M6809_Level2.dsk,startup
 	$(SHELF)/bin/server --program ./Nitros9_Coco3_M6809_Level2_L.lem --block0 Nitros9_Coco3_M6809_Level2.dsk -lemman_fs=$F/testdata
 
 run-axiom-L:
@@ -349,6 +350,6 @@ run-axiom-L:
 
 trace-axiom-L:
 	go run /sy/doing_os9/gomar/borges/borges.go --outdir /sy/doing_os9/borges/ -glob '*.list,*.lst' .
-	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  --borges ../borges --trigger_os9='(?i:fork.*file=.dir)'  2>/tmp/log
-
-	#cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,trace,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log
+	cd /sy/doing_os9/gomar && go run --tags=coco3,level2,cocoio gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=  2>/tmp/log
+	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -basic_text  -v=dmw  --borges ../borges --trigger_os9='(?i:fork.*file=.dir)'  2>/tmp/log
+	# cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,trace,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log
