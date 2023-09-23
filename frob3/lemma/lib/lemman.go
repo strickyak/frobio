@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/sym"
 )
@@ -85,6 +87,16 @@ func (r LMRegs) WriteBytes(to *bytes.Buffer) {
 
 var NiceFilenamePattern = regexp.MustCompile(`^[/]?[A-Za-z0-9][-A-Za-z0-9_.%@]*$`)
 
+func TimeVector(t time.Time) []byte {
+	y, m, d := t.Date()
+	hr, min := t.Hour(), t.Minute()
+	var vec [5]byte
+	vec[0] = byte(y - 1900)
+	vec[1], vec[2] = byte(m), byte(d)
+	vec[3], vec[4] = byte(hr), byte(min)
+	return vec[:]
+}
+
 func LMGetStt(pd uint, regs *LMRegs) (payload []byte, status byte) {
 	// Input: B is GetStt opcode
 
@@ -101,10 +113,14 @@ func LMGetStt(pd uint, regs *LMRegs) (payload []byte, status byte) {
 		bb := make([]byte, n)
 
 		jname := filepath.Join(*LEMMAN_FS, inode.PathName)
-		fileinfo, err := os.Stat(jname)
+		fileInfo, err := os.Stat(jname)
 		if err != nil {
 			log.Panicf("I$GetStt/SS.FDInf: cannot Stat inode=%d. %q: %v", ino, jname, err)
 		}
+		mtime := fileInfo.ModTime()
+
+		sysInfo := fileInfo.Sys().(*syscall.Stat_t)
+		ctime := time.Unix(int64(sysInfo.Ctim.Sec), 0)
 
 		// FD.ATT, 1 byte at offset 0
 		/*
@@ -117,27 +133,30 @@ func LMGetStt(pd uint, regs *LMRegs) (payload []byte, status byte) {
 		   Bit 1 Write
 		   Bit 0 Read
 		*/
-		if fileinfo.IsDir() {
-			bb[0] = 0xBF
+		if fileInfo.IsDir() {
+			bb[0] = 0277
 		} else {
-			bb[0] = 0x3F
+			bb[0] = 0077
 		}
 
 		// FD.OWN, 2 bytes at offset 1
 
 		// FD.DAT, mod time, 5 bytes at offset 3
+		copy(bb[3:3+5], TimeVector(mtime)[:5])
 
 		// FD.LNK, 1 byte at offset 8
-		bb[8] = 1
+		nlink := sysInfo.Nlink
+		bb[8] = byte(Min(nlink, 255))
 
 		// FD.SIZ, 4 bytes at offset 9
-		sz := fileinfo.Size()
+		sz := fileInfo.Size()
 		bb[9] = byte(sz >> 24)
 		bb[10] = byte(sz >> 16)
 		bb[11] = byte(sz >> 8)
 		bb[12] = byte(sz >> 0)
 
 		// FD.Creat, creation time, 3 bytes at offset 13
+		copy(bb[13:], TimeVector(ctime)[:3])
 
 		// FD.Seg, segment list, starts at offset 16.
 		payload = bb
