@@ -199,32 +199,43 @@ asm IrqEnable() {
   }
 }
 
-byte* Os9PathDescBaseTable() {
-  byte* base;
+errnum Os9SRqMem(word size, word* size_out, word* addr_out) {
+  errnum err = OKAY;
   asm {
-    LDD <D.PthDBT
-    STD base
+      pshs y,u
+      ldd size
+      swi2
+      fcb F_SRQMEM
+      tfr u,x
+      puls y,u
+      bcs SRQMEM_BAD
+      stx [addr_out]
+      std [size_out]
+      bra SRQMEM_OK
+
+SRQMEM_BAD
+        stb err
+SRQMEM_OK
   }
-  return base;
+  return err;
 }
 
-word Os9CurrentProcAddr() {
-  word addr = 0;
+errnum Os9SRtMem(word size, word addr) {
+  errnum err = OKAY;
   asm {
-    LDX <D.Proc
-    STX addr
-  }
-  return addr;
-}
+      ldd size
+      ldx addr
+      pshs y,u
+      tfr x,u
+      swi2
+      puls y,u
+      fcb F_SRTMEM
+      bcc SRTMEM_OK
 
-byte Os9CurrentProcessId() {
-  byte id = 0;
-  asm {
-    LDX <D.Proc
-    LDA P$ID,X
-    STA id
+      stb err
+SRTMEM_OK
   }
-  return id;
+  return err;
 }
 
 byte Os9UserTask() {
@@ -247,6 +258,7 @@ byte Os9SystemTask() {
   return task;
 }
 
+#if 0
 errnum Os9LoadByteFromTask(byte task, word addr, byte* out) {
   errnum err;
   asm {
@@ -284,6 +296,7 @@ StoreByteBad
   }
   return err;
 }
+#endif
 
 errnum Os9Move(word count, word src, byte srcMap, word dest, byte destMap) {
   PrintHH("Os9Move c=%x s=%x/%x d=%x/%x\n", count, src, srcMap, dest, destMap);
@@ -529,6 +542,15 @@ errnum Bridge(word fileman_op, word unused_x, struct PathDesc* pd, struct Regs* 
     case 4: // ChgDir
     case 5: // Delete
     {
+      if (!pd->buffer) {
+        // -- errnum Os9SRqMem(word size, word* size_out, word* addr_out) --
+        word size_out;
+        errnum e = Os9SRqMem(256, &size_out, &pd->buffer);
+        if (e) return e;
+        if (size_out < 256) return E_NORAM;
+        if (!pd->buffer) return E_NORAM;
+      }
+
       req.payload_size = MAX_PATH_LEN;
       assert(orig_rx < 0xFE80U);  // dont allow overflow into IO page $FF
       {
@@ -616,6 +638,16 @@ PrintHH("reply.quint.n = %d", reply.quint.n);
               if (e) return e;
           }
           break;
+        }
+      }
+      break;
+
+      case /*Close*/13:
+      {
+        // -- errnum Os9SRtMem(word size, word addr) --
+        if (pd->buffer) {
+          errnum e = Os9SRtMem(256, pd->buffer);
+          if (e) return e;
         }
       }
       break;
