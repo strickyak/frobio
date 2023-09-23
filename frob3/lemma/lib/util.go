@@ -32,7 +32,7 @@ func Errorf(f string, args ...any) error {
 }
 
 type Number interface {
-	~byte | ~rune | ~int | ~uint | ~int64
+	~byte | ~rune | ~int | ~uint | ~int64 | ~uint64
 }
 
 func Assert(b bool, args ...any) {
