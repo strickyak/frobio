@@ -118,7 +118,7 @@ Lem_CloseA
 
 Lem_bridge
     clra          ; D holds the op number.
-    pshs d,x,y,u  ; match args to Bridge
+    pshs u,y,x,d  ; match args to Bridge
     ldu #0        ; start new Frame Pointer.
 
     orcc #IntMasks
@@ -130,7 +130,8 @@ Lem_bridge
     BEQ SkipComA  ; skip the COMA
     COMA     ; sets the carry bit.
 SkipComA
-    PULS PC,U,Y,X,D
+    LEAS 2,S ; drop old D from stack.
+    PULS x,y,u,PC
 
 * Include compiled "lemmanc.c"
          use _generated_from_lemmanc.s
