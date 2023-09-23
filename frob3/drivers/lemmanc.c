@@ -137,6 +137,7 @@ HyperCoreDump() {
 }
 
 void PrintHH(const char* format, ...) {
+#if 0
 #if 1 // __CMOC__
   const char ** fmt_ptr = &format;
   asm {
@@ -144,6 +145,7 @@ void PrintHH(const char* format, ...) {
       swi
       fcb 111  // PrintH2 in emu/hyper.go
   }
+#endif
 #endif
 }
 
