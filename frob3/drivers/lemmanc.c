@@ -596,15 +596,14 @@ PrintHH("reply.quint.n = %d", reply.quint.n);
     switch (fileman_op) {
       case /*Read*/7:
       case /*ReadLn*/9:
-
       {
-        errnum e = Os9Move(reply.quint.n,
+        errnum e = Os9Move(reply.payload_size,
                            pd->buffer, sys_task,
                            orig_rx, user_task);
         if (e) return e;
       }
-
       break;
+
       case /*GetStt*/11:
       {
          // A = path; B = GetStt op
