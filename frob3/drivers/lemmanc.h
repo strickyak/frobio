@@ -1,5 +1,5 @@
-#ifndef _FROB3_DRIVERS_RBLEMMA_H_
-#define _FROB3_DRIVERS_RBLEMMA_H_
+#ifndef _FROB3_DRIVERS_LEMMANC_H_
+#define _FROB3_DRIVERS_LEMMANC_H_
 
 #define VERBOSE 3 // 9 // 6 // 3
 #define EMULATED 0
@@ -73,4 +73,4 @@ void PrintH(const char* format, ...);
 #define PrintH(FMT,...) /*nothing*/
 #endif
 
-#endif // _FROB3_DRIVERS_RBLEMMA_H_
+#endif // _FROB3_DRIVERS_LEMMANC_H_
