@@ -342,7 +342,18 @@ run-lemma: all
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
-	(echo t; echo dir; echo date -t ; echo setime 2020/12/25 01:02:03 ; echo date -t ; echo dir /lem; echo dir -e /lem; echo dir -e /lem/foo )| os9 copy -l -r /dev/stdin Nitros9_Coco3_M6809_Level2.dsk,startup
+	(echo t; echo dir; echo date -t ; echo setime 2020/12/25 01:02:03 ; echo date -t ; \
+      echo dir /lem; echo dir -e /lem; echo dir -e /lem/foo ; \
+      echo dump /lem/tuesday.txt ; \
+      echo list /lem/tuesday.txt ; \
+      echo dump /lem/foo/bar.txt ; \
+      echo list /lem/foo/bar.txt ; \
+      echo list /lem/xattr.conf ; \
+      echo 'dir > /lem/abc' ; \
+      echo dir -e /lem ; \
+      echo dump /lem/abc ; \
+        )| \
+          os9 copy -l -r /dev/stdin Nitros9_Coco3_M6809_Level2.dsk,startup
 	$(SHELF)/bin/server --program ./Nitros9_Coco3_M6809_Level2_L.lem --block0 Nitros9_Coco3_M6809_Level2.dsk -lemman_fs=$F/testdata
 
 run-axiom-L:

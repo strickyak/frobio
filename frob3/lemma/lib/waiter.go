@@ -303,21 +303,24 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			}
 		case CMD_LEMMAN_REQUEST:
 			{
-				buf := make([]byte, n)
-				{
-					cc, err := io.ReadFull(conn, buf)
-					if err != nil {
-						log.Panicf("CMD_LEMMAN_REQUEST: error reading %d bytes from conn: %v", n, err)
-					}
-					if uint(cc) != n {
-						log.Panicf("CMD_LEMMAN_REQUEST: short read, got %d, want %d bytes from conn: %v", cc, n, err)
+				var buf []byte
+				if n > 0 {
+					buf = make([]byte, n)
+					{
+						cc, err := io.ReadFull(conn, buf)
+						if err != nil {
+							log.Panicf("CMD_LEMMAN_REQUEST: error reading %d bytes from conn: %v", n, err)
+						}
+						if uint(cc) != n {
+							log.Panicf("CMD_LEMMAN_REQUEST: short read, got %d, want %d bytes from conn: %v", cc, n, err)
+						}
 					}
 				}
 
-				log.Printf("@@@@@@@@@@@@@@ LemMan %d = %q :: %q :: %02x", buf[0], LemManCommandName(buf[0]), RegsString(buf[1:13]), buf)
+				log.Printf("@@@@@@@@@@ LemMan %d = %q :: n=$%x p=$%x :: %q :: %02x", buf[0], LemManCommandName(buf[0]), n, p, RegsString(buf[1:13]), buf)
 				const headerLen = 15
 				if len(buf) > headerLen {
-					DumpHexLines("PAYLOAD", 0, buf[headerLen:])
+					DumpHexLines("@@@@@@@@@@PAYLOAD", 0, buf[headerLen:])
 				}
 
 				reply := DoLemMan(conn, buf, p)

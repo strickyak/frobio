@@ -1,10 +1,8 @@
 package lib
 
 import (
-	"bufio"
 	"bytes"
 	"flag"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -32,6 +30,24 @@ func NextInode() int {
 	return NextInodeVar
 }
 
+// LemmaError() takes Printf arguments,
+// logs the error in the lemma server,
+// and returns an error number in 80..99
+// for the OS9 error.
+const LemmaErrorMin = 80
+const LemmaErrorMax = 99
+
+var PrevLemmaError byte = LemmaErrorMin - 1
+
+func LemmaError(format string, args ...any) byte {
+	log.Printf("@LEMMA_ERROR@ "+format, args...)
+	PrevLemmaError++
+	if PrevLemmaError > LemmaErrorMax {
+		PrevLemmaError = LemmaErrorMin
+	}
+	return PrevLemmaError
+}
+
 type LMPath struct {
 	PathName   string
 	Mode       byte
@@ -40,8 +56,7 @@ type LMPath struct {
 	Size       int64
 	DirEntries []os.DirEntry
 	DirData    []byte
-	FD         *os.File
-	R          io.Reader
+	osFile     *os.File
 }
 
 var LMPaths = make(map[uint]*LMPath)
@@ -119,8 +134,11 @@ func LMGetStt(pd uint, regs *LMRegs) (payload []byte, status byte) {
 		}
 		mtime := fileInfo.ModTime()
 
-		sysInfo := fileInfo.Sys().(*syscall.Stat_t)
-		ctime := time.Unix(int64(sysInfo.Ctim.Sec), 0)
+		ctime := mtime // re-use mtime for ctime if not UNIX.
+		sysInfo, okUnix := fileInfo.Sys().(*syscall.Stat_t)
+		if okUnix {
+			ctime = time.Unix(int64(sysInfo.Ctim.Sec), 0)
+		}
 
 		// FD.ATT, 1 byte at offset 0
 		/*
@@ -164,6 +182,25 @@ func LMGetStt(pd uint, regs *LMRegs) (payload []byte, status byte) {
 
 	return
 }
+func LMDelete(pd uint, regs *LMRegs, name string) (status byte) {
+	err := os.Remove(name)
+	if err != nil {
+		return LemmaError("Cannot delete %q: %v", name, err)
+	}
+	return 0
+}
+
+func LMChgDir(pd uint, regs *LMRegs) (status byte) {
+	if false { // TODO why is this called on different pds?
+		p, ok := LMPaths[pd]
+		if !ok {
+			return sym.E_BPNum //  0x00C9 // E$BPNum
+		}
+		_ = p
+	}
+	return 0
+}
+
 func LMSeek(pd uint, regs *LMRegs) (status byte) {
 	// Input: X++U are 32 bit offset desired.
 
@@ -177,7 +214,50 @@ func LMSeek(pd uint, regs *LMRegs) (status byte) {
 	return 0
 }
 
-func LMRead(pd uint, regs *LMRegs) (payload []byte, status byte) {
+func LMWrite(pd uint, regs *LMRegs, pay_in []byte, linely bool) (status byte) {
+	p, ok := LMPaths[pd]
+	if !ok {
+		return sym.E_BPNum //  0x00C9 // E$BPNum
+	}
+	log.Printf("LMWrite: @@@@@@@: len=%d. pay_in=%v", len(pay_in), pay_in)
+
+	if (p.Mode & 0x02) != 0x02 {
+		return LemmaError("Cannot write because mode is $%x: %q", p.Mode, p.PathName)
+	}
+	if (p.Mode & 0x80) != 0 {
+		return LemmaError("Cannot write to directory mode $%x: %q", p.Mode, p.PathName)
+	}
+	if p.IsDir {
+		return LemmaError("Cannot write to IsDir: %q", p.Mode, p.PathName)
+	}
+
+	{
+		off, err := p.osFile.Seek(p.Offset, 0)
+		if err != nil {
+			log.Panicf("Cannot Seek %q: %v", p.PathName, err)
+		}
+		if off != p.Offset {
+			return LemmaError("Wrong Seek: %q (%d vs %d)", p.PathName, off, p.Offset)
+		}
+		log.Printf("LMWrite: @@@@@@@: offset=%d.", p.Offset)
+	}
+
+	{
+		cc, err := p.osFile.Write(pay_in)
+		log.Printf("LMWrite: @@@@@@@: wrote %d. -> %d. (%v)", len(pay_in), cc, err)
+		if err != nil {
+			return LemmaError("Cannot LMWrite %q: %v", p.PathName, err)
+		}
+		if cc != len(pay_in) {
+			log.Panicf("Short Read: %q (%d vs %d)", p.PathName, cc, len(pay_in))
+		}
+		p.Offset += int64(cc)
+	}
+
+	return 0
+}
+
+func LMRead(pd uint, regs *LMRegs, linely bool) (payload []byte, status byte) {
 	p, ok := LMPaths[pd]
 	if !ok {
 		return nil, sym.E_BPNum //  0x00C9 // E$BPNum
@@ -194,125 +274,169 @@ func LMRead(pd uint, regs *LMRegs) (payload []byte, status byte) {
 	if p.IsDir {
 		copy(buf, p.DirData[p.Offset:p.Offset+n])
 	} else {
-		cc, err := p.R.Read(buf)
+		off, err := p.osFile.Seek(p.Offset, 0)
 		if err != nil {
-			log.Panicf("Cannot LMRead %q: %v", p.PathName, err)
+			return nil, LemmaError("Cannot Seek %q: %v)", p.PathName, err)
+		}
+		if off != p.Offset {
+			return nil, LemmaError("Wrong Seek: %q (%d vs %d)", p.PathName, off, p.Offset)
+		}
+
+		cc, err := p.osFile.Read(buf)
+		if err != nil {
+			return nil, LemmaError("Cannot LMRead %q: %v", p.PathName, err)
 		}
 		if int64(cc) != n {
-			log.Panicf("Short Read: %q (%d vs %d)", p.PathName, cc, n)
+			return nil, LemmaError("Short Read: %q (%d vs %d)", p.PathName, cc, n)
 		}
 	}
+
+	if linely {
+		// Find the first \n or \r.  Its index is `i`.
+		i := int64(bytes.IndexAny(buf, "\n\r"))
+		// Chop after the \n or \r, and change \n to \r.
+		if i >= 0 && i+1 < n {
+			// Change n and buf, to stop after the CR.
+			n = i + 1
+			buf = buf[:n]
+			buf[i] = '\r' // Not \n but \r
+		}
+	}
+
 	p.Offset += n
 	log.Printf("LMRead: returning n=%d : %v", n, buf)
 	return buf, 0
 }
 
 func LMClose(pd uint, regs *LMRegs) (status byte) {
-	_, ok := LMPaths[pd]
+	fd, ok := LMPaths[pd]
 	if !ok {
 		return sym.E_BPNum //  0x00C9 // E$BPNum
 	}
+	if fd.osFile != nil {
+		fd.osFile.Close()
+		fd.osFile = nil
+	}
+
 	delete(LMPaths, pd)
 	return 0
 }
 
-func LMOpen(pd uint, regs *LMRegs, mode byte, name string) (status byte) {
+func LMOpen(pd uint, regs *LMRegs, mode byte, name string, create bool) (status byte) {
 	clean := filepath.Clean(name)
 	if len(clean) > 0 && clean[0] == '/' {
 		clean = clean[1:]
 	}
 	words := strings.Split(clean, "/")
 	for _, w := range words {
-		if w == "" {
+		if w == "" || w == "." || w == ".." {
 			continue
 		}
 		if !NiceFilenamePattern.MatchString(w) {
-			log.Panicf("Bad word %q in filepath %q", w, clean)
+			return LemmaError("Bad word %q in filepath %q", w, clean)
 		}
 	}
 
 	jname := filepath.Join(*LEMMAN_FS, clean)
-	info, err := os.Stat(jname)
-	if err != nil {
-		log.Panicf("LMOpen cannot stat filepath %q: %v", clean, err)
-	}
-	isDir := info.IsDir()
 
-	var fd *os.File
-	if isDir {
+	if create {
+		if mode != 2 {
+			return LemmaError("LMCreate requires mode 2 (for now): %q", clean)
+		}
 
-		entries, err := os.ReadDir(jname)
+		osFile, err := os.Create(jname) // TODO: write mode
 		if err != nil {
-			log.Panicf("LMOpen cannot ReadDir %q: %v", clean, err)
+			return LemmaError("LMCreate cannot Create %q: %v", clean, err)
 		}
-
-		log.Printf("Dir %q has %d entries", clean, len(entries))
-
-		var buf bytes.Buffer
-		buf.Write([]byte{
-			'.', '.' | 0x80, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 42,
-		})
-		buf.Write([]byte{
-			'.' | 0x80, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 43,
-		})
-		for i, e := range entries {
-			log.Printf("  Entry %d is %q (%v) %v", i, e.Name(), e.IsDir(), e.Type())
-
-			var chunk [32]byte
-			s := e.Name()
-			if len(s) > 29 {
-				continue // cannot do long filenames.
-			}
-			n := len(s)
-			for i = 0; i < n; i++ {
-				if i == n-1 {
-					chunk[i] = s[i] | 0x80 // Mark as final.
-				} else {
-					chunk[i] = s[i]
-				}
-			}
-			ino := NextInode()
-			chunk[31] = byte(ino)
-			chunk[30] = byte(ino >> 8)
-			chunk[29] = byte(ino >> 16)
-			buf.Write(chunk[:])
-			Inodes[ino-1024] = &LMPath{
-				PathName: filepath.Join(clean, s),
-			}
-		}
-
-		dirData := buf.Bytes()
-		LMPaths[pd] = &LMPath{
-			PathName:   clean,
-			Mode:       mode,
-			IsDir:      true,
-			DirEntries: entries,
-			DirData:    dirData,
-			Size:       int64(len(dirData)),
-		}
-		log.Printf("DirData len %d: %v", len(dirData), dirData)
-
-	} else {
-		fd, err = os.Open(jname) // TODO: write mode
-		if err != nil {
-			log.Panicf("LMOpen cannot Open %q: %v", clean, err)
-		}
-		r := bufio.NewReader(fd)
 
 		LMPaths[pd] = &LMPath{
 			PathName: clean,
 			Mode:     mode,
 			IsDir:    false,
-			FD:       fd,
-			R:        r,
-			Size:     info.Size(),
+			osFile:   osFile,
+			Size:     0,
 			Offset:   0,
+		}
+	} else {
+
+		info, statErr := os.Stat(jname)
+		if statErr != nil {
+			return LemmaError("LMOpen cannot stat filepath %q: %v", clean, statErr)
+			return sym.E_PNNF
+		}
+
+		if info.IsDir() {
+			entries, err := os.ReadDir(jname)
+			if err != nil {
+				return LemmaError("LMOpen cannot ReadDir %q: %v", clean, err)
+			}
+
+			log.Printf("Dir %q has %d entries", clean, len(entries))
+
+			var buf bytes.Buffer
+			buf.Write([]byte{
+				'.', '.' | 0x80, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 42,
+			})
+			buf.Write([]byte{
+				'.' | 0x80, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 43,
+			})
+			for i, e := range entries {
+				log.Printf("  Entry %d is %q (%v) %v", i, e.Name(), e.IsDir(), e.Type())
+
+				var chunk [32]byte
+				s := e.Name()
+				if len(s) > 29 {
+					continue // cannot do long filenames.
+				}
+				n := len(s)
+				for i = 0; i < n; i++ {
+					if i == n-1 {
+						chunk[i] = s[i] | 0x80 // Mark as final.
+					} else {
+						chunk[i] = s[i]
+					}
+				}
+				ino := NextInode()
+				chunk[31] = byte(ino)
+				chunk[30] = byte(ino >> 8)
+				chunk[29] = byte(ino >> 16)
+				buf.Write(chunk[:])
+				Inodes[ino-1024] = &LMPath{
+					PathName: filepath.Join(clean, s),
+				}
+			}
+
+			dirData := buf.Bytes()
+			LMPaths[pd] = &LMPath{
+				PathName:   clean,
+				Mode:       mode,
+				IsDir:      true,
+				DirEntries: entries,
+				DirData:    dirData,
+				Size:       int64(len(dirData)),
+			}
+			log.Printf("DirData len %d: %v", len(dirData), dirData)
+
+		} else {
+			osFile, err := os.Open(jname) // TODO: write mode
+			if err != nil {
+				return LemmaError("LMOpen cannot Open %q: %v", clean, err)
+			}
+
+			LMPaths[pd] = &LMPath{
+				PathName: clean,
+				Mode:     mode,
+				IsDir:    false,
+				osFile:   osFile,
+				Size:     info.Size(),
+				Offset:   0,
+			}
 		}
 	}
 
@@ -328,43 +452,62 @@ func DoLemMan(conn net.Conn, in []byte, pd uint) []byte {
 	regs := NewLMRegs(in[1 : 1+regsLen])
 	paylen := HiLo(in[headerLen-2], in[headerLen-1])
 
-	var payload []byte
+	var payload_out []byte
 	var status byte
 	var name string
 
+	log.Printf("DoLemMan:::: op=%d paylen=%d len(in)=%d", op, paylen, len(in))
+
 	if 1 <= op && op <= 5 {
-		name = ExtractName(in[headerLen:headerLen+paylen], 0, "LemMan_Open")
+		name = ExtractName(in[headerLen:headerLen+paylen], 0, "LemMan")
 		log.Printf("ExtractName ==> %q", name)
 	}
 
 	switch op {
 	case 1: // Create
+		status = LMOpen(pd, regs, regs.ra, name, true)
 	case 2: // Open
-		status = LMOpen(pd, regs, regs.ra, name)
+		status = LMOpen(pd, regs, regs.ra, name, false)
 	case 4: // ChgDir
+		status = LMChgDir(pd, regs)
+	case 5: // Delete
+		status = LMDelete(pd, regs, name)
 	case 6: // Seek
 		status = LMSeek(pd, regs)
+
 	case 7: // Read
-		payload, status = LMRead(pd, regs)
+		payload_out, status = LMRead(pd, regs, false)
+	case 9: // ReadLn
+		payload_out, status = LMRead(pd, regs, true)
+
+	case 8: // Write
+		status = LMWrite(pd, regs, in[headerLen:], false)
+	case 10: // WritLn
+		status = LMWrite(pd, regs, in[headerLen:], true)
+
 	case 11: // GetStt
-		payload, status = LMGetStt(pd, regs)
+		payload_out, status = LMGetStt(pd, regs)
+
 	case 13: // Close
 		status = LMClose(pd, regs)
+
+	default:
+		status = LemmaError("Lemma: unknown file op=%d.", op)
 	}
 
 	var z bytes.Buffer
 	z.WriteByte(status)
 	regs.WriteBytes(&z)
-	z.WriteByte(byte(len(payload) >> 8))
-	z.WriteByte(byte(len(payload)))
+	z.WriteByte(byte(len(payload_out) >> 8))
+	z.WriteByte(byte(len(payload_out)))
 
-	if payload != nil {
-		DumpHexLines("REPLY PAYLOAD", 0, payload)
-		z.Write(payload)
+	if payload_out != nil {
+		DumpHexLines("REPLY PAYLOAD", 0, payload_out)
+		z.Write(payload_out)
 	}
 
 	result := z.Bytes()
-	log.Printf("@@@@@@@@@@@@@@ Reply Status=$%x PayLen=$%x Regs=>%q", status, len(payload), RegsString(result[1:]))
+	log.Printf("@@@@@@@@@@@@@@ Reply Status=$%x PayLen=$%x Regs=>%q", status, len(payload_out), RegsString(result[1:]))
 
 	return result
 }
