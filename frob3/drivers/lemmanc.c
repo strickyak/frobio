@@ -149,14 +149,16 @@ asm
 HyperCoreDump() {
 #ifdef __GNUC__
   asm volatile(
-      "  swi\n"
+      "  nop\n"
+      "  fcb 33\n"
       "  fcb 100"
       : /*out*/
       : /*in*/
       : /*clobbers*/);
 #else
   asm {
-    SWI
+    NOP
+    FCB 33
     FCB 100  ; hyperCoreDump
   }
 #endif
@@ -170,7 +172,8 @@ void PrintHH(const char* format, ...) {
   const char** fmt_ptr = &format;
   asm {
       ldx fmt_ptr
-      swi
+      nop
+      fcb 33   // BRN opcode.
       fcb 111  // PrintH2 in emu/hyper.go
   }
 #endif

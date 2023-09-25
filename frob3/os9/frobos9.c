@@ -513,7 +513,8 @@ void GomarHyperExit(errnum status) {
   asm {
     clra
     ldb status
-    swi
+    nop
+    fcb 33
     fcb 107 ; Hyper Exit
   }
   // NOT REACHED if Hyper, but if no hyper, exit the OS9 process.  

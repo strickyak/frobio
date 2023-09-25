@@ -146,7 +146,8 @@ asm
 HyperCoreDump() {
 #ifdef __GNUC__
   asm volatile (
-      "  swi\n"
+      "  nop\n"
+      "  fcb 33\n"
       "  fcb 100"
       : /*out*/
       : /*in*/
@@ -162,7 +163,8 @@ HyperCoreDump() {
 void PrintH(const char* format, ...) {
 #if 1 // __CMOC__
   asm {
-      swi
+      nop
+      fcb 33
       fcb 108
   }
 #endif
@@ -180,7 +182,8 @@ void PrintK(const char* format, ...) {
 
 #if 1 // __CMOC__
   asm {
-      swi
+      nop
+      fcb 33
       fcb 108
   }
 #endif

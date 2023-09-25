@@ -82,11 +82,12 @@ const char Eight00s[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 void PrintH(const char* format, ...) {
   const char ** fmt_ptr = &format;
 #ifdef __GNUC__
-  asm volatile ("ldx %0\n  swi\n  fcb 111" : : "m" (fmt_ptr));
+  asm volatile ("ldx %0\n  nop\n  fcb 33\n  fcb 111" : : "m" (fmt_ptr) : "x");
 #else
   asm {
       ldx fmt_ptr
-      swi
+      nop      // Step 1
+      fcb 33   // Step 2: BRN...
       fcb 111  // PrintH2 in emu/hyper.go
   }
 #endif

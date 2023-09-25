@@ -6,11 +6,12 @@
 void PrintH(const char* format, ...) {
   const char ** fmt_ptr = &format;
 #ifdef __GNUC__
-  asm volatile ("ldx %0\n  swi\n  fcb 111" : : "m" (fmt_ptr));
+  asm volatile ("ldx %0\n  nop\n  fcb 33\n  fcb 111" : : "m" (fmt_ptr));
 #else
   asm {
       ldx fmt_ptr
-      swi
+      nop
+      fcb 33
       fcb 111  // PrintH2 in emu/hyper.go
   }
 #endif
