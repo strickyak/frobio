@@ -1,0 +1,119 @@
+cd /sy/doing_os9/gomar && go run --tags=coco3,level2,cocoio gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=  2>/tmp/log
+NitrOS-9/6809 Level 2 V3.3.0
+Tandy Color Computer 3
+(C) 2014 The NitrOS-9 Project
+
+**   DEVELOPMENT BUILD   **
+
+** NOT FOR DISTRIBUTION! **
+
+Fri Jul 21 18:56:45 2023
+
+http://www.nitros9.org
+
+
+dir
+
+ Directory of .  2023/07/21 18:56 
+OS9Boot         CMDS            SYS             DEFS            ccbkrn 
+sysgo           startup         NITROS9         
+date -t
+July 21, 2023  18:56:59
+setime 2020/12/25 01:02:03
+date -t
+December 25, 2020  01:02:03
+dir /lem
+
+ Directory of /  2020/12/25 01:02 
+foo             tuesday.txt     xattr.conf      
+dir -e /lem
+
+ Directory of /  2020/12/25 01:02 
+
+
+Owner  Last modified   Attributes Sector Bytecount Name
+
+----- ---------------- ---------- ------ --------- ----
+
+   0  2023/09/19 20:36  d-ewrewr     404      1000 foo
+   0  2023/09/19 20:36  --ewrewr     405        20 tuesday.txt
+   0  2023/09/23 23:55  --ewrewr     406       2A9 xattr.conf
+
+dir -e /lem/foo
+
+ Directory of /  2020/12/25 01:02 
+
+
+Owner  Last modified   Attributes Sector Bytecount Name
+
+----- ---------------- ---------- ------ --------- ----
+
+   0  2023/09/19 20:36  --ewrewr     407        20 bar.txt
+
+dump /lem/tuesday.txt
+
+Address   0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0 2 4 6 8 A C E
+-------- ---- ---- ---- ---- ---- ---- ---- ----  ----------------
+00000000 5475 6520 5365 7020 3139 2030 383A 3336  Tue Sep 19 08:36
+00000010 3A33 3220 504D 2050 4454 2032 3032 330A  :32 PM PDT 2023.
+list /lem/tuesday.txt
+Tue Sep 19 08:36:32 PM PDT 2023
+23
+00000020                                                                        .txt
+dump /lem/foo/bar.txt
+
+Address   0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0 2 4 6 8 A C E
+-------- ---- ---- ---- ---- ---- ---- ---- ----  ----------------
+00000000 5475 6520 5365 7020 3139 2030 383A 3336  Tue Sep 19 08:36
+00000010 3A35 3820 504D 2050 4454 2032 3032 330A  :58 PM PDT 2023.
+list /lem/foo/bar.txt
+Tue Sep 19 08:36:58 PM PDT 2023
+23
+00000020                                                                        .txt
+list /lem/xattr.conf
+# /etc/xattr.conf
+#
+# Format:
+# <pattern> <action>
+#
+# Actions:
+#   permissions - copy when trying to preserve permissions.
+#   skip - do not copy.
+
+system.nfs4_acl{9}{9}{9}permissions
+system.nfs4acl{9}{9}{9}permissions
+system.posix_acl_access{9}{9}permissions
+system.posix_acl_default{9}permissions
+trusted.SGI_ACL_DEFAULT{9}{9}skip{9}{9}# xfs specific
+trusted.SGI_ACL_FILE{9}{9}skip{9}{9}# xfs specific
+trusted.SGI_CAP_FILE{9}{9}skip{9}{9}# xfs specific
+trusted.SGI_DMI_*{9}{9}skip{9}{9}# xfs specific
+trusted.SGI_MAC_FILE{9}{9}skip{9}{9}# xfs specific
+xfsroot.*{9}{9}{9}skip{9}{9}# xfs specific; obsolete
+user.Beagle.*{9}{9}{9}skip{9}{9}# ignore Beagle index data
+security.evm{9}{9}{9}skip{9}{9}# may only be written by kernel
+afs.*{9}{9}{9}{9}skip{9}{9}# AFS metadata and ACLs
+ten by kernel
+dir > /lem/abc
+dir -e /lem
+
+ Directory of /  2020/12/25 01:02 
+
+
+Owner  Last modified   Attributes Sector Bytecount Name
+
+----- ---------------- ---------- ------ --------- ----
+
+   0  2023/09/24 20:43  --ewrewr     408         0 abc
+   0  2023/09/19 20:36  d-ewrewr     409      1000 foo
+   0  2023/09/19 20:36  --ewrewr     40A        20 tuesday.txt
+   0  2023/09/23 23:55  --ewrewr     40B       2A9 xattr.conf
+
+dump /lem/abc
+
+Address   0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0 2 4 6 8 A C E
+-------- ---- ---- ---- ---- ---- ---- ---- ----  ----------------
+[0]
+Shell+ v2.2a 20/12/25 01:02:03
+
+{Term|02}/DD:
