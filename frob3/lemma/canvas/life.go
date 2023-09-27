@@ -10,7 +10,7 @@ import (
 	lem "github.com/strickyak/frobio/frob3/lemma/lib"
 )
 
-const StirFreq = 256
+const StirFreq = 100
 
 // Install demos in Lemma.
 func init() {
@@ -150,7 +150,7 @@ func LifeSetR(curr *Canvas) {
 }
 
 func LifeStir(curr *Canvas) {
-	const Thick = 10 / 2 // thickness of stir
+	const Thick = 12 / 2 // thickness of stir
 	const Mid = W / 2    // midpoint of Width
 	for x := Mid - Thick; x < Mid+Thick; x++ {
 		for y := 0; y < H; y++ {
