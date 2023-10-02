@@ -74,6 +74,16 @@ _FORCE_:
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
 
+axiom4.rom: axiom4.c
+	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
+	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work4.s --output=_work4.o --list=_work4.list
+	$(LWLINK) --output=_work4.rom --map=_work4.map --raw --script=$F/helper/axiom.script _work4.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+	$(LWOBJDUMP) _work4.o > _work.4objdump
+	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work4.s --map _work4.map -o axiom4-whole.s
+	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
+	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+
 axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_whole.c
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
