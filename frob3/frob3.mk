@@ -2,11 +2,13 @@
 # from the directory where you actually build (whose Makefile
 # is created and configured by ./configure).
 
-all: all-the-things
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
 	sync
 
-all-the-things: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results3
+all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 TODO-all-disks all-lemmings results3-without-gccretro
+	find results -type f -print | LC_ALL=C sort
+	sync
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -42,20 +44,36 @@ results1:
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
 results2: results1
-	mkdir -p results/BOOTING results/OS9DISKS results/LEMMINGS
+	mkdir -p results/OS9DISKS results/LEMMINGS
 	: TODO : ln *.dsk results/OS9DISKS
 	ln *.lem results/LEMMINGS/
 	ln *.dsk results/LEMMINGS/
+
+results2b: results2 axiom-whole.rom axiom-whole.l3k axiom4-whole.rom axiom4-whole.l3k
+	mkdir -p results/BOOTING
 	cp -v $F/booting/README.md results/BOOTING/README.md
+	:
 	decb dskini results/BOOTING/netboot3.dsk
 	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS
 	decb copy -3 -a $F/booting/README.md results/BOOTING/netboot3.dsk,README.md
 	decb copy -2 -b axiom-whole.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
-	decb copy -2 -b axiom-whole6k.decb results/BOOTING/netboot3.dsk,EXOBOOT.BIN
+	cp -v axiom-whole6k.decb results/BOOTING/
 	decb dir results/BOOTING/netboot3.dsk
+	: TOO FULL : decb copy -2 -b axiom-whole6k.decb results/BOOTING/netboot3.dsk,EXOBOOT.BIN
+	:
+	decb dskini results/BOOTING/future4.dsk
+	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/future4.dsk,INSTALL4.BAS
+	decb copy -3 -a $F/booting/README.md results/BOOTING/future4.dsk,README.md
+	decb copy -2 -b axiom4-whole.l3k results/BOOTING/future4.dsk,NETBOOT.DEC
+	decb dir results/BOOTING/future4.dsk
+	:
 	ls -l results/BOOTING/
 
-results3: results2
+results3: results2b
+	cp $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
+	cp $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
+
+results3-without-gccretro: results2
 	cp $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
 	cp $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
 
@@ -74,7 +92,9 @@ _FORCE_:
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
 
-axiom4.rom: axiom4.c
+### axiom4 experimental.
+
+axiom4-whole.rom: axiom4.c
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
 	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work4.s --output=_work4.o --list=_work4.list
@@ -83,6 +103,14 @@ axiom4.rom: axiom4.c
 	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work4.s --map _work4.map -o axiom4-whole.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
 	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+
+axiom4-whole6k.decb: axiom4-whole.rom
+	$(LWLINK) --output=axiom4-whole6k.decb --map=axiom4-whole6k.map --decb --script=$F/helper/axiom6k.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+
+axiom4-whole.l3k: axiom4-whole.rom
+	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom4-whole.rom > axiom4-whole.l3k
+
+### 
 
 axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_whole.c
@@ -345,7 +373,7 @@ TODO-install-on-disk: _FORCE_
 #   It's a server, so it will run forever, as long as nothing goes wrong.
 #   You can hit ^C to kill it.  `make` will then print an error message
 #   that you can ignore.
-run-lemma: all
+run-lemma: all-without-gccretro
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
 	$(SHELF)/bin/server  -cards -ro results/LEMMINGS
 
