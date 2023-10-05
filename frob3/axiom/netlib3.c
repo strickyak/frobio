@@ -410,7 +410,7 @@ void TcpDial(const struct sock* sockp, const byte* host, word port) {
 void TcpEstablish(PARAM_JUST_SOCK) {
   byte stuck = 250;
   while(1) {
-    Delay(2000);
+    Delay(1000);
     PutChar('+');
     // Or we could wait for the connected interrupt bit,
     // and not the disconnected nor the timeout bit.
@@ -422,7 +422,6 @@ void TcpEstablish(PARAM_JUST_SOCK) {
     if (status == SK_SR_SYNS) continue;
 
     Fatal("TE", status);
-
   };
 
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.

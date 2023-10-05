@@ -331,7 +331,7 @@ void main2() {
 
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
-    Delay(50000);
+    Delay(10000);
 
  #if FOR_EXPERIMENTAL_JUMP
     LemmaClientS1Loop();  // never returns.
