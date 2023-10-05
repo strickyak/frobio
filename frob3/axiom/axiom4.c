@@ -21,6 +21,9 @@ typedef void (*func_t)();
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
+#define PACKET_BUF 0x600
+#define PACKET_MAX 256
+
 
 #include "frob3/wiz/w5100s_defs.h"
 
@@ -65,6 +68,7 @@ struct wiz_port {
 struct axiom4_vars {
     // THE FIELD orig_s_reg MUST BE FIRST (due to how we zero the vars).
     word orig_s_reg;  // Remember original stack pointer.
+    word main;        // where is axiom, rom or ram?
     word rom_sum_0;
     word rom_sum_1;
     word rom_sum_2;
@@ -74,7 +78,8 @@ struct axiom4_vars {
     word transaction_id;
     bool got_dhcp;
     bool got_lan;
-    bool need_dhcp;
+    bool use_dhcp;  // Needs second DHCP round still.
+    bool launch;    // Ready to connect to Waiter.
 
     byte hostname[8];
     byte ip_addr[4];      // dhcp fills
@@ -99,14 +104,14 @@ struct axiom4_vars {
 #define Vars ((struct axiom4_vars*)CASBUF)
 #define WIZ  (Vars->wiz_port)
 
-struct axiom4_rom_tail { // $DFE4..$DFFF
-  byte rom_reserved[3];
-  byte rom_wiz_hw_port;  // $68 for $ff68
+struct axiom4_rom_tail { // $DFE0..$DFFF
   byte rom_hostname[8];
-  byte rom_mac_tail[4];  // After two $02 bytes.
+  byte rom_reserved[2];
+  byte rom_wiz_hw_port;  // $68 for $ff68
+  byte rom_mac_tail[5];  // After initial $02 byte, 5 random bytes!
   byte rom_secrets[16];  // For Challenge/Response Authentication Protocols.
 };
-#define Rom ((struct axiom4_rom_tail*)0xDFEA)
+#define Rom ((struct axiom4_rom_tail*)0xDFE0)
 
 // Constants for the (four) Wiznet sockets' registers.
 struct sock {
@@ -208,6 +213,7 @@ void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
              const byte* dest_ip, word dest_port);
 void WizClose(PARAM_JUST_SOCK);
 
+void DoLineBufCommands();
 void ConfigureTextScreen(word addr, bool orange);
 word StackPointer();
 char PolCat(); // Return one INKEY char, or 0, with BASIC `POLCAT` subroutine.
@@ -226,31 +232,6 @@ void AssertLE(word a, word b);
 ////////////////////////////////////////
 //   PART--END-HEADER--
 ////////////////////////////////////////
-
-#define LAN_REQUEST_UDP_PORT 12114 // L=12 A=1 N=14
-#define LAN_REPLY_UDP_PORT   12118 // ........ R=18
-
-struct lan_discovery_request {
-  byte lan_opcode[4];  // "LAN\0"
-  byte lan_xid[4];
-  byte lan_reserved[8];  // TODO: 6309 bit.  Gomar bit.
-
-  word orig_s_reg;     // how big is memory?
-  word main;           // where is axiom, rom or ram?
-  word rom_sum_0;      // what roms are available?
-  word rom_sum_1;
-  word rom_sum_2;
-  word rom_sum_3;
-  byte mac_tail[4];    // 4 bytes from $DFEC:$DFF0
-};
-
-struct lan_discovery_reply {
-  byte lan_opcode[4];  // "LAR\0"
-  byte lan_xid[4];
-  byte lan_reserved[8];
-
-  byte axiom_commands[64];  // ASCII commands to execute.
-};
 
 ////////////////////////////////////////
 //   PART--END-HEADER--
@@ -373,6 +354,10 @@ word StackPointer() {
     }
 #endif
     return result;
+}
+
+void NativeMode() {
+  asm volatile("ldmd #1");
 }
 
 char PolCat() {
@@ -633,9 +618,8 @@ void WizConfigure() {
   WizPutN(0x0001/*gateway*/, Vars->ip_gateway, 4);
   WizPutN(0x0005/*mask*/, Vars->ip_mask, 4);
   WizPutN(0x000f/*ip_addr*/, Vars->ip_addr, 4);
-  WizPutN(0x0009/*ether_mac*/, Rom->rom_mac_tail, 4);
-  WizPut2(0x0009/*ether_mac+0*/, 0x0202);
-  WizPutN(0x000B/*ether_mac+2*/, Rom->rom_mac_tail, 4);
+  WizPut1(0x0009/*ether_mac+0*/, 0x02);
+  WizPutN(0x000A/*ether_mac+1*/, Rom->rom_mac_tail, 5);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -701,6 +685,63 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 }
 
 ////////////////////////////////////////
+//   PART-LAN-WAITER
+////////////////////////////////////////
+
+#define LAN_CLIENT_PORT 12114  // L=12 A=1 N=4
+#define LAN_SERVER_PORT 12115
+
+struct lan_discovery_request {
+  byte lan_opcode[4];  // "Q\0\0\0"
+  byte lan_xid[4];
+  byte lan_reserved[8];  // TODO: 6309 bit.  Gomar bit.
+
+  word orig_s_reg;     // how big is memory?
+  word main;           // where is axiom, rom or ram?
+  word rom_sum_0;      // what roms are visible?
+  word rom_sum_1;
+  word rom_sum_2;
+  word rom_sum_3;
+  byte mac_tail[5];    // 5 bytes from Rom.
+};
+
+struct lan_discovery_reply {
+  byte lan_opcode[4];  // "R\0\0\0"
+  byte lan_xid[4];
+  byte lan_reserved[8];
+
+  byte axiom_commands[80];  // ASCII commands to execute.
+};
+
+void SendLanRequest(const struct sock* sockp) {
+  // second is False for Discover, True for request.
+  memset((char*)PACKET_BUF, 0, PACKET_MAX);
+  struct lan_discovery_request *q = (struct lan_discovery_request*) PACKET_BUF;
+
+  q->lan_opcode[0] = 'Q';
+  memcpy(&q->lan_xid, &Vars->xid, 4);
+  memcpy(&q->orig_s_reg, &Vars->orig_s_reg, 6*2); // six words.
+  memcpy(&q->mac_tail, &Rom->rom_mac_tail, 5); // five bytes.
+
+  tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND sizeof *q);
+  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, (byte*)q, sizeof *q);
+  WizFinalizeSend(SOCK_AND &BroadcastUdpProto, sizeof *q);
+}
+
+errnum RecvLanReply(const struct sock* sockp, word plen) {
+  // TODO // plen = (plen > PACKET_MAX) ? PACKET_MAX : plen;
+  errnum e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, plen);
+  if (e) return e;
+
+  struct lan_discovery_reply* r = (struct lan_discovery_reply*)PACKET_BUF;
+  memcpy(Vars->line_buf, r->axiom_commands, 80);
+
+  // TODO -- toss rest of big packet.
+  return 0;
+}
+
+
+////////////////////////////////////////
 //   PART-DHCP
 ////////////////////////////////////////
 
@@ -738,213 +779,92 @@ struct dhcp {
     // THEN byte options[...]
 };
 
-const byte RequestDHCP0[] = {
+
+#define Z 0 // to be filled in at runtime
+const byte DhcpTemplateOne[] = {
   1, // opcode: 1=request 2-response
   1, // htype: 1=ethernet
   6, // hlen: == 6 byte MAC.
   0, // hops: 1 or 0, on a LAN.
-};
-// Then 4 byte xid == name
-const byte RequestDHCP8[] = {
+
+  Z, Z, Z, Z, // xid
+
   0, 0, // secs
   0x80, 0x00, // broadcast
 };
-const byte DiscoverOptions[] = {
-  99, 130, 83, 99, // magic cookie for DHCP
-  53, 1, 1,  // 53=OptionType 1=len 1=Discover
-  12, 8, // 12=Hostname, 8=len4chars, FOLLOWED BY NAME
+const byte DhcpTemplateTwo[] = {
+  /*0*/ 99, 130, 83, 99, // magic cookie for DHCP
+  // Hereafter, a one-byte OptionType, a one-byte length, and that many payload bytes.
+  /*4*/ 53, 1, 1,  // 53=OptionType 1=len 1=Discover|3=Request (overwrite for request!)
+  /*7*/ 12, 8, // 12=Hostname, 8=len
+  /*9*/ Z, Z, Z, Z, Z, Z, Z, Z,  // copy hostname here.
+  // Next three lines ONLY for 3=Request:
+  /*17*/ 50, 4, // plus 4-byte address.
+  /*19*/ Z, Z, Z, Z, // address
+  /*23*/ 255, 0   // 255=end, 0=len // ends the options.
 };
-const byte RequestOptions[] = {
-  99, 130, 83, 99, // magic cookie for DHCP
-  53, 1, 3,  // 53=OptionType 1=len 3=Request
-  12, 8, // 12=Hostname, 8=len4chars, FOLLOWED BY NAME
-};
-const byte RequestAddressOption[] = {
-  50, 4, // plus 4-byte address.
-};
-const byte EndOptions[] = {
-  255, 0   // 255=end, 0=len
-};
+#undef Z
 
-// one
 void SendDhcpRequest(const struct sock* sockp, bool second) {
-  PrintF("%s. ", second ? "REQUEST" : "DISCOVER");
+  struct dhcp* p = (struct dhcp*)PACKET_BUF;
+  word plen = sizeof *p + (second ? 25 : 19);
+  tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND plen);
 
-  word req_size = sizeof (struct dhcp) + sizeof EndOptions;
+  // second is False for Discover, True for request.
+  memset(p, 0, PACKET_MAX);
+  memcpy(p, DhcpTemplateOne, sizeof DhcpTemplateOne);
+
+  memcpy(p->xid, Vars->xid, 4);
+  p->chaddr[0] = 2;
+  memcpy(p->chaddr+1, Rom->rom_mac_tail, 5);
+  if (second) memcpy(p->yiaddr, Vars->ip_addr, 4);
+  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, (byte*)p, sizeof *p);
+
+  byte* opt = (byte*)PACKET_BUF;
+  memset((char*)PACKET_BUF, 0, PACKET_MAX);
+  memcpy(opt, DhcpTemplateTwo, sizeof DhcpTemplateTwo);
+
+  memcpy(opt + 9, Rom->rom_hostname, 8);
   if (second) {
-    req_size += sizeof RequestOptions + sizeof RequestAddressOption + 12;
+    *(byte*)(opt + 6) = 3 /*Request opcode*/;
+    memcpy((char*)opt + 19, Vars->ip_addr, 4);
   } else {
-    req_size += sizeof RequestOptions + 8;
+    *(byte*)(opt + 6) = 3 /*Request opcode*/;
+    *(byte*)(opt + 17) = 255;
   }
-
-  tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND req_size);
-
-  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, RequestDHCP0, sizeof RequestDHCP0);
-
-  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, Vars->xid, 4);
-
-  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, RequestDHCP8, sizeof RequestDHCP8);
-
-  tx_ptr = WizDataToSend(SOCK_AND tx_ptr, Eight00s, 4); // ciaddr
-  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, Vars->ip_addr, 4); // yiaddr
-  tx_ptr = WizDataToSend(SOCK_AND tx_ptr, Eight00s, 4); // siaddr
-  tx_ptr = WizDataToSend(SOCK_AND tx_ptr, Eight00s, 4); // giaddr
-
-  tx_ptr = WizDataToSend(SOCK_AND tx_ptr, TwoTwos, 2);  // ch_addr
-  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, Rom->rom_mac_tail, 4); // ch_addr
-
-  tx_ptr = WizDataToSend(SOCK_AND tx_ptr, Eight00s, 2);  // ch_addr cont'd
-
-
-  byte n = 1/*chaddr cont'd*/ + 8/*sname*/;
-  for (byte i = 0; i < n; i++) {
-    tx_ptr = WizDataToSend(SOCK_AND tx_ptr, Eight00s, 8); // ch_addr + sname
-  }
-
-  for (byte i = 0; i < 16/*bname*/; i++) {
-    // If someone is sniffing, this will be obvious:
-    tx_ptr = WizDataToSend(SOCK_AND tx_ptr, "COCOIO_", 8); // bname
-  }
-
-  if (second) {
-    tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, RequestOptions, sizeof RequestOptions);
-    tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, Vars->hostname, 8);
-    tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, RequestAddressOption, sizeof RequestAddressOption);
-    tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, Vars->ip_addr, 4);
-  } else {
-    tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, DiscoverOptions, sizeof DiscoverOptions);
-    tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, Vars->hostname, 8);
-  }
-  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, EndOptions, sizeof EndOptions);
-
-  WizFinalizeSend(SOCK_AND &BroadcastUdpProto, req_size);
+  tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, (byte*)PACKET_BUF, plen - sizeof *p);
+  WizFinalizeSend(SOCK_AND &BroadcastUdpProto, plen);
 }
 
-errnum WasteRecvBytes(const struct sock* sockp, word n) {
-  errnum e = OKAY;
-  char junk[8];
-  while (n >= 8) {
-    e = WizRecvChunk(SOCK_AND  junk, 8);
-    if (e) return e;
-    n -= 8;
-  }
-  if (n > 0) {
-    e = WizRecvChunk(SOCK_AND  junk, n);
-    if (e) return e;
+errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
+  plen = (plen > PACKET_MAX) ? PACKET_MAX : plen;
+  errnum e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, plen);
+  if (e) return e;
+
+  struct dhcp* p = (struct dhcp*)PACKET_BUF;
+  memcpy(Vars->ip_addr, p->yiaddr, 4);
+
+  byte* opt = (byte*)(p+1);
+  if (opt[1] != 130) return 1;  // just check one of the 4 bytes: 99, 130, 83, 99.
+
+  byte* end = (byte*)PACKET_BUF + plen;
+  opt += 4;
+
+  while (opt < end) {
+    switch (opt[0]/*option number*/) {
+      case 1: memcpy(Vars->ip_mask, opt+2, 4);
+      break;
+      case 3: memcpy(Vars->ip_gateway, opt+2, 4);
+      break;
+      case 6: memcpy(Vars->ip_resolver, opt+2, 4);
+      break;
+      case 53: if (opt[2] != (second ? 5/*DHCP ACK*/ : 2/*DHCP OFFER*/)) e = 1; // try again
+      break;
+      case 255: return e;
+    }
+    opt += 2 + opt[1]/*opt payload len*/;
   }
   return e;
-}
-
-// two
-errnum RecvDhcpReply(const struct sock* sockp, struct UdpRecvHeader *hdr, bool second) {
-  errnum e = OKAY;
-  char buf[4];
-
-  // we want 16:yiaddr (you) and 20:siaddr (server)
-  if (hdr->len < 5 + sizeof (struct dhcp)) return BAD_SHORT_PACKET;
-
-  e = WizRecvChunk(SOCK_AND  buf, 4);
-  if (e) return e;
-  if (buf[0] != 2/*=REPLY*/) return BAD_BOOTP_REPLY;
-  PrintF("(R) ");
-  
-  WasteRecvBytes(SOCK_AND 12);  // done 16
-
-  e = WizRecvChunkBytes(SOCK_AND  Vars->ip_addr, 4);  // done 20
-  if (e) return e;
-  PrintF("addr=%a;", Vars->ip_addr);
-
-  e = WizRecvChunkBytes(SOCK_AND  Vars->ip_dhcp, 4); // done 24
-  if (e) return e;
-  PrintF("dhcpd=%a;", Vars->ip_dhcp);
-
-  WasteRecvBytes(SOCK_AND sizeof (struct dhcp) - 24);  // done struct dhcp
-
-
-  e = WizRecvChunk(SOCK_AND  buf, 4); // DHCP magic // done 4 more
-  if (e) return e;
-  if (buf[0] != 99) return BAD_DHCP_OPTION_MAGIC;
-  /*
-  if (buf[1] != 130) return BAD_DHCP_OPTION_MAGIC;
-  if (buf[2] != 83) return BAD_DHCP_OPTION_MAGIC;
-  if (buf[3] != 99) return BAD_DHCP_OPTION_MAGIC;
-  */
-
-  word togo = hdr->len - 4 - sizeof (struct dhcp);
-  byte dhcp_op = 0, opt, len;
-  while (togo >= 1) {
-    e = WizRecvChunkBytes(SOCK_AND  &opt, 1); // Get Option
-    if (e) return e;
-    --togo;
-
-    if (opt == 255) break;  // From Google Wifi, 255 is last, no len.
-
-    e = WizRecvChunkBytes(SOCK_AND  &len, 1); // Get Len
-    if (e) return e;
-    --togo;
-
-    PrintF("opt=%x len=%x;", opt, len);
-    togo -= len;
-    if (len == 4) {
-      e = WizRecvChunk(SOCK_AND  buf, 4); // 4 byte IP addr
-      if (e) return e;
-
-      if (opt == 1) {
-        memcpy(Vars->ip_mask, buf, 4);
-        PrintF("mask=%a;", Vars->ip_mask);
-      } else if (opt == 3) {
-        memcpy(Vars->ip_gateway, buf, 4);
-        PrintF("gw=%a;", Vars->ip_gateway);
-      } else if (opt == 6) {
-        memcpy(Vars->ip_resolver, buf, 4);
-        PrintF("resolv=%a;", Vars->ip_resolver);
-      } else {
-        // just dont use buf.
-      }
-    } else if (opt==53 && len==1) {
-
-// Value 	Message Type 	Reference 
-// 1	DHCPDISCOVER	[RFC2132]
-// 2	DHCPOFFER	[RFC2132]
-// 3	DHCPREQUEST	[RFC2132]
-// 4	DHCPDECLINE	[RFC2132]
-// 5	DHCPACK	[RFC2132]
-// 6	DHCPNAK	[RFC2132]
-// 7	DHCPRELEASE	[RFC2132]
-// 8	DHCPINFORM	[RFC2132]
-// 9	DHCPFORCERENEW	[RFC3203]
-// 10	DHCPLEASEQUERY	[RFC4388]
-// 11	DHCPLEASEUNASSIGNED	[RFC4388]
-// 12	DHCPLEASEUNKNOWN	[RFC4388]
-// 13	DHCPLEASEACTIVE	[RFC4388]
-// 14	DHCPBULKLEASEQUERY	[RFC6926]
-// 15	DHCPLEASEQUERYDONE	[RFC6926]
-// 16	DHCPACTIVELEASEQUERY	[RFC7724]
-// 17	DHCPLEASEQUERYSTATUS	[RFC7724]
-// 18	DHCPTLS	[RFC7724]
-
-      e = WizRecvChunkBytes(SOCK_AND &dhcp_op, 1); // 1 byte opcode
-      if (e) return e;
-      PrintF(" %s=$%x; ",
-          (dhcp_op==2 ? "OFFER" : dhcp_op==5 ? "ACK" : "?"),
-          dhcp_op);
-      if (dhcp_op != (second ? 5 : 2)) {
-        break;
-      }
-    } else {
-      WasteRecvBytes(SOCK_AND  len);
-    }
-  }
-
-    PrintF("extra=%x;", togo);
-  if (togo) {
-    e = WasteRecvBytes(SOCK_AND togo);
-    if (e) return e;
-  }
-  if (dhcp_op != (second ? 5 : 2)) {
-    return NOTYET;
-  }
-  return OKAY;
 }
 
 
@@ -954,11 +874,6 @@ errnum RecvDhcpReply(const struct sock* sockp, struct UdpRecvHeader *hdr, bool s
 
 #define BUF (Vars->line_buf)
 #define PTR (Vars->line_ptr)
-
-
-void NativeMode() {
-  asm volatile("ldmd #1");
-}
 
 void GetUpperCaseLine(char initialChar) {
   memset(BUF, 0, sizeof BUF);
@@ -995,8 +910,6 @@ void GetUpperCaseLine(char initialChar) {
     }
   }
   PutChar(13);
-
-  PTR = BUF;  // Rewind.
 }
 
 void SkipWhite() {
@@ -1039,9 +952,9 @@ bool GetNum1Byte(byte* num_out) {
 
 bool GetAddyInXid() {
   memset(Vars->xid, 0, 4);
-  if (GetNum1Byte(Vars->xid+0) && 
-      GetNum1Byte(Vars->xid+1) && 
-      GetNum1Byte(Vars->xid+2) && 
+  if (GetNum1Byte(Vars->xid+0) &&
+      GetNum1Byte(Vars->xid+1) &&
+      GetNum1Byte(Vars->xid+2) &&
       GetNum1Byte(Vars->xid+3) ) {
     return true;
   }
@@ -1108,7 +1021,7 @@ void GetHostname() {
 #endif
 
 void ShowNetwork() {
-  if (Vars->need_dhcp) {
+  if (Vars->use_dhcp) {
     PrintF("d\1\n");
   } else {
     PrintF("i\1 %a/%d %a\n", Vars->ip_addr, Vars->mask_num, Vars->ip_gateway);
@@ -1116,13 +1029,9 @@ void ShowNetwork() {
   PrintF("w\1 %a:%d\n", Vars->ip_waiter, Vars->waiter_port);
 }
 
-// returns true when commands are done.
-bool DoOneCommand(char initialChar) {
-  bool done = false;
+void DoOneCommand(char initialChar) {
   errnum e = OKAY;
   word peek_addr = 0;
-
-  GetUpperCaseLine(initialChar);
 
   SkipWhite();
   char cmd = *PTR;
@@ -1132,7 +1041,7 @@ bool DoOneCommand(char initialChar) {
       Vars->wiz_port = (struct wiz_port*)0xFF78;
   } else if (cmd == 'D') {
       // GetHostname();
-      Vars->need_dhcp = true;
+      Vars->use_dhcp = true;
   } else if (cmd == 'I') {
       if (!GetAddyInXid()) { e = 11; goto END; }
       memcpy(Vars->ip_addr, Vars->xid, 4);
@@ -1144,7 +1053,7 @@ bool DoOneCommand(char initialChar) {
         }
       }
       SetMask(width);
-      
+
   } else if (cmd == 'W') {
     if (!GetAddyInXid()) { e = 12; goto END; }
     memcpy(Vars->ip_waiter, Vars->xid, 4);
@@ -1175,7 +1084,7 @@ bool DoOneCommand(char initialChar) {
     e = DoNetwork(0, 23);
 
   } else if (cmd == '@') {
-    done = true;
+    Vars->launch = true;
     goto END;
 
   } else if (cmd == 'Q') {
@@ -1184,7 +1093,7 @@ bool DoOneCommand(char initialChar) {
   } else if (cmd == 'N') {
     NativeMode();
 
-  } else if (cmd == '<') {
+  } else if (cmd == '<') { // peek
     word tmp = peek_addr;
     if (!GetNum2Bytes(&peek_addr)) peek_addr = tmp;
 
@@ -1195,7 +1104,7 @@ bool DoOneCommand(char initialChar) {
     }
     PutChar(13);
 
-  } else if (cmd == '>') {
+  } else if (cmd == '>') { // poke
       byte b;
     if (GetNum2Bytes(&peek_addr) && GetNum1Byte(&b)) {
       *(byte*)peek_addr = b;
@@ -1203,7 +1112,7 @@ bool DoOneCommand(char initialChar) {
       PrintF("?\n");
     }
 
-  } else if (cmd == 0) {
+  } else if (cmd == 0 || cmd==';') {
     // end of line
   } else {
     PrintF("U\1 :upper wiznet port $FF78\n");
@@ -1225,7 +1134,6 @@ END:
   if (e) {
     PrintF("*** error %d\n", e);
   }
-  return done;
 }
 
 ////////////////////////////////////////
@@ -1386,7 +1294,7 @@ void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t
 }
 
 errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
-  PrintH("Ax WizSendChunk %x@%x : %x %x %x %x %x", n, data, 
+  PrintH("Ax WizSendChunk %x@%x : %x %x %x %x %x", n, data,
       data[0], data[1], data[2], data[3], data[4]);
   errnum e = WizCheck(JUST_SOCK);
   if (e) return e;
@@ -1429,30 +1337,35 @@ word RomSum(word begin, word end) {
 
 // --main--
 
-void DiscoveryConfigure() {
-  WizConfigure();
+void OpenDiscoverySockets() {
   WizOpen(SOCK1_AND &BroadcastUdpProto, DHCP_CLIENT_PORT);
   UdpDial(SOCK1_AND  &BroadcastUdpProto,
           /*dest_ip=*/ (const byte*)SixFFs, DHCP_SERVER_PORT);
+  WizOpen(SOCK0_AND &BroadcastUdpProto, LAN_CLIENT_PORT);
+  UdpDial(SOCK0_AND  &BroadcastUdpProto,
+          /*dest_ip=*/ (const byte*)SixFFs, LAN_SERVER_PORT);
 }
 
-errnum Discovery() {
+errnum OneDiscoveryRound() {
   errnum e;
-  struct UdpRecvHeader hdr; 
-  // if (!Vars->got_lan) TryLanReply();
-
-  if (!Vars->got_dhcp) {
-    // -- errnum WizRecvChunkTry(const struct sock* sockp, char* buf, size_t n)  --
-    e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
+  struct UdpRecvHeader hdr;
+  if (!Vars->got_lan) {
+    e = WizRecvChunkTry(SOCK0_AND  (char*)&hdr, sizeof hdr);
     if (!e) {
-      // -- errnum RecvDhcpReply(const struct sock* sockp, struct UdpRecvHeader *hdr, bool second)  --
-      e = RecvDhcpReply(SOCK1_AND &hdr, false);
-      if (e) return e;
-      Vars->got_dhcp = true;
+      e = RecvLanReply(SOCK0_AND hdr.len);
+      if (!e) Vars->got_lan = true;
     }
   }
 
-  // if (!Vars->got_lan) SendLanRequest();
+  if (!Vars->got_dhcp) {
+    e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
+    if (!e) {
+      e = RecvDhcpReply(SOCK1_AND hdr.len, false);
+      if (!e) Vars->got_dhcp = true;
+    }
+  }
+
+  if (!Vars->got_lan) SendLanRequest(JUST_SOCK0);
 
   if (!Vars->got_dhcp) SendDhcpRequest(SOCK1_AND  false/*not second time*/);
   return 0;
@@ -1460,26 +1373,27 @@ errnum Discovery() {
 
 errnum DhcpPhaseTwo() {
   errnum e;
-  struct UdpRecvHeader hdr; 
+  struct UdpRecvHeader hdr;
 
   SendDhcpRequest(SOCK1_AND  true/*second time*/);
 
   e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
   if (e) return e;
-  e = RecvDhcpReply(SOCK1_AND &hdr, true);
+
+  e = RecvDhcpReply(SOCK1_AND hdr.len, true);
   return e;
 }
 
-#define TOCKS_PER_SECOND 39 // TOCK = 25.6 milliseconds.
+#define TOCKS_PER_SECOND 39 // TOCK = 256 TICKS = 25.6 milliseconds.
 
 char CountdownOrInitialChar() {
   PrintF("\n\nTo take control, hit space bar.\n\n");
-  DiscoveryConfigure();
+  OpenDiscoverySockets();
 
   for (byte i = 0; i < 5; i++) {
     byte t = WizTocks();
     PrintF("%d... ", 5-i);
-    Discovery();
+    OneDiscoveryRound();
     while(1) {
       byte now = WizTocks();
       byte interval = now - t; // Unsigned Difference tolerates rollover.
@@ -1558,10 +1472,9 @@ errnum LemmaClientS1() {  // old style does not loop.
 }
 extern int main();
 void main2() {
-    // Clear our global variables to zero, except for orig_s_regs.
-    memset(sizeof Vars->orig_s_reg + (char*)Vars,
-           0,
-           sizeof *Vars - sizeof Vars->orig_s_reg);
+    // Clear our global variables to zero, except first 4 bytes,
+    // which are orig_s_reg and address of main.
+    memset(((char*)Vars) + 4, 0, sizeof *Vars - 4);
 
     Vars->wiz_port = (struct wiz_port*) (0xFF00 + Rom->rom_wiz_hw_port);
     Vars->transaction_id = WizTicks();
@@ -1575,40 +1488,53 @@ void main2() {
     word vdg_n = Vars->vdg_end - Vars->vdg_begin;
     memset((char*)Vars->vdg_begin, '.', vdg_n);
 
-    PrintF("X=%x M=%x:%x\n",
+    PrintF("V=%d X=%x M=%x:%x:%x\n",
+        sizeof(*Vars),
         Vars->transaction_id,
-        *(word*)(Rom->rom_mac_tail+0),
-        *(word*)(Rom->rom_mac_tail+2));
+        *(byte*)(Rom->rom_mac_tail+0),
+        *(word*)(Rom->rom_mac_tail+1),
+        *(word*)(Rom->rom_mac_tail+3));
 
     ComputeRomSums();
-    PrintF("S=%x R=%x:%x:%x:%x\n",
+    PrintF("S=%x E=%x R=%x:%x:%x:%x\n",
+      Vars->orig_s_reg,
+      Vars->main,
       Vars->rom_sum_0,
       Vars->rom_sum_1,
       Vars->rom_sum_2,
       Vars->rom_sum_3);
 
+    WizReset();
+    WizConfigure();
     char initial_char = CountdownOrInitialChar();
 
-    if (initial_char == '1') {
-      // Choose DHCP
-    } else if (initial_char == '2') {
-      // Choose LAN
-    } else {
-      // Choose Keyboard
+    if (!initial_char) {
+      if (Vars->got_lan) {
+        PrintF("USE LAN;");
+      } else if (Vars->got_dhcp) {
+      PrintF("USE DHCP;");
+        Vars->use_dhcp = true;
+      }
+    }
+
+    if (Vars->got_lan) {
+        DoLineBufCommands();
+    } else if (!Vars->use_dhcp) {
       DoKeyboardCommands(initial_char);
     }
 
-    PrintF("WizReset; ");
-    WizReset();
-
-    if (Vars->need_dhcp) {
-      PrintF("DHCP:");
+    if (Vars->use_dhcp) {
       errnum e = OKAY;
       e = DhcpPhaseTwo();
-      if (e) Fatal("RunDhcp", e);
+      if (e) Fatal("Dhcp2", e);
     }
 
+    Delay(10000);  // to read messages.
+    PrintF("WizReset; ");
+    WizReset();
+    Delay(10000);  // to read messages.
     WizConfigure();
+    Delay(10000);  // to read messages.
 
 #define LOCAL_PORT ( 0x8000 | Vars->transaction_id )
     WizOpen(SOCK1_AND &TcpProto, LOCAL_PORT);
@@ -1617,16 +1543,24 @@ void main2() {
 
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
-    Delay(50000);
+    Delay(20000);
 
     while (1) {
         errnum e = LemmaClientS1();
-        if (e) Fatal("BOTTOM", e);
+        if (e) Fatal("S1", e);
     }
 }
 
 const byte waiter_default [4] = {
       134, 122, 16, 44 }; // lemma.yak.net
+
+void DoLineBufCommands() {
+  PTR = BUF;
+  do {
+    DoOneCommand(0);
+    SkipWhite();
+  } while (*PTR);
+}
 
 void DoKeyboardCommands(char initial_char) {
   // Set up defaults.
@@ -1634,19 +1568,26 @@ void DoKeyboardCommands(char initial_char) {
   Vars->waiter_port = WAITER_TCP_PORT;
   SetMask(24);
 
-  PrintF("Enter H for HELP.\n");
+  PrintF("Enter H\001 for HELP.\n");
 
   while (true) {
     PrintF(">axiom> ");
-    bool done = DoOneCommand(initial_char);
-    if (done) break;
+    GetUpperCaseLine(initial_char);
     initial_char = 0;
+
+    DoLineBufCommands();
+    if (Vars->launch) break;
   }
-  PrintF("Launch... ");
 }
 
 int main() {
+    // Remembering the original S register
+    // can give us some idea how big RAM isn't.
     Vars->orig_s_reg = StackPointer();
+    Vars->main = (word)&main;
 
+    // Now to make all platforms the same,
+    // we're dropping down into the first 4K of RAM
+    // and using the second floppy buffer 0x0700:0x0800 for stack.
     CallWithNewStack(0x0800, &main2);
 }
