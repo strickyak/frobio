@@ -36,11 +36,24 @@ to stress your CocoIO Card.
 	})
 
 	Add(32, 30, "Nitros9 Level2", &Card{})
-	Add(323, 32, "L2 3.3.0 for H6309", &Card{
+	Add(323, 32, "L2 3.3.0 for HITACHI 6309", &Card{
 		Launch: ".Nitros9_Coco3_H6309_Level2.lem",
 		Block0: ".Nitros9_Coco3_H6309_Level2.dsk",
 	})
-	Add(328, 32, "L2 3.3.0 for M6809", &Card{
+
+	Add(325, 32, "L2 3.3.0 for M6809 (VDG SMALL)", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2vdg_small.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
+	})
+	Add(326, 32, "L2 3.3.0 for M6809 (VDG)", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2vdg.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
+	})
+	Add(327, 32, "L2 3.3.0 for M6809 (40 col)", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2_40col.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
+	})
+	Add(328, 32, "L2 3.3.0 for M6809 (80 col)", &Card{
 		Launch: ".Nitros9_Coco3_M6809_Level2.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
