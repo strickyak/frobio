@@ -49,23 +49,29 @@ results2: results1
 	ln *.lem results/LEMMINGS/
 	ln *.dsk results/LEMMINGS/
 
-results2b: results2 axiom-whole.rom axiom-whole.l3k axiom4-whole.rom axiom4-whole.l3k
+results2b: results2 all-axiom all-axiom4
 	mkdir -p results/BOOTING
 	cp -v $F/booting/README.md results/BOOTING/README.md
 	:
 	decb dskini results/BOOTING/netboot3.dsk
 	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS
+	decb copy -0 -b $F/booting/INSTALL5.BAS results/BOOTING/netboot3.dsk,INSTALL5.BAS
 	decb copy -3 -a $F/booting/README.md results/BOOTING/netboot3.dsk,README.md
 	decb copy -2 -b axiom-whole.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
-	cp -v axiom-whole6k.decb results/BOOTING/
 	decb dir results/BOOTING/netboot3.dsk
-	: TOO FULL : decb copy -2 -b axiom-whole6k.decb results/BOOTING/netboot3.dsk,EXOBOOT.BIN
+	decb dskini results/BOOTING/exoboot3.dsk
+	decb copy -2 -b axiom-whole6k.decb results/BOOTING/exoboot3.dsk,EXOBOOT3.DEC
+	decb dir results/BOOTING/exoboot3.dsk
 	:
 	decb dskini results/BOOTING/future4.dsk
 	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/future4.dsk,INSTALL4.BAS
+	decb copy -0 -b $F/booting/INSTALL5.BAS results/BOOTING/future4.dsk,INSTALL5.BAS
 	decb copy -3 -a $F/booting/README.md results/BOOTING/future4.dsk,README.md
 	decb copy -2 -b axiom4-whole.l3k results/BOOTING/future4.dsk,NETBOOT.DEC
 	decb dir results/BOOTING/future4.dsk
+	decb dskini results/BOOTING/exofoot4.dsk
+	decb copy -2 -b axiom4-whole6k.decb results/BOOTING/exofoot4.dsk,EXOFOOT4.DEC
+	decb dir results/BOOTING/exofoot4.dsk
 	:
 	ls -l results/BOOTING/
 
@@ -91,6 +97,7 @@ _FORCE_:
 ###############################################
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb
 
 ### axiom4 experimental.
 
