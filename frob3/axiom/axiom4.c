@@ -23,6 +23,8 @@ typedef void (*func_t)();
 #define VDG_END  0x0600
 #define PACKET_BUF 0x600
 #define PACKET_MAX 256
+const byte waiter_default [4] = {
+      134, 122, 16, 44 }; // lemma.yak.net
 
 
 #include "frob3/wiz/w5100s_defs.h"
@@ -48,8 +50,17 @@ size_t strlen(const char *s);
 #define volatile /* not supported by cmoc */
 
 #else
----- which compiler are you using? ----
+void WhichCompilerAreYouUsingQuestionMark();
 #endif
+
+#define _ {PrintF("L%d.", __LINE__);}
+
+// XXX #define SPIN(N) {(*(byte*)(VDG_RAM+(N))) = 0x80 | (1 + *(byte*)(VDG_RAM+(N)));}
+void SPIN(byte n) {
+    byte b = 1 + *(byte*)(VDG_RAM+(n));
+    if ((b&15) == 0) b++;  // Skip blank patterns.
+    (*(byte*)(VDG_RAM+(n))) = b | 0x80;
+}
 
 struct UdpRecvHeader {
     byte addr[4];
@@ -75,7 +86,8 @@ struct axiom4_vars {
     word rom_sum_3;
 
     volatile struct wiz_port* wiz_port;  // which hardware port?
-    word transaction_id;
+    word rand_word;
+    byte transaction_id[4];
     bool got_dhcp;
     bool got_lan;
     bool use_dhcp;  // Needs second DHCP round still.
@@ -90,7 +102,6 @@ struct axiom4_vars {
     byte ip_waiter[4];
     byte mask_num;
     word waiter_port;
-    byte xid[4];    // Temporary packet id in DHCP
 
     word vdg_addr;   // mapped via SAM
     word vdg_begin;  // begin useable portion
@@ -99,15 +110,14 @@ struct axiom4_vars {
 
     char* line_ptr;
 
-    char line_buf[64];
+    char line_buf[80];
 };
 #define Vars ((struct axiom4_vars*)CASBUF)
 #define WIZ  (Vars->wiz_port)
 
 struct axiom4_rom_tail { // $DFE0..$DFFF
   byte rom_hostname[8];
-  byte rom_reserved[2];
-  byte rom_wiz_hw_port;  // $68 for $ff68
+  byte rom_reserved[3];
   byte rom_mac_tail[5];  // After initial $02 byte, 5 random bytes!
   byte rom_secrets[16];  // For Challenge/Response Authentication Protocols.
 };
@@ -555,6 +565,32 @@ void PrintF(const char* format, ...) {
 
 ///////////////////////////////////////////////////////////
 
+void Pia1bOn(byte x) { *(volatile byte*)0xFF22 |= x; }
+void Pia1bOff(byte x) { *(volatile byte*)0xFF22 &= ~x; }
+void Orange() { Pia1bOn(0x08); }
+void Green() { Pia1bOff(0x08); }
+#if 1
+void Enable1BitSound() {
+    *(volatile byte*)0xFF23 &= ~0x04;  // Clear bit 2 to enable Data Direction access
+    *(volatile byte*)0xFF22 |= 0x02;   // Bit 1 and bits 3-7 are outputs.
+    *(volatile byte*)0xFF23 |= 0x04;  // Clear bit 2 to enable Data Direction access
+}
+void Beep(byte n, byte f) {
+    Enable1BitSound();
+    for (byte i = 0; i < n; i++) {
+        SPIN(10);
+        Pia1bOn(0x02);
+        Delay(f<<2);
+        Pia1bOff(0x02);
+        Delay(f<<2);
+        Pia1bOn(0x02);
+        Delay(f);
+        Pia1bOff(0x02);
+        Delay(f);
+    }
+}
+#endif
+
 byte WizGet1(word reg) {
   WIZ->addr = reg;
   return WIZ->data;
@@ -601,9 +637,9 @@ byte WizTocks() {
 
 void WizReset() {
   WIZ->command = 128; // Reset
-  Delay(5000);
+  Delay(500);
   WIZ->command = 3;   // IND=1 AutoIncr=1 BlockPingResponse=0 PPPoE=0
-  Delay(1000);
+  Delay(100);
 
   // GLOBAL OPTIONS FOR SOCKETLESS AND ALL SOCKETS:
 
@@ -620,6 +656,30 @@ void WizConfigure() {
   WizPutN(0x000f/*ip_addr*/, Vars->ip_addr, 4);
   WizPut1(0x0009/*ether_mac+0*/, 0x02);
   WizPutN(0x000A/*ether_mac+1*/, Rom->rom_mac_tail, 5);
+}
+
+errnum ValidateWizPort(struct wiz_port* p) {
+    PrintF("?%x ", p);
+    byte status = p->command;
+    PrintF("s:%x ", status);
+    if (status != 3) return 11;
+    p->addr = 0x0080; // Query Version
+    byte version = p->data;
+    PrintF("v:%x ", version);
+    if (version != 0x51) return 12;
+    p->addr = 0x0009; // Hardware Addr (mac)
+    p->data = 0xA1;
+    p->data = 0xB2;
+    p->data = 0xC3;
+
+    p->addr = 0x0009; // Hardware Addr (mac)
+    byte x = p->data;
+    byte y = p->data;
+    byte z = p->data;
+    PrintF("(%x,%x,%x)\n", x, y, z);
+    if (x!=0xA1 || y!=0xB2 || z!=0xC3) return 13;
+
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -666,7 +726,7 @@ void TcpDial(const struct sock* sockp, const byte* host, word port) {
 void TcpEstablish(PARAM_JUST_SOCK) {
   byte stuck = 250;
   while(1) {
-    Delay(2000);
+    Delay(1000);
     PutChar('+');
     // Or we could wait for the connected interrupt bit,
     // and not the disconnected nor the timeout bit.
@@ -682,6 +742,9 @@ void TcpEstablish(PARAM_JUST_SOCK) {
   };
 
   WizPut1(B+SK_IR, SK_IR_CON); // Clear the Connection bit.
+
+  // XXX Experiment: always set the PSH bit.
+  WizPut1(B+/*0x2F*/SK_MR2, 0x02);  // PSH all TCP.
 }
 
 ////////////////////////////////////////
@@ -719,7 +782,7 @@ void SendLanRequest(const struct sock* sockp) {
   struct lan_discovery_request *q = (struct lan_discovery_request*) PACKET_BUF;
 
   q->lan_opcode[0] = 'Q';
-  memcpy(&q->lan_xid, &Vars->xid, 4);
+  memcpy(&q->lan_xid, &Vars->transaction_id, 4);
   memcpy(&q->orig_s_reg, &Vars->orig_s_reg, 6*2); // six words.
   memcpy(&q->mac_tail, &Rom->rom_mac_tail, 5); // five bytes.
 
@@ -795,7 +858,7 @@ const byte DhcpTemplateOne[] = {
 const byte DhcpTemplateTwo[] = {
   /*0*/ 99, 130, 83, 99, // magic cookie for DHCP
   // Hereafter, a one-byte OptionType, a one-byte length, and that many payload bytes.
-  /*4*/ 53, 1, 1,  // 53=OptionType 1=len 1=Discover|3=Request (overwrite for request!)
+  /*4*/ 53, 1, 3,  // 53=OptionType 1=len 1=Discover|3=Request (overwrite for request!)
   /*7*/ 12, 8, // 12=Hostname, 8=len
   /*9*/ Z, Z, Z, Z, Z, Z, Z, Z,  // copy hostname here.
   // Next three lines ONLY for 3=Request:
@@ -814,7 +877,7 @@ void SendDhcpRequest(const struct sock* sockp, bool second) {
   memset(p, 0, PACKET_MAX);
   memcpy(p, DhcpTemplateOne, sizeof DhcpTemplateOne);
 
-  memcpy(p->xid, Vars->xid, 4);
+  memcpy(p->xid, Vars->transaction_id, 4);
   p->chaddr[0] = 2;
   memcpy(p->chaddr+1, Rom->rom_mac_tail, 5);
   if (second) memcpy(p->yiaddr, Vars->ip_addr, 4);
@@ -826,31 +889,37 @@ void SendDhcpRequest(const struct sock* sockp, bool second) {
 
   memcpy(opt + 9, Rom->rom_hostname, 8);
   if (second) {
-    *(byte*)(opt + 6) = 3 /*Request opcode*/;
     memcpy((char*)opt + 19, Vars->ip_addr, 4);
   } else {
-    *(byte*)(opt + 6) = 3 /*Request opcode*/;
-    *(byte*)(opt + 17) = 255;
+    *(byte*)(opt + 6) = 1 /*Discover opcode*/;
+    *(word*)(opt + 17) = 0xFF00;  // opt 255=end, len 0
   }
   tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, (byte*)PACKET_BUF, plen - sizeof *p);
   WizFinalizeSend(SOCK_AND &BroadcastUdpProto, plen);
 }
 
 errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
-  plen = (plen > PACKET_MAX) ? PACKET_MAX : plen;
-  errnum e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, plen);
-  if (e) return e;
-
   struct dhcp* p = (struct dhcp*)PACKET_BUF;
+  //Delay(3000);
+//_
+  errnum e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, sizeof *p);
+  if (e) return e;
   memcpy(Vars->ip_addr, p->yiaddr, 4);
 
-  byte* opt = (byte*)(p+1);
-  if (opt[1] != 130) return 1;  // just check one of the 4 bytes: 99, 130, 83, 99.
-
-  byte* end = (byte*)PACKET_BUF + plen;
+//_
+  //Delay(3000);
+  e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, plen - sizeof *p);
+  if (e) return e;
+  byte* opt = (byte*)PACKET_BUF;
+  if (opt[1] != 130) return 9;  // just check one of the 4 bytes: 99, 130, 83, 99.
+//_
+  byte* end = (byte*)PACKET_BUF + plen - sizeof *p;
   opt += 4;
 
+//_
   while (opt < end) {
+    PutChar('#');
+    //PrintF("(%d:%d)", opt[0], opt[1]);
     switch (opt[0]/*option number*/) {
       case 1: memcpy(Vars->ip_mask, opt+2, 4);
       break;
@@ -860,11 +929,12 @@ errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
       break;
       case 53: if (opt[2] != (second ? 5/*DHCP ACK*/ : 2/*DHCP OFFER*/)) e = 1; // try again
       break;
-      case 255: return e;
+      case 255: return 0;
     }
     opt += 2 + opt[1]/*opt payload len*/;
   }
-  return e;
+_
+  return 5;
 }
 
 
@@ -951,11 +1021,11 @@ bool GetNum1Byte(byte* num_out) {
 }
 
 bool GetAddyInXid() {
-  memset(Vars->xid, 0, 4);
-  if (GetNum1Byte(Vars->xid+0) &&
-      GetNum1Byte(Vars->xid+1) &&
-      GetNum1Byte(Vars->xid+2) &&
-      GetNum1Byte(Vars->xid+3) ) {
+  memset(Vars->transaction_id, 0, 4);
+  if (GetNum1Byte(Vars->transaction_id+0) &&
+      GetNum1Byte(Vars->transaction_id+1) &&
+      GetNum1Byte(Vars->transaction_id+2) &&
+      GetNum1Byte(Vars->transaction_id+3) ) {
     return true;
   }
   return false;
@@ -1044,19 +1114,19 @@ void DoOneCommand(char initialChar) {
       Vars->use_dhcp = true;
   } else if (cmd == 'I') {
       if (!GetAddyInXid()) { e = 11; goto END; }
-      memcpy(Vars->ip_addr, Vars->xid, 4);
+      memcpy(Vars->ip_addr, Vars->transaction_id, 4);
       memset(Vars->ip_gateway, 0, 4);
       byte width;
       if (GetNum1Byte(&width)) {
         if (GetAddyInXid()) {
-          memcpy(Vars->ip_gateway, Vars->xid, 4);
+          memcpy(Vars->ip_gateway, Vars->transaction_id, 4);
         }
       }
       SetMask(width);
 
   } else if (cmd == 'W') {
     if (!GetAddyInXid()) { e = 12; goto END; }
-    memcpy(Vars->ip_waiter, Vars->xid, 4);
+    memcpy(Vars->ip_waiter, Vars->transaction_id, 4);
     word port;
     if (GetNum2Bytes(&port)) {
         Vars->waiter_port = port;
@@ -1346,42 +1416,60 @@ void OpenDiscoverySockets() {
           /*dest_ip=*/ (const byte*)SixFFs, LAN_SERVER_PORT);
 }
 
-errnum OneDiscoveryRound() {
+errnum OneDiscoveryRound() { SPIN(4);
   errnum e;
   struct UdpRecvHeader hdr;
   if (!Vars->got_lan) {
     e = WizRecvChunkTry(SOCK0_AND  (char*)&hdr, sizeof hdr);
+    //PrintF("R0:%x,", e);
     if (!e) {
+      //PrintF("R0=%x,", hdr.len);
       e = RecvLanReply(SOCK0_AND hdr.len);
+      //PrintF("=%x;", e);
       if (!e) Vars->got_lan = true;
     }
   }
 
   if (!Vars->got_dhcp) {
     e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
+    //PrintF("R1:%x,", e);
     if (!e) {
+      //PrintF("R1=%x,", hdr.len);
       e = RecvDhcpReply(SOCK1_AND hdr.len, false);
+      //PrintF("=%x;", e);
       if (!e) Vars->got_dhcp = true;
     }
   }
 
-  if (!Vars->got_lan) SendLanRequest(JUST_SOCK0);
+  if (!Vars->got_lan) {
+    SendLanRequest(JUST_SOCK0);
+    //PrintF("S0;");
+  }
 
-  if (!Vars->got_dhcp) SendDhcpRequest(SOCK1_AND  false/*not second time*/);
+  if (!Vars->got_dhcp) {
+    SendDhcpRequest(SOCK1_AND  false/*not second time*/);
+    //PrintF("S1;");
+  }
   return 0;
 }
 
 errnum DhcpPhaseTwo() {
   errnum e;
   struct UdpRecvHeader hdr;
-
-  SendDhcpRequest(SOCK1_AND  true/*second time*/);
-
-  e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
-  if (e) return e;
-
-  e = RecvDhcpReply(SOCK1_AND hdr.len, true);
-  return e;
+  for (byte i = 0; i < 10; i++) {
+      PrintF(" *%d* ", i);
+    //_
+      SendDhcpRequest(SOCK1_AND  true/*second time*/);
+      Delay(10000);
+    //_
+      e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
+      if (e) continue;
+    //_
+      e = RecvDhcpReply(SOCK1_AND hdr.len, true);
+      if (!e) return 0;
+  }
+//_
+  return 2;
 }
 
 #define TOCKS_PER_SECOND 39 // TOCK = 256 TICKS = 25.6 milliseconds.
@@ -1390,17 +1478,20 @@ char CountdownOrInitialChar() {
   PrintF("\n\nTo take control, hit space bar.\n\n");
   OpenDiscoverySockets();
 
-  for (byte i = 0; i < 5; i++) {
+  for (byte i = 0; i < 5; i++) { SPIN(0);
     byte t = WizTocks();
     PrintF("%d... ", 5-i);
     OneDiscoveryRound();
-    while(1) {
+    Beep(8, 12);
+    while(1) { SPIN(2);
       byte now = WizTocks();
       byte interval = now - t; // Unsigned Difference tolerates rollover.
       if (interval > TOCKS_PER_SECOND) break;
 
       char initialChar = PolCat();
-      if (initialChar) return initialChar;
+      if (initialChar) {
+        return initialChar;
+      }
     }
   }
   PrintF("0.\n");
@@ -1419,7 +1510,7 @@ errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
   char inkey;
   errnum e;  // was bool e, but that was a mistake.
-
+//SPIN(16);
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -1429,6 +1520,7 @@ errnum LemmaClientS1() {  // old style does not loop.
       if (e) return e;
     }
 
+//SPIN(18);
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
       word n = *(word*)(quint+1);
@@ -1468,16 +1560,52 @@ errnum LemmaClientS1() {  // old style does not loop.
           break;
       } // switch
     }
+//SPIN(20);
     return (e==NOTYET) ? OKAY : e;
 }
+
+struct wiz_port* DetectWizPort() {
+    // The wiznet contorl port reads as 0x03, after a reset.
+    // We use that as its signature, to determine which of the two
+    // standard addresses the wiznet card is jumpered for.
+    word ff68 = 0xff68;
+    word ff78 = 0xff78;
+    word result = ff68;
+    byte b68 = *(volatile byte*)ff68;
+    //Delay(2345);
+    byte b78 = *(volatile byte*)ff78;
+    if ( b68 != 3 && b78 == 3 ) result = ff78;
+    PrintF(" wiz<%x %x %x> ", b68, b78, result);
+
+    for (byte i = 0; i < 4; i++) {
+        byte a=*(volatile byte*)(ff68+i);
+        //Delay(2345);
+        byte b=*(volatile byte*)(ff78+i);
+        //Delay(2345);
+        PrintF("<%x %x> ", a, b);
+    }
+    return (struct wiz_port*) result;
+}
+
+void WaitForLink() {
+    while (1) {
+        byte phys = WizGet1(0x003C); // PHYSR0: physical register 0
+        if ((phys & 1) == 1) {
+            // link up
+            PrintF(" LINK=%x ", phys);
+            return;
+        }
+        PrintF("down=%x ", phys);
+        Delay(5000);
+    }
+}
+
 extern int main();
 void main2() {
+    Orange();
     // Clear our global variables to zero, except first 4 bytes,
     // which are orig_s_reg and address of main.
     memset(((char*)Vars) + 4, 0, sizeof *Vars - 4);
-
-    Vars->wiz_port = (struct wiz_port*) (0xFF00 + Rom->rom_wiz_hw_port);
-    Vars->transaction_id = WizTicks();
 
     // Set VDG 32x16 text screen to dots.
     // Preserve the top line.
@@ -1485,18 +1613,32 @@ void main2() {
     Vars->vdg_begin = VDG_RAM+32; // Skip top status line.
     Vars->vdg_ptr = VDG_RAM+32;
     Vars->vdg_end = VDG_END;
-    word vdg_n = Vars->vdg_end - Vars->vdg_begin;
-    memset((char*)Vars->vdg_begin, '.', vdg_n);
 
-    PrintF("V=%d X=%x M=%x:%x:%x\n",
+    memset((byte*)VDG_RAM, ' ', VDG_END-VDG_RAM);
+    strcpy((char*)VDG_RAM+26, "AXIOM\x74");
+
+    if (ValidateWizPort((struct wiz_port*)0xFF68)==OKAY) {
+        Vars->wiz_port = (struct wiz_port*)0xFF68;
+    } else if (ValidateWizPort((struct wiz_port*)0xFF78)==OKAY) {
+        Vars->wiz_port = (struct wiz_port*)0xFF78;
+    } else {
+        Fatal("nowiz", 9);
+    }
+    PrintF("Wiznet found at %x\n", Vars->wiz_port);
+
+    Vars->rand_word = WizTicks();
+    memcpy(Vars->transaction_id, Rom->rom_mac_tail+1, 4);
+    memcpy(Vars->hostname, Rom->rom_hostname, 8);
+
+    PrintF("V=%x R=%x M=%x:%x:%x\n",
         sizeof(*Vars),
-        Vars->transaction_id,
+        Vars->rand_word,
         *(byte*)(Rom->rom_mac_tail+0),
         *(word*)(Rom->rom_mac_tail+1),
         *(word*)(Rom->rom_mac_tail+3));
 
     ComputeRomSums();
-    PrintF("S=%x E=%x R=%x:%x:%x:%x\n",
+    PrintF("S=%x E=%x R=%x:%x:%x:%x ",
       Vars->orig_s_reg,
       Vars->main,
       Vars->rom_sum_0,
@@ -1504,55 +1646,87 @@ void main2() {
       Vars->rom_sum_2,
       Vars->rom_sum_3);
 
+    PutChar('\"');
+    for (byte i = 0; i<8; i++) {
+        char ch = Vars->hostname[i];
+        if (' ' <= ch && ch <= '~') PutChar(ch);
+    }
+    PutChar('\"');
+
+    // Preset defaults for Waiter.
+    memcpy(Vars->ip_waiter, waiter_default, 4);
+    Vars->waiter_port = WAITER_TCP_PORT;
+
     WizReset();
+    WaitForLink();
     WizConfigure();
     char initial_char = CountdownOrInitialChar();
-
+//_
     if (!initial_char) {
+//_
       if (Vars->got_lan) {
         PrintF("USE LAN;");
       } else if (Vars->got_dhcp) {
-      PrintF("USE DHCP;");
+        PrintF("USE DHCP;");
         Vars->use_dhcp = true;
       }
     }
 
     if (Vars->got_lan) {
+//_
+        Beep(32, 4);
         DoLineBufCommands();
     } else if (!Vars->use_dhcp) {
-      DoKeyboardCommands(initial_char);
+//_
+        Beep(8, 16);
+        DoKeyboardCommands(initial_char);
+    } else {
+//_
+        Beep(16, 8);
     }
 
     if (Vars->use_dhcp) {
+//_
       errnum e = OKAY;
       e = DhcpPhaseTwo();
       if (e) Fatal("Dhcp2", e);
     }
 
-    Delay(10000);  // to read messages.
-    PrintF("WizReset; ");
+    //Delay(10000);  // to read messages.
     WizReset();
-    Delay(10000);  // to read messages.
+    //Delay(10000);  // to read messages.
     WizConfigure();
-    Delay(10000);  // to read messages.
+    //Delay(10000);  // to read messages.
 
-#define LOCAL_PORT ( 0x8000 | Vars->transaction_id )
-    WizOpen(SOCK1_AND &TcpProto, LOCAL_PORT);
+    WizOpen(SOCK1_AND &TcpProto, Vars->rand_word);
     PrintF("tcp dial %a:%u;", Vars->ip_waiter, Vars->waiter_port);
+
+#if 0
+    // Apply defaults if all 0.
+    if (
+        (!*(word*)Vars->ip_waiter) &&
+        (!*(word*)Vars->ip_waiter+2)
+    ) {
+//_
+        memcpy(Vars->ip_waiter, waiter_default, 4);
+    }
+    if (!Vars->waiter_port) Vars->waiter_port = WAITER_TCP_PORT;
+//_
+#endif
+    Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
+    ShowNetwork();
     TcpDial(SOCK1_AND Vars->ip_waiter, Vars->waiter_port);
 
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
-    Delay(20000);
+    Green();
+    //Delay(20000);
 
     while (1) {
         errnum e = LemmaClientS1();
         if (e) Fatal("S1", e);
     }
 }
-
-const byte waiter_default [4] = {
-      134, 122, 16, 44 }; // lemma.yak.net
 
 void DoLineBufCommands() {
   PTR = BUF;
@@ -1564,8 +1738,6 @@ void DoLineBufCommands() {
 
 void DoKeyboardCommands(char initial_char) {
   // Set up defaults.
-  memcpy(Vars->ip_waiter, waiter_default, 4);
-  Vars->waiter_port = WAITER_TCP_PORT;
   SetMask(24);
 
   PrintF("Enter H\001 for HELP.\n");
@@ -1585,6 +1757,7 @@ int main() {
     // can give us some idea how big RAM isn't.
     Vars->orig_s_reg = StackPointer();
     Vars->main = (word)&main;
+    //_
 
     // Now to make all platforms the same,
     // we're dropping down into the first 4K of RAM

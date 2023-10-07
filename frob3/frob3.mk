@@ -101,15 +101,17 @@ all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb
 
 ### axiom4 experimental.
 
-axiom4-whole.rom: axiom4.c
+axiom4-whole.rom: axiom4.c preboot3.asm
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
 	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work4.s --output=_work4.o --list=_work4.list
 	$(LWLINK) --output=_work4.rom --map=_work4.map --raw --script=$F/helper/axiom.script _work4.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
 	$(LWOBJDUMP) _work4.o > _work.4objdump
 	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work4.s --map _work4.map -o axiom4-whole.s
+	rm -f axiom4-whole.list
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
 	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+	$(GO) run $F/helper/customize-axiom/customize-axiom.go axiom4-whole.rom
 
 axiom4-whole6k.decb: axiom4-whole.rom
 	$(LWLINK) --output=axiom4-whole6k.decb --map=axiom4-whole6k.map --decb --script=$F/helper/axiom6k.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
