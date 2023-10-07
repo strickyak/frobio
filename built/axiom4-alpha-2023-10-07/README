@@ -1,0 +1,225 @@
+frobio/built/axiom4-alpha-2023-10-07
+------------------------------------
+
+(Notice the Glossary at the end of this document.)
+
+This alpha release contains software for loading coco programs
+from over the network with the the CoCoIO ethernet cartridge for
+{Tandy | Radio Shack} Color Computers type 1, 2, or 3.
+
+This directory contains two .zip files:
+    exofoot4.zip
+    future4.zip
+
+After you unzip them, you will have two .dsk files,
+one for each of the two ways you can boot them:
+    exofoot4.dsk  -- for booting from SDC or Floppy
+    future4.dsk   -- for burning into a Flash EEPROM region on a CocoSDC.
+
+
+To load and exec from CocoSDC or Floppy (32KB RAM required):
+------------------------------------------------------------
+
+The floppy disk image "exofoot4.dsk" contains one file: "EXOFOOT4.DEC".
+Load and execute that as a binary program.  (In the CocoSDC explorer,
+just navigate to "EXOFOOT4.DEC" and hit enter.)  You can also
+mount the disk and LOAD the program from BASIC, and EXEC it.
+If you convert it to an audio file, you could even boot it from cassette.
+
+
+To burn into a Flash EEPROM region on a CocoSDC:
+------------------------------------------------------------
+
+(Requires 16K RAM to burn, and 4K RAM to run, I think.)
+
+The floppy disk image "future4.dsk" contains three programs:
+    INSTALL4.BAS
+    INSTALL5.BAS
+    NETBOOT.DEC
+
+Your CocoSDC contains persistent Flash storage regions for eight different
+boot programs, numbered 0 to 7.  The DIP switches (exposed on some CocoSDC)
+tell it which boot program to use.  Ordinarily you only use boot region
+0, and all four dip switches are towards the edge of the card, meaning
+region 0.
+
+    |
+    |  <--   (all four DIP switches pointing to edge of cartridge)
+    |  <--
+    |  <--
+    |  <--
+    |
+
+So that you don't lose the ordinary functionality of your CocoSDC,
+the CoCoIO network boot program will be loaded into region 4 or region
+5 on the CocoSDC.  Number 4 can be used for the latest stable version,
+and number 5 can be used for experimental versions.
+
+Load and execute INSTALL4.BAS to load the boot code into region 4. Or
+Load and execute INSTALL5.BAS to load the boot code into region 5.
+
+After loading the boot region, it will automatically launch the code,
+rebooting your machine into network boot mode.  Your screen should turn
+Orange instead of Green, to show you are in the network boot mode.
+The network boot program is actually named "AXIOM4",
+which should show up in the top right corner of the screen.
+
+There are two ways to run this program from the boot region:
+
+From the CocoSDC version of BASIC (HDBDOS), you can type either of these:
+    RUN @4
+    RUN @5
+
+Or you can set your DIP switches to boot directly using region 4 or 5:
+
+    |
+    |  <--   (choosing to boot from region 4)
+    |  -->
+    |  <--
+    |  <--
+    |
+
+    |
+    |  <--   (choosing to boot from region 5)
+    |  -->
+    |  <--
+    |  -->
+    |
+
+
+The screen is Orange.  Now What?
+--------------------------------
+
+If your cable is plugged into the internet (usually thorough an ethernet
+port on your cable router or ethernet switch), after a 5 second countdown,
+the program will use DHCP to acquire an IP Address, and then connect to
+the global server running on IP address 134.122.16.44 (lemma.yak.net).
+
+(If it keeps saying DOWN, then your ethernet cable is not connected
+or the link light on the plug is not yet on.)
+
+(If it stops with NOWIZ, it could not find the CoCoIO cartridge
+or the Wiznet chip on it.  It does a self-test first at address $FF68,
+or next at $FF78, trying to find the Wiznet chip.)
+
+During the 5 second countdown, you can hit the space bar to prevent the
+DHCP and automatic connection.  You can use this feature to configure
+your own addresses.  You can also put the CPU in "Q"uick mode (1.8MHz)
+or in Hitachi 6309 "N"ative mode.  You can finish with "D" and then "@"
+to continue with DHCP.
+
+Once connected to the global server, it will present you a menu letting
+you navigate to various "pages" by entering their page number.   The pages
+either contain links to other pages, or contain a program you can launch.
+To launch the program on the current page, enter just the symbol @
+
+
+Overview of the programs you can launch:
+----------------------------------------
+
+Pages 11 and 12 use the Coco to view graphics screens generated on the
+Linux server.  They are good stress tests of the ethernet hardware --
+especially page 12, which sends each screen back to the server to be
+checked.
+
+On a Coco2 or Coco3, page 21 runs a demo displaying a colorful cat
+and playing a catchy tune.
+
+On a Coco1, page 22 is another demo.
+
+Page 31 is Nitros9 Level I, which works on any Coco with 64K or more RAM.
+
+Page 32 has several versions of Nitros9 Level II, for coco3 machines
+with as little as 128K RAM.
+
+Page 33 has Ease Of Use editions of Nitro9.  They load fairly slowly
+over the big internet, but if you run your own server on your LAN,
+the performance is fine.
+
+(Why page numbers instead of an explorer-style menu?  I threw this
+together in a couple of days before Coco Fest 2023, and this was the
+simplest thing possible that could possibly work.  But the page numbers
+do harken back to the retro days of teletext services -- which the Coco
+1 hardware evolved from! -- and it's working out pretty well for me.)
+
+
+Running your own server (on Linux or Raspberry Pi, and maybe MacOS):
+--------------------------------------------------------------------
+
+This is more complicated, but follow the Quick Start instructions at
+https://github.com/strickyak/coco-shelf and then type `make run-lemma`.
+
+But on MacOS, use `make all-without-gccretro` in place of `make` or
+`make all` (to be confirmed, by someone with MacOS).
+
+You can use the axiom "I" command to configure the IP Address and mask
+of the Coco, and the axiom "W" command to configure the server address.
+Use the axiom "S" command to confirm the settigs, and "@" to launch.
+
+As a convenience, you can configure your server machine to use one
+of these three addresses on the LAN, and then the axiom commands
+"A", "B", or "C" will configure axiom to use it:
+  10.23.23.23/24        (A)
+  176.23.23.23/24       (B)
+  192.168.23.23/24      (C)
+
+(On my Linux laptop, I configure one of these on the wired ethernet
+interface as static address assignment for the LAN (without a gateway
+address), and then use the wifi interface for the laptop's internet access.)
+
+
+Glossary:
+---------
+
+coco:  The Radio Shack (or Tandy) "Co"lor "Co"mputers from the 1980's,
+    based on the Motorola 6809E CPU (upgradable to the Hitachi 6309E).
+
+CoCoIO:  The ethernet cartridge available from "Computer Conect" [sic].
+    It needs a wired ethernet cable; it does not have wifi.
+    (Search for CoCoIO network only.)
+
+Axiom:  The bootrom code, run on your coco.  This documents version 4
+    of this code: axiom4.  Axiom's primary role is to connect to
+    a TCP server (called a Waiter or a Lemma).
+
+Server:  In this document, the server we are talking about is
+    a Waiter program.  Axiom is its client.
+
+Waiter:  The TCP server that Axiom will connect to.  You can write your own
+    (it can simply return a DECB binary) or you may use Lemma.  The linux
+    netcat command will work:
+        $ netcat -l 2319 < program.bin
+    A smarter waiter can continue to 
+
+Lemma:  One version of the Waiter that is in the frobio/frob3/lemma/ directory.
+
+Global Lemma Server:  For easy access over the internet, a server
+    is running on IP address 134.122.16.44 (lemma.yak.net), TCP port 2319.
+
+future4:  This alpha version of axiom4.
+
+exofoot4:  "foot" is an abbrev for "future boot".  Exo- is not a great name,
+    but that's what we call it when the code is run from outside the ROM region
+    at $C000.  The exoboot actually loads into RAM at addresses $6000-$7xxx.
+
+Wiznet W5100S:  The chip used in the CoCoIO cartridge that does
+    the internet protocol functions.  It allows up to 4 TCP or UDP
+    or RAW sockets to be used at a time, and also does Ping and Arp
+    and other things for you.
+
+frobio:  A set of libraries, commands, Nitros9 modules, "axiom" bootrom code,
+    and "lemma" waiter server, all for using with your CoCoIO.
+        https://github.com/strickyak/frobio
+    The current version of everything is in the frob3/ subdirectory.
+
+coco-shelf:  A git repo that provides a directory to hold the various
+    software tools that are needed to build frobio, plus a Makefile and
+    scripts to fetch and compile these packages.
+
+CocoSDC:  An incredible coco cartridge that performs several functions for us:
+    It can hold many "floppy images" and lets you mount and boot and use them.
+    It also has eight Flash EEPROM regions that you can install your own boot
+    roms in.  We are using this for our network boot code, since the CoCoIO
+    is not yet available with Flash boot EEPROM capabilities of its own.
+
+END.
