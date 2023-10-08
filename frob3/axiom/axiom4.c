@@ -927,7 +927,11 @@ errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
       break;
       case 6: memcpy(Vars->ip_resolver, opt+2, 4);
       break;
-      case 53: if (opt[2] != (second ? 5/*DHCP ACK*/ : 2/*DHCP OFFER*/)) e = 1; // try again
+      case 53:
+        if (opt[2] != (second ? 5/*DHCP ACK*/ : 2/*DHCP OFFER*/)) {
+          PrintF(">%x< ", opt[2]);
+          return 1; // try again
+        }
       break;
       case 255: return 0;
     }
