@@ -40,6 +40,10 @@ TODO: Build Lemma files for distros.
 
 ## Running your own waiter
 
+NOTE: If your server has a firewall, you may have to disable blocks
+on TCP port 2319.  For instance, with the "uncomplicated firewall",
+you would say "sudo ufw allow 2319".
+
 If you run your own waiter on the piece of ethernet connected directly
 (or though a simple hub) to the CocoIO card, staticly configure the IPv4
 settings for that network interface to one of the following:
