@@ -21,7 +21,7 @@ case $# in
   1)
     case $1 in
       --nitros9=* )
-        NITROS9=$(expr match "$1" '--nitros9=\(.*\)') ;;
+        NITROS9=$(expr "X$1" : 'X--nitros9=\(.*\)') ;;
         * ) fail Bad argument: $1 ;;
     esac ;;
 esac
