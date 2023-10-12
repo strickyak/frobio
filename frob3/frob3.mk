@@ -341,8 +341,8 @@ lem.os9mod: lem.asm defsfile
 #######################################################################################
 
 all-lemmings:
-	test -f ../eou-h6309/63EMU.dsk || (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
-	test -f ../eou-h6309/63EMU.dsk || (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
+	-test -s ../eou-h6309/63EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
+	-test -s ../eou-m6809/68EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
 
 #	mkdir results/LEMMINGS
