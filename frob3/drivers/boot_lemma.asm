@@ -24,6 +24,8 @@ CurrPtr   equ $14
 Quint     equ $16
 QuintN    equ $17
 QuintSize equ 5     ; quint is 5 bytes
+WizAddrPtr equ $1B
+WizDataPtr equ $1D
 
 Value equ $0004   ; for ShowHex
 Ptr equ $0006     ; for ShowHex
@@ -76,6 +78,13 @@ start    pshs  u,y,cc,dp
   orcc #$50      ; paranoid: no interrupts please.
   clra
   tfr a,dp       ; we use DP=0.
+
+  ldd <$1E       ; REL left the Wiznet hardware port here.
+  incb
+  std <$1C       ; Save address port address here
+  incb
+  incb
+  std <$1E       ; Save data port address here
 
 	;; ldd #$2468
 	;; std Value
@@ -237,10 +246,10 @@ LoopW
 
   ;; inc   $8002
   ldd #S1_RX_RSR0
-  std CIO0ADDR
-  lda CIO0DATA
+  std [$1C] ***CIO0ADDR
+  lda [$1E] ***CIO0DATA
   sta 6,u  ; rsize msb
-  ldb CIO0DATA
+  ldb [$1E] ***CIO0DATA
   stb 7,u ; rsize lsb
   subd ,u ; S1_RX_RSR0 - temp
   blo LoopW
@@ -248,10 +257,10 @@ LoopW
 
 * get current pointer in receive buffer
   ldd #S1_RX_RD0
-  std CIO0ADDR
-  lda CIO0DATA
+  std [$1C] ***CIO0ADDR
+  lda [$1E] ***CIO0DATA
   sta 2,u  ; rptr msb
-  ldb CIO0DATA
+  ldb [$1E] ***CIO0DATA
   stb 3,u ; rptr lsb
 
 * offset into receive buffer
@@ -299,25 +308,25 @@ doonce
 
 advance
   ldy #S1_RX_RD0   ; Get read pointer
-  sty CIO0ADDR
-  lda CIO0DATA
-  ldb CIO0DATA
+  sty [$1C] ***CIO0ADDR
+  lda [$1E] ***CIO0DATA
+  ldb [$1E] ***CIO0DATA
 
   addd 8,u ; len   ; add len to read pointer
 
   ldy #S1_RX_RD0   ; put back the read pointer
-  sty CIO0ADDR
-  sta CIO0DATA
-  stb CIO0DATA
+  sty [$1C] ***CIO0ADDR
+  sta [$1E] ***CIO0DATA
+  stb [$1E] ***CIO0DATA
 
   ldd #S1_CR        ; Poke RECV into Command Register,
-  std CIO0ADDR      ;     to notify we updated read pointer.
+  std [$1C] ***CIO0ADDR      ;     to notify we updated read pointer.
 	ldb #SK_CR_RECV
-  stb CIO0DATA
+  stb [$1E] ***CIO0DATA
 @wait0
   ldd #S1_CR        ; wait for 0 for command done.
-  std CIO0ADDR
-  ldb CIO0DATA
+  std [$1C] ***CIO0ADDR
+  ldb [$1E] ***CIO0DATA
 	bne @wait0
   
 rxdone
@@ -331,11 +340,11 @@ w51rd
 * y - count
 * temp rgaddr
   ldd ,u ; temp
-  std CIO0ADDR
+  std [$1C] ***CIO0ADDR
   bra @check
 loopRD
   ;; inc   $8000
-  lda   CIO0DATA
+  lda   [$1E] ***CIO0DATA
   sta  ,x+
   leay -1,y
 @check
