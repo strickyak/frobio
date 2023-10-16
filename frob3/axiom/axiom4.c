@@ -2,6 +2,11 @@
 //   PART--BEGIN-HEADER--
 ////////////////////////////////////////
 
+#define WITH_BEEPS 1
+#define WITH_SPIN 1
+#define WITH_ROM_CHECKSUMS 1
+#define WITH_RAM_CHECK 1
+
 // Conventional types and constants for Frobio
 
 #define true (bool)1
@@ -16,13 +21,13 @@ typedef unsigned int word;
 typedef void (*func_t)();
 
 #define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
-#define WIZ_PORT  0xFF68   // Hardware port.
 #define WAITER_TCP_PORT  2319   // w# a# i#
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
-#define PACKET_BUF 0x600
+#define PACKET_BUF 0x600  // Start of first floppy sector buffer.
 #define PACKET_MAX 256
+#define AXIOM_STACK 0x0800 // End of second floppy sector buffer.
 const byte waiter_default [4] = {
       134, 122, 16, 44 }; // lemma.yak.net
 
@@ -53,13 +58,14 @@ size_t strlen(const char *s);
 void WhichCompilerAreYouUsingQuestionMark();
 #endif
 
-#define _ {PrintF("L%d.", __LINE__);}
+#define _ {PrintF("L%u.", __LINE__);}
 
-// XXX #define SPIN(N) {(*(byte*)(VDG_RAM+(N))) = 0x80 | (1 + *(byte*)(VDG_RAM+(N)));}
-void SPIN(byte n) {
+void Spin(byte n) {
+#if WITH_SPIN
     byte b = 1 + *(byte*)(VDG_RAM+(n));
     if ((b&15) == 0) b++;  // Skip blank patterns.
     (*(byte*)(VDG_RAM+(n))) = b | 0x80;
+#endif
 }
 
 struct UdpRecvHeader {
@@ -172,11 +178,6 @@ struct proto {
 extern const struct proto TcpProto;
 extern const struct proto UdpProto;
 extern const struct proto BroadcastUdpProto;
-#if 0
-extern const char ClassAMask[4];
-extern const char ClassBMask[4];
-extern const char ClassCMask[4];
-#endif
 
 struct wiz_udp_recv_header {
     byte ip_addr[4];
@@ -188,7 +189,7 @@ extern const byte HexAlphabet[];
 
 //// Function Declarations.
 
-byte IsThisGomar();
+byte IsThisGomar();  // Returns false on real hardware, true on Gomar emulator.
 byte WizGet1(word reg);
 word WizGet2(word reg);
 void WizGetN(word reg, void* buffer, word size);
@@ -392,32 +393,37 @@ char PolCat() {
 }
 
 void Delay(word n) {
-#if !__GOMAR__
-  while (n--) {
-#ifdef __GNUC__
-    asm volatile ("mul" : : : "d", "b", "a");
-    asm volatile ("mul" : : : "d", "b", "a");
-    asm volatile ("mul" : : : "d", "b", "a");
-    asm volatile ("mul" : : : "d", "b", "a");
-    asm volatile ("mul" : : : "d", "b", "a");
-#else
-    asm {
-      mul
-      mul
-      mul
-      mul
-      mul
+  if (!IsThisGomar()) {
+    while (--n) {
+  #ifdef __GNUC__
+      asm volatile ("mul" : : : "d", "b", "a");
+      asm volatile ("mul" : : : "d", "b", "a");
+      asm volatile ("mul" : : : "d", "b", "a");
+      asm volatile ("mul" : : : "d", "b", "a");
+      asm volatile ("mul" : : : "d", "b", "a");
+  #else
+      asm {
+        mul
+        mul
+        mul
+        mul
+        mul
+      }
+  #endif
     }
-#endif
   }
-#endif
+}
+
+bool IsPrintableAscii(char ch) {
+        return (' ' <= ch && ch <= '~');
 }
 
 void PutChar(char ch) {
-#if __GOMAR__
-  PrintH("CH: %x %c\n", ch, (' ' <= ch && ch <= '~') ? ch : '?');
-  return;
-#endif
+  if (IsThisGomar()) {
+    PrintH("CH: %x %c\n", ch, IsPrintableAscii(ch) ? ch : '?');
+    return;
+  }
+
     if (ch == 13 || ch == 10) { // Carriage Return
       do {
         PutChar(' ');
@@ -516,15 +522,15 @@ void PrintF(const char* format, ...) {
             ++s;
             switch (*s) {
                 case 'a': {  // "%a" -> IPv4 address as Dotted Quad.
-                    byte* x;
-                    x = va_arg(ap, byte*);
-                    PutDec(x[0]);
+                    byte* addy;
+                    addy = va_arg(ap, byte*);
+                    PutDec(addy[0]);
                     PutChar('.');
-                    PutDec(x[1]);
+                    PutDec(addy[1]);
                     PutChar('.');
-                    PutDec(x[2]);
+                    PutDec(addy[2]);
                     PutChar('.');
-                    PutDec(x[3]);
+                    PutDec(addy[3]);
                 }
                 break;
                 case 'x': {
@@ -533,23 +539,15 @@ void PrintF(const char* format, ...) {
                     PutHex(x);
                 }
                 break;
+                case 'd':
                 case 'u': {
                     word x = va_arg(ap, word);
                     PutDec(x);
                 }
                 break;
-                case 'd': {
-                    int x = va_arg(ap, int);
-                    if (x<0) {
-                      PutChar('-');
-                      x = -x;
-                    }
-                    PutDec((word)x);
-                }
-                break;
                 case 's': {
-                    const char* x = va_arg(ap, const char*);
-                    PutStr(x);
+                    const char* str = va_arg(ap, const char*);
+                    PutStr(str);
                 }
                 break;
                 default:
@@ -569,16 +567,19 @@ void Pia1bOn(byte x) { *(volatile byte*)0xFF22 |= x; }
 void Pia1bOff(byte x) { *(volatile byte*)0xFF22 &= ~x; }
 void Orange() { Pia1bOn(0x08); }
 void Green() { Pia1bOff(0x08); }
-#if 1
+
+#if WITH_BEEPS
 void Enable1BitSound() {
     *(volatile byte*)0xFF23 &= ~0x04;  // Clear bit 2 to enable Data Direction access
     *(volatile byte*)0xFF22 |= 0x02;   // Bit 1 and bits 3-7 are outputs.
     *(volatile byte*)0xFF23 |= 0x04;  // Clear bit 2 to enable Data Direction access
 }
+#endif
 void Beep(byte n, byte f) {
+#if WITH_BEEPS
     Enable1BitSound();
     for (byte i = 0; i < n; i++) {
-        SPIN(10);
+        Spin(10);
         Pia1bOn(0x02);
         Delay(f<<2);
         Pia1bOff(0x02);
@@ -588,8 +589,8 @@ void Beep(byte n, byte f) {
         Pia1bOff(0x02);
         Delay(f);
     }
-}
 #endif
+}
 
 byte WizGet1(word reg) {
   WIZ->addr = reg;
@@ -900,26 +901,19 @@ void SendDhcpRequest(const struct sock* sockp, bool second) {
 
 errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
   struct dhcp* p = (struct dhcp*)PACKET_BUF;
-  //Delay(3000);
-//_
   errnum e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, sizeof *p);
   if (e) return e;
   memcpy(Vars->ip_addr, p->yiaddr, 4);
 
-//_
-  //Delay(3000);
   e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, plen - sizeof *p);
   if (e) return e;
   byte* opt = (byte*)PACKET_BUF;
   if (opt[1] != 130) return 9;  // just check one of the 4 bytes: 99, 130, 83, 99.
-//_
   byte* end = (byte*)PACKET_BUF + plen - sizeof *p;
   opt += 4;
 
-//_
   while (opt < end) {
     PutChar('#');
-    //PrintF("(%d:%d)", opt[0], opt[1]);
     switch (opt[0]/*option number*/) {
       case 1: memcpy(Vars->ip_mask, opt+2, 4);
       break;
@@ -1077,30 +1071,66 @@ errnum DoNetwork(byte a, byte b) {
   return OKAY;
 }
 
-#if 0
-void GetHostname() {
-  byte* h = Vars->hostname;
-  byte n = sizeof(Vars->hostname);
-
-  memset(h, '_', n);
-  SkipWhite();
-  while ('!' <= *PTR && *PTR <= '~') {
-    for (byte i = 0; i < n-1; i++) {
-      h[i] = h[i+1];  // Shift name to the left.
-    }
-    h[n-1] = *PTR;
-    ++PTR;
-  }
-}
-#endif
-
 void ShowNetwork() {
   if (Vars->use_dhcp) {
     PrintF("d\1\n");
   } else {
-    PrintF("i\1 %a/%d %a\n", Vars->ip_addr, Vars->mask_num, Vars->ip_gateway);
+    PrintF("i\1 %a/%u %a\n", Vars->ip_addr, Vars->mask_num, Vars->ip_gateway);
   }
-  PrintF("w\1 %a:%d\n", Vars->ip_waiter, Vars->waiter_port);
+  PrintF("w\1 %a:%u\n", Vars->ip_waiter, Vars->waiter_port);
+}
+
+word* SampleAddress(byte k) {
+    return (word*) (0x0FFE | ((word)k << 12));
+}
+
+word JoinHiLo(byte a, byte b) {
+  union {
+    byte b[2];
+    word w;
+  } u;
+  u.b[0] = a;
+  u.b[1] = b;
+  return u.w;
+}
+byte Hi(word w) {
+  union {
+    byte b[2];
+    word w;
+  } u;
+  u.w = w;
+  return u.b[0];
+}
+byte Lo(word w) {
+  union {
+    byte b[2];
+    word w;
+  } u;
+  u.w = w;
+  return u.b[1];
+}
+
+void RamCheck() {
+#if WITH_RAM_CHECK
+  word store[16];
+
+  for (byte k = 0; k < 16; k++)  // Store
+      store[k] = *SampleAddress(k);
+
+  for (byte k = 0; k < 16; k++) {
+      *SampleAddress(k) = JoinHiLo(k, ~k);
+  }
+
+  for (byte k = 0; k < 16; k++) {
+    byte h = Hi(*SampleAddress(k));
+    byte l = Lo(*SampleAddress(k));
+    PrintF("%x:%x ", h, ~l);
+  }
+
+  for (byte k = 0; k < 16; k++)  // Restore
+      *SampleAddress(k) = store[k];
+  PutChar('\n');
+#endif
 }
 
 void DoOneCommand(char initialChar) {
@@ -1111,10 +1141,7 @@ void DoOneCommand(char initialChar) {
   char cmd = *PTR;
   PTR++;
 
-  if (cmd == 'U') {
-      Vars->wiz_port = (struct wiz_port*)0xFF78;
-  } else if (cmd == 'D') {
-      // GetHostname();
+  if (cmd == 'D') {
       Vars->use_dhcp = true;
   } else if (cmd == 'I') {
       if (!GetAddyInXid()) { e = 11; goto END; }
@@ -1189,13 +1216,12 @@ void DoOneCommand(char initialChar) {
   } else if (cmd == 0 || cmd==';') {
     // end of line
   } else {
-    PrintF("U\1 :upper wiznet port $FF78\n");
     PrintF("Q\1 :quick: poke 1 to $FFD9\n");
     PrintF("N\1 :native mode for H6309\n");
     PrintF("D\1 :use DHCP\n");
     PrintF("I\1 1.2.3.4/24 5.6.7.8\n");
     PrintF("  :Set IP addr, mask, gateway\n");
-    PrintF("W\1 3.4.5.6:%d :set waiter\n", WAITER_TCP_PORT);
+    PrintF("W\1 3.4.5.6:%u :set waiter\n", WAITER_TCP_PORT);
     PrintF("A\1 :preset 10.23.23.*\n");
     PrintF("B\1 :preset 176.23.23.*\n");
     PrintF("C\1 :preset 192.168.23.*\n");
@@ -1206,7 +1232,7 @@ void DoOneCommand(char initialChar) {
 
 END:
   if (e) {
-    PrintF("*** error %d\n", e);
+    PrintF("*** error %u\n", e);
   }
 }
 
@@ -1214,10 +1240,13 @@ END:
 //   PART-MAIN
 ////////////////////////////////////////
 
+// Call function `fn` with SP set to new_stack.
+// `fn` should NOT return, because there is no previous stack!
 void CallWithNewStack(word new_stack, func_t fn) {
   asm volatile("ldx %0\n  ldy %1\n  tfr x,s\n  jsr ,y"
       : // no outputs
       : "m" (new_stack), "m" (fn) // two inputs
+      : "x", "y"  // clobbers
   );
 }
 
@@ -1398,15 +1427,29 @@ void WizClose(PARAM_JUST_SOCK) {
 //////////////////////////////
 
 extern void DoKeyboardCommands(char initial_char);
-extern errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks);
 
-word RomSum(word begin, word end) {
-  word sum = 0;
-  while (begin < end) {
-    sum += *(word*)begin;
-    begin += 2;
+void DoLineBufCommands() {
+  PTR = BUF;
+  do {
+    DoOneCommand(0);
+    SkipWhite();
+  } while (*PTR);
+}
+
+void DoKeyboardCommands(char initial_char) {
+  // Set up defaults.
+  SetMask(24);
+
+  PrintF("Enter H\001 for HELP.\n");
+
+  while (true) {
+    PrintF(">axiom> ");
+    GetUpperCaseLine(initial_char);
+    initial_char = 0;
+
+    DoLineBufCommands();
+    if (Vars->launch) break;
   }
-  return sum;
 }
 
 // --main--
@@ -1420,7 +1463,8 @@ void OpenDiscoverySockets() {
           /*dest_ip=*/ (const byte*)SixFFs, LAN_SERVER_PORT);
 }
 
-errnum OneDiscoveryRound() { SPIN(4);
+errnum OneDiscoveryRound() {
+  Spin(4);
   errnum e;
   struct UdpRecvHeader hdr;
   if (!Vars->got_lan) {
@@ -1461,18 +1505,14 @@ errnum DhcpPhaseTwo() {
   errnum e;
   struct UdpRecvHeader hdr;
   for (byte i = 0; i < 10; i++) {
-      PrintF(" *%d* ", i);
-    //_
+      PrintF(" *%u* ", i);
       SendDhcpRequest(SOCK1_AND  true/*second time*/);
       Delay(10000);
-    //_
       e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
       if (e) continue;
-    //_
       e = RecvDhcpReply(SOCK1_AND hdr.len, true);
       if (!e) return 0;
   }
-//_
   return 2;
 }
 
@@ -1482,12 +1522,14 @@ char CountdownOrInitialChar() {
   PrintF("\n\nTo take control, hit space bar.\n\n");
   OpenDiscoverySockets();
 
-  for (byte i = 0; i < 5; i++) { SPIN(0);
+  for (byte i = 0; i < 5; i++) {
+    Spin(0);
     byte t = WizTocks();
-    PrintF("%d... ", 5-i);
+    PrintF("%u... ", 5-i);
     OneDiscoveryRound();
     Beep(8, 12);
-    while(1) { SPIN(2);
+    while(1) {
+      Spin(2);
       byte now = WizTocks();
       byte interval = now - t; // Unsigned Difference tolerates rollover.
       if (interval > TOCKS_PER_SECOND) break;
@@ -1502,19 +1544,29 @@ char CountdownOrInitialChar() {
   return '\0';
 }
 
-void ComputeRomSums() {
-    Vars->rom_sum_0 = RomSum(0x8000, 0xA000);
-    Vars->rom_sum_1 = RomSum(0xA000, 0xC000);
-    Vars->rom_sum_2 = RomSum(0xC100, 0xC800);
-    Vars->rom_sum_3 = RomSum(0xE000, 0xF000);
+#if WITH_ROM_CHECKSUMS
+word SimpleChecksum(word begin, word end) {
+  word sum = 0;
+  while (begin < end) {
+    sum += *(word*)begin;
+    begin += 2;
+  }
+  return sum;
 }
 
+void ComputeRomChecksums() {
+    Vars->rom_sum_0 = SimpleChecksum(0x8000, 0xA000);
+    Vars->rom_sum_1 = SimpleChecksum(0xA000, 0xC000);
+    Vars->rom_sum_2 = SimpleChecksum(0xC100, 0xC800);
+    Vars->rom_sum_3 = SimpleChecksum(0xE000, 0xF000);
+}
+#endif
 
 errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
   char inkey;
   errnum e;  // was bool e, but that was a mistake.
-//SPIN(16);
+  Spin(16);
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -1524,7 +1576,7 @@ errnum LemmaClientS1() {  // old style does not loop.
       if (e) return e;
     }
 
-//SPIN(18);
+  Spin(18);
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
       word n = *(word*)(quint+1);
@@ -1564,31 +1616,8 @@ errnum LemmaClientS1() {  // old style does not loop.
           break;
       } // switch
     }
-//SPIN(20);
+  Spin(20);
     return (e==NOTYET) ? OKAY : e;
-}
-
-struct wiz_port* DetectWizPort() {
-    // The wiznet contorl port reads as 0x03, after a reset.
-    // We use that as its signature, to determine which of the two
-    // standard addresses the wiznet card is jumpered for.
-    word ff68 = 0xff68;
-    word ff78 = 0xff78;
-    word result = ff68;
-    byte b68 = *(volatile byte*)ff68;
-    //Delay(2345);
-    byte b78 = *(volatile byte*)ff78;
-    if ( b68 != 3 && b78 == 3 ) result = ff78;
-    PrintF(" wiz<%x %x %x> ", b68, b78, result);
-
-    for (byte i = 0; i < 4; i++) {
-        byte a=*(volatile byte*)(ff68+i);
-        //Delay(2345);
-        byte b=*(volatile byte*)(ff78+i);
-        //Delay(2345);
-        PrintF("<%x %x> ", a, b);
-    }
-    return (struct wiz_port*) result;
 }
 
 void WaitForLink() {
@@ -1621,6 +1650,8 @@ void main2() {
     memset((byte*)VDG_RAM, ' ', VDG_END-VDG_RAM);
     strcpy((char*)VDG_RAM+26, "AXIOM\x74");
 
+    RamCheck();
+
     if (ValidateWizPort((struct wiz_port*)0xFF68)==OKAY) {
         Vars->wiz_port = (struct wiz_port*)0xFF68;
     } else if (ValidateWizPort((struct wiz_port*)0xFF78)==OKAY) {
@@ -1641,7 +1672,8 @@ void main2() {
         *(word*)(Rom->rom_mac_tail+1),
         *(word*)(Rom->rom_mac_tail+3));
 
-    ComputeRomSums();
+#if WITH_ROM_CHECKSUMS
+    ComputeRomChecksums();
     PrintF("S=%x E=%x R=%x:%x:%x:%x ",
       Vars->orig_s_reg,
       Vars->main,
@@ -1649,11 +1681,12 @@ void main2() {
       Vars->rom_sum_1,
       Vars->rom_sum_2,
       Vars->rom_sum_3);
+#endif
 
     PutChar('\"');
     for (byte i = 0; i<8; i++) {
         char ch = Vars->hostname[i];
-        if (' ' <= ch && ch <= '~') PutChar(ch);
+        if (IsPrintableAscii( ch )) PutChar(ch);
     }
     PutChar('\"');
 
@@ -1665,9 +1698,7 @@ void main2() {
     WaitForLink();
     WizConfigure();
     char initial_char = CountdownOrInitialChar();
-//_
     if (!initial_char) {
-//_
       if (Vars->got_lan) {
         PrintF("USE LAN;");
       } else if (Vars->got_dhcp) {
@@ -1677,83 +1708,39 @@ void main2() {
     }
 
     if (Vars->got_lan) {
-//_
         Beep(32, 4);
         DoLineBufCommands();
     } else if (!Vars->use_dhcp) {
-//_
         Beep(8, 16);
         DoKeyboardCommands(initial_char);
     } else {
-//_
         Beep(16, 8);
     }
 
     if (Vars->use_dhcp) {
-//_
       errnum e = OKAY;
       e = DhcpPhaseTwo();
       if (e) Fatal("Dhcp2", e);
     }
 
-    //Delay(10000);  // to read messages.
     WizReset();
-    //Delay(10000);  // to read messages.
     WizConfigure();
-    //Delay(10000);  // to read messages.
 
     WizOpen(SOCK1_AND &TcpProto, Vars->rand_word);
     PrintF("tcp dial %a:%u;", Vars->ip_waiter, Vars->waiter_port);
 
-#if 0
-    // Apply defaults if all 0.
-    if (
-        (!*(word*)Vars->ip_waiter) &&
-        (!*(word*)Vars->ip_waiter+2)
-    ) {
-//_
-        memcpy(Vars->ip_waiter, waiter_default, 4);
-    }
-    if (!Vars->waiter_port) Vars->waiter_port = WAITER_TCP_PORT;
-//_
-#endif
     Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
     ShowNetwork();
     TcpDial(SOCK1_AND Vars->ip_waiter, Vars->waiter_port);
 
     TcpEstablish(JUST_SOCK1);
-    PrintF(" CONN; ");
     Green();
-    //Delay(20000);
+    PrintF(" CONN; ");
 
     while (1) {
         errnum e = LemmaClientS1();
         if (e) Fatal("S1", e);
     }
-}
-
-void DoLineBufCommands() {
-  PTR = BUF;
-  do {
-    DoOneCommand(0);
-    SkipWhite();
-  } while (*PTR);
-}
-
-void DoKeyboardCommands(char initial_char) {
-  // Set up defaults.
-  SetMask(24);
-
-  PrintF("Enter H\001 for HELP.\n");
-
-  while (true) {
-    PrintF(">axiom> ");
-    GetUpperCaseLine(initial_char);
-    initial_char = 0;
-
-    DoLineBufCommands();
-    if (Vars->launch) break;
-  }
 }
 
 int main() {
@@ -1763,8 +1750,8 @@ int main() {
     Vars->main = (word)&main;
     //_
 
-    // Now to make all platforms the same,
-    // we're dropping down into the first 4K of RAM
-    // and using the second floppy buffer 0x0700:0x0800 for stack.
-    CallWithNewStack(0x0800, &main2);
+    // Use the same stack on all platforms,
+    // in 256-byte second floppy buffer,
+    // in the first 4K of RAM.
+    CallWithNewStack(AXIOM_STACK, &main2);
 }

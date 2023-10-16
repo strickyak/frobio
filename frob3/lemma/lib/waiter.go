@@ -51,7 +51,12 @@ const (
 	CMD_LEMMAN_REQUEST = 214 // LemMan
 	CMD_LEMMAN_REPLY   = 215 // LemMan
 
-	CMD_RTI = 214
+	CMD_REM_OPEN = 216
+	CMD_REM_CLOSE = 217
+	CMD_REM_OUT = 218
+	CMD_REM_ERR = 219
+	CMD_REM_PROMPT = 221
+	CMD_REM_IN = 222
 )
 
 var Demos map[string]func(net.Conn)
