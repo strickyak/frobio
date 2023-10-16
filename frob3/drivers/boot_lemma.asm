@@ -80,6 +80,20 @@ start    pshs  u,y,cc,dp
   tfr a,dp       ; we use DP=0.
 
   ldd <$1E       ; REL left the Wiznet hardware port here.
+
+  cmpa #$FF
+  bne fixit      ; if not $FFxx, fix it.
+
+  cmpb #$68
+  beq useit      ; $FF68 is OK
+
+  cmpb #$78
+  beq useit      ; $FF78 is OK
+
+fixit
+  ldd #$ff68     ; The fix is to use the standard address
+
+useit
   incb
   std <$1C       ; Save address port address here
   incb
