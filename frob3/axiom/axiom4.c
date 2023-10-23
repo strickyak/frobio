@@ -353,6 +353,32 @@ void PrintH(const char* format, ...) {
 
 ////////////////////////////////////////////////////////
 
+word CpuType() {
+  word result;
+#ifdef __GNUC__
+  asm ("  clra \n"
+       "  clrb \n"
+       "  ldx #$9821 \n"
+       "  tfr x,w \n"
+       "  tfr w,d \n"
+       "  std %0 \n"
+       : "=m" (result) // output
+       :     // no input
+       : "x", "d"  // clobbers (actually, "w" too)
+       );
+#else
+    asm {
+      clra
+      clrb
+      ldx #$9821
+      tfr x,w
+      tfr w,d
+      std result
+    }
+#endif
+    return result;
+}
+
 word StackPointer() {
   word result;
 #ifdef __GNUC__
@@ -1665,6 +1691,7 @@ void main2() {
         if (' ' <= ch && ch <= '~') PutChar(ch);
     }
     PutChar('\"');
+    PrintF(" CPU=%x ", CpuType());
 
     /////////////////
     if (IsThisGomar()) {
@@ -1695,7 +1722,7 @@ void main2() {
         }
       }
 
-      if (Vars->got_lan) {
+      if (!initial_char && Vars->got_lan) {
           Beep(32, 4);
           DoLineBufCommands();
       } else if (!Vars->use_dhcp) {
