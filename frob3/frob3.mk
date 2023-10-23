@@ -2,6 +2,8 @@
 # from the directory where you actually build (whose Makefile
 # is created and configured by ./configure).
 
+LAN=10.23.23.23
+
 all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
 	sync
@@ -386,7 +388,7 @@ TODO-install-on-disk: _FORCE_
 #   that you can ignore.
 run-lemma: all-without-gccretro
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
-	$(SHELF)/bin/server  -cards -ro results/LEMMINGS
+	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN)
 
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all
