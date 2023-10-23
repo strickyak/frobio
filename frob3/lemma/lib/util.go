@@ -84,3 +84,11 @@ func Check(err error, args ...any) {
 		log.Panic(s)
 	}
 }
+
+func Str[T any](a T) string {
+	return fmt.Sprintf("%v", a)
+}
+
+func Repr[T any](a T) string {
+	return fmt.Sprintf("%#v", a)
+}

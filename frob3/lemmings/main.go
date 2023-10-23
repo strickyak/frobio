@@ -77,6 +77,7 @@ func ChunksOf(bb []byte) [][]byte {
 }
 
 func SlurpFilename(cf *Os9ConfigForLemma, base map[string][]byte, filename string) []byte {
+  log.Printf("SLURP %q", filename)
 	if strings.HasPrefix(filename, "<") {
 		key := strings.ToUpper(filename[1:])
 		mod, ok := base[key]

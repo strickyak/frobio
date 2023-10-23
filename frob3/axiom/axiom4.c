@@ -392,6 +392,7 @@ char PolCat() {
 }
 
 void Delay(word n) {
+  if (IsThisGomar()) return;
 #if !__GOMAR__
   while (n--) {
 #ifdef __GNUC__
@@ -751,8 +752,8 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 //   PART-LAN-WAITER
 ////////////////////////////////////////
 
-#define LAN_CLIENT_PORT 12114  // L=12 A=1 N=4
-#define LAN_SERVER_PORT 12115
+#define LAN_CLIENT_PORT 12113  // L=12 A=1 M=3
+#define LAN_SERVER_PORT 12114  // L=12 A=1 N=4
 
 struct lan_discovery_request {
   byte lan_opcode[4];  // "Q\0\0\0"
@@ -1487,7 +1488,8 @@ char CountdownOrInitialChar() {
     PrintF("%d... ", 5-i);
     OneDiscoveryRound();
     Beep(8, 12);
-    while(1) { SPIN(2);
+    while(1) {
+      SPIN(2);
       byte now = WizTocks();
       byte interval = now - t; // Unsigned Difference tolerates rollover.
       if (interval > TOCKS_PER_SECOND) break;
@@ -1496,6 +1498,7 @@ char CountdownOrInitialChar() {
       if (initialChar) {
         return initialChar;
       }
+      if (IsThisGomar()) break;
     }
   }
   PrintF("0.\n");
@@ -1514,7 +1517,7 @@ errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
   char inkey;
   errnum e;  // was bool e, but that was a mistake.
-//SPIN(16);
+PrintH("PolC");
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -1524,7 +1527,7 @@ errnum LemmaClientS1() {  // old style does not loop.
       if (e) return e;
     }
 
-//SPIN(18);
+PrintH("RTry");
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
       word n = *(word*)(quint+1);
@@ -1657,66 +1660,60 @@ void main2() {
     }
     PutChar('\"');
 
-    // Preset defaults for Waiter.
-    memcpy(Vars->ip_waiter, waiter_default, 4);
-    Vars->waiter_port = WAITER_TCP_PORT;
+    /////////////////
+    if (IsThisGomar()) {
+      // FOR EMULATOR
+      memcpy(Vars->ip_addr, "\x7f\x00\x00\x01", 4);
+      memcpy(Vars->ip_waiter, "\x7f\x00\x00\x01", 4);
+      memcpy(Vars->ip_mask, "\xff\xff\xff\x00", 4);
+      Vars->waiter_port = 2319;
+      Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
 
-    WizReset();
-    WaitForLink();
-    WizConfigure();
-    char initial_char = CountdownOrInitialChar();
-//_
-    if (!initial_char) {
-//_
-      if (Vars->got_lan) {
-        PrintF("USE LAN;");
-      } else if (Vars->got_dhcp) {
-        PrintF("USE DHCP;");
-        Vars->use_dhcp = true;
-      }
-    }
-
-    if (Vars->got_lan) {
-//_
-        Beep(32, 4);
-        DoLineBufCommands();
-    } else if (!Vars->use_dhcp) {
-//_
-        Beep(8, 16);
-        DoKeyboardCommands(initial_char);
     } else {
-//_
-        Beep(16, 8);
-    }
+      // FOR HUMANS
 
-    if (Vars->use_dhcp) {
-//_
-      errnum e = OKAY;
-      e = DhcpPhaseTwo();
-      if (e) Fatal("Dhcp2", e);
-    }
+      // Preset defaults for Waiter.
+      memcpy(Vars->ip_waiter, waiter_default, 4);
+      Vars->waiter_port = WAITER_TCP_PORT;
 
-    //Delay(10000);  // to read messages.
+      WizReset();
+      WaitForLink();
+      WizConfigure();
+      char initial_char = CountdownOrInitialChar();
+      if (!initial_char) {
+        if (Vars->got_lan) {
+          PrintF("USE LAN;");
+        } else if (Vars->got_dhcp) {
+          PrintF("USE DHCP;");
+          Vars->use_dhcp = true;
+        }
+      }
+
+      if (Vars->got_lan) {
+          Beep(32, 4);
+          DoLineBufCommands();
+      } else if (!Vars->use_dhcp) {
+          Beep(8, 16);
+          DoKeyboardCommands(initial_char);
+      } else {
+          Beep(16, 8);
+      }
+
+      if (Vars->use_dhcp) {
+        errnum e = OKAY;
+        e = DhcpPhaseTwo();
+        if (e) Fatal("Dhcp2", e);
+      }
+
+    }
+    /////////////////
+
     WizReset();
-    //Delay(10000);  // to read messages.
     WizConfigure();
-    //Delay(10000);  // to read messages.
 
     WizOpen(SOCK1_AND &TcpProto, Vars->rand_word);
     PrintF("tcp dial %a:%u;", Vars->ip_waiter, Vars->waiter_port);
 
-#if 0
-    // Apply defaults if all 0.
-    if (
-        (!*(word*)Vars->ip_waiter) &&
-        (!*(word*)Vars->ip_waiter+2)
-    ) {
-//_
-        memcpy(Vars->ip_waiter, waiter_default, 4);
-    }
-    if (!Vars->waiter_port) Vars->waiter_port = WAITER_TCP_PORT;
-//_
-#endif
     Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
     ShowNetwork();
     TcpDial(SOCK1_AND Vars->ip_waiter, Vars->waiter_port);
@@ -1724,7 +1721,6 @@ void main2() {
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
     Green();
-    //Delay(20000);
 
     while (1) {
         errnum e = LemmaClientS1();
