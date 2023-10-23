@@ -1104,7 +1104,7 @@ void ShowNetwork() {
   PrintF("w\1 %a:%d\n", Vars->ip_waiter, Vars->waiter_port);
 }
 
-void DoOneCommand(char initialChar) {
+void DoOneCommand() {
   errnum e = OKAY;
   word peek_addr = 0;
 
@@ -1421,17 +1421,23 @@ void OpenDiscoverySockets() {
           /*dest_ip=*/ (const byte*)SixFFs, LAN_SERVER_PORT);
 }
 
-errnum OneDiscoveryRound() { SPIN(4);
+errnum OneDiscoveryRound() {
+  SPIN(4);
   errnum e;
   struct UdpRecvHeader hdr;
   if (!Vars->got_lan) {
     e = WizRecvChunkTry(SOCK0_AND  (char*)&hdr, sizeof hdr);
-    //PrintF("R0:%x,", e);
+    PrintF(" $$$%x ", e);
     if (!e) {
-      //PrintF("R0=%x,", hdr.len);
+      PrintF("$$$%x ", hdr.len);
       e = RecvLanReply(SOCK0_AND hdr.len);
-      //PrintF("=%x;", e);
-      if (!e) Vars->got_lan = true;
+      PrintF("$$$%x ", e);
+      if (!e) {
+        Vars->got_lan = true;
+        PutStr(" [ ");
+        PutStr(Vars->line_buf);
+        PutStr(" ] ");
+      }
     }
   }
 
@@ -1463,17 +1469,17 @@ errnum DhcpPhaseTwo() {
   struct UdpRecvHeader hdr;
   for (byte i = 0; i < 10; i++) {
       PrintF(" *%d* ", i);
-    //_
+
       SendDhcpRequest(SOCK1_AND  true/*second time*/);
       Delay(10000);
-    //_
+
       e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
       if (e) continue;
-    //_
+
       e = RecvDhcpReply(SOCK1_AND hdr.len, true);
       if (!e) return 0;
   }
-//_
+
   return 2;
 }
 
@@ -1712,7 +1718,7 @@ void main2() {
     WizConfigure();
 
     WizOpen(SOCK1_AND &TcpProto, Vars->rand_word);
-    PrintF("tcp dial %a:%u;", Vars->ip_waiter, Vars->waiter_port);
+    PrintF("tcp dial %a:%u; ", Vars->ip_waiter, Vars->waiter_port);
 
     Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
     ShowNetwork();
@@ -1721,6 +1727,7 @@ void main2() {
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
     Green();
+    Delay(10000);
 
     while (1) {
         errnum e = LemmaClientS1();
@@ -1731,7 +1738,13 @@ void main2() {
 void DoLineBufCommands() {
   PTR = BUF;
   do {
-    DoOneCommand(0);
+
+    PutChar('[');
+    for (const char* s = PTR; *s; s++) PutChar(*s);
+    PutChar(']');
+    PutChar('\n');
+
+    DoOneCommand();
     SkipWhite();
   } while (*PTR);
 }

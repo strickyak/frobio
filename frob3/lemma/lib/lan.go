@@ -29,7 +29,7 @@ func ListenForLan(lan string) {
 
 	conn, err := net.DialUDP("udp4", local, remote)
 	if err != nil {
-		log.Fatal("cannot dial UDP Broadcast (%v, %v): %v", err)
+		log.Fatalf("cannot dial UDP Broadcast (%v, %v): %v", local, remote, err)
 	}
 	println("Lan 3")
 
