@@ -781,10 +781,14 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 #define LAN_CLIENT_PORT 12113  // L=12 A=1 M=3
 #define LAN_SERVER_PORT 12114  // L=12 A=1 N=4
 
+// Bit definitions for lan_reserved[0]
+#define LAN_RES0_H6309 0x01  // if H6309 CPU
+#define LAN_RES0_GOMAR 0x80  // if Gomar Emulator
+
 struct lan_discovery_request {
   byte lan_opcode[4];  // "Q\0\0\0"
   byte lan_xid[4];
-  byte lan_reserved[8];  // TODO: 6309 bit.  Gomar bit.
+  byte lan_reserved[8];
 
   word orig_s_reg;     // how big is memory?
   word main;           // where is axiom, rom or ram?
@@ -812,6 +816,9 @@ void SendLanRequest(const struct sock* sockp) {
   memcpy(&q->lan_xid, &Vars->transaction_id, 4);
   memcpy(&q->orig_s_reg, &Vars->orig_s_reg, 6*2); // six words.
   memcpy(&q->mac_tail, &Rom->rom_mac_tail, 5); // five bytes.
+
+  if (CpuType() == 0x9821) q->lan_reserved[0] |= LAN_RES0_H6309;
+  if (IsThisGomar()) q->lan_reserved[0] |= LAN_RES0_GOMAR;
 
   tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND sizeof *q);
   tx_ptr = WizBytesToSend(SOCK_AND tx_ptr, (byte*)q, sizeof *q);
@@ -1669,15 +1676,15 @@ void main2() {
     memcpy(Vars->transaction_id, Rom->rom_mac_tail+1, 4);
     memcpy(Vars->hostname, Rom->rom_hostname, 8);
 
-    PrintF("V=%x R=%x M=%x:%x:%x\n",
-        sizeof(*Vars),
+    PrintF("?=%x V=%x M=%x:%x:%x\n",
         Vars->rand_word,
+        sizeof(*Vars),
         *(byte*)(Rom->rom_mac_tail+0),
         *(word*)(Rom->rom_mac_tail+1),
         *(word*)(Rom->rom_mac_tail+3));
 
     ComputeRomSums();
-    PrintF("S=%x E=%x R=%x:%x:%x:%x ",
+    PrintF("S=%x E=%x R=%x:%x:%x:%x CPU=",
       Vars->orig_s_reg,
       Vars->main,
       Vars->rom_sum_0,
@@ -1685,13 +1692,18 @@ void main2() {
       Vars->rom_sum_2,
       Vars->rom_sum_3);
 
+    if (CpuType() == 0x9821) {
+      PrintF("HITACHI ");
+    } else {
+      PrintF("MOTOROLA ");
+    }
+
     PutChar('\"');
     for (byte i = 0; i<8; i++) {
         char ch = Vars->hostname[i];
         if (' ' <= ch && ch <= '~') PutChar(ch);
     }
     PutChar('\"');
-    PrintF(" CPU=%x ", CpuType());
 
     /////////////////
     if (IsThisGomar()) {
