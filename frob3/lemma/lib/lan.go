@@ -9,9 +9,11 @@ import (
 const LAN_CLIENT_PORT = 12113 // L=12 A=1 M=13
 const LAN_SERVER_PORT = 12114 // L=12 A=1 N=14
 
+var NextIP = byte(31)
+
 func ListenForLan() {
 
-	local, err := net.ResolveUDPAddr("udp4", ":"+Str(LAN_SERVER_PORT))
+	local, err := net.ResolveUDPAddr("udp4", ":"+Str(LAN_CLIENT_PORT))
 	if err != nil {
 		log.Fatalf("cannot resolve UDP Broadcast local %q: %v", ":"+Str(LAN_SERVER_PORT), err)
 	}
@@ -28,12 +30,27 @@ func ListenForLan() {
 	}
 	println("Lan 3")
 
+        pc, err := net.ListenPacket("udp4", ":"+Str(LAN_SERVER_PORT))
+        if err != nil {
+            log.Fatalf("Cannot ListenPacket: %v", err)
+        }
+	println("Lan 4")
+
 	for {
 		request := make([]byte, 512)
+        /*
 		n, addr, err := conn.ReadFromUDP(request)
 		if err != nil {
 			log.Fatalf("cannot Write UDP Broadcast for LAN: %v", err)
 		}
+        */
+
+        n, addr, err := pc.ReadFrom(request)
+        if err != nil {
+            log.Fatalf("Cannot pc.ReadFrom: %v", err)
+        }
+	println("Lan 5")
+
 		log.Printf("GOT LAN REQUEST FROM %v: %v", addr, request[:n])
 
 		if request[0] == 'Q' && (request[1]|request[2]|request[3]) == 0 {
@@ -42,11 +59,12 @@ func ListenForLan() {
 			reply[0] = 'R'
 			copy(reply[4:8], request[4:8])
 
-			command := fmt.Sprintf("I 192.168.23.%d/24 ; W 192.168.23.23 ; @", Next)
+	        println("Lan 6", NextIP)
+			command := fmt.Sprintf("I 192.168.23.%d/24 ; W 192.168.23.23 ; @", NextIP)
 			copy(reply[16:], []byte(command))
-			Next++
-			if Next > 250 {
-				Next = 32 // start over
+			NextIP++
+			if NextIP > 250 {
+				NextIP = 31 // start over
 			}
 
 			_, err := conn.Write(reply)
@@ -57,5 +75,3 @@ func ListenForLan() {
 		}
 	}
 }
-
-var Next = byte(32)
