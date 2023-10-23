@@ -24,6 +24,7 @@ var DEMO = flag.String("demo", "", "[demo mode] run a demo")
 var CARDS = flag.Bool("cards", false, "Preferred mode: Present numbered pages to choose what to boot.")
 var READONLY = flag.String("ro", "", "read only resource directory, for -cards mode.")
 var LEVEL0 = flag.String("level0", "", "[experimental Level0 mode] level0.bin (decb) to upload")
+var LAN = flag.Bool("lan", false, "Respond to LAN requests from Axiom")
 
 var Block0 *os.File
 
@@ -391,9 +392,14 @@ func Serve(conn net.Conn) {
 		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *LEVEL0)
 	} else if *PROGRAM != "" {
-		go ReadFiveLoop(conn, nil)
-		time.Sleep(time.Second) // Handle anything pushed, first.
-		UploadProgram(conn, *PROGRAM)
+		func() {
+			defer func() {
+				println("recover: ", recover())
+			}()
+			go Catch(func() { ReadFiveLoop(conn, nil) })
+			time.Sleep(time.Second) // Handle anything pushed, first.
+			Catch(func() { UploadProgram(conn, *PROGRAM) })
+		}()
 	} else {
 		ses := NewSession(conn)
 		Run(ses)
@@ -406,9 +412,20 @@ func Serve(conn net.Conn) {
 	<-done
 }
 
+func Catch(fn func()) {
+	defer func() {
+		println("catch: ", recover())
+	}()
+	fn()
+}
+
 ///////////////////////////////////////////////////
 
 func Listen() {
+	if *LAN {
+		go ListenForLan()
+	}
+
 	l, err := net.Listen("tcp", Format(":%d", *PORT))
 	if err != nil {
 		log.Panicf("Cannot Listen(): %v", err)

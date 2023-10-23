@@ -9,21 +9,22 @@ func init() {
 		Name:        "EOU_H6309",
 		Level:       "level2",
 		Port:        "coco3",
-		DefaultDisk: "mirror/eou-h6309/63SDC.VHD",
-		Boot1Base:/*shelf + */ "mirror/eou-h6309/63EMU.dsk",
+		DefaultDisk: "eou-h6309/63SDC.VHD",
+		Boot1Base: "eou-h6309/63EMU.dsk",
 		Boot1Mods: []string{
 			"<rel",
 			"./boot.lemma",
 			"<krn",
 		},
-		Boot2Base:/*shelf + */ "mirror/eou-h6309/63EMU.dsk",
+		Boot2Base: "eou-h6309/63EMU.dsk",
 		Boot2Mods: []string{
-
 			"<krnp2",
+			"<krnp3",
 			"<ioman",
 			"<init",
-			"<rbf",
-			"<scf",
+
+			"<RBF",
+			"<SCF",
 			"<vtio",
 			//"<keydrv",
 			"<snddrv",
