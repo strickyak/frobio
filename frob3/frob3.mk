@@ -14,7 +14,7 @@ all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
-NUM_CMDS = 16
+NUM_CMDS = 17
 NUM_MODULES = 14
 
 ###############################################
@@ -50,6 +50,18 @@ results2: results1
 	: TODO : ln *.dsk results/OS9DISKS
 	ln *.lem results/LEMMINGS/
 	ln *.dsk results/LEMMINGS/
+
+# os9disks -- experimental
+os9disks: results2
+	sh ../frobio/frob3/helper/make-hard-drive.sh ../nitros9/level1/coco1/NOS9_6809_L1_v030300_coco1_80d.dsk results/OS9DISKS/NOS9_6809_L1_v030300_coco1_80d.dsk 
+	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L1_v030300_coco1_80d.dsk,CMDS -pe -pr -e -r results/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L1_v030300_coco1_80d.dsk,MODULES -pe -pr -e -r results/MODULES/*
+	sh ../frobio/frob3/helper/make-hard-drive.sh ../nitros9/level2/coco3/NOS9_6809_L2_v030300_coco3_80d.dsk results/OS9DISKS/NOS9_6809_L2_v030300_coco3_80d.dsk 
+	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L2_v030300_coco3_80d.dsk,CMDS -pe -pr -e -r results/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L2_v030300_coco3_80d.dsk,MODULES -pe -pr -e -r results/MODULES/*
+	sh ../frobio/frob3/helper/make-hard-drive.sh ../nitros9/level2/coco3_6309/NOS9_6309_L2_v030300_coco3_80d.dsk results/OS9DISKS/NOS9_6309_L2_v030300_coco3_80d.dsk 
+	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6309_L2_v030300_coco3_80d.dsk,CMDS -pe -pr -e -r results/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6309_L2_v030300_coco3_80d.dsk,MODULES -pe -pr -e -r results/MODULES/*
 
 results2b: results2 all-axiom all-axiom4
 	mkdir -p results/BOOTING
@@ -153,7 +165,7 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 
 ###############################################
 
-NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd
+NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd
 all-net-cmds: $(NET_CMDS)
 
 O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
@@ -216,6 +228,9 @@ f.recv.os9cmd: $F/net-cmds/f-recv.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 f.send.os9cmd: $F/net-cmds/f-send.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+f.say.os9cmd: $F/net-cmds/f-say.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 f.telnetd0.os9cmd: $F/net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS)
