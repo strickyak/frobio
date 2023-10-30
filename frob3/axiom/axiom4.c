@@ -1713,6 +1713,7 @@ void main2() {
       memcpy(Vars->ip_mask, "\xff\xff\xff\x00", 4);
       Vars->waiter_port = 2319;
       Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
+      PrintH("For Emu");
 
     } else {
       // FOR HUMANS
@@ -1757,10 +1758,11 @@ void main2() {
     WizConfigure();
 
     WizOpen(SOCK1_AND &TcpProto, Vars->rand_word);
-    PrintF("tcp dial %a:%u; ", Vars->ip_waiter, Vars->waiter_port);
 
     Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
     ShowNetwork();
+
+    PrintF("tcp dial %a:%u; ", Vars->ip_waiter, Vars->waiter_port);
     TcpDial(SOCK1_AND Vars->ip_waiter, Vars->waiter_port);
 
     TcpEstablish(JUST_SOCK1);

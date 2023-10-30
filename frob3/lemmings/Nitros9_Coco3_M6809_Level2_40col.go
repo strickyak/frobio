@@ -5,7 +5,8 @@ func init() {
 		Name:        "Nitros9_Coco3_M6809_Level2_40col",
 		Level:       "level2",
 		Port:        "coco3",
-		DefaultDisk: "nitros9/level2/coco3/NOS9_6809_L2_cocosdc.dsk",
+		// DefaultDisk: "nitros9/level2/coco3/NOS9_6809_L2_cocosdc.dsk",
+		DefaultDisk: "NOS9_6809_L2_coco3_80d.dsk",
 		Boot1Mods: []string{
 			"rel_80", "./boot.lemma", "krn",
 		},

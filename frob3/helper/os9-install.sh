@@ -2,7 +2,8 @@
 #
 #  bash os9-install.sh [-l] [-r] dest-dsk,/dest-dir [-attrs...] src-files...
 #
-#  Removes ".os9cmd" or ".os9mod" form filenames.
+#  Removes ".os9cmd" or ".os9mod" from filenames.
+#  Makes destination dir (just the final part).
 
 set -eu
 

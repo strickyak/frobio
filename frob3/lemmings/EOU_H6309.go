@@ -9,7 +9,7 @@ func init() {
 		Name:        "EOU_H6309",
 		Level:       "level2",
 		Port:        "coco3",
-		DefaultDisk: "eou-h6309/63SDC.VHD",
+		DefaultDisk: "../eou-h6309/63SDC.VHD",
 		Boot1Base: "eou-h6309/63EMU.dsk",
 		Boot1Mods: []string{
 			"<rel",

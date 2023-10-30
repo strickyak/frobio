@@ -12,8 +12,8 @@ import (
 
 const TODO_shelf = "../"
 
-var shelfFlag = flag.String("shelf", "", "coco-shelf directory")
-var nitros9dirFlag = flag.String("nitros9dir", "", "root of nitros9 sources")
+var shelfFlag = flag.String("shelf", "..", "coco-shelf directory")
+var nitros9dirFlag = flag.String("nitros9dir", "../nitros9", "root of nitros9 sources")
 
 type Os9ConfigForLemma struct {
 	Name        string
@@ -127,17 +127,7 @@ func Os9(cf *Os9ConfigForLemma) {
 
 func main() {
 	flag.Parse()
-	if *nitros9dirFlag == "" {
-		dir := os.Getenv("NITROS9DIR")
-		if dir == "" {
-			log.Panicf("You must define the --nitros9dir flag or the NITROS9DIR environment.")
-		}
-		nitros9dirFlag = &dir
-	}
-	//BuildConfig(Nitros9_Coco3_M6809_Level2_Cf)
-	//BuildConfig(Nitros9_Coco3_M6809_Level2_N_Cf)
-	//BuildConfig(Nitros9_Coco3_M6809_Level2_Nminus_Cf)
-	//BuildConfig(Nitros9_Coco3_H6309_Level2_Cf)
+
 	for _, cf := range Os9Configs {
 		log.Printf("Building Os9Config: %q", cf.Name)
 		BuildConfig(cf)
@@ -175,8 +165,9 @@ func BuildConfig(cf *Os9ConfigForLemma) {
 	Emit(w, Quint(213, len(b2), 0))
 
 	if cf.DefaultDisk != "" {
-		in := filepath.Join(*shelfFlag, cf.DefaultDisk)
+		// in := filepath.Join(*shelfFlag, cf.DefaultDisk)
+		in := cf.DefaultDisk
 		out := cf.Name + ".dsk"
-		Run("dd", "bs=1024000", "if="+in, "of="+out)
+		Run("dd", "conv=sparse", "bs=4096", "if="+in, "of="+out)
 	}
 }

@@ -45,23 +45,40 @@ results1:
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
-results2: results1
+results2: results1 os9disks
 	mkdir -p results/OS9DISKS results/LEMMINGS
-	: TODO : ln *.dsk results/OS9DISKS
 	ln *.lem results/LEMMINGS/
-	ln *.dsk results/LEMMINGS/
 
-# os9disks -- experimental
-os9disks: results2
-	sh ../frobio/frob3/helper/make-hard-drive.sh ../nitros9/level1/coco1/NOS9_6809_L1_v030300_coco1_80d.dsk results/OS9DISKS/NOS9_6809_L1_v030300_coco1_80d.dsk 
-	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L1_v030300_coco1_80d.dsk,CMDS -pe -pr -e -r results/CMDS/*
-	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L1_v030300_coco1_80d.dsk,MODULES -pe -pr -e -r results/MODULES/*
-	sh ../frobio/frob3/helper/make-hard-drive.sh ../nitros9/level2/coco3/NOS9_6809_L2_v030300_coco3_80d.dsk results/OS9DISKS/NOS9_6809_L2_v030300_coco3_80d.dsk 
-	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L2_v030300_coco3_80d.dsk,CMDS -pe -pr -e -r results/CMDS/*
-	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6809_L2_v030300_coco3_80d.dsk,MODULES -pe -pr -e -r results/MODULES/*
-	sh ../frobio/frob3/helper/make-hard-drive.sh ../nitros9/level2/coco3_6309/NOS9_6309_L2_v030300_coco3_80d.dsk results/OS9DISKS/NOS9_6309_L2_v030300_coco3_80d.dsk 
-	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6309_L2_v030300_coco3_80d.dsk,CMDS -pe -pr -e -r results/CMDS/*
-	sh ../frobio/frob3/helper/os9-install.sh -r results/OS9DISKS/NOS9_6309_L2_v030300_coco3_80d.dsk,MODULES -pe -pr -e -r results/MODULES/*
+
+NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
+	sh ../frobio/frob3/helper/make-hard-drive.sh $< $@
+NOS9_6809_L1_coco1_80d.dsk : NOS9_6809_L1_coco1_80d.bigdup results1
+	rm -f $@
+	cp -vf $< $@
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+
+NOS9_6809_L2_coco3_80d.bigdup : ../nitros9/level2/coco3/NOS9_6809_L2_80d.dsk
+	sh ../frobio/frob3/helper/make-hard-drive.sh $< $@
+NOS9_6809_L2_coco3_80d.dsk : NOS9_6809_L2_coco3_80d.bigdup results1
+	rm -f $@
+	cp -vf $< $@
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+
+NOS9_6309_L2_coco3_80d.bigdup : ../nitros9/level2/coco3_6309/NOS9_6309_L2_80d.dsk 
+	sh ../frobio/frob3/helper/make-hard-drive.sh $< $@
+NOS9_6309_L2_coco3_80d.dsk : NOS9_6309_L2_coco3_80d.bigdup results1
+	rm -f $@
+	cp -vf $< $@
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+
+os9disks: NOS9_6809_L1_coco1_80d.dsk NOS9_6809_L2_coco3_80d.dsk NOS9_6309_L2_coco3_80d.dsk
+	mkdir -p results/OS9DISKS results/LEMMINGS
+	set -x; for x in $^; do rm -f results/LEMMINGS/$$x; ln $$x results/LEMMINGS/; done
+	set -x; for x in $^; do rm -f results/OS9DISKS/$$x; ln $$x results/OS9DISKS/; done
+
 
 results2b: results2 all-axiom all-axiom4
 	mkdir -p results/BOOTING
@@ -102,7 +119,7 @@ results3-without-gccretro: results2
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
-	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin
+	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup
 	rm -f utility-*
 	rm -rf results
 
