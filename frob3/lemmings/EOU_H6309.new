@@ -30,7 +30,13 @@ func init() {
 			"<snddrv",
 			"<joydrv",
 			"<cowin",
+			"<covdg",
 			"<term",
+
+			"<verm",
+			"<nil",
+			"<vi",
+			"<ftdd",
 
 			"<w",
 			"<w1",
@@ -44,19 +50,20 @@ func init() {
 			"<clock",
 			"<clock2",
 			// "<sysgo",
-			/*
-				"pipeman.mn",
-				"piper.dr",
-				"pipe.dd",
 
+				"<pipeman",
+				"<piper",
+				"<pipe",
+
+			/*
 				"rbsuper.dr",
 				"llcocosdc.dr",
 				"sd0_cocosdc.dd",
 				"sd1_cocosdc.dd",
-			*/
 			"./fuseman",
 			"./fuser",
 			"./fuse",
+			*/
 
 			"./rblemma",
 			"./dd.b0",

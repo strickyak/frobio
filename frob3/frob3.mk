@@ -4,7 +4,7 @@
 
 LAN=10.23.23.23
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks all-lemmings results3
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks results2 all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
 	sync
 
@@ -47,11 +47,10 @@ results1:
 
 results2: results1 os9disks
 	mkdir -p results/OS9DISKS results/LEMMINGS
-	ln *.lem results/LEMMINGS/
 
 
 NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
-	sh ../frobio/frob3/helper/make-hard-drive.sh $< $@
+	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
 NOS9_6809_L1_coco1_80d.dsk : NOS9_6809_L1_coco1_80d.bigdup results1
 	rm -f $@
 	cp -vf $< $@
@@ -59,7 +58,7 @@ NOS9_6809_L1_coco1_80d.dsk : NOS9_6809_L1_coco1_80d.bigdup results1
 	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
 
 NOS9_6809_L2_coco3_80d.bigdup : ../nitros9/level2/coco3/NOS9_6809_L2_80d.dsk
-	sh ../frobio/frob3/helper/make-hard-drive.sh $< $@
+	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
 NOS9_6809_L2_coco3_80d.dsk : NOS9_6809_L2_coco3_80d.bigdup results1
 	rm -f $@
 	cp -vf $< $@
@@ -67,12 +66,12 @@ NOS9_6809_L2_coco3_80d.dsk : NOS9_6809_L2_coco3_80d.bigdup results1
 	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
 
 NOS9_6309_L2_coco3_80d.bigdup : ../nitros9/level2/coco3_6309/NOS9_6309_L2_80d.dsk 
-	sh ../frobio/frob3/helper/make-hard-drive.sh $< $@
+	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
 NOS9_6309_L2_coco3_80d.dsk : NOS9_6309_L2_coco3_80d.bigdup results1
 	rm -f $@
 	cp -vf $< $@
-	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
-	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+	bash ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
+	bash ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
 
 os9disks: NOS9_6809_L1_coco1_80d.dsk NOS9_6809_L2_coco3_80d.dsk NOS9_6309_L2_coco3_80d.dsk
 	mkdir -p results/OS9DISKS results/LEMMINGS
@@ -197,7 +196,7 @@ COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CM
 
 C_FILES_FOR_CMOC_ARCHIVE = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c $F/wiz/wiz5100s.c $F/os9/frobos9.c
 _chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
-	sh $F/helper/cmoc-chopped.sh _chopped.a "$^" $(CDEFS) -I$F/..
+	bash $F/helper/cmoc-chopped.sh _chopped.a "$^" $(CDEFS) -I$F/..
 
 stack300.o: $F/froblib/stack300.asm
 	$(LWASM) --obj -o $@ $<
@@ -378,6 +377,9 @@ all-lemmings:
 	-test -s ../eou-h6309/63EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
 	-test -s ../eou-m6809/68EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
+	mkdir -p results/LEMMINGS/
+	ln *.lem results/LEMMINGS/
+	ln *.dsk results/LEMMINGS/ || echo Ignore errors above, if some already existed.
 
 #	mkdir results/LEMMINGS
 #	cp *.lem results/LEMMINGS
