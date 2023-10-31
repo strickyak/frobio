@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   }
 
   word msg_len = 0;
-  for (word i = 1; i < argc; i++) {
+  for (word i = 0; i < argc; i++) {
     msg_len += strlen(argv[i]);
     if (i < argc-1) msg_len++;
   }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
   strcpy(buf+5, "(SAY) ");
   char* p = buf+5+6;
-  for (int i = 1; i < argc; i++) {
+  for (int i = 0; i < argc; i++) {
     word n = strlen(argv[i]);
     memcpy(p, argv[i], n);
     p += n;

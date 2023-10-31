@@ -4,17 +4,17 @@
 
 LAN=10.23.23.23
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 TODO-all-disks results2 all-lemmings results3
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 results2 all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
 	sync
 
-all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 TODO-all-disks all-lemmings results3-without-gccretro
+all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 all-lemmings results3-without-gccretro
 	find results -type f -print | LC_ALL=C sort
 	sync
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
-NUM_CMDS = 17
+NUM_CMDS = 18
 NUM_MODULES = 14
 
 ###############################################
@@ -181,7 +181,7 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 
 ###############################################
 
-NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd
+NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd r.os9cmd
 all-net-cmds: $(NET_CMDS)
 
 O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
@@ -247,6 +247,9 @@ f.send.os9cmd: $F/net-cmds/f-send.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 f.say.os9cmd: $F/net-cmds/f-say.c $(O_FILES_FOR_NET_CMDS)
+	$(COMPILE_NET_CMD)
+
+r.os9cmd: $F/net-cmds/r.c $(O_FILES_FOR_NET_CMDS)
 	$(COMPILE_NET_CMD)
 
 f.telnetd0.os9cmd: $F/net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS)
@@ -391,8 +394,8 @@ all-lemmings:
 # #cd '$(NITROS9)' && make PORTS=coco3 dsk
 # #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
 # # .....................................................
-TODO-all-disks:
-	echo TODO
+
+
 TODO-install-on-disk: _FORCE_
 	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
 	: test -s '$(DISK)' || os9 format -l'65000' '$(DISK)'

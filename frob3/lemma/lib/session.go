@@ -35,6 +35,24 @@ func (q Quint) P() uint {
 	return HiLo(q[3], q[4])
 }
 
+func (ses *Session) SendQuintAndPayload(cmd byte, p uint, pay []byte) {
+	n := uint(len(pay))
+	log.Printf("PAY OUT [%d.] %v", n, pay)
+	buf := make([]byte, 5+n)
+	buf[0] = cmd
+	buf[1], buf[2] = Hi(n), Lo(n)
+	buf[3], buf[4] = Hi(p), Lo(p)
+	copy(buf[5:], pay)
+
+	log.Printf("SENDING %v", buf)
+	cc, err := ses.Conn.Write(buf)
+	if err != nil {
+		log.Panicf("SendQandP(%q) got err: %v", ses.ID, err)
+	}
+	if uint(cc) != 5+n {
+		log.Panicf("SendQandP(%q) short write: %v", ses.ID, cc)
+	}
+}
 func (ses *Session) SendQuint(q Quint) {
 	cc, err := ses.Conn.Write(q[:])
 	if err != nil {
@@ -89,57 +107,57 @@ func (ax *AxScreen) PutStr(s string) {
 }
 
 /*
-type TextScreen struct {
-	Old  []byte // screen RAM already sent.
-	New  []byte // screen RAM not yet sent.
-	W, H int    // screen dimensions
-	P    int    // cursor
-	Addr int
-}
-
-func NewTextScreen(w, h int, addr int) *TextScreen {
-	o := make([]byte, w*h)
-	n := make([]byte, w*h)
-	for i := 0; i < w*h; i++ {
-		o[i] = ' '
-		n[i] = ' '
-	}
-
-	return &TextScreen{
-		Old:  o,
-		New:  n,
-		W:    w,
-		H:    h,
-		P:    0,
-		Addr: addr,
-	}
-}
-
-func (t *TextScreen) Clear() {
-	t.New = make([]byte, t.W*t.H)
-	for i := range t.New {
-		t.New[i] = 32
-	}
-}
-func (t *TextScreen) PutChar(ch byte) {
-	if ch == 10 || ch == 13 {
-		PutChar(' ')
-		for (t.P & (t.W - 1)) != 0 {
-			PutChar(' ')
-		}
-		return
-	}
-
-	if ' ' <= ch && ch <= '~' {
-		t.New[t.P] = ch
-		t.P++
-		for t.P >= t.W*t.H {
-			for i := t.W; i < t.W*t.H; i++ {
-				t.New[i-t.W] = t.New[i]
-			}
-		}
-	}
-}
+# type TextScreen struct {
+# 	Old  []byte // screen RAM already sent.
+# 	New  []byte // screen RAM not yet sent.
+# 	W, H int    // screen dimensions
+# 	P    int    // cursor
+# 	Addr int
+# }
+#
+# func NewTextScreen(w, h int, addr int) *TextScreen {
+# 	o := make([]byte, w*h)
+# 	n := make([]byte, w*h)
+# 	for i := 0; i < w*h; i++ {
+# 		o[i] = ' '
+# 		n[i] = ' '
+# 	}
+#
+# 	return &TextScreen{
+# 		Old:  o,
+# 		New:  n,
+# 		W:    w,
+# 		H:    h,
+# 		P:    0,
+# 		Addr: addr,
+# 	}
+# }
+#
+# func (t *TextScreen) Clear() {
+# 	t.New = make([]byte, t.W*t.H)
+# 	for i := range t.New {
+# 		t.New[i] = 32
+# 	}
+# }
+# func (t *TextScreen) PutChar(ch byte) {
+# 	if ch == 10 || ch == 13 {
+# 		PutChar(' ')
+# 		for (t.P & (t.W - 1)) != 0 {
+# 			PutChar(' ')
+# 		}
+# 		return
+# 	}
+#
+# 	if ' ' <= ch && ch <= '~' {
+# 		t.New[t.P] = ch
+# 		t.P++
+# 		for t.P >= t.W*t.H {
+# 			for i := t.W; i < t.W*t.H; i++ {
+# 				t.New[i-t.W] = t.New[i]
+# 			}
+# 		}
+# 	}
+# }
 */
 
 type LineBuf struct {
@@ -189,9 +207,15 @@ type Session struct {
 	Block0 *os.File
 	Block1 *os.File
 
+	Muxen map[uint]*Mux
+
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
 	// Card *Card // Current card.
+}
+
+func (ses *Session) String() string {
+	return ses.ID
 }
 
 // Run() is called with "go" to manage a connection session.

@@ -6,7 +6,6 @@ package lib
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,8 +13,6 @@ import (
 	"os"
 	"time"
 )
-
-var Format = fmt.Sprintf
 
 var PORT = flag.Int("port", 2319, "Listen on this TCP port")
 var PROGRAM = flag.String("program", "", "[one program mode] Program to upload to COCOs")
@@ -31,6 +28,10 @@ var Block0 *os.File
 const (
 	CMD_POKE = 0
 	CMD_CALL = 255
+
+	CMD_BEGIN_MUX = 196
+	CMD_MID_MUX   = 197
+	CMD_END_MUX   = 198
 
 	CMD_LEVEL0 = 199 // when Level0 needs attention, it sends 199.
 
@@ -180,25 +181,9 @@ func RegsString(b []byte) string {
 
 func ReadFiveLoop(conn net.Conn, ses *Session) {
 	var block0 *os.File
-
-	/*
-		defer func() {
-			r := recover()
-			if r != nil {
-				log.Printf("ReadfiveLoop terminating with recovered: %v", r)
-			}
-		}()
-	*/
-
 	quint := make([]byte, 5)
-	for {
-		log.Printf("for: ddt will Read5")
-		//_, err := io.ReadFull(conn, quint)
-		//if err != nil {
-		//log.Panicf("ReadFive: stopping due to error: %v", err)
-		//}
-		//log.Printf("ddt ReadFive %#v", quint)
 
+	for {
 		cmd, n, p := ReadFive(conn)
 		log.Printf("ReadFive: cmd=%02x n=%04x p=%04x ...", cmd, n, p)
 
@@ -230,7 +215,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		case CMD_INKEY:
 			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
-		case CMD_DATA:
+		case CMD_DATA: // Sort of a core dump?
 			{
 				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
 				data := make([]byte, n)
@@ -262,18 +247,11 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 				}
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
-				log.Printf("sent Block Okay header")
 
 				cc, err = conn.Write(buf) // == WriteFull
 				if err != nil {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
-				// ddt -- added this panic and it broke?
-				log.Printf("Should be 255 conn.Write, but wrote %d", cc)
-				if false && cc != 256 {
-					log.Panicf("BLOCK_READ: Short TCP Write Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
-				}
-				log.Printf("sent buf: [%d]", len(buf))
 			}
 		case CMD_BLOCK_WRITE:
 			{
@@ -341,6 +319,16 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		case CMD_LEVEL0:
 			Level0Control(conn, ses)
 
+		case CMD_BEGIN_MUX: //  = 196
+			pay := ReadN(conn, n)
+			BeginMux(ses, p, pay)
+		case CMD_MID_MUX: //  = 197
+			pay := ReadN(conn, n)
+			MidMux(ses, p, pay)
+		case CMD_END_MUX: //    = 198
+			pay := ReadN(conn, n)
+			EndMux(ses, p, pay)
+
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
 		} // end switch
@@ -392,11 +380,12 @@ func Serve(conn net.Conn) {
 		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *LEVEL0)
 	} else if *PROGRAM != "" {
+		ses := NewSession(conn)
 		func() {
 			defer func() {
 				println("recover: ", recover())
 			}()
-			go Catch(func() { ReadFiveLoop(conn, nil) })
+			go Catch(func() { ReadFiveLoop(conn, ses) })
 			time.Sleep(time.Second) // Handle anything pushed, first.
 			Catch(func() { UploadProgram(conn, *PROGRAM) })
 		}()

@@ -92,3 +92,5 @@ func Str[T any](a T) string {
 func Repr[T any](a T) string {
 	return fmt.Sprintf("%#v", a)
 }
+
+var Format = fmt.Sprintf
