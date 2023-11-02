@@ -103,6 +103,8 @@ typedef struct { int fd; } File;
 // nystdio
 // FPuts returns length of str, or -1 on error.
 int FPuts(const char *str, File *f);
+errnum FRead(char* buf, size_t n, File *f);
+errnum FWrite(const char* buf, size_t n, File *f);
 void PutHex(byte c, word w);
 void Panic(const char* message);
 void PC_Trace(byte c, const void* w);

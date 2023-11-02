@@ -65,6 +65,28 @@ int FPuts(const char *str, File *f) {
     return (ErrNo) ? -1 : n;
 }
 
+errnum FRead(char* buf, size_t n, File *f) {
+  char* p = buf;
+  while (n) {
+    size_t cc = 0;
+    ErrNo = Os9Read(f->fd, buf, n, &cc);
+    if (ErrNo) return ErrNo;
+    n -= cc;
+    p += cc;
+  }
+  return OKAY;
+}
+
+errnum FWrite(const char* buf, size_t n, File *f) {
+  while (n) {
+    size_t cc = 0;
+    ErrNo = Os9Write(f->fd, buf, n, &cc);
+    if (ErrNo) return ErrNo;
+    n -= cc;
+  }
+  return OKAY;
+}
+
 // returns 0, or -1 on error.
 int FClose(File *f) {
     Assert(f);
