@@ -4,15 +4,38 @@
 
 #include "frob3/froblib.h"
 
+#define ASSERT(B) minimal_assert((B), __FILE__, __LINE__)
+
+//chop
+
+static const char bufhex[] = "0123456789abcdef";
+void minimal_assert(word b, const char* fname, word line) {
+  if (!b) {
+    word cc;
+    Os9WritLn(2, " *BAD*\r", 7, &cc);
+    Os9WritLn(2, fname, strlen(fname), &cc);
+    char buf[7];
+    buf[0] = ':';
+    buf[1] = '$';
+    buf[2] = bufhex[15 & (line>>12)];
+    buf[3] = bufhex[15 & (line>>8)]; 
+    buf[4] = bufhex[15 & (line>>4)];
+    buf[5] = bufhex[15 & (line)]; 
+    buf[6] = '\r';
+    Os9WritLn(2, buf, 7, &cc);
+    Os9Exit(255);
+  }
+}
+
 //chop
 
 void BufCheck(Buf *p) {
-  Assert (p->n >= 0);
-  Assert (p->s != NULL);
+  ASSERT (p->n >= 0);
+  ASSERT (p->s != NULL);
 #ifdef unix
   {}
 #else
-  Assert (p->s <= (char*)0xC000);
+  ASSERT (p->s <= (char*)0xC000);
 #endif
 };
 
