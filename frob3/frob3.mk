@@ -184,22 +184,35 @@ axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd r.os9cmd
 all-net-cmds: $(NET_CMDS)
 
-O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
-
 CDEFS = -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
 LIB_CDEFS = -D"BASENAME=\"$$(basename $@ .o)\"" $(CDEFS)
 CMD_CDEFS = -D"BASENAME=\"$$(basename $@ .os9cmd)\"" $(CDEFS)
 
 COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CDEFS) -o $@ $<
 
-COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
-
 C_FILES_FOR_CMOC_ARCHIVE = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c $F/wiz/wiz5100s.c $F/os9/frobos9.c
 
-#### TODO: make -l_chopped work.
-## COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $< -L. -l_chopped && mv -v $$t $@
-## lib_chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
-## 	bash $F/helper/cmoc-chopped.sh lib_chopped.a "$^" $(CDEFS) -I$F/..
+
+O_FILES_FOR_NET_CMDS = stack300.o buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o wiz5100s.o frobos9.o
+
+ifeq ($(strip $(CHOPPING)),)
+
+COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
+CHOPPED_LIB=
+
+else #### TODO: make -l_chopped work.
+
+# LINKER="bash ../frobio/frob3/helper/lwlink-and-make-map.sh"
+# COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); MAPOUT="$$t.map" $(CMOC) --lwlink=$(LINKER) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $< -L. -l_chopped && mv -v $$t $@
+
+COMPILE_NET_CMD = set -x; t=$$(basename $@ .os9cmd); rm -f $$t.map; $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $< -L. -l_chopped && mv -v $$t $@ && ( test -f $$t.map || mv -v $$(ls -t *.map | head -1) $$t.map )
+
+lib_chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
+	bash $F/helper/cmoc-chopped.sh lib_chopped.a "$^" $(CDEFS) -I$F/..
+
+CHOPPED_LIB=lib_chopped.a
+
+endif
 
 stack300.o: $F/froblib/stack300.asm
 	$(LWASM) --obj -o $@ $<
@@ -222,60 +235,60 @@ wiz5100s.o: $F/wiz/wiz5100s.c
 frobos9.o: $F/os9/frobos9.c
 	$(COMPILE_NET_LIB)
 
-f.arp.os9cmd: $F/net-cmds/f-arp.c $(O_FILES_FOR_NET_CMDS)
+f.arp.os9cmd: $F/net-cmds/f-arp.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.config.os9cmd: $F/net-cmds/f-config.c $(O_FILES_FOR_NET_CMDS)
+f.config.os9cmd: $F/net-cmds/f-config.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.dhcp.os9cmd: $F/net-cmds/f-dhcp.c $(O_FILES_FOR_NET_CMDS)
+f.dhcp.os9cmd: $F/net-cmds/f-dhcp.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.dig.os9cmd: $F/net-cmds/f-dig.c $(O_FILES_FOR_NET_CMDS)
+f.dig.os9cmd: $F/net-cmds/f-dig.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.dump.os9cmd: $F/net-cmds/f-dump.c $(O_FILES_FOR_NET_CMDS)
+f.dump.os9cmd: $F/net-cmds/f-dump.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.ntp.os9cmd: $F/net-cmds/f-ntp.c $(O_FILES_FOR_NET_CMDS)
+f.ntp.os9cmd: $F/net-cmds/f-ntp.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.ping.os9cmd: $F/net-cmds/f-ping.c $(O_FILES_FOR_NET_CMDS)
+f.ping.os9cmd: $F/net-cmds/f-ping.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.recv.os9cmd: $F/net-cmds/f-recv.c $(O_FILES_FOR_NET_CMDS)
+f.recv.os9cmd: $F/net-cmds/f-recv.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.send.os9cmd: $F/net-cmds/f-send.c $(O_FILES_FOR_NET_CMDS)
+f.send.os9cmd: $F/net-cmds/f-send.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.say.os9cmd: $F/net-cmds/f-say.c $(O_FILES_FOR_NET_CMDS)
+f.say.os9cmd: $F/net-cmds/f-say.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-r.os9cmd: $F/net-cmds/r.c $(O_FILES_FOR_NET_CMDS)
+r.os9cmd: $F/net-cmds/r.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.telnetd0.os9cmd: $F/net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS)
+f.telnetd0.os9cmd: $F/net-cmds/f-telnetd0.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.tget.os9cmd: $F/net-cmds/f-tget.c $(O_FILES_FOR_NET_CMDS)
+f.tget.os9cmd: $F/net-cmds/f-tget.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.wget.os9cmd: $F/net-cmds/f-wget.c $(O_FILES_FOR_NET_CMDS)
+f.wget.os9cmd: $F/net-cmds/f-wget.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-f.ticks.os9cmd: $F/net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS)
+f.ticks.os9cmd: $F/net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
 all-fuse-daemons: fuse.n.os9cmd fuse.ramfile.os9cmd fuse.tftp.os9cmd
 
-fuse.n.os9cmd: $F/fuse-daemons/fuse-n.c $(O_FILES_FOR_NET_CMDS)
+fuse.n.os9cmd: $F/fuse-daemons/fuse-n.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-fuse.ramfile.os9cmd: $F/fuse-daemons/fuse-ramfile.c $(O_FILES_FOR_NET_CMDS)
+fuse.ramfile.os9cmd: $F/fuse-daemons/fuse-ramfile.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS)
+fuse.tftp.os9cmd: $F/fuse-daemons/fuse-tftp.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
 #######################################################################################
@@ -308,7 +321,7 @@ NCL_CMDS = f.ncl.os9cmd
 _ncl_cmds: $(NCL_CMDS) _NOT_WORKING_YET_
 
 COMPILE_NCL_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $(NCL_C) && mv -v $$t $@
-f.ncl.os9cmd:  $(NCL_C) $(NCL_H) $(O_FILES_FOR_NET_CMDS)
+f.ncl.os9cmd:  $(NCL_C) $(NCL_H) $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NCL_CMD)
 
 #######################################################################################
@@ -387,37 +400,6 @@ all-lemmings:
 	ln *.lem results/LEMMINGS/
 	ln *.dsk results/LEMMINGS/ || echo Ignore errors above, if some already existed.
 
-#	mkdir results/LEMMINGS
-#	cp *.lem results/LEMMINGS
-#	cp *.dsk results/LEMMINGS
-
-# # These should have already been done by the Shelf....
-# #cd '$(NITROS9)' && make PORTS=coco1 dsk
-# #cd '$(NITROS9)' && make PORTS=coco2 dsk
-# #cd '$(NITROS9)' && make PORTS=coco3 dsk
-# #cd '$(NITROS9)' && make PORTS=coco3_6309 dsk
-# # .....................................................
-
-
-TODO-install-on-disk: _FORCE_
-	test ! -z '$(DISK)' || { echo You must define the DISK varaiable >&2 ; exit 13 ; }
-	: test -s '$(DISK)' || os9 format -l'65000' '$(DISK)'
-	$(OS9) dir '$(DISK),CMDS' 2>/dev/null || $(OS9) makdir '$(DISK),CMDS'
-	set -x; for x in results/CMDS/* ; do $(OS9) copy -r "$$x" "$(DISK),CMDS/$$(basename $$x)" ; done
-	set -x; for x in results/CMDS/* ; do $(OS9) attr -e -pe "$(DISK),CMDS/$$(basename $$x)" ; done
-	$(OS9) dir '$(DISK),MODULES' 2>/dev/null || $(OS9) makdir '$(DISK),MODULES'
-	set -x; for x in results/MODULES/* ; do $(OS9) copy -r "$$x" "$(DISK),MODULES/$$(basename $$x)" ; done
-	set -x; for x in results/MODULES/* ; do $(OS9) attr -e -pe "$(DISK),MODULES/$$(basename $$x)" ; done
-	$(OS9) copy -r $(NITROS9)/level2/coco3/cmds/telnet '$(DISK),CMDS/telnet'
-	$(OS9) attr -e -pe '$(DISK),CMDS/telnet'
-#######################################################################################
-
-# Disable RCS & SCCS patterns.
-%:: %,v
-%:: RCS/%,v
-%:: RCS/%
-%:: s.%
-%:: SCCS/s.%
 #######################################################################################
 
 # run-lemma
@@ -455,3 +437,11 @@ trace-axiom-L:
 	cd /sy/doing_os9/gomar && go run --tags=coco3,level2,cocoio gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=  2>/tmp/log
 	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -basic_text  -v=dmw  --borges ../borges --trigger_os9='(?i:fork.*file=.dir)'  2>/tmp/log
 	# cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,trace,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log
+
+# Disable RCS & SCCS patterns.
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%
+# End.
