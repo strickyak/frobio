@@ -418,8 +418,8 @@ char PolCat() {
 }
 
 void Delay(word n) {
-  if (IsThisGomar()) return;
-#if !__GOMAR__
+  if (IsThisGomar()) return;  // delay not needed if Gomar.
+
   while (n--) {
 #ifdef __GNUC__
     asm volatile ("mul" : : : "d", "b", "a");
@@ -437,14 +437,12 @@ void Delay(word n) {
     }
 #endif
   }
-#endif
 }
 
 void PutChar(char ch) {
-#if __GOMAR__
-  PrintH("CH: %x %c\n", ch, (' ' <= ch && ch <= '~') ? ch : '?');
-  return;
-#endif
+
+  PrintH("CH: %x %c", (byte)ch, (' ' <= ch && ch <= '~') ? (byte)ch : (byte)'?');
+
     if (ch == 13 || ch == 10) { // Carriage Return
       do {
         PutChar(' ');
@@ -817,7 +815,10 @@ void SendLanRequest(const struct sock* sockp) {
   memcpy(&q->orig_s_reg, &Vars->orig_s_reg, 6*2); // six words.
   memcpy(&q->mac_tail, &Rom->rom_mac_tail, 5); // five bytes.
 
+  // Set a special bit to tell Lemma that we are a H6309.
   if (CpuType() == 0x9821) q->lan_reserved[0] |= LAN_RES0_H6309;
+
+  // Set a special bit to tell Lemma that we are a Gomar.
   if (IsThisGomar()) q->lan_reserved[0] |= LAN_RES0_GOMAR;
 
   tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND sizeof *q);
@@ -1327,13 +1328,12 @@ errnum WizRecvChunkTry(const struct sock* sockp, char* buf, size_t n) {
 }
 
 errnum WizRecvChunk(const struct sock* sockp, char* buf, size_t n) {
-  PrintH("WizRecvChunk %x...", n);
+  // PrintH("WizRecvChunk %x...", n);
   errnum e;
   do {
     e = WizRecvChunkTry(SOCK_AND buf, n);
   } while (e == NOTYET);
-  PrintH("WRC %x: %x %x %x %x %x.", n,
-      buf[0], buf[1], buf[2], buf[3], buf[4]);
+  // PrintH("WRC %x: %x %x %x %x %x.", n, buf[0], buf[1], buf[2], buf[3], buf[4]);
   return e;
 }
 errnum WizRecvChunkBytes(const struct sock* sockp, byte* buf, size_t n) {
@@ -1364,12 +1364,12 @@ void UdpDial(const struct sock* sockp,  const struct proto *proto,
 
 // returns tx_ptr
 tx_ptr_t WizReserveToSend(const struct sock* sockp,  size_t n) {
-  PrintH("ResTS %x;", n);
+  // PrintH("ResTS %x;", n);
   // Wait until free space is available.
   word free_size;
   do {
     free_size = WizGet2(B+SK_TX_FSR0);
-    PrintH("Res free %x;", free_size);
+    // PrintH("Res free %x;", free_size);
   } while (free_size < n);
 
   return WizGet2(B+SK_TX_WR0) & RING_MASK;
@@ -1402,14 +1402,13 @@ void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t
 }
 
 errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
-  PrintH("Ax WizSendChunk %x@%x : %x %x %x %x %x", n, data,
-      data[0], data[1], data[2], data[3], data[4]);
+  // PrintH("Ax WizSendChunk %x@%x : %x %x %x %x %x", n, data, data[0], data[1], data[2], data[3], data[4]);
   errnum e = WizCheck(JUST_SOCK);
   if (e) return e;
   tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND  n);
   WizDataToSend(SOCK_AND tx_ptr, data, n);
   WizFinalizeSend(SOCK_AND proto, n);
-  PrintH("Ax WSC.");
+  // PrintH("Ax WSC.");
   return OKAY;
 }
 errnum TcpSend(const struct sock* sockp,  char* p, size_t n) {
@@ -1556,7 +1555,7 @@ errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
   char inkey;
   errnum e;  // was bool e, but that was a mistake.
-PrintH("PolC");
+    // PrintH("PolC");
     inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -1566,7 +1565,7 @@ PrintH("PolC");
       if (e) return e;
     }
 
-PrintH("RTry");
+    // PrintH("RTry");
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
       word n = *(word*)(quint+1);
@@ -1574,9 +1573,9 @@ PrintH("RTry");
       switch ((byte)quint[0]) {
         case CMD_POKE:
           {
-            PrintH("POKE(%x@%x)\n", n, p);
+            // PrintH("POKE(%x@%x)\n", n, p);
             TcpRecv(SOCK1_AND (char*)p, n);
-            PrintH("POKE DONE\n");
+            // PrintH("POKE DONE\n");
           }
           break;
         case CMD_PUTCHAR:
@@ -1586,18 +1585,18 @@ PrintH("RTry");
           break;
         case CMD_PEEK:
           {
-            PrintH("PEEK(%x@%x)\n", n, p);
+            // PrintH("PEEK(%x@%x)\n", n, p);
 
             quint[0] = CMD_DATA;
             WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
             TcpSend(SOCK1_AND (char*)p, n);
-            PrintH("PEEK DONE\n");
+            // PrintH("PEEK DONE\n");
           }
           break;
         case CMD_JSR:
           {
             func_t fn = (func_t)p;
-            PrintH("JSR(%x@%x)\n", p);
+            // PrintH("JSR(%x@%x)\n", p);
             fn();
           }
           break;
@@ -1713,7 +1712,7 @@ void main2() {
       memcpy(Vars->ip_mask, "\xff\xff\xff\x00", 4);
       Vars->waiter_port = 2319;
       Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
-      PrintH("For Emu");
+      // PrintH("For Emu");
 
     } else {
       // FOR HUMANS
