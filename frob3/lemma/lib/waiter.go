@@ -240,11 +240,13 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				buf := make([]byte, 256)
 				cc, err := block0.Read(buf)
 				log.Printf("read %d bytes from %q", cc, block0.Name())
-				if err != nil {
-					log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, block0.Name(), err)
-				}
-				if cc != 256 {
-					log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
+				if err != io.EOF {
+					if err != nil {
+						log.Panicf("BLOCK_READ: Cannot Read for Block device 0 from LSN %d: %q: %v", lsn, block0.Name(), err)
+					}
+					if cc != 256 {
+						log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
+					}
 				}
 				WriteFive(conn, CMD_BLOCK_OKAY, 0, 0)
 
@@ -403,7 +405,7 @@ func Serve(conn net.Conn) {
 
 func Catch(fn func()) {
 	defer func() {
-		println("catch: ", recover())
+		log.Printf("catch: %v", recover())
 	}()
 	fn()
 }

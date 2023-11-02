@@ -14,6 +14,8 @@
 char buf[5 + 4 + MAX_MSG_LEN];
 char inbuf[5 + 4 + MAX_MSG_LEN];
 
+File* FilePtr; // For whatever file is open.
+
 void ShowPay(char* p, size_t n) {
   p[5+n] = '\0';
   LogInfo("%x.%x.%x ==> [%d.] %q", (byte)p[0], (byte)p[3], (byte)p[4], n, p+5);
@@ -85,20 +87,74 @@ int main(int argc, char* argv[]) {
 
   DisableIrqsCounting();
   Send(buf, 5 + pay_len);
+
   size_t paylen = Recv(inbuf);
   EnableIrqsCounting();
   ShowPay(inbuf, paylen);
 
-  buf[0] = 197; // CMD_MID_MUX
-  DisableIrqsCounting();
-  Send(buf, 5 + pay_len);
-  paylen = Recv(inbuf);
-  EnableIrqsCounting();
-  ShowPay(inbuf, paylen);
+  while (true) {
+    buf[0] = 197; // CMD_MID_MUX
+    DisableIrqsCounting();
+    Send(buf, 5 + pay_len);
+
+    paylen = Recv(inbuf);
+    EnableIrqsCounting();
+    ShowPay(inbuf, paylen);
+
+    Assert(paylen);
+
+    switch (inbuf[5]) {
+    case '1':
+      FPuts(inbuf+6, FilePtr ? FilePtr : StdOut);
+      break;
+    case '2':
+      FPuts(inbuf+6, StdErr);
+      break;
+    case '3':
+      LogError("r got err: %s", inbuf+6);
+      break;
+    case '6':
+      errnum e = FWrite(inbuf+6, paylen-6, FilePtr ? FilePtr : StdOut);
+      if (e) {
+        LogError("cannot FWrite stdout: e=%d", e);
+        return e;
+      }
+      break;
+    case 'a':
+      {
+        File* f = FOpen(inbuf+6, "w");
+        if (!f) {
+          LogError("cannot Create file %q: e=%d", inbuf+6, ErrNo);
+          return ErrNo;
+        }
+        FilePtr = f;
+      }
+      break;
+    case 'b':
+      {
+        File* f = FOpen(inbuf+6, "r");
+        if (!f) {
+          LogError("cannot Open file %q: e=%d", inbuf+6, ErrNo);
+          return ErrNo;
+        }
+        FilePtr = f;
+      }
+      break;
+    case 'c':
+      {
+        FClose(FilePtr);
+        FilePtr = (File*)NULL;
+      }
+      break;
+    } // end switch
+
+    if (inbuf[5] == '.') break;
+  } // end while
 
   buf[0] = 198; // CMD_END_MUX
   DisableIrqsCounting();
   Send(buf, 5 + pay_len);
+
   paylen = Recv(inbuf);
   EnableIrqsCounting();
   ShowPay(inbuf, paylen);

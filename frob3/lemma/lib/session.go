@@ -18,10 +18,8 @@ type Quint [5]byte // Quintabyte commands.
 func NewQuint(cmd byte, n uint, p uint) Quint {
 	var q Quint
 	q[0] = cmd
-	q[1] = Hi(n)
-	q[2] = Lo(n)
-	q[3] = Hi(p)
-	q[4] = Lo(p)
+	q[1], q[2] = Hi(n), Lo(n)
+	q[3], q[4] = Hi(p), Lo(p)
 	return q
 }
 
@@ -223,8 +221,9 @@ var nextID int = 1001
 
 func NewSession(conn net.Conn) *Session {
 	ses := &Session{
-		ID:   fmt.Sprintf("ses%d", nextID),
-		Conn: conn,
+		ID:    fmt.Sprintf("ses%d", nextID),
+		Conn:  conn,
+		Muxen: make(map[uint]*Mux),
 	}
 	ses.Screen = &AxScreen{ses}
 	ses.LineBuf = &LineBuf{ses}
