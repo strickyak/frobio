@@ -1,7 +1,14 @@
 #!/bin/bash
 set -eux
-. ./config.txt
 
+# -- coco-shelf locations --
+F=../frobio/frob3
+CMOC=../bin/cmoc
+CMOCI=../share/cmoc/include/
+CMOCL=../share/cmoc/lib/
+LWAR=../bin/lwar
+
+# -- command line parameters --
 AR_OUT="$1" ; shift
 C_IN="$1" ; shift
 

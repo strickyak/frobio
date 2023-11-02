@@ -195,8 +195,11 @@ COMPILE_NET_LIB = $(CMOC) -i -c --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(LIB_CD
 COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $^ && mv -v $$t $@
 
 C_FILES_FOR_CMOC_ARCHIVE = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c $F/wiz/wiz5100s.c $F/os9/frobos9.c
-_chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
-	bash $F/helper/cmoc-chopped.sh _chopped.a "$^" $(CDEFS) -I$F/..
+
+#### TODO: make -l_chopped work.
+## COMPILE_NET_CMD = t=$$(basename $@ .os9cmd); $(CMOC) -i --os9 -I. -I$F/.. -I$(CMOCI) -L$(CMOCL) $(CMD_CDEFS) -o $$t $< -L. -l_chopped && mv -v $$t $@
+## lib_chopped.a: $(C_FILES_FOR_CMOC_ARCHIVE)
+## 	bash $F/helper/cmoc-chopped.sh lib_chopped.a "$^" $(CDEFS) -I$F/..
 
 stack300.o: $F/froblib/stack300.asm
 	$(LWASM) --obj -o $@ $<

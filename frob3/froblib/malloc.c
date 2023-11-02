@@ -24,12 +24,12 @@ struct Heap {
     int h_buck_num_brk[NBUCKETS];
 };
 
-#ifdef FOR_FIX
-#define HEAP ((struct Heap *)0x100)
-#else
-struct Heap TheHeap;
+//#ifdef FOR_FIX
+//#define HEAP ((struct Heap *)0x100)
+//#else
+extern struct Heap TheHeap;
 #define HEAP (&TheHeap)
-#endif
+//#endif
 
 #define heap_min  (HEAP->h_heap_min)
 #define heap_here  (HEAP->h_heap_here)
@@ -49,6 +49,10 @@ extern byte MemoryPoolForUnix[1024000];
 extern void MallocOOM(errnum e, word n, word cap);
 extern byte which_bucket(int n, int *capP);
 extern void heap_check_block(struct MallocHead *h, int cap);
+
+// chop
+
+struct Heap TheHeap;
 
 // chop
 
