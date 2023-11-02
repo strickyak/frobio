@@ -935,26 +935,40 @@ void SendDhcpRequest(const struct sock* sockp, bool second) {
 
 errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
   struct dhcp* p = (struct dhcp*)PACKET_BUF;
-  //Delay(3000);
-//_
+  char got_xid[4];
+
   errnum e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, sizeof *p);
   if (e) return e;
   memcpy(Vars->ip_addr, p->yiaddr, 4);
+  memcpy(got_xid, p->xid, 4);
 
 //_
   //Delay(3000);
   e = WizRecvChunk(SOCK_AND  (char*)PACKET_BUF, plen - sizeof *p);
   if (e) return e;
   byte* opt = (byte*)PACKET_BUF;
-  if (opt[1] != 130) return 9;  // just check one of the 4 bytes: 99, 130, 83, 99.
-//_
+
+#define DHCP_OPT_MAGIC "c\x82Sc" // the 4 bytes: 99, 130, 83, 99.
+
+  for (byte i = 0; i < 4; i++) {
+    if ((byte)(got_xid[i]) != (byte)(Vars->transaction_id[i])) {
+        PrintF(" (xid%x %x vs %x) ", i, (byte)(got_xid[i]), (byte)(Vars->transaction_id[i]));
+        return 10;  // not my response
+    } else {
+        // PrintF("X%d ", i);
+    }
+    if ((byte)(opt[i]) != (byte)(DHCP_OPT_MAGIC[i])) {
+        PrintF(" (opt%x %x vs %x) ", i, (byte)(opt[i]), (byte)(DHCP_OPT_MAGIC[i]));
+        return 9; // does not have proper DHCP opts
+    } else {
+        // PrintF("Y%d ", i);
+    }
+  }
+
   byte* end = (byte*)PACKET_BUF + plen - sizeof *p;
   opt += 4;
 
-//_
   while (opt < end) {
-    PutChar('#');
-    //PrintF("(%d:%d)", opt[0], opt[1]);
     switch (opt[0]/*option number*/) {
       case 1: memcpy(Vars->ip_mask, opt+2, 4);
       break;
@@ -968,11 +982,13 @@ errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
           return 1; // try again
         }
       break;
-      case 255: return 0;
+      case 255: {
+        PrintF(" [[ DHCP: %a ]] ", Vars->ip_addr);
+        return 0;
+      }
     }
     opt += 2 + opt[1]/*opt payload len*/;
   }
-_
   return 5;
 }
 
@@ -1466,9 +1482,9 @@ errnum OneDiscoveryRound() {
       PrintF("$$$%x ", e);
       if (!e) {
         Vars->got_lan = true;
-        PutStr(" [ ");
+        PutStr(" [[ LAN: ");
         PutStr(Vars->line_buf);
-        PutStr(" ] ");
+        PutStr(" ]] ");
       }
     }
   }
@@ -1641,7 +1657,7 @@ void WaitForLink() {
             return;
         }
         PrintF("down=%x ", phys);
-        Delay(5000);
+        Delay(10000);
     }
 }
 
@@ -1712,7 +1728,7 @@ void main2() {
       memcpy(Vars->ip_mask, "\xff\xff\xff\x00", 4);
       Vars->waiter_port = 2319;
       Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
-      // PrintH("For Emu");
+      PrintH("For Emu");
 
     } else {
       // FOR HUMANS
@@ -1767,7 +1783,7 @@ void main2() {
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
     Green();
-    Delay(10000);
+    Delay(20000);
 
     while (1) {
         errnum e = LemmaClientS1();
