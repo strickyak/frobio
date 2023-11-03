@@ -223,7 +223,7 @@ void UdpDial(PARAM_SOCK_AND  const struct proto *proto,
              const byte* dest_ip, word dest_port);
 void WizClose(PARAM_JUST_SOCK);
 
-void DoLineBufCommands();
+void DoLineBufCommands(bool echo);
 void ConfigureTextScreen(word addr, bool orange);
 word StackPointer();
 char PolCat(); // Return one INKEY char, or 0, with BASIC `POLCAT` subroutine.
@@ -1475,11 +1475,11 @@ errnum OneDiscoveryRound() {
   struct UdpRecvHeader hdr;
   if (!Vars->got_lan) {
     e = WizRecvChunkTry(SOCK0_AND  (char*)&hdr, sizeof hdr);
-    PrintF(" $$$%x ", e);
+    // PrintF(" $$$%x ", e);
     if (!e) {
-      PrintF("$$$%x ", hdr.len);
+      // PrintF("$$$%x ", hdr.len);
       e = RecvLanReply(SOCK0_AND hdr.len);
-      PrintF("$$$%x ", e);
+      // PrintF("$$$%x ", e);
       if (!e) {
         Vars->got_lan = true;
         PutStr(" [[ LAN: ");
@@ -1751,8 +1751,8 @@ void main2() {
       }
 
       if (!initial_char && Vars->got_lan) {
-          Beep(32, 4);
-          DoLineBufCommands();
+          Beep(42, 4);
+          DoLineBufCommands(true);
       } else if (!Vars->use_dhcp) {
           Beep(8, 16);
           DoKeyboardCommands(initial_char);
@@ -1791,14 +1791,16 @@ void main2() {
     }
 }
 
-void DoLineBufCommands() {
+void DoLineBufCommands(bool echo) {
   PTR = BUF;
   do {
 
-    PutChar('[');
-    for (const char* s = PTR; *s; s++) PutChar(*s);
-    PutChar(']');
-    PutChar('\n');
+    if (echo) {
+      PutChar('[');
+      for (const char* s = PTR; *s && *s != ';'; s++) PutChar(*s);
+      PutChar(']');
+      PutChar('\n');
+    }
 
     DoOneCommand();
     SkipWhite();
@@ -1816,7 +1818,7 @@ void DoKeyboardCommands(char initial_char) {
     GetUpperCaseLine(initial_char);
     initial_char = 0;
 
-    DoLineBufCommands();
+    DoLineBufCommands(false);
     if (Vars->launch) break;
   }
 }
