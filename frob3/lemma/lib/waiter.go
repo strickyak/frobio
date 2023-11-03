@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -22,6 +23,7 @@ var CARDS = flag.Bool("cards", false, "Preferred mode: Present numbered pages to
 var READONLY = flag.String("ro", "", "read only resource directory, for -cards mode.")
 var LEVEL0 = flag.String("level0", "", "[experimental Level0 mode] level0.bin (decb) to upload")
 var LAN = flag.String("lan", "", "Local IP address of interface for LAN Discovery Response.")
+var TESTHOST = flag.String("testhost", "", "Host that runs tests")
 
 var Block0 *os.File
 
@@ -99,6 +101,15 @@ func ReadN(conn net.Conn, n uint) []byte {
 		log.Panicf("ReadN=%d.: stopping due to error: %v", n, err)
 	}
 	return bb
+}
+
+func PeekRam(conn net.Conn, addr uint, n uint) []byte {
+	_, err := conn.Write([]byte{CMD_PEEK, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
+	if err != nil {
+		panic(err)
+	}
+
+	return ReadN(conn, n)
 }
 
 func PokeRam(conn net.Conn, addr uint, data []byte) {
@@ -367,8 +378,33 @@ func Serve(conn net.Conn) {
 
 	log.Printf("Serving: Poke to 0x400")
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
+	hostbytes := PeekRam(conn, 0xDFE0, 8) // Hostname in ROM
+	hostname := strings.TrimRight(string(hostbytes), " _\377\n\r\000")
 
-	if *DEMO != "" {
+	if hostname == *TESTHOST {
+		ses := NewSession(conn)
+		ses.Screen.PutStr(Format("TEST MODE for host '%s'\n", hostname))
+		test_card := Cards[328] // Nitros9 Level 2 for M6809
+
+		// From session.go, cards, if current.Block0 != "":
+		{
+			tail := strings.TrimPrefix(test_card.Block0, ".")
+			log.Printf("TEST Block0: %q", tail)
+			ses.Screen.PutStr(Format("TEST Block0: %q", tail))
+			ses.Block0 = DuplicateFileToTemp(
+				*READONLY+"/"+tail,
+				"f.say STARTUP OKAY")
+		}
+
+		{
+			tail := strings.TrimPrefix(test_card.Launch, ".")
+			log.Printf("Upload: %q", tail)
+			UploadProgram(ses.Conn, *READONLY+"/"+tail)
+			ReadFiveLoop(ses.Conn, ses)
+			return
+		}
+
+	} else if *DEMO != "" {
 		demo, ok := Demos[*DEMO]
 		if !ok {
 			for k := range Demos {
@@ -393,6 +429,7 @@ func Serve(conn net.Conn) {
 		}()
 	} else {
 		ses := NewSession(conn)
+		ses.Screen.PutStr(Format("host '%s' connected.\n", hostname))
 		Run(ses)
 		log.Panicf("Run Cards: quit")
 	}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -276,7 +277,7 @@ func Add(num int, parent int, name string, tc *Card) {
 	}
 }
 
-func DuplicateFileToTemp(filename string) *os.File {
+func DuplicateFileToTemp(filename string, startup string) *os.File {
 	r, err := os.Open(filename)
 	Check(err)
 	tmp, err := os.CreateTemp("/tmp", "tmp.waiter.*.tmp")
@@ -288,6 +289,15 @@ func DuplicateFileToTemp(filename string) *os.File {
 	Check(err)
 
 	log.Printf("Duplicated %q => %q", filename, tmp.Name())
+	if startup != "" {
+		shell := Format("echo '%s' | os9 copy -t -r /dev/stdin '%s,startup' ", startup, tmp.Name())
+		cmd := exec.Command("/bin/sh", "-c", shell)
+		err := cmd.Run()
+		if err != nil {
+			log.Panicf("Installing startup failed: %q => %v", shell, err)
+		}
+	}
+
 	err = os.Remove(tmp.Name())
 	Check(err)
 	return tmp
@@ -380,7 +390,7 @@ CARD:
 				tail := strings.TrimPrefix(current.Block0, ".")
 				log.Printf("Block0: %q", tail)
 				ses.Screen.PutStr(fmt.Sprintf("Block0: %q", tail))
-				ses.Block0 = DuplicateFileToTemp(*READONLY + "/" + tail)
+				ses.Block0 = DuplicateFileToTemp(*READONLY+"/"+tail, "")
 			}
 
 			if strings.HasPrefix(current.Launch, "@") {
