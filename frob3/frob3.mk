@@ -141,7 +141,7 @@ axiom4-whole.rom: axiom4.c preboot3.asm
 	rm -f axiom4-whole.list
 	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
 	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	$(GO) run $F/helper/customize-axiom/customize-axiom.go axiom4-whole.rom
+	$(GO) run $A/helper/customize-axiom/customize-axiom.go --hostname="$$COCOHOST" --secret="$$COCOSECRET" axiom4-whole.rom
 
 axiom4-whole6k.decb: axiom4-whole.rom
 	$(LWLINK) --output=axiom4-whole6k.decb --map=axiom4-whole6k.map --decb --script=$F/helper/axiom6k.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
