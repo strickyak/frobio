@@ -109,7 +109,15 @@ func PeekRam(conn net.Conn, addr uint, n uint) []byte {
 		panic(err)
 	}
 
-	return ReadN(conn, n)
+	peekHeader := ReadN(conn, 5)
+	log.Printf("peekHeader: %#v", peekHeader)
+	if peekHeader[0] != CMD_DATA {
+		log.Panicf("Expected DATA")
+	}
+
+	z := ReadN(conn, n)
+	log.Printf("peek: %#v", z)
+	return z
 }
 
 func PokeRam(conn net.Conn, addr uint, data []byte) {
@@ -383,8 +391,11 @@ func Serve(conn net.Conn) {
 
 	if hostname == *TESTHOST {
 		ses := NewSession(conn)
-		ses.Screen.PutStr(Format("TEST MODE for host '%s'\n", hostname))
+		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostname))
 		test_card := Cards[328] // Nitros9 Level 2 for M6809
+
+		dur, _ := time.ParseDuration("5s")
+		time.Sleep(dur)
 
 		// From session.go, cards, if current.Block0 != "":
 		{
@@ -429,7 +440,7 @@ func Serve(conn net.Conn) {
 		}()
 	} else {
 		ses := NewSession(conn)
-		ses.Screen.PutStr(Format("host '%s' connected.\n", hostname))
+		ses.Screen.PutStr(Format("host '%q' connected.\n", hostname))
 		Run(ses)
 		log.Panicf("Run Cards: quit")
 	}

@@ -290,7 +290,7 @@ func DuplicateFileToTemp(filename string, startup string) *os.File {
 
 	log.Printf("Duplicated %q => %q", filename, tmp.Name())
 	if startup != "" {
-		shell := Format("echo '%s' | os9 copy -t -r /dev/stdin '%s,startup' ", startup, tmp.Name())
+		shell := Format("set -x; echo '%s' | os9 copy -l -r /dev/stdin '%s,startup' ", startup, tmp.Name())
 		cmd := exec.Command("/bin/sh", "-c", shell)
 		err := cmd.Run()
 		if err != nil {
