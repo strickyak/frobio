@@ -323,9 +323,9 @@ func PutTCommand(o *Proc) string {
 
 	longDest := P.Join(*FS, dest)
 	w, err := os.Create(longDest)
-  if err != nil {
-    log.Panicf("remote cannot create %q: %v", dest, err)
-  }
+	if err != nil {
+		log.Panicf("remote cannot create %q: %v", dest, err)
+	}
 	defer w.Close()
 
 	o.CocoOpen(src)
@@ -389,9 +389,9 @@ func GetTCommand(o *Proc) string {
 
 	longSrc := P.Join(*FS, src)
 	rf, err := os.Open(longSrc)
-  if err != nil {
-    log.Panicf("remote cannot Open %q: %v", src, err)
-  }
+	if err != nil {
+		log.Panicf("remote cannot Open %q: %v", src, err)
+	}
 	defer rf.Close()
 	r := bufio.NewReader(rf)
 
@@ -437,9 +437,9 @@ func GetBCommand(o *Proc) string {
 
 	longSrc := P.Join(*FS, src)
 	rf, err := os.Open(longSrc)
-  if err != nil {
-    log.Panicf("remote cannot Open %q: %v", src, err)
-  }
+	if err != nil {
+		log.Panicf("remote cannot Open %q: %v", src, err)
+	}
 	defer rf.Close()
 	r := bufio.NewReader(rf)
 
