@@ -6,6 +6,13 @@ import (
 	"log"
 )
 
+func Value[T any](value T, err error) T {
+	if err != nil {
+		log.Panicf("Error: %v", err)
+	}
+	return value
+}
+
 func Cond[T any](a bool, b T, c T) T {
 	if a {
 		return b
@@ -55,6 +62,26 @@ func AssertEQ[N Number](a, b N, args ...any) {
 	}
 }
 
+func AssertGT[N Number](a, b N, args ...any) {
+	if a <= b {
+		s := fmt.Sprintf("AssertGT Fails: (%v .GT. %v)", a, b)
+		for _, x := range args {
+			s += fmt.Sprintf(" ; %v", x)
+		}
+		log.Panic(s)
+	}
+}
+
+func AssertGE[N Number](a, b N, args ...any) {
+	if a < b {
+		s := fmt.Sprintf("AssertGE Fails: (%v .GE. %v)", a, b)
+		for _, x := range args {
+			s += fmt.Sprintf(" ; %v", x)
+		}
+		log.Panic(s)
+	}
+}
+
 func AssertLT[N Number](a, b N, args ...any) {
 	if a >= b {
 		s := fmt.Sprintf("AssertLT Fails: (%v .LT. %v)", a, b)
@@ -94,3 +121,7 @@ func Repr[T any](a T) string {
 }
 
 var Format = fmt.Sprintf
+
+func BytesFormat(format string, args ...any) []byte {
+	return []byte(Format(format, args...))
+}

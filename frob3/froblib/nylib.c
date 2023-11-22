@@ -3,24 +3,37 @@
 #include "frob3/froblib.h"
 #include "frob3/frobos9.h"
 
+// If interrupts are disabled, and PRINT_TILDES is true,
+// then when interrupts are disabled,
+// Log Messages with severity less than LLError
+// merely add a tilde to the buffer, to show they were elided.
+// This is to save buffer space while interrupts are disabled.
+#define PRINT_TILDES true
+
 // Hereafter, pp will point to a pointer to const char,
 // and will be an argument to all functions.
-// In the body, P will act like a normal pointer, using (*pp).
+// In the body, P will act like a normal pointer, using `(*pp)`.
 #define P (*pp)
 
 //chop
+
 byte Verbosity = LLInfo;
 //chop
 byte ErrNo;
 //chop
 const char NotYet[] = "NotYet";
+
 //chop
 
-Buf LogBuf;
+Buf LogBuf;  // In same module as Logger().
 void Logger(const char* file, word line, byte level, const char* fmt, ...) {
   byte restoreErrNo = ErrNo;
 
+    // TODO -- use Hyper if disabled, and drop Log messages?
     extern byte disable_irq_count;
+    while (disable_irq_count && level == LLFatal) {
+      EnableIrqsCounting();
+    }
 
     // fmt may be NULL just to flush when irqs are re-enabled.
     if (fmt) {
@@ -30,46 +43,43 @@ void Logger(const char* file, word line, byte level, const char* fmt, ...) {
         }
         if (level > Verbosity) return;
         if (level > MAX_VERBOSE) return;
-
+#if PRINT_TILDES
         if (disable_irq_count) {
             if (Verbosity > LLError) {
                 BufAppC(&LogBuf, '~');  // non-error just logs '~' during disabled irqs.
                 return;
             }
         }
-
+#endif
         byte proc_id = 0;
         word user_id = 0;
         (void) Os9ID(&proc_id, &user_id);
-        BufFormat(&LogBuf, "<%d>%d:%s:%d ", proc_id, level, file, line);
+        BufFormat(&LogBuf, "#%d[%d]%s:%d ", proc_id, level, file, line);
         if (level == LLFatal) {
-            BufAppStr(&LogBuf, "FATAL: ");
+            BufAppStr(&LogBuf, "*FATAL* ");
         }
 
         va_list ap;
         va_start(ap, fmt);
         BufFormatVA(&LogBuf, fmt, ap);
         va_end(ap);
-    }
 
-    // Never flush to stderr while irqs are disabled.
-    if (disable_irq_count) return;
-   
-    // Skip writing if empty. 
-    if (!LogBuf.n) return;
+        // Append \n if it is not already there.
+        if (LogBuf.s[LogBuf.n-1] != '\n') {
+            BufAppC(&LogBuf, '\n');
+        }
 
-    // Append \n if it is not already there.
-    if (LogBuf.s[LogBuf.n-1] != '\n') {
-        BufAppC(&LogBuf, '\n');
-    }
+        // Never flush to stderr while irqs are disabled.
+        if (disable_irq_count) return;
 
-    // Finish, Print, and Reset the buffer.
-    char* s = BufFinish(&LogBuf);
-    FPuts(s, StdErr);
-    if (level == LLFatal) {
-        exit(127);
+        // Finish, Print, and Reset the buffer.
+        char* s = BufFinish(&LogBuf);
+        FPuts(s, StdErr);
+        if (level == LLFatal) {
+            exit(127);
+        }
+        LogBuf.n = 0;
     }
-    LogBuf.n = 0;
 
   ErrNo = restoreErrNo;
 }

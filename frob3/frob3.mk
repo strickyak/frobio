@@ -408,8 +408,10 @@ all-lemmings:
 #   It's a server, so it will run forever, as long as nothing goes wrong.
 #   You can hit ^C to kill it.  `make` will then print an error message
 #   that you can ignore.
-run-lemma: all-without-gccretro
+server: all-without-gccretro
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
+run-server: run-lemma  # Alias.
+run-lemma: server
 	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN)
 
 #   For debugging with Gomar on Loopback.

@@ -34,16 +34,17 @@ func (q Quint) P() uint {
 	return HiLo(q[3], q[4])
 }
 
-func (ses *Session) SendQuintAndPayload(cmd byte, p uint, pay []byte) {
+func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	n := uint(len(pay))
 	log.Printf("PAY OUT [%d.] %v", n, pay)
+	log.Printf("        [$%x] %q", n, pay)
 	buf := make([]byte, 5+n)
 	buf[0] = cmd
 	buf[1], buf[2] = Hi(n), Lo(n)
 	buf[3], buf[4] = Hi(p), Lo(p)
 	copy(buf[5:], pay)
 
-	log.Printf("SENDING %v", buf)
+	log.Printf("SENDING %02x", buf)
 	cc, err := ses.Conn.Write(buf)
 	if err != nil {
 		log.Panicf("SendQandP(%q) got err: %v", ses.ID, err)
@@ -52,27 +53,28 @@ func (ses *Session) SendQuintAndPayload(cmd byte, p uint, pay []byte) {
 		log.Panicf("SendQandP(%q) short write: %v", ses.ID, cc)
 	}
 }
-func (ses *Session) SendQuint(q Quint) {
-	cc, err := ses.Conn.Write(q[:])
-	if err != nil {
-		log.Panicf("SendQuint(%q) got err: %v", ses.ID, err)
-	}
-	if cc != 5 {
-		log.Panicf("SendQuint(%q) short write: %v", ses.ID, cc)
-	}
-}
 
-func (ses *Session) RecvQuint() Quint {
-	var q Quint
-	cc, err := io.ReadFull(ses.Conn, q[:])
-	if err != nil {
-		log.Panicf("RecvQuint(%q) got err: %v", ses.ID, err)
-	}
-	if cc != 5 {
-		log.Panicf("RecvQuint(%q) short read: %v", ses.ID, cc)
-	}
-	return q
-}
+//--    /func (ses *Session) SendQuint(q Quint) {
+//--    /	cc, err := ses.Conn.Write(q[:])
+//--    /	if err != nil {
+//--    /		log.Panicf("SendQuint(%q) got err: %v", ses.ID, err)
+//--    /	}
+//--    /	if cc != 5 {
+//--    /		log.Panicf("SendQuint(%q) short write: %v", ses.ID, cc)
+//--    /	}
+//--    /}
+//--    /
+//--    /func (ses *Session) RecvQuint() Quint {
+//--    /	var q Quint
+//--    /	cc, err := io.ReadFull(ses.Conn, q[:])
+//--    /	if err != nil {
+//--    /		log.Panicf("RecvQuint(%q) got err: %v", ses.ID, err)
+//--    /	}
+//--    /	if cc != 5 {
+//--    /		log.Panicf("RecvQuint(%q) short read: %v", ses.ID, cc)
+//--    /	}
+//--    /	return q
+//--    /}
 
 type Screen interface {
 	Clear()
@@ -206,7 +208,7 @@ type Session struct {
 	Block0 *os.File
 	Block1 *os.File
 
-	Muxen map[uint]*Mux
+	Procs map[uint]*Proc
 
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
@@ -224,7 +226,7 @@ func NewSession(conn net.Conn) *Session {
 	ses := &Session{
 		ID:    fmt.Sprintf("ses%d", nextID),
 		Conn:  conn,
-		Muxen: make(map[uint]*Mux),
+		Procs: make(map[uint]*Proc),
 	}
 	ses.Screen = &AxScreen{ses}
 	ses.LineBuf = &LineBuf{ses}

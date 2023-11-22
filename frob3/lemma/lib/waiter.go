@@ -208,7 +208,8 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 		switch cmd {
 
-		case CMD_SP_PC:
+		case CMD_SP_PC: // MISUSES N
+			log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
 			log.Printf("ReadFive: sp=%x pc=%x", n, p)
 
 		case CMD_LOG:
@@ -231,7 +232,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				log.Printf("ReadFive: REV %q", data)
 			}
 
-		case CMD_INKEY:
+		case CMD_INKEY: // N=0, OR MISUSES N
 			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
 		case CMD_DATA: // Sort of a core dump?
@@ -353,7 +354,6 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
 		} // end switch
-		log.Printf("next")
 	} // end for
 } // end ReadFiveLoop
 
@@ -416,6 +416,7 @@ func Serve(conn net.Conn) {
 		}
 
 	} else if *DEMO != "" {
+
 		demo, ok := Demos[*DEMO]
 		if !ok {
 			for k := range Demos {
@@ -424,11 +425,15 @@ func Serve(conn net.Conn) {
 			log.Panicf("Unknown demo: %q", *DEMO)
 		}
 		demo(conn)
+
 	} else if *LEVEL0 != "" {
+
 		go ReadFiveLoop(conn, nil)
 		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *LEVEL0)
+
 	} else if *PROGRAM != "" {
+
 		ses := NewSession(conn)
 		func() {
 			defer func() {
