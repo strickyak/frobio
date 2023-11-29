@@ -32,7 +32,6 @@ type TaggedBytes struct {
 }
 
 type Proc struct {
-	Count   int
 	Command string
 	Argv    []string
 	Ses     *Session

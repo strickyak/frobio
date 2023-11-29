@@ -34,6 +34,29 @@ func (q Quint) P() uint {
 	return HiLo(q[3], q[4])
 }
 
+/* TODO
+
+func ReadQuint(conn net.Conn) []bytes {
+  var q Quint
+  _, err := io.ReadFull(conn, q[:])
+  Check(err)
+  n := q.N()
+  bb := make([]byte, n)
+  _, err = io.ReadFull(conn, bb)
+  Check(err)
+}
+
+func WriteQuint(conn net.Conn, cmd byte, p uint, bb []bytes) {
+  n := len(bytes)
+  q := NewQuint(cmd, uint(n), p)
+  _, err := conn.Write(q[:])
+  Check(err)
+  _, err := conn.Write(bb)
+  Check(err)
+}
+
+TODO */
+
 func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	n := uint(len(pay))
 	log.Printf("PAY OUT [%d.] %v", n, pay)
@@ -53,28 +76,6 @@ func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 		log.Panicf("SendQandP(%q) short write: %v", ses.ID, cc)
 	}
 }
-
-//--    /func (ses *Session) SendQuint(q Quint) {
-//--    /	cc, err := ses.Conn.Write(q[:])
-//--    /	if err != nil {
-//--    /		log.Panicf("SendQuint(%q) got err: %v", ses.ID, err)
-//--    /	}
-//--    /	if cc != 5 {
-//--    /		log.Panicf("SendQuint(%q) short write: %v", ses.ID, cc)
-//--    /	}
-//--    /}
-//--    /
-//--    /func (ses *Session) RecvQuint() Quint {
-//--    /	var q Quint
-//--    /	cc, err := io.ReadFull(ses.Conn, q[:])
-//--    /	if err != nil {
-//--    /		log.Panicf("RecvQuint(%q) got err: %v", ses.ID, err)
-//--    /	}
-//--    /	if cc != 5 {
-//--    /		log.Panicf("RecvQuint(%q) short read: %v", ses.ID, cc)
-//--    /	}
-//--    /	return q
-//--    /}
 
 type Screen interface {
 	Clear()
@@ -232,17 +233,6 @@ func NewSession(conn net.Conn) *Session {
 	ses.LineBuf = &LineBuf{ses}
 	nextID++
 
-	/*
-		for {
-			q := ses.RecvQuint()
-			switch q.Command() {
-			case CMD_INKEY:
-				ses.LineBuf.Inkey(q.P())
-			default:
-				fmt.Panicf("Unexpected RecvQuint Command: %d", q.Command())
-			}
-		}
-	*/
 	return ses
 }
 
