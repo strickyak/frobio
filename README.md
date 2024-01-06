@@ -112,3 +112,4 @@ Copy them into the CMDS/ directory of the OS-9 disk, leaving off the .os9 extens
 Version 1 is in the "old1" directory.
 If you rename the directory from "old1" to "frobio",
 it should still "make".
+test-alligator
