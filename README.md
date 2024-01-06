@@ -113,3 +113,4 @@ Version 1 is in the "old1" directory.
 If you rename the directory from "old1" to "frobio",
 it should still "make".
 test-alligator
+test-bird
