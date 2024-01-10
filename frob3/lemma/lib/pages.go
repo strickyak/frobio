@@ -28,6 +28,10 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
+	Add(29, 20, "screen splash burner demo", &Card{
+		Launch: ".burn-splash.lem",
+	})
+
 	Add(30, 0, "Nitros-9", &Card{})
 
 	Add(31, 30, "L1 3.3.0 for M6809", &Card{
