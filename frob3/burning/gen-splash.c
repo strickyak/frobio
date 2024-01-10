@@ -16,4 +16,7 @@ int main() {
     }
     ++p;
   }
+  putchar(0);  // Write a final record of all zeros to mark the end.
+  putchar(0);
+  putchar(0);
 }

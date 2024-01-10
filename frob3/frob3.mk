@@ -131,7 +131,7 @@ all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb burn-splash.lem
 all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem
 
 burn: burn.o
-	$(LWLINK) --format=decb --entry=_main --section-base=.text=2600 -o burn  $<
+	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
 burn.o: burn.s
 	$(LWASM) --format=obj --output=burn.o --list=burn.list --map=burn.map  $<
 burn.s: $F/burning/burn.c
