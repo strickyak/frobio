@@ -110,8 +110,8 @@ byte Recv() {
 void ShowAtLine(byte a, byte offset) {
   byte* p = (byte*)((word)VDG_RAM + (word)offset);
   for (byte i = 0; i < 8; i++) {
-  	*p++ = '0' + (a&0x80U);
-	a <<= 1;
+    *p++ = '0' + ((a&0x80U)!=0);
+    a <<= 1;
   }
 }
 

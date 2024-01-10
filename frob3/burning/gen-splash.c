@@ -9,7 +9,11 @@ int main() {
   for (const char* s = splash; *s; s++) {
     putchar( (int)(p >> 8) );
     putchar( (int)(p >> 0) );
-    putchar( *s );
+    if (*s > 0x60) {
+      putchar( *s - 0x60 );  // Change lower case to upper case.
+    } else {
+      putchar( 0x3f & *s );  // Use bright on dark.
+    }
     ++p;
   }
 }
