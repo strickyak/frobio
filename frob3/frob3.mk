@@ -105,13 +105,14 @@ results2b: results2 all-axiom all-axiom4
 	:
 	ls -l results/BOOTING/
 
-results3: results2b
-	cp $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
-	cp $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
+results3: results2b burn-splash.lem
+	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
+	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
+	#cp -v burn-splash.lem results/LEMMINGS/burn-splash.lem
 
 results3-without-gccretro: results2
-	cp $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
-	cp $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
+	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
+	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
 
 ###############################################
 
@@ -126,8 +127,19 @@ _FORCE_:
 
 ###############################################
 
-all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb
+all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb burn-splash.lem
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem
+
+burn: burn.o
+	$(LWLINK) --format=decb --entry=_main --section-base=.text=2600 -o burn  $<
+burn.o: burn.s
+	$(LWASM) --format=obj --output=burn.o --list=burn.list --map=burn.map  $<
+burn.s: $F/burning/burn.c
+	gcc6809  -S  -I$F/..  -O1 --std=gnu99 -Wall -Werror -o burn.s  $<
+gen-splash: $F/burning/gen-splash.c
+	cc -g -o gen-splash  $<
+burn-splash.lem: burn gen-splash
+	(cat burn ; ./gen-splash) > burn-splash.lem
 
 ### axiom4 experimental.
 
