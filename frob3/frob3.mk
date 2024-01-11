@@ -127,8 +127,8 @@ _FORCE_:
 
 ###############################################
 
-all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb burn-splash.lem
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem
+all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem burn-rom.lem
 
 burn: burn.o
 	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
@@ -136,12 +136,16 @@ burn.o: burn.s
 	$(LWASM) --format=obj --output=burn.o --list=burn.list --map=burn.map  $<
 burn.s: $F/burning/burn.c
 	gcc6809  -S  -I$F/..  -O1 --std=gnu99 -Wall -Werror -o burn.s  $<
-gen-splash: $F/burning/gen-splash.c
-	cc -g -o gen-splash  $<
-burn-splash.lem: burn gen-splash
-	(cat burn ; ./gen-splash) > burn-splash.lem
+rom-triples: $F/burning/rom-triples.c
+	cc -g -o $@  $<
+burn-rom.lem: axiom4-whole.rom burn rom-triples
+	(cat burn ; ./rom-triples < $<) > $@
+splash-triples: $F/burning/splash-triples.c
+	cc -g -o $@  $<
+burn-splash.lem: burn splash-triples
+	(cat burn ; ./splash-triples) > $@
 
-### axiom4 experimental.
+### axiom4 is the new axiom.
 
 axiom4-whole.rom: axiom4.c preboot3.asm
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
@@ -161,7 +165,7 @@ axiom4-whole6k.decb: axiom4-whole.rom
 axiom4-whole.l3k: axiom4-whole.rom
 	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom4-whole.rom > axiom4-whole.l3k
 
-### 
+### axiom (without the 4) is the old axiom.
 
 axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
 	cat  $^ > _axiom_whole.c
@@ -404,7 +408,7 @@ lem.os9mod: lem.asm defsfile
 
 #######################################################################################
 
-all-lemmings:
+all-lemmings: burn-rom.lem burn-splash.lem
 	-test -s ../eou-h6309/63EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
 	-test -s ../eou-m6809/68EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'

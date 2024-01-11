@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-const char splash[] = "We are almost certainly doing it wrong, this is simply what I've run across playing with the new hardware.";
+const char splash[] = "So raise your joysticks, raise your keyboards, Let CRTs illuminate the way, With every line, with every byte, For COCO, we pledge allegiance, this day!";
 
 int main() {
   unsigned p = 0x500;

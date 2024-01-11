@@ -28,8 +28,17 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
-	Add(29, 20, "screen splash burner demo", &Card{
+	Add(28, 20, "screen splash burner demo", &Card{
 		Launch: ".burn-splash.lem",
+	})
+	Add(2929, 20, "burn axiom4 rom code into cocoior eeprom", &Card{
+		Launch: ".burn-rom.lem",
+                Text: `
+Danger!
+Launch only if you are sure!
+Does not ask for confirmation.
+Do not turn your computer off until it says OK.
+`
 	})
 
 	Add(30, 0, "Nitros-9", &Card{})

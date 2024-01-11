@@ -25,7 +25,7 @@ struct wiz_port {
 };
 #define WIZ  ((struct wiz_port*)WIZ_PORT)
 
-#define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
+#define CASBUF 0x01DA    // Rock the CASBUF, rock the CASBUF!
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
 
@@ -34,34 +34,47 @@ struct wiz_port {
 
 #include "frob3/wiz/w5100s_defs.h"
 
-enum Commands {
-  CMD_POKE = 0,
-  CMD_JSR = 255,
-};
+/////////////////////////////////////////
 
-extern const byte HexAlphabet[];
+#define ROM ((byte*)0xC000)
 
-byte WizGet1(word reg);
-word WizGet2(word reg);
-void WizGetN(word reg, void* buffer, word size);
-void WizPut1(word reg, byte value);
-void WizPut2(word reg, word value);
-void WizPutN(word reg, const void* data, word size);
-word WizTicks();
-byte WizTocks();
+void Delay() {
+  volatile byte* p = (byte*) CASBUF;
+  for (byte i=0; i<30; i++) {
+    *p = i;
+  }
+}
 
-//errnum WizRecvGetBytesWaiting(PARAM_SOCK_AND word* bytes_waiting_out);
-//errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n);
-//errnum WizRecvChunk(PARAM_SOCK_AND char* buf, size_t n);
-//errnum WizRecvChunkBytes(PARAM_SOCK_AND byte* buf, size_t n);
-//errnum TcpRecv(PARAM_SOCK_AND char* p, size_t n);
+// Software Data Protection:
+// See page 10 (sections 19, 20) of
+// https://ww1.microchip.com/downloads/en/DeviceDoc/doc0270.pdf
+// for these magic numbers.
+void EnableProtection() {
+  Delay();
+  volatile byte* p;
+  p = ROM + 0x1555, *p = 0xAA;
+  p = ROM + 0x0AAA, *p = 0x55;
+  p = ROM + 0x1555, *p = 0xA0;
+  Delay();
+}
+void DisableProtection() {
+  Delay();
+  volatile byte* p;
+  p = ROM + 0x1555, *p = 0xAA;
+  p = ROM + 0x0AAA, *p = 0x55;
+  p = ROM + 0x1555, *p = 0x80;
+  p = ROM + 0x1555, *p = 0xAA;
+  p = ROM + 0x0AAA, *p = 0x55;
+  p = ROM + 0x1555, *p = 0x20;
+  Delay();
+}
 
 /////////////////////////////////////////
 
-#define B 0x500
-#define T 0x4800
-#define R 0x6800
-#define N 1
+// Register values for Socket #1 (used by Lemma)
+#define B 0x500   // per-socket regs Base
+#define T 0x4800  // Tx buffer
+#define R 0x6800  // Rx buffer
 
 byte WizGet1(word reg) {
   WIZ->addr = reg;
@@ -116,9 +129,9 @@ void ShowAtLine(byte a, byte offset) {
 }
 
 void Show(byte a, byte b, byte c) {
-  ShowAtLine(a, 0*32);
-  ShowAtLine(b, 1*32);
-  ShowAtLine(c, 2*32);
+  ShowAtLine(a, 0*32+2);
+  ShowAtLine(b, 1*32+2);
+  ShowAtLine(c, 2*32+2);
 }
 
 bool DoTripleReturnDone() {
@@ -131,6 +144,7 @@ bool DoTripleReturnDone() {
 
   Show(hi, lo, z);
   *(byte*)ptr = z;
+  Delay();
   return false;
 }
 
@@ -138,14 +152,20 @@ void ClearScreen() {
   for (word ptr = VDG_RAM; ptr < VDG_END; ptr++) {
     *(byte*)ptr = '-';
   }
+  *(byte*)(VDG_RAM) = 'H';
+  *(byte*)(VDG_RAM+32) = 'L';
+  *(byte*)(VDG_RAM+64) = 'D';
 }
 
 int main() {
   ClearScreen();
+  DisableProtection();
+
   bool done;
   do { done = DoTripleReturnDone(); } while (!done);
   *(byte*)(VDG_RAM+4*32+0) = 'O' & 0x3F;
   *(byte*)(VDG_RAM+4*32+1) = 'K' & 0x3F;
 
+  EnableProtection();
   while(1) continue;
 }

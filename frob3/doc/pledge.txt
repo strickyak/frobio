@@ -1,0 +1,32 @@
+With pixels bright and circuits humming,
+To the Flag of COCO we stand,
+A testament to joys of coding,
+In the land of the 6809.
+
+We pledge our love to lines of code,
+Crafted with bits and bytes so true,
+Where sprites dance free and music soars,
+In games born vintage, ever new.
+
+We hail the heroes of the past,
+Who blazed a trail in silicon,
+Their pixel dreams took form and flight,
+On chips that powered our devotion.
+
+From scrolling skies to dungeon deep,
+Each world a canvas, vast and bold,
+We celebrate the pioneers,
+Whose stories in our hearts unfold.
+
+So raise your joysticks, raise your keyboards,
+Let CRTs illuminate the way,
+With every line, with every byte,
+For COCO, we pledge allegiance, this day!
+
+
+(*  Google Bard prompt:
+  "Write a pledge of allegiance to the Flag of the COCO Nation,
+  mentioning the values of 8-bit retro computing enthusiasts and
+  programmers dedicated to the Motorola 6809 processor."
+    https://bard.google.com/chat/8702ded2bd73d531
+*)
