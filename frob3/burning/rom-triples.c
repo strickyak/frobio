@@ -26,17 +26,19 @@ int main() {
   unsigned p = 0x500;  // Address of VDG mid-screen.
   unsigned q = N / 256; // 256 bytes in bottom half of screen.
   for (unsigned i = 0; i < N; i++ ) {
-    // A triple to poke the byte to the ROM.
-    putchar( (int)((ROM+i) >> 8) );
-    putchar( (int)((ROM+i) >> 0) );
-    putchar( RomImage[i] );
     if (i % q == (q-1)) {
-      // After every q pokes to ROM, poke a progress spot on the screen.
+      // With every q pokes to ROM, poke a progress spot on the screen.
+      // We do this first, so the final address on the screen
+      // is a ROM address.
       putchar( (int)(p >> 8) );
       putchar( (int)(p >> 0) );
       putchar( '#' );
       ++p;
     }
+    // A triple to poke the byte to the ROM.
+    putchar( (int)(ROM+i) >> 8 );
+    putchar( (int)(ROM+i) >> 0 );
+    putchar( RomImage[i] );
   }
   // Write a final record of all zeros to mark the end.
   putchar(0);

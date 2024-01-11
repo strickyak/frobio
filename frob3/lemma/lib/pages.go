@@ -28,19 +28,6 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
-	Add(28, 20, "screen splash burner demo", &Card{
-		Launch: ".burn-splash.lem",
-	})
-	Add(2929, 20, "burn axiom4 rom code into cocoior eeprom", &Card{
-		Launch: ".burn-rom.lem",
-                Text: `
-Danger!
-Launch only if you are sure!
-Does not ask for confirmation.
-Do not turn your computer off until it says OK.
-`
-	})
-
 	Add(30, 0, "Nitros-9", &Card{})
 
 	Add(31, 30, "L1 3.3.0 for M6809", &Card{
@@ -88,4 +75,27 @@ Do not turn your computer off until it says OK.
 		Launch: ".EOU_M6809.lem",
 		Block0: ".EOU_M6809.dsk",
 	})
+
+	Add(40, 0, "Utilities", &Card{})
+
+	Add(41, 40, "screen splash burner demo", &Card{
+		Launch: ".burn-splash.lem",
+                Text: `
+This is a Dry Run of
+the burner code.
+
+It only pokes a message
+onto your screen.
+`,
+	})
+	Add(4242, 40, "burn axiom4 rom code into cocoior eeprom", &Card{
+		Launch: ".burn-rom.lem",
+                Text: `
+Danger!
+Launch only if you are sure!
+Does not ask for confirmation.
+Do not turn your computer off until it says OK.
+`,
+	})
+
 }
