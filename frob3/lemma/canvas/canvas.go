@@ -11,6 +11,7 @@ import (
 const warp = true
 
 const (
+	// These are for G3CMode:
 	W  = 128 // screen width, height
 	H  = 192 / 2
 	BW = 128 / 4 // ram byte width, height
@@ -130,6 +131,11 @@ func (can *Canvas) Verify(conn net.Conn) {
 	}
 }
 
+// G3CMode is 128 columns, 96 rows, 4 colors,
+// using a buffer size of 3072 bytes.
+// Rows are 32 bytes with 4 pixels per byte.
+// Color set C=0: enum { Green, Yellow, Blue, Red } border Green.
+// Color set C=1: enum { Buff, Cyan, Magenta, Orange } border Buff.
 func G3CMode(conn net.Conn) {
 
 	lem.WriteFive(conn, lem.CMD_POKE, 1, 0xFFC5)
@@ -145,6 +151,11 @@ func G3CMode(conn net.Conn) {
 	MustWrite(conn, []byte{0xC8})
 }
 
+// G6CMode is 128 columns, 192 rows, 4 colors,
+// using a buffer size of 6144 bytes.
+// Rows are 32 bytes with 4 pixels per byte.
+// Color set C=0: enum { Green, Yellow, Blue, Red } border Green.
+// Color set C=1: enum { Buff, Cyan, Magenta, Orange } border Buff.
 func G6CMode(conn net.Conn) {
 
 	lem.WriteFive(conn, lem.CMD_POKE, 1, 0xFFC5)
