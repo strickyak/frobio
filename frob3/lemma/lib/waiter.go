@@ -388,6 +388,9 @@ func Serve(conn net.Conn) {
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
 	hostbytes := PeekRam(conn, 0xDFE0, 8) // Hostname in ROM
 	hostname := strings.TrimRight(string(hostbytes), " _\377\n\r\000")
+    if hostname == "" {
+        hostname = "EMPTY"
+    }
 
 	if hostname == *TESTHOST {
 		ses := NewSession(conn)
