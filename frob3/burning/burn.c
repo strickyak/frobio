@@ -40,7 +40,7 @@ struct wiz_port {
 
 void Delay() {
   volatile byte* p = (byte*) CASBUF;
-  for (byte i=0; i<30; i++) {
+  for (word i=0; i<3000; i++) {  // was 30.
     *p = i;
   }
 }
