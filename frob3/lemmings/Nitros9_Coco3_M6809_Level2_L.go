@@ -16,7 +16,7 @@ func init() {
 			"rbf.mn",
 			"scf.mn",
 			"vtio.dr",
-			"keydrv_cc3.sb",
+			// "keydrv_cc3.sb",
 			"snddrv_cc3.sb",
 			"joydrv_joy.sb",
 			"cowin.io",
