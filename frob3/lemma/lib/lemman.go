@@ -16,7 +16,7 @@ import (
 )
 
 var LEMMAN_FS = flag.String(
-	"lemman_fs", ".", "directory to use as LemMan filesystem")
+	"lemman_fs", "results", "directory to use as LemMan filesystem")
 
 var Inodes [1024]*LMPath // Index excess 1024
 
