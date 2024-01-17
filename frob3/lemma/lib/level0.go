@@ -139,7 +139,7 @@ func ExtractName(bb []byte, i uint, filename string) string {
 	var buf bytes.Buffer
 	for {
 		ch := 127 & bb[i]
-		if ch == 0 || ch == 10 || ch == 13 {
+		if ch == 0 || ch == 10 || ch == 13 || ch == 32 {
 			break
 		}
 		AssertLE('-', ch, filename, i, ch)
