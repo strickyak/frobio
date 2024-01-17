@@ -17,10 +17,12 @@ func init() {
 			"rbf.mn",
 			"scf.mn",
 			"vtio.dr",
+
 			// "keydrv_cc3.sb",
+
 			"snddrv_cc3.sb",
 			"joydrv_joy.sb",
-			"cowin.io",
+			"cogrf.io", // "cowin.io",
 			"term_win80.dt",
 
 			"w.dw",

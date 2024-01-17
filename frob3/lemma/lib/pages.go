@@ -49,10 +49,6 @@ to stress your CocoIO Card.
 		Launch: ".Nitros9_Coco3_M6809_Level2vdg.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
-	Add(326, 32, "L2 3.3.0 for M6809 (VDG) frob", &Card{
-		Launch: ".Nitros9_Coco3_M6809_Level2vdg_frob.lem",
-		Block0: ".NOS9_6809_L2_v030300_coco3_80d.dsk",
-	})
 	Add(327, 32, "L2 3.3.0 for M6809 (40 col)", &Card{
 		Launch: ".Nitros9_Coco3_M6809_Level2_40col.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
@@ -61,7 +57,7 @@ to stress your CocoIO Card.
 		Launch: ".Nitros9_Coco3_M6809_Level2.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
-	Add(328001, 32, "(untested) L2 3.3.0 for M6809 with LEMMAN", &Card{
+	Add(328001, 328, "(untested) L2 3.3.0 for M6809 with LEMMAN", &Card{
 		Launch: ".Nitros9_Coco3_M6809_Level2_L.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})

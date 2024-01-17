@@ -20,7 +20,7 @@ func init() {
 			// "keydrv_cc3.sb",
 			"snddrv_cc3.sb",
 			"joydrv_joy.sb",
-			"cowin.io",
+			"cogrf.io",
 			"term_win40.dt",
 
 			"w.dw",
