@@ -29,7 +29,7 @@ iBegin   equ   *
          fcb   TYP.HARD     ; IT.TYP: $15: hard drive
 iEnd     equ   *
 
-name     fcs   /Y3/
+name     fcs   /B3/
 mgrnam   fcs   /RBF/
 drvnam   fcs   /RBLemma/
 
