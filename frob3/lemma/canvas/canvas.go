@@ -33,11 +33,11 @@ type Canvas struct {
 	bm [BH * BW]byte
 }
 
-func (can *Canvas) Get(x, y int) Color {
+func (can *Canvas) Get(x, y int, width int) Color {
 	if warp {
-		x = (W + x) % W
+		x = (width + x) % width
 		y = (H + y) % H
-	} else if x < 0 || x >= W || y < 0 || y >= H {
+	} else if x < 0 || x >= width || y < 0 || y >= H {
 		return 0
 	}
 
@@ -47,11 +47,11 @@ func (can *Canvas) Get(x, y int) Color {
 	return Color(3 & (can.bm[y*BW+bx] >> shift))
 }
 
-func (can *Canvas) Set(x, y int, c Color) {
+func (can *Canvas) Set(x, y int, c Color, width int) {
 	if warp {
-		x = (W + x) % W
+		x = (width + x) % width
 		y = (H + y) % H
-	} else if x < 0 || x >= W || y < 0 || y >= H {
+	} else if x < 0 || x >= width || y < 0 || y >= H {
 		return
 	}
 
