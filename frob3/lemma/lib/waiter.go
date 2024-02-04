@@ -55,7 +55,9 @@ const (
 	CMD_LEMMAN_REQUEST = 214 // LemMan
 	CMD_LEMMAN_REPLY   = 215 // LemMan
 
-	CMD_RTI = 214
+	CMD_RTI = 216
+	CMD_ECHO = 217  // reply with CMD_DATA, with high bits toggled.
+	CMD_DW = 218
 )
 
 var Demos map[string]func(net.Conn)
@@ -351,6 +353,18 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			pay := ReadN(conn, n)
 			EndMux(ses, p, pay)
 
+		case CMD_ECHO:  // echos back data with high bit toggled.
+			pay := ReadN(conn, 4)
+			WriteFive(conn, CMD_DATA, 4, p)
+			for i, e := range pay {
+				pay[i] = 128 ^ e  // toggle high bits in payload.
+			}
+			conn.Write(pay)
+
+		case CMD_DW:  // echos back data with high bit toggled.
+			log.Printf("DW [n=%d.]", n)
+			panic("TODO")
+
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
 		} // end switch
@@ -388,11 +402,15 @@ func Serve(conn net.Conn) {
 	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
 	hostbytes := PeekRam(conn, 0xDFE0, 8) // Hostname in ROM
 	hostname := strings.TrimRight(string(hostbytes), " _\377\n\r\000")
-    if hostname == "" {
-        hostname = "EMPTY"
-    }
+	if hostname == "" {
+		hostname = "EMPTY"
+	}
+	log.Printf("hostname = %q", hostname)
+	log.Printf("*TESTHOST = %q", *TESTHOST)
 
-	if hostname == *TESTHOST {
+	log.Printf("~~~~~~~~~~~~~~ a  ")
+	if false && hostname == *TESTHOST {
+	log.Printf("~~~~~~~~~~~~~~ b  ")
 		ses := NewSession(conn)
 		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostname))
 		test_card := Cards[328] // Nitros9 Level 2 for M6809
@@ -419,6 +437,7 @@ func Serve(conn net.Conn) {
 		}
 
 	} else if *DEMO != "" {
+	log.Printf("~~~~~~~~~~~~~~ c  ")
 
 		demo, ok := Demos[*DEMO]
 		if !ok {
@@ -430,12 +449,14 @@ func Serve(conn net.Conn) {
 		demo(conn)
 
 	} else if *LEVEL0 != "" {
+	log.Printf("~~~~~~~~~~~~~~ d  ")
 
 		go ReadFiveLoop(conn, nil)
 		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *LEVEL0)
 
 	} else if *PROGRAM != "" {
+	log.Printf("~~~~~~~~~~~~~~ e  ")
 
 		ses := NewSession(conn)
 		func() {
@@ -447,11 +468,13 @@ func Serve(conn net.Conn) {
 			Catch(func() { UploadProgram(conn, *PROGRAM) })
 		}()
 	} else {
+	log.Printf("~~~~~~~~~~~~~~ f  ")
 		ses := NewSession(conn)
 		ses.Screen.PutStr(Format("host '%q' connected.\n", hostname))
 		Run(ses)
 		log.Panicf("Run Cards: quit")
 	}
+	log.Printf("~~~~~~~~~~~~~~ g  ")
 
 	log.Printf("Serving: Sleeping.")
 
