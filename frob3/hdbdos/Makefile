@@ -1,18 +1,18 @@
-all: test.cciodw
+all: test1.lemma _COPY_
 
-#F=$$HOME/coco-shelf/frobio/frob3
-#
-#OBJS = buf.o flag.o format.o malloc.o nylib.o nystdio.o std.o
-#LIBS = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
+S=../../..
 
-test.cciodw: cciodw.o test-cciodw.o
-	#for x in $(LIBS); do (PATH=/home/strick/coco-shelf/bin/:$$PATH $$HOME/coco-shelf/bin/gcc6809 -c -I'../..' -std=gnu99 -DBASENAME="$(basename $$x .c)"  $$x); done
-	#$$HOME/coco-shelf/bin/lwlink  -o $@  $^  -L'/home/strick/coco-shelf/lib/gcc/m6809-unknown/4.6.4/' $(OBJS) -lgcc
-	$$HOME/coco-shelf/bin/lwlink  -o $@  $^
+_COPY_: test1.lemma
+	cp -fv $< $S/build-frobio/results/LEMMINGS/
 
-cciodw.o: cciodw.asm
-	$$HOME/coco-shelf/bin/lwasm  --obj -o $@  $<
+test1.lemma: dwread.o dwwrite.o test1.o
+	$S/bin/lwlink  -o $@ --entry=_main  $^
 
-test-cciodw.o: test-cciodw.c
-	PATH=/home/strick/coco-shelf/bin/:$$PATH $$HOME/coco-shelf/bin/gcc6809 -S -I'../..' -std=gnu99  $<
-	PATH=/home/strick/coco-shelf/bin/:$$PATH $$HOME/coco-shelf/bin/gcc6809 -c -I'../..' -std=gnu99  $<
+dwread.o: dwread.asm
+	$S/bin/lwasm  --obj -o $@  $<
+dwwrite.o: dwwrite.asm
+	$S/bin/lwasm  --obj -o $@  $<
+
+test1.o: test1.c
+	PATH="$$(cd $S/bin; pwd):$$PATH" $S/bin/gcc6809 -S -I'../..' -std=gnu99  $<
+	PATH="$$(cd $S/bin; pwd):$$PATH" $S/bin/gcc6809 -c -I'../..' -std=gnu99  $<
