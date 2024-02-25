@@ -132,7 +132,7 @@ _FORCE_:
 ###############################################
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem burn-rom.lem
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem burn-rom.lem decb-triples
 
 burn: burn.o
 	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
@@ -141,6 +141,8 @@ burn.o: burn.s
 burn.s: $F/burning/burn.c
 	gcc6809  -S  -I$F/..  -O1 --std=gnu99 -Wall -Werror -o burn.s  $<
 rom-triples: $F/burning/rom-triples.c
+	cc -g -o $@  $<
+decb-triples: $F/burning/decb-triples.c
 	cc -g -o $@  $<
 burn-rom.lem: axiom4-whole.rom burn rom-triples
 	(cat burn ; ./rom-triples < $<) > $@
