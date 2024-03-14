@@ -44,7 +44,7 @@ func main() {
 		if i < len(*HOST) {
 			rom = append(rom, (*HOST)[i])
 		} else {
-			rom = append(rom, '_')
+			rom = append(rom, ' ')
 		}
 	}
 

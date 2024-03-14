@@ -372,6 +372,11 @@ all-drivers: rblemma.os9mod dd.b0.os9mod b0.os9mod b1.os9mod b2.os9mod b3.os9mod
 
 LWASM_FOR_DRIVER	= t=$$(basename $@ .os9mod); $(LWASM) -o $$t --pragma=pcaspcr,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export -D'Level=2' -D'H6309=0' -I'.' -I'$F' -I'$F/wiz'  --format=os9 --list=$@.list $< && mv -v $$t $@
 
+hdbdos_lemma.os9mod: $F/drivers/rblemmac.c $F/drivers/rblemmac.h $F/drivers/hdbdos_lemma.asm
+_generated_from_hdbdos_lemmac.s: hdbdos_lemmac.c rblemmac.h hdbdos_lemma.asm
+	$(CMOC)  -i --decb -O2 --function-stack=0 --switch=ifelse -S -I$F/.. -o hdbdos_lemmac.s $<
+	sed -n '/SECTION.[cr]od[ea]/, /ENDSECTION/ p' < rblemmac.s | egrep -v 'SECTION|EXPORT|IMPORT' > _generated_from_rblemmac.s
+
 rblemma.os9mod: $F/drivers/rblemmac.c $F/drivers/rblemmac.h $F/drivers/rblemma.asm
 _generated_from_rblemmac.s: rblemmac.c rblemmac.h rblemma.asm
 	$(CMOC)  -i --os9 -O2 --function-stack=0 --switch=ifelse -S -I$F/.. -o rblemmac.s $<
@@ -434,7 +439,7 @@ server: all-without-gccretro
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
 run-server: run-lemma  # Alias.
 run-lemma: server
-	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN)
+	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -dos_disk ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk
 
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all

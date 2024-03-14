@@ -108,6 +108,8 @@ struct axiom4_vars {
     word vdg_end;    // end usable portion
     word vdg_ptr;    // inside usable portion
 
+    void (*lemma_loop)(void);  // Where to re-join the loop.
+
     char* line_ptr;
 
     char line_buf[80];
@@ -172,11 +174,6 @@ struct proto {
 extern const struct proto TcpProto;
 extern const struct proto UdpProto;
 extern const struct proto BroadcastUdpProto;
-#if 0
-extern const char ClassAMask[4];
-extern const char ClassBMask[4];
-extern const char ClassCMask[4];
-#endif
 
 struct wiz_udp_recv_header {
     byte ip_addr[4];
@@ -398,8 +395,6 @@ void NativeMode() {
 
 char PolCat() {
   char inkey = 0;
-  // Gomar does not emulate keypresses for PolCat (yet).
-  if (!IsThisGomar()) {
 
 #ifdef __GNUC__
     asm volatile (R"(
@@ -413,7 +408,6 @@ char PolCat() {
     }
 #endif
 
-  }
   return inkey;
 }
 
@@ -766,6 +760,7 @@ void TcpEstablish(PARAM_JUST_SOCK) {
     if (!--stuck) Fatal("TEZ", status);
 
     if (status == SK_SR_ESTB) break;
+    Delay(1000);
     if (status == SK_SR_INIT) continue;
     if (status == SK_SR_SYNS) continue;
 
@@ -1206,15 +1201,6 @@ void DoOneCommand() {
   } else if (cmd == 'C') {
     e = DoNetwork(192, 168);
 
-  } else if (cmd == 'X') {
-    e = DoNetwork(127, 23);
-
-  } else if (cmd == 'Y') {
-    e = DoNetwork(44, 23);
-
-  } else if (cmd == 'Z') {
-    e = DoNetwork(0, 23);
-
   } else if (cmd == '@') {
     Vars->launch = true;
     goto END;
@@ -1257,7 +1243,6 @@ void DoOneCommand() {
     PrintF("A\1 :preset 10.23.23.*\n");
     PrintF("B\1 :preset 176.23.23.*\n");
     PrintF("C\1 :preset 192.168.23.*\n");
-    PrintF("X\1 or Y\1 or Z\1 :goofy presets\n");
     PrintF("S\1 :show settings\n");
     PrintF("Finally:  @\1 : launch!\n");
   }
@@ -1668,6 +1653,13 @@ void WaitForLink() {
     }
 }
 
+void LemmaLoop() {
+    while (1) {
+        errnum e = LemmaClientS1();
+        if (e) Fatal("S1", e);
+    }
+}
+
 extern int main();
 void main2() {
     Orange();
@@ -1790,12 +1782,10 @@ void main2() {
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
     Green();
-    Delay(20000);
+    Delay(500);
 
-    while (1) {
-        errnum e = LemmaClientS1();
-        if (e) Fatal("S1", e);
-    }
+    Vars->lemma_loop = &LemmaLoop;
+    LemmaLoop();
 }
 
 void DoLineBufCommands(bool echo) {

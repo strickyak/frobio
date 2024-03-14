@@ -45,17 +45,15 @@ func ReadQuint(conn net.Conn) []bytes {
   _, err = io.ReadFull(conn, bb)
   Check(err)
 }
+TODO */
 
-func WriteQuint(conn net.Conn, cmd byte, p uint, bb []bytes) {
-  n := len(bytes)
+func WriteQuint(conn net.Conn, cmd byte, p uint, bb []byte) {
+  n := len(bb)
   q := NewQuint(cmd, uint(n), p)
-  _, err := conn.Write(q[:])
-  Check(err)
-  _, err := conn.Write(bb)
-  Check(err)
+  Value( conn.Write(q[:]) )
+  Value( conn.Write(bb) )
 }
 
-TODO */
 
 func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	n := uint(len(pay))
@@ -415,3 +413,25 @@ CARD:
 		time.Sleep(3 * time.Second)
 	}
 }
+
+/*
+
+Notes on creating an OS9 disk
+
+~/coco-shelf/bin/os9 format -l'1000000' /tmp/qg
+Format Summary
+--------------
+Geometry Data:
+      Cylinders: 1600
+          Heads: 125
+  Sectors/track: 5
+    Sector size: 256
+
+Logical Data:
+  Total sectors: 1000000
+  Size in bytes: 256000000
+   Cluster size: 2
+strick@nand:~/coco-shelf/frobio/frob3/lemma/lib$ ls -s /tmp/qg
+64 /tmp/qg
+
+*/

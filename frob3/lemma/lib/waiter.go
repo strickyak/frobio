@@ -58,6 +58,7 @@ const (
 	CMD_RTI = 216
 	CMD_ECHO = 217  // reply with CMD_DATA, with high bits toggled.
 	CMD_DW = 218
+	CMD_HDBDOS = 219
 )
 
 var Demos map[string]func(net.Conn)
@@ -364,6 +365,11 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		case CMD_DW:  // echos back data with high bit toggled.
 			log.Printf("DW [n=%d.]", n)
 			panic("TODO")
+
+		case CMD_HDBDOS:
+			log.Printf("HDBDOS [n=%d.]", n)
+			pay := ReadN(conn, n)
+			HdbDos(ses, pay)
 
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
