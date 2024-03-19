@@ -1,5 +1,4 @@
-;	include COCOIOEQU.asm
-;	include W5100SEQU.asm
+* wiztcp1.asm *
 
   use cocoio.d
   use w5100s.d
@@ -13,8 +12,10 @@ S1_TX_BUF  equ  $4800
 SKBUFSIZE  equ  $800
 SKBUFMASK  equ  $7ff
 
+CMD_HDBDOS_SECTOR  equ  219
+CMD_HDBDOS_EXEC    equ  220
+
 vars  struct     ; stack variable frame.
-temp	rmb 2
 wizbuf	rmb 2
 xptr	rmb 2
 xoffset rmb 2
@@ -33,15 +34,24 @@ h_lsn0     rmb 1
     endstruct
 
 EXECMD
-  pshs dp,d,x,y,u
+  pshs d,x,y,u
 * space for variables on stack
   leas -sizeof{vars},s
   leau ,s
 
-  ldb #219  ; 219 is HDBDOS sector
+redoEXECMD
+  ldx #5    ; size for Read Sector header
+  ldb <VCMD
+  cmpb #WBLK
+  bne @skip
+  ldx #256+5   ; size for Write Sector header + payload
+@skip
+  stx vars.h_len,u
+
+  ldb #CMD_HDBDOS_SECTOR  ; 219 is HDBDOS sector
   stb vars.h_cmd,u
-  ldd #5    ; num bytes after quint
-  std vars.h_len,u
+
+  clra
   clrb
   std vars.h_param,u  ; reserved, so zero
 
@@ -50,39 +60,44 @@ EXECMD
   std vars.h_drive_num,u
   ldd <VCMD+3
   std vars.h_lsn1,u
-
   ldb <VCMD
   stb vars.h_drive_cmd,u
-  ldx <DCBPT          ; ptr to sector buffer
-  pshs b,x            ; (((((
-
-; Now Use Direct Page FF
-  lda #$FF          
-  tfr a,dp
 
   leax vars.h_cmd,u   ; ptr to start of header
   ldy #10             ; header size
   lbsr Tcp1Write       ; SEND HEADER
 
-  puls b,x            ; )))))
+
+  ldb <VCMD
   cmpb #WBLK
   beq WriteSector
 
 ReadSector
+  leax vars.h_cmd,u  ; Re-use header for response header
   ldy #10      ; 10 byte header
   bsr Tcp1Read ; read it
-  ldx >DCBPT          ; ptr to sector buffer
+  ldx <DCBPT          ; ptr to sector buffer
   ldy #256  ; sector size
   bsr Tcp1Read ; read it
-  bra AssumeNoError
+
+  ; Special Hack to execute extra code from server!
+  lda vars.h_cmd,u   ; check the response command
+  cmpa #CMD_HDBDOS_SECTOR
+  beq AssumeNoError
+  cmpa #CMD_HDBDOS_EXEC
+badReadCmd
+  bne badReadCmd    ; get stuck if unexpected cmd
+  jsr [DCBPT]
+  bra redoEXECMD
 
 WriteSector
+  ldx <DCBPT          ; ptr to sector buffer
   ldy #256            ; sector size
-  lbsr Tcp1Write ; DP must be FF when calling Tcp1Write
+  lbsr Tcp1Write
 
 AssumeNoError
   leas sizeof{vars},s
-  puls dp,d,x,y,u,pc
+  puls d,x,y,u,pc
   
 
 * Tcp1Read
@@ -91,13 +106,11 @@ AssumeNoError
 * Entry:
 *    X  = starting address where data is to be stored
 *    Y  = number of bytes expected
-*    DP = $FF
 *
 * Exit:
 *    CC = carry set on framing error, Z set if all bytes received
 *    X  = starting address of data received
 *    U is preserved.  All accumulators are clobbered
-*    DP = $FF
 
 
 Tcp1Read
@@ -105,12 +118,12 @@ Tcp1Read
   stx vars.buf,u  ; 6809 ram buffer
   sty vars.len,u
   sty vars.chunklen,u
-LoopW
+
+@loop
   ldx #S1_RX_RSR0
   bsr func_Get2
-  ;notused std vars.xsize,u
   subd vars.len,u ; S1_RX_RSR0 - len
-  blo LoopW
+  blo @loop
 * all bytes we want are available for reading now
 
 * get current pointer in receive buffer
@@ -121,30 +134,27 @@ LoopW
 * offset into receive buffer
 * roffset = rptr & SKBUFMASK
   anda #(SKBUFMASK/256)
-  ; no need to andb #(SKBUFMASK&255) because it is 255.
   std vars.xoffset,u ; roffset
 
 * The receieve buffer is circular. Check if we need to read from it in two
 *    parts or one
-*  if(roffset + len > SKBUFMASK)
-  sty vars.temp,u  ; exptectd bytes => temp
-  addd vars.temp,u  ; roffset + temp  
-  cmpd #SKBUFMASK
+*  if(roffset + len > SKBUFSIZE)
+  addd vars.len,u  ; roffset + temp  
+  cmpd #SKBUFSIZE
   ble r_once
 twice
-* 1) Read to end of buffer
-  ;;; pshs y ; len
-* rsize = SKBUFSIZE - roffset
+; 1) Read to end of buffer
+; rsize = SKBUFSIZE - roffset
   ldd #SKBUFSIZE
   subd vars.xoffset,u ; roffset
   std vars.chunklen,u ; rsize
-* rgblkget(buf, sockp->skrbstrt + roffset, rsize)
+; rgblkget(buf, sockp->skrbstrt + roffset, rsize)
   ldd vars.xoffset,u ; rofset
   addd #S1_RX_BUF
-  std vars.temp,u  ; temp
+  std vars.wizbuf,u  ; temp
   bsr readChunk    ; ----------------->
-* 2) Read remainder from beginning of buffer
-* rgblkget(buf + rsize, sockp->skrbstrt, len - rsize)
+; 2) Read remainder from beginning of buffer
+; rgblkget(buf + rsize, sockp->skrbstrt, len - rsize)
 
   ldd #S1_RX_BUF
   std vars.wizbuf,u ; wizbuf
@@ -156,7 +166,7 @@ twice
   bra r_doonce
 
 r_once
-* rgblkget(buf, sockp->skrbstrt + roffset, len)
+; rgblkget(buf, sockp->skrbstrt + roffset, len)
   ldd #S1_RX_BUF
   addd vars.xoffset,u ; roffset
   std vars.wizbuf,u ; wizbuf
@@ -180,9 +190,9 @@ readChunk
   ldx vars.buf,u
   ldy vars.chunklen,u
   ldd vars.wizbuf,u ; wiz buffer source
-  std <CIO0ADDR
+  std >CIO0ADDR
 @loop
-  lda   <CIO0DATA
+  lda   >CIO0DATA
   sta  ,x+
   leay -1,y
   bne @loop
@@ -190,9 +200,9 @@ readChunk
   rts
 
 func_Get2 ; ( X: wizreg ) -> D:word_got
-	stx <CIO0ADDR
-	lda <CIO0DATA
-	ldb <CIO0DATA
+	stx >CIO0ADDR
+	lda >CIO0DATA
+	ldb >CIO0DATA
 	rts
 
 *******************************************************
@@ -234,7 +244,7 @@ w_loop
 *  if(xoffset + len > SKBUFMASK)
 	; D still has xoffset
 	addd vars.len,u	  ; xoffset + len
-	cmpd #SKBUFMASK   ; does it exceed the MASK?
+	cmpd #SKBUFSIZE   ; does it exceed the buf size?
 	ble w_once        ; no, do it in One shot.
 
 w_twice
@@ -245,20 +255,18 @@ w_twice
 	subd vars.xoffset,u ; xoffset
 	std vars.chunklen,u ; xsize
 * rgblkget(buf, sockp->skrbstrt + xoffset, xsize)
-	; tfr d,y
-	; ldd vars.xoffset,u ; rofset
-	; addd #S1_TX_BUF
-	; std vars.wizbuf,u
+	ldd #S1_TX_BUF
+	addd vars.xoffset,u ; xoffset
+	std vars.wizbuf,u
 	bsr writeChunk
 
 * 2) Read remainder from beginning of buffer
 * rgblkget(buf + xsize, sockp->skrbstrt, len - xsize)
 	ldd #S1_TX_BUF
-	std vars.wizbuf,u ; temp
-	ldd vars.len,u   ;   total len to write
+	std vars.wizbuf,u
+	ldd vars.len,u   ;   was the total len to write
 	subd vars.chunklen,u ; amount already written
 	std vars.chunklen,u ; remaining len to write
-	;;;; tfr d,y	
 	bra w_doonce
 w_once
 * rgblkget(buf, sockp->skrbstrt + xoffset, len)
@@ -286,10 +294,10 @@ writeChunk
 	ldx vars.buf,u
         ldy vars.chunklen,u
 	ldd vars.wizbuf,u
-	std <CIO0ADDR
+	std >CIO0ADDR
 @loop
 	lda	,x+
-	sta 	<CIO0DATA
+	sta 	>CIO0DATA
 	leay -1,y
 	bne @loop
         stx vars.buf,u  ; save advanced X.
@@ -300,20 +308,19 @@ func_incr_wizreg_by_len ; ( X=wizreg len=augend )
 	lbsr func_Get2
 	leay vars.len,u ; point to augend
 	addd ,y          ; add the augend
-	stx <CIO0ADDR
-	sta <CIO0DATA
-	stb <CIO0DATA
+	stx >CIO0ADDR
+	sta >CIO0DATA
+	stb >CIO0DATA
 	rts
 
 func_command ; ( A : command byte to wiznet )
 	ldx #S1_CR
-	stx <CIO0ADDR
-	sta <CIO0DATA
+	stx >CIO0ADDR
+	sta >CIO0DATA
 @wait_for_zero
-	stx <CIO0ADDR
-	ldb <CIO0DATA
+	stx >CIO0ADDR
+	ldb >CIO0DATA
 	bne @wait_for_zero
 	rts
 
-
-
+* END wiztcp1.asm *
