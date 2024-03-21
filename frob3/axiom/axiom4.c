@@ -601,19 +601,6 @@ void Beep(byte n, byte f) {
     Delay(10);
     Pia1bOff(0x02);
     Delay(10);
-/*
-    for (byte i = 0; i < n; i++) {
-        SPIN(10);
-        Pia1bOn(0x02);
-        Delay(f<<2);
-        Pia1bOff(0x02);
-        Delay(f<<2);
-        Pia1bOn(0x02);
-        Delay(f);
-        Pia1bOff(0x02);
-        Delay(f);
-    }
-*/
 }
 #endif
 
