@@ -1,8 +1,6 @@
-// Pokes according to input from TCP Lemma, slowly.
-// Designed to be used for coco1/coco2 to burn CocoIOr EEPROM.
-// But burn-splash is a demo that just pokes to the VDG screen, instead.
-// This uses a "triples" byte format, not the Quint format.
-// Triples are ( hi-addr  lo-addr  data-byte ).
+// Burn the CocoIOr EEPROM, given a DECB binary streamed from lemma.
+// The DECB binary should load in the range $C000-$DFFF.
+// The final 255 quintuple (the entry address) is ignored.
 
 // Conventional types and constants for Frobio
 
@@ -17,17 +15,20 @@ typedef unsigned char errnum;
 typedef unsigned int word;
 typedef void (*func_t)();
 
-#define WIZ_PORT  0xFF68   // Hardware port.
+#define CASBUF 0x01DA    // Rock the CASBUF, rock the CASBUF!
+
 struct wiz_port {
   volatile byte command;
   volatile word addr;
   volatile byte data;
 };
-#define WIZ  ((struct wiz_port*)WIZ_PORT)
-
-#define CASBUF 0x01DA    // Rock the CASBUF, rock the CASBUF!
-#define VDG_RAM  0x0400  // default 32x16 64-char screen
-#define VDG_END  0x0600
+struct vars {
+  struct wiz_port* wiz;
+};
+// CASBUF[0:63] is used to buffer a chunk.
+// So we start the vars at CABUF+80.
+#define VARS ((struct vars*)(CASBUF+80))
+#define WIZ  VARS->wiz
 
 #define RING_SIZE 2048
 #define RING_MASK (RING_SIZE - 1)
@@ -105,26 +106,39 @@ void Delay(word n) {
   }
 }
 
+void Print(word screen, const char* s) {
+  for (; *s; s++) {
+  	byte ch = 63 & *s;
+	POKE1(screen, ch);
+	screen++;
+  }
+}
+void Fatal(const char* s) {
+  	Print(0x5C0, "***  FATAL:  ***" );
+  	Print(0x5E0, s);
+	while (1) {}
+}
+
 // Software Data Protection:
 // See page 10 (sections 19, 20) of
 // https://ww1.microchip.com/downloads/en/DeviceDoc/doc0270.pdf
 // for these magic numbers.
 void EnableProtection() {
-  Delay(1000);
+  Delay(500);
   POKE1( ROM + 0x1555, 0xAA);
   POKE1( ROM + 0x0AAA, 0x55);
   POKE1( ROM + 0x1555, 0xA0);
-  Delay(1000);
+  Delay(500);
 }
 void DisableProtection() {
-  Delay(1000);
+  Delay(500);
   POKE1( ROM + 0x1555, 0xAA);
   POKE1( ROM + 0x0AAA, 0x55);
   POKE1( ROM + 0x1555, 0x80);
   POKE1( ROM + 0x1555, 0xAA);
   POKE1( ROM + 0x0AAA, 0x55);
   POKE1( ROM + 0x1555, 0x20);
-  Delay(1000);
+  Delay(500);
 }
 
 /////////////////////////////////////////
@@ -195,26 +209,11 @@ void PrintHex(word loc, word val) {
 	POKE1(loc+7, ' ');
 }
 
-
-void Print(word screen, const char* s) {
-  for (; *s; s++) {
-  	byte ch = 63 & *s;
-	POKE1(screen, ch);
-	screen++;
-  }
-}
 void ClearScreen(byte ch) {
   for (word ptr = VDG_RAM; ptr < VDG_END; ptr++) {
     POKE1(ptr, ch);
   }
 }
-void Fatal(byte ch) {
-	ClearScreen(ch);
-	while (1) {
-		POKE1(0x05FF, 1+PEEK1(0x05FF));
-	}
-}
-
 void Burn(word n, word p) {
 	while (n) {
 		PrintHex(0x520, n);
@@ -234,36 +233,33 @@ void Burn(word n, word p) {
 		}
 		n -= size;
 		p += size;
-		Delay(1000);
+		Delay(500);
 	}
-/*
-	word prev = 0;
-	for (; n; n--) {
-		PrintHex(0x520, n);
-		PrintHex(0x528, p);
-		byte b = Recv();
-		if ((prev&0xFFC0) != (p&0xFFC0)) {
-			Delay(1000);
-		}
-		POKE1(p, b);
-		prev = p;
-		p++;
-	}
-*/
 	PrintHex(0x520, n);
 	PrintHex(0x528, p);
 }
 
+void DetectWiz() {
+	if (PEEK1(0xFF68) == 3) {
+		WIZ = (struct wiz_port*) 0xFF68;
+		Print(0x0400, "WIZNET DETECTED AT $FF68.");
+	} else if (PEEK1(0xFF78) == 3) {
+		WIZ = (struct wiz_port*) 0xFF78;
+		Print(0x0400, "WIZNET DETECTED AT $FF78.");
+	} else {
+  		Fatal("CANNOT DETECT WIZNET. ");
+	}
+}
+
 int main() {
   ClearScreen(':');
-  for (byte i = 0; i < 16; i++) {
-  	PrintHex(0x400 + (i<<3), i);
-  }
+  DetectWiz();
   Print(0x480, "HIT X WHEN READY TO BURN.");
   while (1) {
   	byte b = PolCat();
 	if (b == 'X' || b == 'x') break;
   }
+  Print(0x480, "                         ");
   Print(0x4A0, "    BURNING...           ");
 
   DisableProtection();
@@ -284,16 +280,14 @@ int main() {
 	} else if (cmd == 0) {
 		Burn(n, p);
 	} else {
-		Fatal('?');
+		Fatal("DATA ERROR FROM SERVER");
 	}
   }
 
   EnableProtection();
   EnableProtection();
   EnableProtection();
-  Print(0x4C0, "DONE.      (REBOOT!)");
-  for (byte i = 0; i < 16; i++) {
-  	PrintHex(0x400 + (i<<3), i+100);
-  }
+  Print(0x4A0, "                         ");
+  Print(0x560, "  DONE.  ");
   while(1) continue;
 }
