@@ -132,7 +132,7 @@ _FORCE_:
 ###############################################
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb decb-triples primes41.decb primes41-c300.decb burn-splash.lem  burn-rom.lem burn-primes.lem burn-rom-fast.lem burn-primes-fast.lem 
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb decb-triples primes41.decb primes41-c300.decb burn-splash.lem  burn-rom-fast.lem burn-primes-fast.lem 
 
 burn: burn.o
 	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
@@ -146,27 +146,10 @@ burn-decb.o: burn-decb.s
 	$(LWASM) --format=obj --pragma=newsource --pragma=cescapes --output=$@ --list=$@.list --map=$@.map  $<
 burn-decb.s: $F/burning/burn-decb.c
 	gcc6809  -S  -I$F/..  -Os --std=gnu99 -Wall -Werror -o $@ $<
-rom-triples: $F/burning/rom-triples.c
-	cc -g -o $@  $<
-primes-triples: $F/burning/primes-triples.c
-	cc -g -o $@  $<
-rom-triples: $F/burning/rom-triples.c
-	cc -g -o $@  $<
-primes-triples: $F/burning/primes-triples.c
-	cc -g -o $@  $<
-decb-triples: $F/burning/decb-triples.c
-	cc -g -o $@  $<
 ########################################################################
-burn-rom.lem: axiom41.rom burn rom-triples
-	(cat burn ; ./rom-triples < $<) > $@
-burn-primes.lem: primes41.rom burn primes-triples
-	(cat burn ; ./primes-triples < $<) > $@
-########################################################################
-burn-rom-fast.lem: axiom41.decb burn rom-triples burn-decb.bin
-	: adding -decb
+burn-rom-fast.lem: axiom41.decb burn-decb.bin
 	cat burn-decb.bin $< > $@
-burn-primes-fast.lem: primes41.decb burn primes-triples burn-decb.bin
-	: adding -decb
+burn-primes-fast.lem: primes41.decb burn-decb.bin
 	cat burn-decb.bin $< > $@
 ########################################################################
 splash-triples: $F/burning/splash-triples.c
@@ -464,7 +447,7 @@ lem.os9mod: lem.asm defsfile
 
 #######################################################################################
 
-all-lemmings: burn-rom.lem burn-splash.lem
+all-lemmings: burn-rom-fast.lem burn-splash.lem
 	-test -s ../eou-h6309/63EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
 	-test -s ../eou-m6809/68EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
