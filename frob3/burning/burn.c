@@ -51,13 +51,16 @@ void Delay() {
 // for these magic numbers.
 void EnableProtection() {
   Delay();
+  Delay();
   volatile byte* p;
   p = ROM + 0x1555, *p = 0xAA;
   p = ROM + 0x0AAA, *p = 0x55;
   p = ROM + 0x1555, *p = 0xA0;
   Delay();
+  Delay();
 }
 void DisableProtection() {
+  Delay();
   Delay();
   volatile byte* p;
   p = ROM + 0x1555, *p = 0xAA;
@@ -66,6 +69,7 @@ void DisableProtection() {
   p = ROM + 0x1555, *p = 0xAA;
   p = ROM + 0x0AAA, *p = 0x55;
   p = ROM + 0x1555, *p = 0x20;
+  Delay();
   Delay();
 }
 
@@ -160,12 +164,16 @@ void ClearScreen() {
 int main() {
   ClearScreen();
   DisableProtection();
+  DisableProtection();
+  DisableProtection();
 
   bool done;
   do { done = DoTripleReturnDone(); } while (!done);
   *(byte*)(VDG_RAM+4*32+0) = 'O' & 0x3F;
   *(byte*)(VDG_RAM+4*32+1) = 'K' & 0x3F;
 
+  EnableProtection();
+  EnableProtection();
   EnableProtection();
   while(1) continue;
 }
