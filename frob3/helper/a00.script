@@ -1,0 +1,2 @@
+section .text   load 0x0A00
+section *

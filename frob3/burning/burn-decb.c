@@ -16,6 +16,8 @@ typedef unsigned int word;
 typedef void (*func_t)();
 
 #define CASBUF 0x01DA    // Rock the CASBUF, rock the CASBUF!
+#define VDG_RAM 0x0400
+#define VDG_END 0x0600
 
 struct wiz_port {
   volatile byte command;

@@ -195,7 +195,7 @@ primes41.rom: _FORCE_
 primes41.decb: primes41.rom
 	lwasm --decb $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o$@
 primes41-c300.decb: primes41.rom
-	lwasm --decb $F/axiom41/primes41-c300.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o$@
+	lwasm --decb $F/axiom41/primes41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o$@
 
 ### axiom4 is the new axiom.
 axiom4-whole.rom: axiom4.c preboot3.asm
