@@ -33,3 +33,19 @@ Trying...
 go run /sy/doing_os9/gomar/borges/borges.go -glob '*.list' -outdir ~/sy/doing_os9/borges/  .
 
 ;;;;;;;;;;;;;;;;;;;;;;;
+
+what are DSKI$ and DSKO$ ?
+
+https://subethasoftware.com/2023/04/25/coco-disk-basic-disk-structure-part-1/
+
+0 'DISKFREE.BAS
+10 CLEAR 384
+20 INPUT "DRIVE";DR
+30 DSKI$ DR,17,2,A$,B$
+40 FOR I=1 TO 68
+50 GN=ASC(MID$(A$,I,1))
+55 IF GN=255 THEN FG=FG+1 ELSE PRINT GN;
+60 NEXT:PRINT
+70 PRINT "FREE GRANULES:";FG
+
+;;;;;;;;;;;;;;;;;;;;;;;
