@@ -84,7 +84,7 @@ func WriteFive(conn net.Conn, cmd byte, n uint, p uint) {
 }
 func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
 	quint := make([]byte, 5)
-	log.Printf("ReadFive...")
+	log.Printf("===================================")
 	_, err := io.ReadFull(conn, quint)
 	if err != nil {
 		log.Panicf("ReadFive: stopping due to error: %v", err)
@@ -207,7 +207,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 	for {
 		cmd, n, p := ReadFive(conn)
-		log.Printf("ReadFive: cmd=%02x n=%04x p=%04x ...", cmd, n, p)
+		log.Printf("===== ReadFive: cmd=%02x n=%04x p=%04x ........", cmd, n, p)
 
 		switch cmd {
 
@@ -363,11 +363,11 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			conn.Write(pay)
 
 		case CMD_DW:  // echos back data with high bit toggled.
-			log.Printf("DW [n=%d.]", n)
+			log.Printf("DW [n=%d. p=%d.]", n, p)
 			panic("TODO")
 
 		case CMD_HDBDOS:
-			log.Printf("HDBDOS [n=%d.]", n)
+			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
 			pay := ReadN(conn, n)
 			HdbDos(ses, pay)
 

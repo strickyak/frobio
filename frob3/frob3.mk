@@ -132,27 +132,72 @@ _FORCE_:
 ###############################################
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb burn-splash.lem burn-rom.lem decb-triples
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb decb-triples primes41.decb primes41-c300.decb burn-splash.lem  burn-rom.lem burn-primes.lem burn-rom-fast.lem burn-primes-fast.lem 
 
 burn: burn.o
 	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
 burn.o: burn.s
-	$(LWASM) --format=obj --output=burn.o --list=burn.list --map=burn.map  $<
+	$(LWASM) --format=obj --pragma=newsource --pragma=cescapes --output=$@ --list=burn.list --map=burn.map  $<
 burn.s: $F/burning/burn.c
-	gcc6809  -S  -I$F/..  -O1 --std=gnu99 -Wall -Werror -o burn.s  $<
+	gcc6809  -S  -I$F/..  -O1 --std=gnu99 -Wall -Werror -o $@  $<
+burn-decb.bin: burn-decb.o
+	$(LWLINK) --format=decb --entry=_main --script=$F/helper/a00.script -o $@  $<
+burn-decb.o: burn-decb.s
+	$(LWASM) --format=obj --pragma=newsource --pragma=cescapes --output=$@ --list=$@.list --map=$@.map  $<
+burn-decb.s: $F/burning/burn-decb.c
+	gcc6809  -S  -I$F/..  -Os --std=gnu99 -Wall -Werror -o $@ $<
 rom-triples: $F/burning/rom-triples.c
+	cc -g -o $@  $<
+primes-triples: $F/burning/primes-triples.c
+	cc -g -o $@  $<
+rom-triples: $F/burning/rom-triples.c
+	cc -g -o $@  $<
+primes-triples: $F/burning/primes-triples.c
 	cc -g -o $@  $<
 decb-triples: $F/burning/decb-triples.c
 	cc -g -o $@  $<
-burn-rom.lem: axiom4-whole.rom burn rom-triples
+########################################################################
+burn-rom.lem: axiom41.rom burn rom-triples
 	(cat burn ; ./rom-triples < $<) > $@
+burn-primes.lem: primes41.rom burn primes-triples
+	(cat burn ; ./primes-triples < $<) > $@
+########################################################################
+burn-rom-fast.lem: axiom41.decb burn rom-triples burn-decb.bin
+	: adding -decb
+	cat burn-decb.bin $< > $@
+burn-primes-fast.lem: primes41.decb burn primes-triples burn-decb.bin
+	: adding -decb
+	cat burn-decb.bin $< > $@
+########################################################################
 splash-triples: $F/burning/splash-triples.c
 	cc -g -o $@  $<
 burn-splash.lem: burn splash-triples
 	(cat burn ; ./splash-triples) > $@
 
-### axiom4 is the new axiom.
+### axiom41 is the newest axiom.
+axiom41.rom: _FORCE_  primes41.rom
+	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/axcore.c 
+	sed -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^_main:/,/^$$/d' < axcore.s > _axcore.s
+	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/rescue.c 
+	sed -e 's/jmp/lbra/' -e 's/jsr/lbsr/' -e 's/\<_[A-Za-z0-9_]*\>/R&/' -e 's/\<L[0-9]*\>/R&/' -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^R_main:/,$$d' < rescue.s > _rescue.s
+	lwasm --raw $F/axiom41/axiom41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=axiom41.list --map=axiom41.map -o$@
+axiom41.decb: axiom41.rom
+	lwasm --decb $F/axiom41/axiom41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o$@
+axiom41-c300.decb: axiom41.rom
+	lwasm --decb $F/axiom41/axiom41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=axiom41-c300.list --map=axiom41-c300.map -o$@
 
+primes41.rom: _FORCE_
+	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/primes.c 
+	sed -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^_main:/,/^$$/d' < primes.s > _primes.s
+	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/rescue.c 
+	sed -e 's/jmp/lbra/' -e 's/jsr/lbsr/' -e 's/\<_[A-Za-z0-9_]*\>/R&/' -e 's/\<L[0-9]*\>/R&/' -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^R_main:/,$$d' < rescue.s > _rescue.s
+	lwasm --raw $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41.list --map=primes41.map -o$@
+primes41.decb: primes41.rom
+	lwasm --decb $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o$@
+primes41-c300.decb: primes41.rom
+	lwasm --decb $F/axiom41/primes41-c300.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o$@
+
+### axiom4 is the new axiom.
 axiom4-whole.rom: axiom4.c preboot3.asm
 	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
 	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
@@ -439,7 +484,8 @@ server: all-without-gccretro
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
 run-server: run-lemma  # Alias.
 run-lemma: server
-	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -dos_disk ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk
+	cp -fv ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk /tmp/disk0.dsk
+	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -dos_disk /tmp/disk0.dsk
 
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all
