@@ -109,10 +109,9 @@ results2b: results2 all-axiom all-axiom4
 	:
 	ls -l results/BOOTING/
 
-results3: results2b burn-splash.lem
+results3: results2b
 	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
 	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
-	#cp -v burn-splash.lem results/LEMMINGS/burn-splash.lem
 
 results3-without-gccretro: results2
 	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
@@ -124,7 +123,7 @@ clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup
-	rm -f utility-* burn rom-triples splash-triples
+	rm -f utility-* burn
 	rm -rf results
 
 _FORCE_:
@@ -132,7 +131,7 @@ _FORCE_:
 ###############################################
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb decb-triples primes41.decb primes41-c300.decb burn-splash.lem  burn-rom-fast.lem burn-primes-fast.lem 
+all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb primes41.decb primes41-c300.decb burn-rom-fast.lem burn-primes-fast.lem 
 
 burn: burn.o
 	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
@@ -152,10 +151,6 @@ burn-rom-fast.lem: axiom41.decb burn-decb.bin
 burn-primes-fast.lem: primes41.decb burn-decb.bin
 	cat burn-decb.bin $< > $@
 ########################################################################
-splash-triples: $F/burning/splash-triples.c
-	cc -g -o $@  $<
-burn-splash.lem: burn splash-triples
-	(cat burn ; ./splash-triples) > $@
 
 ### axiom41 is the newest axiom.
 axiom41.rom: _FORCE_  primes41.rom
@@ -447,7 +442,7 @@ lem.os9mod: lem.asm defsfile
 
 #######################################################################################
 
-all-lemmings: burn-rom-fast.lem burn-splash.lem
+all-lemmings: burn-rom-fast.lem
 	-test -s ../eou-h6309/63EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
 	-test -s ../eou-m6809/68EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
@@ -470,6 +465,7 @@ run-lemma: server
 	cp -fv ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk /tmp/disk0.dsk
 	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -dos_disk /tmp/disk0.dsk
 
+##############  Old Junk Follows
 #   For debugging with Gomar on Loopback.
 run-lemma-L: all
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
