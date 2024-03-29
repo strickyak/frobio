@@ -55,6 +55,11 @@ SETUP
         lda IDNUM
         std <VCMD+1    ; drive num & LSN[2]  ; <$F4,5
         stx <VCMD+3    ; LSN[1] & LSN[0]     ; <$F6,7
+	; publish TCP Read & Write entry points.
+	ldx #Tcp1Read
+	stx $FA0C
+	ldx #Tcp1Write
+	stx $FA0E
         rts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
