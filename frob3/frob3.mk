@@ -4,7 +4,7 @@
 
 LAN=10.23.23.23
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 results2 all-lemmings results3
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 results2 hdbdos.lem all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
 	sync
 
@@ -19,7 +19,7 @@ NUM_MODULES = 14
 
 ###############################################
 
-VPATH = $F $F/axiom $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds
+VPATH = $F $F/axiom $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos
 
 FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
 WIZ_C = $F/wiz/wiz5100s.c
@@ -129,6 +129,12 @@ clean: _FORCE_
 _FORCE_:
 
 ###############################################
+
+hdbdos.lem: hdbdos.rom
+	cat $F/../../toolshed/hdbdos/preload $F/../../toolshed/hdbdos/preload2 $< $F/../../toolshed/hdbdos/postload > $@
+hdbdos.rom: ecb_equates.asm hdbdos.asm 
+	$(LWASM) -D'LEMMA=1' -r $^ --output=$@ -I$F/../../toolshed/hdbdos/ -I$F/wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list=hdbdos.rom.list --map=hdbdos.rom.map
+
 
 all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
 all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb primes41.decb primes41-c300.decb burn-rom-fast.lem burn-primes-fast.lem 

@@ -8,7 +8,15 @@ import (
 
 var FlagDosDisk = flag.String("dos_disk", "", "for HdbDos")
 
+type HdbDosSession struct {
+	NumReads	int64
+}
+
 func HdbDos(ses *Session, payload []byte) {
+	if ses.HdbDos == nil {
+		 ses.HdbDos = &HdbDosSession{
+		 }
+	}
 	cmd := payload[0]
 	drive := payload[1]
 	lsn2 := uint(payload[2])
@@ -21,7 +29,8 @@ func HdbDos(ses *Session, payload []byte) {
 
 	switch cmd {
 	case 2: // Read
-		if drive==0 && lsn==0 {
+		ses.HdbDos.NumReads++
+		if true && ses.HdbDos.NumReads == 1 {
 			SendInitialInjections(ses)
 		}
 
@@ -73,6 +82,7 @@ func SendInitialInjections(ses *Session) {
 	}
 
 	WriteQuint(ses.Conn, CMD_HDBDOS+1, 0, buf)
+	DumpHexLines("Injection", 0, buf)
 }
 
 var SideLoadRaw = []byte{

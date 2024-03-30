@@ -209,6 +209,8 @@ type Session struct {
 
 	Procs map[uint]*Proc
 
+	HdbDos	*HdbDosSession
+
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
 	// Card *Card // Current card.

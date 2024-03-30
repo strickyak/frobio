@@ -75,6 +75,11 @@ to stress your CocoIO Card.
 		Block0: ".EOU_M6809.dsk",
 	})
 
+	Add(35, 0, "HDB-DOS (Disk Basic)", &Card{})
+	Add(351, 35, "HDB-DOS with Remote Filesystems", &Card{
+		Launch: ".hdbdos.lem",
+	})
+
 	Add(40, 0, "Utilities", &Card{})
 
 	Add(41, 40, "screen splash burner demo", &Card{

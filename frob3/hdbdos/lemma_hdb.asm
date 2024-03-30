@@ -105,7 +105,7 @@ redoEXECMD
   cmpb #WBLK
   beq WriteSector
 
-ReadSector
+ReadSector:
   leax vars.h_cmd,u  ; Re-use header for response header
   ldy #10      ; 10 byte header
   bsr Tcp1Read ; read it
@@ -118,17 +118,19 @@ ReadSector
   cmpa #CMD_HDBDOS_SECTOR
   beq AssumeNoError
   cmpa #CMD_HDBDOS_EXEC
-badReadCmd
-  bne badReadCmd    ; get stuck if unexpected cmd
+  beq ConsumeExecPacket
+badReadCmd:
+  bra badReadCmd    ; get stuck if unexpected cmd
+ConsumeExecPacket:
   jsr [DCBPT]
-  bra redoEXECMD
+  bra ReadSector
 
-WriteSector
+WriteSector:
   ldx <DCBPT          ; ptr to sector buffer
   ldy #256            ; sector size
   lbsr Tcp1Write
 
-AssumeNoError
+AssumeNoError:
   leas sizeof{vars},s
   puls d,x,y,u,pc
 
