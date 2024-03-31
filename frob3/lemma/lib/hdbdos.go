@@ -4,9 +4,12 @@ import (
 	"flag"
 	"log"
 	"os"
+	"io/ioutil"
 )
 
 var FlagDosDisk = flag.String("dos_disk", "", "for HdbDos")
+var FlagSideloadRaw = flag.String("sideload_raw", "sideload.lwraw", "raw machine code fragment for HdbDos")
+var FlagInkeyRaw = flag.String("inkey_raw", "inkey_trap.lwraw", "raw machine code fragment for HdbDos")
 
 type HdbDosSession struct {
 	NumReads	int64
@@ -47,7 +50,7 @@ func HdbDos(ses *Session, payload []byte) {
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
 		DumpHexLines("REPLY", 0, buf)
-		WriteQuint(ses.Conn, CMD_HDBDOS, 0, buf)
+		WriteQuint(ses.Conn, CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
 		fd := Value(os.OpenFile(*FlagDosDisk, os.O_RDWR, 0666))
@@ -61,7 +64,38 @@ func HdbDos(ses *Session, payload []byte) {
 	}
 }
 
+func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte) {
+	buf := make([]byte, 5+256)
+	copy(buf[5:], sideload)
+	copy(buf[5+64:], payload)
+
+	buf[5 + 0x3C] = byte(len(payload))
+	buf[5 + 0x38] = byte(dest>>8)
+	buf[5 + 0x39] = byte(dest)
+
+	if exec {
+		buf[5 + 0x3A] = byte(dest>>8)
+		buf[5 + 0x3B] = byte(dest)
+	}
+
+	WriteQuint(ses.Conn, CMD_HDBDOS_EXEC, 0, buf)
+	DumpHexLines("Injection", 0, buf)
+}
+
 func SendInitialInjections(ses *Session) {
+	var splash []byte
+	for i:=0; i < 32; i++ {
+		// Splash some semigraphics chars
+		splash = append(splash, byte(256 - 32 + i))
+	}
+
+	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
+	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, splash)
+
+	inkey := Value(ioutil.ReadFile(*FlagInkeyRaw))
+	Inject(ses, sideload, 0xFA12 /* INKEY_TRAP_INIT */, true, inkey)
+
+/*
 	// Currently, just send some semigraphics chars to the text screen.
 	buf := make([]byte, 5+256)
 	copy(buf[5:], SideLoadRaw)
@@ -81,14 +115,17 @@ func SendInitialInjections(ses *Session) {
 		buf[5 + 64 + i] = byte(256 - 32 + i)
 	}
 
-	WriteQuint(ses.Conn, CMD_HDBDOS+1, 0, buf)
+	WriteQuint(ses.Conn, CMD_HDBDOS_EXEC, 0, buf)
 	DumpHexLines("Injection", 0, buf)
+*/
 }
 
+/*
 var SideLoadRaw = []byte{
 	0x34, 0x76, 0x10, 0xbe, 0x06, 0x38, 0x8e, 0x06, 0x40, 0xf6, 0x06, 0x3c, 0xa6, 0x80, 0xa7, 0xa0,
 	0x5a, 0x26, 0xf9, 0xbe, 0x06, 0x3a, 0x27, 0x02, 0xad, 0x84, 0x35, 0xf6,
 }
+*/
 
 /*
      1	                      (     sideload.asm):00001         ;; sideload.asm

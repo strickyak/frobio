@@ -15,6 +15,9 @@ SKBUFMASK  equ  $7ff
 CMD_HDBDOS_SECTOR  equ  219
 CMD_HDBDOS_EXEC    equ  220
 
+PTR_TO_TCP1READ equ $FA0C
+PTR_TO_TCP1WRITE equ $FA0E
+
 vars  struct     ; stack variable frame.
 wizbuf        rmb 2
 xptr        rmb 2

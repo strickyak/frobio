@@ -4,7 +4,7 @@
 
 LAN=10.23.23.23
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom results1 results2 hdbdos.lem all-lemmings results3
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom all-hdbdos results1 results2 all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
 	sync
 
@@ -129,6 +129,14 @@ clean: _FORCE_
 _FORCE_:
 
 ###############################################
+
+all-hdbdos: hdbdos.rom hdbdos.lem sideload.lwraw inkey_trap.lwraw
+
+%.lwraw : %.asm
+	$(LWASM) --raw $< -o'$@' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
+
+##sideload.raw: sideload.asm
+#inkey_trap.raw: inkey_trap.asm
 
 hdbdos.lem: hdbdos.rom
 	cat $F/../../toolshed/hdbdos/preload $F/../../toolshed/hdbdos/preload2 $< $F/../../toolshed/hdbdos/postload > $@

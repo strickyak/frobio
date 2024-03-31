@@ -58,7 +58,8 @@ const (
 	CMD_RTI = 216
 	CMD_ECHO = 217  // reply with CMD_DATA, with high bits toggled.
 	CMD_DW = 218
-	CMD_HDBDOS = 219
+	CMD_HDBDOS_SECTOR = 219
+	CMD_HDBDOS_EXEC = 220
 )
 
 var Demos map[string]func(net.Conn)
@@ -366,7 +367,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			log.Printf("DW [n=%d. p=%d.]", n, p)
 			panic("TODO")
 
-		case CMD_HDBDOS:
+		case CMD_HDBDOS_SECTOR:
 			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
 			pay := ReadN(conn, n)
 			HdbDos(ses, pay)
