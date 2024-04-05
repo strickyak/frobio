@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"runtime/debug"
 )
 
 var PORT = flag.Int("port", 2319, "Listen on this TCP port")
@@ -31,6 +32,7 @@ const (
 	CMD_POKE = 0
 	CMD_CALL = 255
 
+	CMD_PEEK2 = 195      // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
 	CMD_BEGIN_MUX = 196
 	CMD_MID_MUX   = 197
 	CMD_END_MUX   = 198
@@ -58,8 +60,9 @@ const (
 	CMD_RTI = 216
 	CMD_ECHO = 217  // reply with CMD_DATA, with high bits toggled.
 	CMD_DW = 218
-	CMD_HDBDOS_SECTOR = 219
-	CMD_HDBDOS_EXEC = 220
+	CMD_HDBDOS_SECTOR = 219  // Normal HDBDOS block I/O.
+	CMD_HDBDOS_EXEC = 220    // Slip in sideloaded pages via EXEC records.
+	CMD_HDBDOS_HIJACK = 221  // CLEAR key hijacks the machine from BASIC.
 )
 
 var Demos map[string]func(net.Conn)
@@ -370,7 +373,12 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		case CMD_HDBDOS_SECTOR:
 			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
 			pay := ReadN(conn, n)
-			HdbDos(ses, pay)
+			HdbDosSector(ses, pay)
+
+		case CMD_HDBDOS_HIJACK:
+			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
+			pay := ReadN(conn, n)
+			HdbDosHijack(ses, pay)
 
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
@@ -398,6 +406,8 @@ func Serve(conn net.Conn) {
 	defer func() {
 		r := recover()
 		if r != nil {
+			log.Printf("Recovered: %q", r)
+			debug.PrintStack()
 			log.Printf("Closing connection %q: Exception %v", conn.RemoteAddr().String(), r)
 		} else {
 			log.Printf("Done with connection %q", conn.RemoteAddr().String())

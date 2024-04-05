@@ -122,7 +122,7 @@ results3-without-gccretro: results2
 clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
-	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup
+	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup *.raw *.lwraw
 	rm -f utility-* burn
 	rm -rf results
 
@@ -477,7 +477,7 @@ server: all-without-gccretro
 run-server: run-lemma  # Alias.
 run-lemma: server
 	cp -fv ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk /tmp/disk0.dsk
-	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -dos_disk /tmp/disk0.dsk
+	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
 
 ##############  Old Junk Follows
 #   For debugging with Gomar on Loopback.

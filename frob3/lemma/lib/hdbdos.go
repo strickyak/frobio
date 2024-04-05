@@ -2,50 +2,139 @@ package lib
 
 import (
 	"flag"
+	"io/ioutil"
 	"log"
 	"os"
-	"io/ioutil"
+	PFP "path/filepath"
+	// "time"
 )
 
-var FlagDosDisk = flag.String("dos_disk", "", "for HdbDos")
+var FlagDosRoot = flag.String("dos_root", "", "for HdbDos")
 var FlagSideloadRaw = flag.String("sideload_raw", "sideload.lwraw", "raw machine code fragment for HdbDos")
 var FlagInkeyRaw = flag.String("inkey_raw", "inkey_trap.lwraw", "raw machine code fragment for HdbDos")
 
-type HdbDosSession struct {
-	NumReads	int64
+const NumDrives = 10
+
+const FloppySize = 161280
+
+type HdbDosDrive struct {
+	Path string
+	Image []byte
+	Dirty bool
 }
 
-func HdbDos(ses *Session, payload []byte) {
-	if ses.HdbDos == nil {
-		 ses.HdbDos = &HdbDosSession{
-		 }
+type HdbDosSession struct {
+	NumReads  int64
+	SavedText []byte
+
+	Drives [NumDrives]*HdbDosDrive
+}
+
+func (h * HdbDosSession) SetDrive(drive byte, c *Chooser) {
+	log.Printf("SetDrive: %d %v", drive, *c)
+
+	// Create the drive record, if needed.  Call it d.
+	if h.Drives[drive] == nil {
+		h.Drives[drive] = &HdbDosDrive{}
+		log.Printf("@@@@@@@@@@ created HdbDosDrive{} number %d.", drive)
 	}
+	d := h.Drives[drive]
+
+	if !c.IsDir && c.Size == FloppySize {
+		// TODO: if drive is dirty, save it somewhere.
+		d.Path = c.Path()
+		d.Image = nil
+		d.Dirty = false
+	}
+}
+
+func TextChooserShell(ses *Session) {
+	t := &TextVGA{
+		Ses: ses,
+	}
+	t.Loop()  // Loop until we return from Hijack.
+}
+
+// Entry from waiter.go for a Hijack.
+func HdbDosHijack(ses *Session, payload []byte) {
+	ses.HdbDos.SavedText = payload
+
+	slashes := make([]byte, 512)
+	for i := 0; i < 512; i++ {
+		slashes[i] = '/'
+	}
+	WriteQuint(ses.Conn, CMD_POKE, 0x400, slashes)
+	TextChooserShell(ses)
+
+	WriteQuint(ses.Conn, CMD_POKE, 0x400, slashes)
+	WriteQuint(ses.Conn, CMD_POKE, 0x400, ses.HdbDos.SavedText)
+
+	// We tell coco that this is the END of the HIJACK.
+	WriteQuint(ses.Conn, CMD_HDBDOS_HIJACK, 0, []byte{})
+}
+
+// Entry from waiter.go for a Sector.
+func HdbDosSector(ses *Session, payload []byte) {
+	if ses.HdbDos == nil {
+		ses.HdbDos = &HdbDosSession{}
+	}
+	h := ses.HdbDos
 	cmd := payload[0]
-	drive := payload[1]
+	lsn3 := uint(payload[1])
 	lsn2 := uint(payload[2])
 	lsn1 := uint(payload[3])
 	lsn0 := uint(payload[4])
-	lsn := (lsn2 << 16) | (lsn1 << 8) | lsn0
+	lsnBig := (lsn3 << 24) | (lsn2 << 16) | (lsn1 << 8) | lsn0
+
+	drive := lsnBig / 630
+	lsn := lsnBig % 630
+	front := 256 * lsn
+	back := front + 256
 
 	log.Printf("HdbDos cmd=%x drive=%x lsn=%x paylen=%d.", cmd, drive, lsn, len(payload))
 	DumpHexLines("payload", 0, payload)
 
+	// Create the drive record, if needed.  Call it d.
+	if h.Drives[drive] == nil {
+		h.Drives[drive] = &HdbDosDrive{}
+		log.Printf("@@@@@@@@@@ created HdbDosDrive{} number %d.", drive)
+	}
+	d := h.Drives[drive]
+
+	// Open the drive, if needed.
+	// Has it been mounted?
+	if d.Path == "" {
+		// No mount, so make it an empty disk.
+		d.Path = "--new--"  // temporary bogus name
+		d.Image = EmptyDecbInitializedDiskImage()
+		d.Dirty = false
+		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} number %d.", drive)
+	}
+	if d.Image == nil {
+		bb, err := os.ReadFile(PFP.Join(*FlagDosRoot, d.Path))
+		if err != nil {
+			log.Panicf("HdbDosSector ReadFile failed %q: %v", d.Path, err)
+		}
+		if len(bb) != 161280 {
+			log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
+		}
+		d.Image = bb
+		d.Dirty = false
+		log.Printf("@@@@@@@@@@ opend file %q HdbDosDrive{} number %d.", d.Path, drive)
+	}
+
 	switch cmd {
 	case 2: // Read
-		ses.HdbDos.NumReads++
-		if true && ses.HdbDos.NumReads == 1 {
+		h.NumReads++
+		if true && h.NumReads == 1 {
 			SendInitialInjections(ses)
 		}
-
-		fd := Value(os.Open(*FlagDosDisk))
-		defer fd.Close()
 
 		buf := make([]byte, 256+5)
 		for i := 0; i < 5; i++ {
 			buf[i] = payload[i]
 		}
-		Value(fd.Seek(256*int64(lsn), 0))
-		Value(fd.Read(buf[5:]))
+		copy(buf[5:], d.Image[front:back])
 		log.Printf("HDB READ lsn=%d.: %02x", lsn, buf[5:])
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
@@ -53,12 +142,9 @@ func HdbDos(ses *Session, payload []byte) {
 		WriteQuint(ses.Conn, CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
-		fd := Value(os.OpenFile(*FlagDosDisk, os.O_RDWR, 0666))
-		defer fd.Close()
-
-		Value(fd.Seek(256*int64(lsn), 0))
-		Value(fd.Write(payload[5:]))
+		copy(payload[5:], d.Image[front:back])
 		log.Printf("HDB WRITE lsn=%d.: %02x", lsn, payload[5:])
+
 	default:
 		panic(cmd)
 	}
@@ -69,13 +155,13 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 	copy(buf[5:], sideload)
 	copy(buf[5+64:], payload)
 
-	buf[5 + 0x3C] = byte(len(payload))
-	buf[5 + 0x38] = byte(dest>>8)
-	buf[5 + 0x39] = byte(dest)
+	buf[5+0x3C] = byte(len(payload))
+	buf[5+0x38] = byte(dest >> 8)
+	buf[5+0x39] = byte(dest)
 
 	if exec {
-		buf[5 + 0x3A] = byte(dest>>8)
-		buf[5 + 0x3B] = byte(dest)
+		buf[5+0x3A] = byte(dest >> 8)
+		buf[5+0x3B] = byte(dest)
 	}
 
 	WriteQuint(ses.Conn, CMD_HDBDOS_EXEC, 0, buf)
@@ -84,93 +170,47 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 
 func SendInitialInjections(ses *Session) {
 	var splash []byte
-	for i:=0; i < 32; i++ {
+	for i := 0; i < 32; i++ {
 		// Splash some semigraphics chars
-		splash = append(splash, byte(256 - 32 + i))
+		splash = append(splash, byte(256-32+i))
 	}
 
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
 	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, splash)
 
 	inkey := Value(ioutil.ReadFile(*FlagInkeyRaw))
-	Inject(ses, sideload, 0xFA12 /* INKEY_TRAP_INIT */, true, inkey)
+	Inject(ses, sideload, 0xC0 + 0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])
+	Inject(ses, sideload, 0xFA12 /* INKEY_TRAP_INIT */, true, inkey[:0xC0])
+}
 
-/*
-	// Currently, just send some semigraphics chars to the text screen.
-	buf := make([]byte, 5+256)
-	copy(buf[5:], SideLoadRaw)
+func EmptyDecbInitializedDiskImage() []byte {
+	/*
+		$ decb dskini /tmp/empty
+		$ hd /tmp/empty
+		00000000  ff ff ff ff ff ff ff ff  ff ff ff ff ff ff ff ff
+		*
+		00013200  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+		*
+		00013300  ff ff ff ff ff ff ff ff  ff ff ff ff ff ff ff ff
+		*
+		00013340  ff ff ff ff 00 00 00 00  00 00 00 00 00 00 00 00
+		00013350  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+		*
+		00013400  ff ff ff ff ff ff ff ff  ff ff ff ff ff ff ff ff
+		*
+		00027600
+		$
+	*/
 
-	// Poke to VDG screen
-	buf[5 + 0x38] = 0x05
-	buf[5 + 0x39] = 0xC0
-
-	// Do not exec anything else
-	buf[5 + 0x3A] = 0
-	buf[5 + 0x3B] = 0
-
-	buf[5 + 0x3C] = 32  // One text line
-
-	for i:=0; i < 32; i++ {
-		// Splash some semigraphics chars
-		buf[5 + 64 + i] = byte(256 - 32 + i)
+	bb := make([]byte, 161280)
+	for i := 0; i < 0x00013200; i++ {
+		bb[i] = 0xFF
 	}
-
-	WriteQuint(ses.Conn, CMD_HDBDOS_EXEC, 0, buf)
-	DumpHexLines("Injection", 0, buf)
-*/
+	for i := 0x00013300; i < 0x00013344; i++ {
+		bb[i] = 0xFF
+	}
+	for i := 0x00013400; i < 0x00027600; i++ {
+		bb[i] = 0xFF
+	}
+	return bb
 }
-
-/*
-var SideLoadRaw = []byte{
-	0x34, 0x76, 0x10, 0xbe, 0x06, 0x38, 0x8e, 0x06, 0x40, 0xf6, 0x06, 0x3c, 0xa6, 0x80, 0xa7, 0xa0,
-	0x5a, 0x26, 0xf9, 0xbe, 0x06, 0x3a, 0x27, 0x02, 0xad, 0x84, 0x35, 0xf6,
-}
-*/
-
-/*
-     1	                      (     sideload.asm):00001         ;; sideload.asm
-     2	                      (     sideload.asm):00002         ;;
-     3	                      (     sideload.asm):00003         ;; lemma_hdb.asm adds the ability for a Lemma Server to send extra sectors
-     4	                      (     sideload.asm):00004         ;; to the Coco to be executed, before it sends the actual sector.
-     5	                      (     sideload.asm):00005         ;; This gives us a hook to load more code into RAM.
-     6	                      (     sideload.asm):00006         ;; The limitation is that the extra sector loads at $0600 and executes there.
-     7	                      (     sideload.asm):00007         ;;
-     8	                      (     sideload.asm):00008         ;; This scrap of code at the beginning of the sector expects control data
-     9	                      (     sideload.asm):00009         ;; from $0638 to $063F, and payload data from $0640 to $06FF.
-    10	                      (     sideload.asm):00010         ;;
-    11	                      (     sideload.asm):00011         ;; $0638:  word: destination to copy to
-    12	                      (     sideload.asm):00012         ;; $063A:  word: destination to JSR to, if nonzero
-    13	                      (     sideload.asm):00013         ;; $063C:  byte: number of bytes to copy
-    14	                      (     sideload.asm):00014         ;; $063D:  3 bytes unused
-    15	                      (     sideload.asm):00015         ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    16	                      (     sideload.asm):00016
-    17	     0600             (     sideload.asm):00017         SIDELOAD  equ $0600
-    18	     0638             (     sideload.asm):00018         COPY_DEST equ $0638
-    19	     063A             (     sideload.asm):00019         JSR_DEST  equ $063A
-    20	     063C             (     sideload.asm):00020         COPY_LEN  equ $063C
-    21	     0640             (     sideload.asm):00021         COPY_SRC_IMM  equ $0640
-    22	                      (     sideload.asm):00022
-    23	                      (     sideload.asm):00023                 ORG SIDELOAD
-    24	                      (     sideload.asm):00024
-    25	0600 3477             (     sideload.asm):00025                 pshs cc,d,x,y,u
-    26	0602 1A50             (     sideload.asm):00026                 orcc #$50             ; disable interrupts while we patch stuff.
-    27	                      (     sideload.asm):00027
-    28	0604 10BE0638         (     sideload.asm):00028                 ldy COPY_DEST
-    29	0608 8E0640           (     sideload.asm):00029                 ldx #COPY_SRC_IMM
-    30	060B F6063C           (     sideload.asm):00030                 ldb COPY_LEN
-    31	060E                  (     sideload.asm):00031         @loop
-    32	060E A680             (     sideload.asm):00032                 lda ,x+               ; copy COPY_LEN bytes (at least 1).
-    33	0610 A7A0             (     sideload.asm):00033                 sta ,y+
-    34	0612 5A               (     sideload.asm):00034                 decb
-    35	0613 26F9             (     sideload.asm):00035                 bne @loop
-    36	                      (     sideload.asm):00036
-    37	0615 BE063A           (     sideload.asm):00037                 ldx JSR_DEST
-    38	0618 2702             (     sideload.asm):00038                 beq @skip
-    39	061A AD84             (     sideload.asm):00039                 jsr ,x                ; call the JSR, if nonzero.
-    40	061C                  (     sideload.asm):00040         @skip
-    41	061C 35F7             (     sideload.asm):00041                 puls cc,d,x,y,u,pc
-    42	                      (     sideload.asm):00042
-    43	061E                  (     sideload.asm):00043         SIDELOAD_END
-    44	                      (     sideload.asm):00044
-    45	                      (     sideload.asm):00045                 end SIDELOAD
-*/

@@ -5,8 +5,11 @@
 ;; This gives us a hook to load more code into RAM.
 ;; The limitation is that the extra sector loads at $0600 and executes there.
 ;;
-;; This scrap of code at the beginning of the sector expects control data
-;; from $0638 to $063F, and payload data from $0640 to $06FF.
+;; This scrap of code at the beginning of the sector expects 8 bytes
+;; of meta data from $0638 to $063F, and payload data of up to 192 bytes
+;; from $0640 to $06FF.  The 56 bytes from $0600 to $0637 are defined in
+;; this module, as assembly code to copy the payload to its destination.
+;; This code gets duplicated at the front of every such packet.
 ;;
 ;; $0638:  word: destination to copy to
 ;; $063A:  word: destination to JSR to, if nonzero
@@ -15,26 +18,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SIDELOAD  equ $0600
-COPY_DEST equ $0638
-JSR_DEST  equ $063A
-COPY_LEN  equ $063C
-COPY_SRC_IMM  equ $0640
+SL_COPY_DEST equ $0638
+SL_JSR_DEST  equ $063A
+SL_COPY_LEN  equ $063C
+SL_COPY_SRC_IMM  equ $0640
 
 	ORG SIDELOAD
 
 	pshs cc,d,x,y,u 
 	orcc #$50             ; disable interrupts while we patch stuff.
 
-	ldy COPY_DEST
-	ldx #COPY_SRC_IMM
-	ldb COPY_LEN
+	ldy SL_COPY_DEST
+	ldx #SL_COPY_SRC_IMM
+	ldb SL_COPY_LEN
 @loop
-	lda ,x+               ; copy COPY_LEN bytes (at least 1).
+	lda ,x+               ; copy SL_COPY_LEN bytes (at least 1).
 	sta ,y+
 	decb
 	bne @loop
 
-	ldx JSR_DEST
+	ldx SL_JSR_DEST
 	beq @skip
 	jsr ,x                ; call the JSR, if nonzero.
 @skip
