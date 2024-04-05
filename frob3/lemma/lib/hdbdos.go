@@ -142,7 +142,8 @@ func HdbDosSector(ses *Session, payload []byte) {
 		WriteQuint(ses.Conn, CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
-		copy(payload[5:], d.Image[front:back])
+		copy(d.Image[front:back], payload[5:])
+		d.Dirty = true
 		log.Printf("HDB WRITE lsn=%d.: %02x", lsn, payload[5:])
 
 	default:
