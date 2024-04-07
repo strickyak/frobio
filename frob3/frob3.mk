@@ -3,6 +3,7 @@
 # is created and configured by ./configure).
 
 LAN=10.23.23.23
+DHCP=0
 
 all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom all-hdbdos results1 results2 all-lemmings results3
 	find results -type f -print | LC_ALL=C sort
@@ -477,7 +478,7 @@ server: all-without-gccretro
 run-server: run-lemma  # Alias.
 run-lemma: server
 	cp -fv ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk /tmp/disk0.dsk
-	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
+	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
 
 ##############  Old Junk Follows
 #   For debugging with Gomar on Loopback.

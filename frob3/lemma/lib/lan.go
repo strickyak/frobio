@@ -1,10 +1,13 @@
 package lib
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
 )
+
+var FlagConfigByDHCP = flag.Bool("config_by_dhcp", false, "Client gets IP and Gateway via dhcp")
 
 const LAN_CLIENT_PORT = 12113 // L=12 A=1 M=13
 const LAN_SERVER_PORT = 12114 // L=12 A=1 N=14
@@ -57,13 +60,18 @@ func ListenForLan(lan string) {
 			copy(reply[4:8], request[4:8])
 
 			println("Lan 6", NextIP)
-			command := fmt.Sprintf("I %d.%d.%d.%d/24 ; W %s ; @",
-				local4[0], local4[1], local4[2], NextIP, lan)
-			copy(reply[16:], []byte(command))
-			NextIP++
-			if NextIP > 250 {
-				NextIP = 31 // start over
+
+			var command string
+			if *FlagConfigByDHCP {
+				command = fmt.Sprintf("D ; W %s ; @", lan)
+			} else {
+				command = fmt.Sprintf("I %d.%d.%d.%d/24 ; W %s ; @", local4[0], local4[1], local4[2], NextIP, lan)
+				NextIP++
+				if NextIP > 250 {
+					NextIP = 31 // start over
+				}
 			}
+			copy(reply[16:], []byte(command))
 
 			_, err := conn.Write(reply)
 			// _, err := pc.WriteTo(reply, remote)
