@@ -6,14 +6,15 @@ package lib
 
 import (
 	"flag"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
-	"runtime/debug"
 )
 
 var PORT = flag.Int("port", 2319, "Listen on this TCP port")
@@ -32,7 +33,7 @@ const (
 	CMD_POKE = 0
 	CMD_CALL = 255
 
-	CMD_PEEK2 = 195      // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
+	CMD_PEEK2     = 195 // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
 	CMD_BEGIN_MUX = 196
 	CMD_MID_MUX   = 197
 	CMD_END_MUX   = 198
@@ -57,12 +58,12 @@ const (
 	CMD_LEMMAN_REQUEST = 214 // LemMan
 	CMD_LEMMAN_REPLY   = 215 // LemMan
 
-	CMD_RTI = 216
-	CMD_ECHO = 217  // reply with CMD_DATA, with high bits toggled.
-	CMD_DW = 218
-	CMD_HDBDOS_SECTOR = 219  // Normal HDBDOS block I/O.
-	CMD_HDBDOS_EXEC = 220    // Slip in sideloaded pages via EXEC records.
-	CMD_HDBDOS_HIJACK = 221  // CLEAR key hijacks the machine from BASIC.
+	CMD_RTI           = 216
+	CMD_ECHO          = 217 // reply with CMD_DATA, with high bits toggled.
+	CMD_DW            = 218
+	CMD_HDBDOS_SECTOR = 219 // Normal HDBDOS block I/O.
+	CMD_HDBDOS_EXEC   = 220 // Slip in sideloaded pages via EXEC records.
+	CMD_HDBDOS_HIJACK = 221 // CLEAR key hijacks the machine from BASIC.
 )
 
 var Demos map[string]func(net.Conn)
@@ -358,15 +359,15 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			pay := ReadN(conn, n)
 			EndMux(ses, p, pay)
 
-		case CMD_ECHO:  // echos back data with high bit toggled.
+		case CMD_ECHO: // echos back data with high bit toggled.
 			pay := ReadN(conn, 4)
 			WriteFive(conn, CMD_DATA, 4, p)
 			for i, e := range pay {
-				pay[i] = 128 ^ e  // toggle high bits in payload.
+				pay[i] = 128 ^ e // toggle high bits in payload.
 			}
 			conn.Write(pay)
 
-		case CMD_DW:  // echos back data with high bit toggled.
+		case CMD_DW: // echos back data with high bit toggled.
 			log.Printf("DW [n=%d. p=%d.]", n, p)
 			panic("TODO")
 
@@ -427,7 +428,7 @@ func Serve(conn net.Conn) {
 
 	log.Printf("~~~~~~~~~~~~~~ a  ")
 	if false && hostname == *TESTHOST {
-	log.Printf("~~~~~~~~~~~~~~ b  ")
+		log.Printf("~~~~~~~~~~~~~~ b  ")
 		ses := NewSession(conn)
 		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostname))
 		test_card := Cards[328] // Nitros9 Level 2 for M6809
@@ -454,7 +455,7 @@ func Serve(conn net.Conn) {
 		}
 
 	} else if *DEMO != "" {
-	log.Printf("~~~~~~~~~~~~~~ c  ")
+		log.Printf("~~~~~~~~~~~~~~ c  ")
 
 		demo, ok := Demos[*DEMO]
 		if !ok {
@@ -466,14 +467,14 @@ func Serve(conn net.Conn) {
 		demo(conn)
 
 	} else if *LEVEL0 != "" {
-	log.Printf("~~~~~~~~~~~~~~ d  ")
+		log.Printf("~~~~~~~~~~~~~~ d  ")
 
 		go ReadFiveLoop(conn, nil)
 		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *LEVEL0)
 
 	} else if *PROGRAM != "" {
-	log.Printf("~~~~~~~~~~~~~~ e  ")
+		log.Printf("~~~~~~~~~~~~~~ e  ")
 
 		ses := NewSession(conn)
 		func() {
@@ -485,7 +486,7 @@ func Serve(conn net.Conn) {
 			Catch(func() { UploadProgram(conn, *PROGRAM) })
 		}()
 	} else {
-	log.Printf("~~~~~~~~~~~~~~ f  ")
+		log.Printf("~~~~~~~~~~~~~~ f  ")
 		ses := NewSession(conn)
 		ses.Screen.PutStr(Format("host '%q' connected.\n", hostname))
 		Run(ses)

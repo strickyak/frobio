@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"fmt"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"log"
 	"net"
@@ -48,12 +49,11 @@ func ReadQuint(conn net.Conn) []bytes {
 TODO */
 
 func WriteQuint(conn net.Conn, cmd byte, p uint, bb []byte) {
-  n := len(bb)
-  q := NewQuint(cmd, uint(n), p)
-  Value( conn.Write(q[:]) )
-  Value( conn.Write(bb) )
+	n := len(bb)
+	q := NewQuint(cmd, uint(n), p)
+	Value(conn.Write(q[:]))
+	Value(conn.Write(bb))
 }
-
 
 func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	n := uint(len(pay))
@@ -209,7 +209,7 @@ type Session struct {
 
 	Procs map[uint]*Proc
 
-	HdbDos	*HdbDosSession
+	HdbDos *HdbDosSession
 
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user

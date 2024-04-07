@@ -2,6 +2,7 @@ package lib
 
 import (
 	"flag"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,7 +19,7 @@ const NumDrives = 10
 const FloppySize = 161280
 
 type HdbDosDrive struct {
-	Path string
+	Path  string
 	Image []byte
 	Dirty bool
 }
@@ -30,7 +31,7 @@ type HdbDosSession struct {
 	Drives [NumDrives]*HdbDosDrive
 }
 
-func (h * HdbDosSession) SetDrive(drive byte, c *Chooser) {
+func (h *HdbDosSession) SetDrive(drive byte, c *Chooser) {
 	log.Printf("SetDrive: %d %v", drive, *c)
 
 	// Create the drive record, if needed.  Call it d.
@@ -52,7 +53,7 @@ func TextChooserShell(ses *Session) {
 	t := &TextVGA{
 		Ses: ses,
 	}
-	t.Loop()  // Loop until we return from Hijack.
+	t.Loop() // Loop until we return from Hijack.
 }
 
 // Entry from waiter.go for a Hijack.
@@ -105,7 +106,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 	// Has it been mounted?
 	if d.Path == "" {
 		// No mount, so make it an empty disk.
-		d.Path = "--new--"  // temporary bogus name
+		d.Path = "--new--" // temporary bogus name
 		d.Image = EmptyDecbInitializedDiskImage()
 		d.Dirty = false
 		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} number %d.", drive)
@@ -180,7 +181,7 @@ func SendInitialInjections(ses *Session) {
 	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, splash)
 
 	inkey := Value(ioutil.ReadFile(*FlagInkeyRaw))
-	Inject(ses, sideload, 0xC0 + 0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])
+	Inject(ses, sideload, 0xC0+0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])
 	Inject(ses, sideload, 0xFA12 /* INKEY_TRAP_INIT */, true, inkey[:0xC0])
 }
 

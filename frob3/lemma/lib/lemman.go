@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/sym"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 var LEMMAN_FS = flag.String(
