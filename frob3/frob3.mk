@@ -136,11 +136,8 @@ all-hdbdos: hdbdos.rom hdbdos.lem sideload.lwraw inkey_trap.lwraw
 %.lwraw : %.asm
 	$(LWASM) --raw $< -o'$@' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
 
-##sideload.raw: sideload.asm
-#inkey_trap.raw: inkey_trap.asm
-
 hdbdos.lem: hdbdos.rom
-	cat $F/../../toolshed/hdbdos/preload $F/../../toolshed/hdbdos/preload2 $< $F/../../toolshed/hdbdos/postload > $@
+	cat $F/../../toolshed/hdbdos/preload $< $F/../../toolshed/hdbdos/postload > $@
 hdbdos.rom: ecb_equates.asm hdbdos.asm 
 	$(LWASM) -D'LEMMA=1' -r $^ --output=$@ -I$F/../../toolshed/hdbdos/ -I$F/wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list=hdbdos.rom.list --map=hdbdos.rom.map
 
