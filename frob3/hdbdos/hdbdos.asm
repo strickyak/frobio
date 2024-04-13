@@ -424,6 +424,72 @@ FCBDFL         equ       23                  INPUT FILE ONLY: DATA LEFT FLAG: 0=
 FCBLFT         equ       24                  NUMBER OF CHARACTERS LEFT IN BUFFER (INPUT FILE)
 * NUMBER OF CHARS STORED IN BUFFER (OUTPUT FILE)
 FCBCON         equ       25                  OFFSET TO FCB DATA BUFFER (256 BYTES)
+
+****************
+*
+*  Begin HDB-DOS Definitions.
+*
+*  (These definitions had been down just before the "org MAGICDG+$1930" statement,
+*   but that confused lwasm into inserting zero bytes into the ROM
+*   for the "rmb" statements.  These "rmb" statements merely define structs;
+*   they should not generate bytes.  By moving them up here before any
+*   actual code generation, we avoid that confusion.)
+
+* HDB-DOS Version
+VMAJOR         equ       1
+VMINOR         equ       5
+VREV           equ       0
+
+
+               setdp     0
+
+
+STOP2          equ       0
+
+* FlexiKey and Directory Equates
+GETKEY         equ       LA1B1
+HLDPTR         equ       $1D1
+INSERT         equ       $1D2
+WHLINE         equ       $1D3
+DIR1           equ       $1D4
+DIR2           equ       $1D5
+HLDBFR         equ       $1DA
+BASBFR         equ       $2DD
+
+
+* Static Storage                             (Reusing 9 last bytes of original USR table, after stubs)
+               IFDEF     DRAGON
+               org       $13F
+               ELSE
+               org       $149
+               ENDC
+
+INTFLG         rmb       1                   FlexiKey variable
+NCYLS          rmb       2                   Device cylinder count (IDE)
+NHEADS         rmb       1                   Device head count (IDE)
+NSECTS         rmb       1                   Device sector count (IDE)
+HDFLAG         rmb       1                   Hard drive active flag
+DRVSEL         rmb       1                   LUN (SCSI), Master/Slave (IDE) or Drive Number (DW)
+RETRY          equ       DRVSEL              DriveWire uses this location as a retry counter
+MAXDRV         rmb       1                   Highest drive number
+IDNUM          rmb       1                   Device number (SCSI 0-7) (IDE 0-1)
+
+
+* Dynamic Storage
+               org       $F3
+
+VCMD           rmb       1                   SCSI/IDE unit command
+VAD0           rmb       1                   L.U.N. / sector (hi-byte)
+VAD1           rmb       2                   Sector (lo-word)
+VBLKS          rmb       2                   Block count / options
+VEXT           rmb       4                   Reserved 10 byte SCSI commands
+
+*  End HDB-DOS Definitions.
+*
+****************
+
+* Code Generation starts here.
+
                IFDEF     ORG
                org       ORG
 MAGICDG        fcc       'OS'
@@ -3723,62 +3789,23 @@ TFSIDE         pshs      x                   Backup X onto stack
                sta       ,x+                 store A into track format buffer
                lda       DSEC                * GET SECTOR NUMBER AND
                rts
+
 * These fcb's are filler
                fcb       $FF,$FF,$FF,$FF,$FF
 * This fcb is also filler and is used to help check ROM locations
                fcb       $99
 
+* Assign a label at the end of all that,
+* and Before the Hard Disk Driver.
+B4HARD		EQU .
 
+* These two FILL instructions should fill no bytes,
+* if B4HARD equals MAGICDG+$1930.
+* If they are not equal, one of these FILLs should break.
+* So I am using this for the side-effect as an Assert().
 
-* HDB-DOS Version
-VMAJOR         equ       1
-VMINOR         equ       5
-VREV           equ       0
-
-
-               setdp     0
-
-
-STOP2          equ       0
-
-* FlexiKey and Directory Equates
-GETKEY         equ       LA1B1
-HLDPTR         equ       $1D1
-INSERT         equ       $1D2
-WHLINE         equ       $1D3
-DIR1           equ       $1D4
-DIR2           equ       $1D5
-HLDBFR         equ       $1DA
-BASBFR         equ       $2DD
-
-
-* Static Storage                             (Reusing 9 last bytes of original USR table, after stubs)
-               IFDEF     DRAGON
-               org       $13F
-               ELSE
-               org       $149
-               ENDC
-
-INTFLG         rmb       1                   FlexiKey variable
-NCYLS          rmb       2                   Device cylinder count (IDE)
-NHEADS         rmb       1                   Device head count (IDE)
-NSECTS         rmb       1                   Device sector count (IDE)
-HDFLAG         rmb       1                   Hard drive active flag
-DRVSEL         rmb       1                   LUN (SCSI), Master/Slave (IDE) or Drive Number (DW)
-RETRY          equ       DRVSEL              DriveWire uses this location as a retry counter
-MAXDRV         rmb       1                   Highest drive number
-IDNUM          rmb       1                   Device number (SCSI 0-7) (IDE 0-1)
-
-
-* Dynamic Storage
-               org       $F3
-
-VCMD           rmb       1                   SCSI/IDE unit command
-VAD0           rmb       1                   L.U.N. / sector (hi-byte)
-VAD1           rmb       2                   Sector (lo-word)
-VBLKS          rmb       2                   Block count / options
-VEXT           rmb       4                   Reserved 10 byte SCSI commands
-
+               FILL   'x',MAGICDG+$1930-B4HARD
+               FILL   'x',B4HARD-(MAGICDG+$1930)
 
 * HARD DISK DRIVER
 
