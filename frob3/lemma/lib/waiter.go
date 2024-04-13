@@ -5,8 +5,8 @@ package lib
 // TODO: gc Life Generator goroutines.
 
 import (
+	"bytes"
 	"flag"
-	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"io/ioutil"
 	"log"
@@ -142,7 +142,7 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	}
 }
 
-func GetBlockDevice(ses *Session) *os.File {
+func GetBlockDevice(ses *Session) *os.File { // Nitros9 RBLemma devices
 	var err error
 	if *BLOCK0 != "" {
 		if Block0 == nil {
@@ -207,6 +207,14 @@ func RegsString(b []byte) string {
 }
 
 func ReadFiveLoop(conn net.Conn, ses *Session) {
+	defer func() {
+		// Do Cleanup functions in backwards order.
+		n := len(ses.Cleanups)
+		for i := range ses.Cleanups {
+			Catch(ses.Cleanups[n-1-i])
+		}
+	}()
+
 	var block0 *os.File
 	quint := make([]byte, 5)
 
@@ -257,7 +265,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				DumpHexLines("M", p, data)
 			}
 
-		case CMD_BLOCK_READ:
+		case CMD_BLOCK_READ: // Nitros9 RBLemma devices
 			{
 				// block0, lsn := prepareBlockDevice(ses, n, p)
 				// lsn := prepareBlockDevice(n, p)
@@ -283,7 +291,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
 			}
-		case CMD_BLOCK_WRITE:
+		case CMD_BLOCK_WRITE: // Nitros9 RBLemma devices
 			{
 				// block0, lsn := prepareBlockDevice(ses, n, p)
 				// lsn := prepareBlockDevice(n, p)
@@ -403,6 +411,32 @@ func UploadProgram(conn net.Conn, filename string) {
 	log.Printf("Uploaded %q", filename)
 }
 
+func UpperCleanName(s []byte, maxLen int) string {
+	var buf bytes.Buffer
+	for _, b := range s {
+		if 'A' <= b && b <= 'Z' {
+			buf.WriteByte(b)
+		} else if '0' <= b && b <= '9' {
+			buf.WriteByte(b)
+		} else if 'a' <= b && b <= 'z' {
+			buf.WriteByte(b - 32)
+		} else {
+			buf.WriteByte('_')
+		}
+	}
+	z := strings.TrimRight(buf.String(), "_")
+	if z == "" {
+		z = "EMPTY"
+	}
+	if !('A' <= z[0] && z[0] <= 'Z') {
+		z = "X" + z
+	}
+	if len(z) > maxLen {
+		z = z[:maxLen]
+	}
+	return z
+}
+
 func Serve(conn net.Conn) {
 	defer func() {
 		r := recover()
@@ -416,21 +450,21 @@ func Serve(conn net.Conn) {
 		conn.Close()
 	}()
 
-	log.Printf("Serving: Poke to 0x400")
-	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
-	hostbytes := PeekRam(conn, 0xDFE0, 8) // Hostname in ROM
-	hostname := strings.TrimRight(string(hostbytes), " _\377\n\r\000")
-	if hostname == "" {
-		hostname = "EMPTY"
-	}
-	log.Printf("hostname = %q", hostname)
+	//log.Printf("Serving: Poke to 0x400")
+	//PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
+	idSector := PeekRam(conn, 0xDF00, 256-12) // Identity Last Half Sector, less 12 bytes of secret.
+	DumpHexLines("idSector", 0xDF00, idSector)
+	hostBytes := idSector[0xE0:0xE8]
+	DumpHexLines("hostBytes", 0xDFE0, hostBytes)
+	hostName := UpperCleanName(hostBytes, 8)
+	log.Printf("hostName = %q", hostName)
 	log.Printf("*TESTHOST = %q", *TESTHOST)
 
 	log.Printf("~~~~~~~~~~~~~~ a  ")
-	if false && hostname == *TESTHOST {
+	if false && hostName == *TESTHOST {
 		log.Printf("~~~~~~~~~~~~~~ b  ")
-		ses := NewSession(conn)
-		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostname))
+		ses := NewSession(conn, hostName)
+		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostName))
 		test_card := Cards[328] // Nitros9 Level 2 for M6809
 
 		dur, _ := time.ParseDuration("5s")
@@ -476,19 +510,20 @@ func Serve(conn net.Conn) {
 	} else if *PROGRAM != "" {
 		log.Printf("~~~~~~~~~~~~~~ e  ")
 
-		ses := NewSession(conn)
+		ses := NewSession(conn, hostName)
 		func() {
 			defer func() {
 				println("recover: ", recover())
 			}()
 			go Catch(func() { ReadFiveLoop(conn, ses) })
-			time.Sleep(time.Second) // Handle anything pushed, first.
+			time.Sleep(time.Second) // Handle anything pushed, first.  // TODO: wait for Hello packet.
 			Catch(func() { UploadProgram(conn, *PROGRAM) })
 		}()
 	} else {
 		log.Printf("~~~~~~~~~~~~~~ f  ")
-		ses := NewSession(conn)
-		ses.Screen.PutStr(Format("host '%q' connected.\n", hostname))
+		ses := NewSession(conn, hostName)
+		ses.IdBytes = idSector
+		ses.Screen.PutStr(Format("host '%q' connected.\n", hostName))
 		Run(ses)
 		log.Panicf("Run Cards: quit")
 	}
@@ -502,7 +537,7 @@ func Serve(conn net.Conn) {
 
 func Catch(fn func()) {
 	defer func() {
-		log.Printf("catch: %v", recover())
+		log.Printf("%v: catch: %v", fn, recover())
 	}()
 	fn()
 }

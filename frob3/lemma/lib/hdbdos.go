@@ -1,12 +1,14 @@
 package lib
 
 import (
+	"bytes"
 	"flag"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io/ioutil"
 	"log"
 	"os"
 	PFP "path/filepath"
+	"strings"
 	// "time"
 )
 
@@ -74,11 +76,18 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	WriteQuint(ses.Conn, CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
+func HdbDosCleanup(ses *Session) {
+}
+
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{}
 	}
+	ses.Cleanups = append(ses.Cleanups, func() {
+		HdbDosCleanup(ses)
+	})
+
 	h := ses.HdbDos
 	cmd := payload[0]
 	lsn3 := uint(payload[1])
@@ -170,15 +179,34 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 	DumpHexLines("Injection", 0, buf)
 }
 
-func SendInitialInjections(ses *Session) {
-	var splash []byte
-	for i := 0; i < 32; i++ {
-		// Splash some semigraphics chars
-		splash = append(splash, byte(256-32+i))
+func AsciiToInjectBytes(s string) []byte {
+	var bb bytes.Buffer
+	for _, ch := range strings.ToUpper(s) {
+		bb.WriteByte(63 & byte(ch))
 	}
+	return bb.Bytes()
+}
+
+func SendInitialInjections(ses *Session) {
+	//var splash []byte
+	//for i := 0; i < 32; i++ {
+		//// Splash some semigraphics chars
+		//splash = append(splash, byte(256-32+i))
+	//}
+	/*
+	const splashStr = "CLEAR KEY TOGGLES DISK CHOOSER"
+	var bb bytes.Buffer
+	for _, ch := range splashStr {
+		bb.WriteByte(63 & byte(ch))
+	}
+	splash := bb.Bytes()
+	*/
 
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
-	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, splash)
+	Inject(ses, sideload, 0x0580 /* on text screen*/, false, AsciiToInjectBytes("CLEAR KEY TOGGLES DISK CHOOSER:"))
+	Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
+	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
+	Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
 
 	inkey := Value(ioutil.ReadFile(*FlagInkeyRaw))
 	Inject(ses, sideload, 0xC0+0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])

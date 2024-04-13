@@ -2,7 +2,7 @@ package lib
 
 func init() {
 	Add(0, 0, "Home", &Card{
-		Text: `Welcome to Lemma.
+		Text: `Welcome to Lemma, "{{ .Hostname }}".
 This is the home card.
 You can return here by typing 0.
 `,
@@ -19,8 +19,14 @@ to stress your CocoIO Card.
 	Add(11, 10, "Life Viewer", &Card{
 		Launch: "@life",
 	})
-	Add(12, 10, "Verifying Life Viewer (slower)", &Card{
-		Launch: "@test",
+	Add(12, 10, "Verifying Life Viewer", &Card{
+		Launch: "@life-check",
+	})
+	Add(13, 10, "Life Viewer with stats", &Card{
+		Launch: "@life-stats",
+	})
+	Add(14, 10, "Verifying Life Viewer with stats", &Card{
+		Launch: "@life-stats-check",
 	})
 
 	Add(20, 0, "Demos", &Card{})
@@ -31,7 +37,7 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
-	Add(30, 0, "Nitros-9", &Card{})
+	Add(30, 0, "OS: Nitros-9", &Card{})
 
 	Add(31, 30, "L1 3.3.0 for M6809", &Card{
 		Launch: ".Nitros9_Coco1_M6809_Level1.lem",
@@ -65,19 +71,36 @@ to stress your CocoIO Card.
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
 
-	Add(33, 30, "(Broken) Nitros9 EOU", &Card{})
-	Add(333, 33, "(Broken) Nitros9 EOU 1.0.0 for H6309", &Card{
+	Add(33, 30, "Nitros9 EOU 1.0.0 (old)", &Card{})
+	Add(333, 33, "Nitros9 EOU 1.0.0 for H6309", &Card{
 		Launch: ".EOU_H6309.lem",
 		Block0: ".EOU_H6309.dsk",
 	})
-	Add(338, 33, "(Broken) Nitros9 EOU 1.0.0 for M6809", &Card{
+	Add(338, 33, "Nitros9 EOU 1.0.0 for M6809", &Card{
 		Launch: ".EOU_M6809.lem",
 		Block0: ".EOU_M6809.dsk",
 	})
 
-	Add(35, 0, "HDB-DOS (Disk Basic)", &Card{})
+	Add(34, 30, "Nitros9 EOU 1.0.1 (new)", &Card{})
+	Add(343, 34, "Nitros9 EOU 1.0.1 for H6309", &Card{
+		Launch: ".EOU_101_H6309.lem",
+		Block0: ".EOU_101_H6309.dsk",
+	})
+	Add(348, 34, "Nitros9 EOU 1.0.1 for M6809", &Card{
+		Launch: ".EOU_101_M6809.lem",
+		Block0: ".EOU_101_M6809.dsk",
+	})
+
+	Add(35, 0, "OS: HDB-DOS (Disk Basic)", &Card{})
 	Add(351, 35, "HDB-DOS with Remote Filesystems", &Card{
 		Launch: ".hdbdos.lem",
+		Text: `
+For the disk chooser, hit
+<CLEAR> to enter, and <CLEAR>
+to leave. Arrow keys navigate.
+Hit 0 to mount drive 0,
+1 for 1, ... through 9.
+`,
 	})
 
 	Add(40, 0, "Utilities", &Card{})
@@ -93,17 +116,21 @@ onto your screen.
 `,
 	})
 
-	Add(4241, 40, "burn primes (ROM DEMO) into eeprom", &Card{
+	Add(4241, 40, "burn prime-sieve (ROM DEMO) into eeprom", &Card{
 		Launch: ".burn-primes-fast.lem",
 		Text: `
-Danger!
+Burns a silly demo into your eeprom.
+Proves that burning actually works.
+
+Danger!  re-burns your eeprom!
 Launch only if you are sure!
 `,
 	})
 	Add(4242, 40, "burn axiom41 rom code into cocoior eeprom", &Card{
 		Launch: ".burn-rom-fast.lem",
 		Text: `
-Danger!
+Burns the standard ROM code into your eeprom.
+Danger!  re-burns your eeprom!
 Launch only if you are sure!
 `,
 	})

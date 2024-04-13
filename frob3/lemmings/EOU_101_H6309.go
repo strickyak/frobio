@@ -2,17 +2,17 @@ package main
 
 func init() {
 	Os9(&Os9ConfigForLemma{
-		Name:        "EOU_M6809",
+		Name:        "EOU_101_H6309",
 		Level:       "level2",
 		Port:        "coco3",
-		DefaultDisk: "../eou-m6809/68SDC.VHD",
-		Boot1Base:   "eou-m6809/68EMU.dsk",
+		DefaultDisk: "../eou-101-h6309/63SDC.VHD",
+		Boot1Base:   "eou-101-h6309/63EMU.DSK",
 		Boot1Mods: []string{
 			"_HEAD_",       // Special mark to keep the Base's head.
 			"./boot.lemma", // Insert our own boot.lemma file.
 			"_TAIL_",       // Special mark to keep the Base's tail.
 		},
-		Boot2Base: "eou-m6809/68EMU.dsk",
+		Boot2Base: "eou-101-h6309/63EMU.DSK",
 		Boot2Mods: []string{
 			"<krnp2",
 			"<krnp3",

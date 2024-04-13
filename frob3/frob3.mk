@@ -5,7 +5,7 @@
 LAN=10.23.23.23
 DHCP=0
 
-all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom all-hdbdos results1 results2 all-lemmings results3
+all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom41 all-hdbdos results1 results2 all-lemmings results2b results3
 	find results -type f -print | LC_ALL=C sort
 	sync
 
@@ -51,8 +51,7 @@ results1:
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
 results2: results1 os9disks
-	mkdir -p results/OS9DISKS results/LEMMINGS
-
+	mkdir -p results/OS9DISKS results/LEMMINGS results/BOOTING
 
 NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
 	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
@@ -84,7 +83,7 @@ os9disks: NOS9_6809_L1_coco1_80d.dsk NOS9_6809_L2_coco3_80d.dsk NOS9_6309_L2_coc
 	set -x; for x in $^; do rm -f results/OS9DISKS/$$x; ln $$x results/OS9DISKS/; done
 
 
-results2b: results2 all-axiom all-axiom4
+results2b: results2 all-axiom41
 	mkdir -p results/BOOTING
 	cp -v $F/booting/README.md results/BOOTING/README.md
 	:
@@ -92,21 +91,8 @@ results2b: results2 all-axiom all-axiom4
 	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS
 	decb copy -0 -b $F/booting/INSTALL5.BAS results/BOOTING/netboot3.dsk,INSTALL5.BAS
 	decb copy -3 -a $F/booting/README.md results/BOOTING/netboot3.dsk,README.md
-	decb copy -2 -b axiom-whole.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
+	decb copy -2 -b axiom41.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
 	decb dir results/BOOTING/netboot3.dsk
-	decb dskini results/BOOTING/exoboot3.dsk
-	decb copy -2 -b axiom-whole6k.decb results/BOOTING/exoboot3.dsk,EXOBOOT3.DEC
-	decb dir results/BOOTING/exoboot3.dsk
-	:
-	decb dskini results/BOOTING/future4.dsk
-	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/future4.dsk,INSTALL4.BAS
-	decb copy -0 -b $F/booting/INSTALL5.BAS results/BOOTING/future4.dsk,INSTALL5.BAS
-	decb copy -3 -a $F/booting/README.md results/BOOTING/future4.dsk,README.md
-	decb copy -2 -b axiom4-whole.l3k results/BOOTING/future4.dsk,NETBOOT.DEC
-	decb dir results/BOOTING/future4.dsk
-	decb dskini results/BOOTING/exofoot4.dsk
-	decb copy -2 -b axiom4-whole6k.decb results/BOOTING/exofoot4.dsk,EXOFOOT4.DEC
-	decb dir results/BOOTING/exofoot4.dsk
 	:
 	ls -l results/BOOTING/
 
@@ -136,17 +122,14 @@ all-hdbdos: hdbdos.rom hdbdos.lem sideload.lwraw inkey_trap.lwraw
 %.lwraw : %.asm
 	$(LWASM) --raw $< -o'$@' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
 
-##sideload.raw: sideload.asm
-#inkey_trap.raw: inkey_trap.asm
-
 hdbdos.lem: hdbdos.rom
-	cat $F/../../toolshed/hdbdos/preload $F/../../toolshed/hdbdos/preload2 $< $F/../../toolshed/hdbdos/postload > $@
+	cat $F/../../toolshed/hdbdos/preload $< $F/../../toolshed/hdbdos/postload > $@
 hdbdos.rom: ecb_equates.asm hdbdos.asm 
 	$(LWASM) -D'LEMMA=1' -r $^ --output=$@ -I$F/../../toolshed/hdbdos/ -I$F/wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list=hdbdos.rom.list --map=hdbdos.rom.map
 
+###############################################
 
-all-axiom: axiom-whole.rom axiom-whole.l3k axiom-whole6k.decb
-all-axiom4: axiom4-whole.rom axiom4-whole.l3k axiom4-whole6k.decb axiom41.rom axiom41.decb axiom41-c300.decb primes41.decb primes41-c300.decb burn-rom-fast.lem burn-primes-fast.lem 
+all-axiom41: axiom41.rom axiom41.decb axiom41.l3k axiom41-c300.decb primes41.decb primes41-c300.decb burn-rom-fast.lem burn-primes-fast.lem 
 
 burn: burn.o
 	$(LWLINK) --format=decb --entry=_main --section-base=.text=0C00 -o burn  $<
@@ -166,6 +149,9 @@ burn-rom-fast.lem: axiom41.decb burn-decb.bin
 burn-primes-fast.lem: primes41.decb burn-decb.bin
 	cat burn-decb.bin $< > $@
 ########################################################################
+
+axiom41.l3k: axiom41.rom
+	$(GO) run $A/helper/shift-rom-to-3000/main.go < $< > $@
 
 ### axiom41 is the newest axiom.
 axiom41.rom: _FORCE_  primes41.rom
@@ -190,55 +176,55 @@ primes41.decb: primes41.rom
 primes41-c300.decb: primes41.rom
 	lwasm --decb $F/axiom41/primes41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o$@
 
-### axiom4 is the new axiom.
-axiom4-whole.rom: axiom4.c preboot3.asm
-	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
-	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work4.s --output=_work4.o --list=_work4.list
-	$(LWLINK) --output=_work4.rom --map=_work4.map --raw --script=$F/helper/axiom.script _work4.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	$(LWOBJDUMP) _work4.o > _work.4objdump
-	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work4.s --map _work4.map -o axiom4-whole.s
-	rm -f axiom4-whole.list
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
-	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	$(GO) run $A/helper/customize-axiom/customize-axiom.go --hostname="$$COCOHOST" --secret="$$COCOSECRET" axiom4-whole.rom
-
-axiom4-whole6k.decb: axiom4-whole.rom
-	$(LWLINK) --output=axiom4-whole6k.decb --map=axiom4-whole6k.map --decb --script=$F/helper/axiom6k.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-
-axiom4-whole.l3k: axiom4-whole.rom
-	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom4-whole.rom > axiom4-whole.l3k
-
-### axiom (without the 4) is the old axiom.
-
-axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
-	cat  $^ > _axiom_whole.c
-	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
-	cat $F/axiom/preboot3.asm _axiom_whole.s > _work.s
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
-	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	$(LWOBJDUMP) _work.o > _work.objdump
-	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
-	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-
-axiom-whole6k.decb: axiom-whole.rom
-	$(LWLINK) --output=axiom-whole6k.decb --map=axiom-whole6k.map --decb --script=$F/helper/axiom6k.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-
-axiom-whole.l3k: axiom-whole.rom
-	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
-
-axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
-	cat  $^ > _axiom_gomar.c
-	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'__GOMAR__' -D'NEED_STDLIB_IN_NETLIB3' _axiom_gomar.c
-	cat $F/axiom/preboot3.asm _axiom_gomar.s > _work.s
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
-	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-	$(LWOBJDUMP) _work.o > _work.objdump
-	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
-	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-gomar.s --output=axiom-gomar.o --list=axiom-gomar.list
-	$(LWLINK) --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script axiom-gomar.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-
+#old#### axiom4 is the new axiom.
+#old#axiom4-whole.rom: axiom4.c preboot3.asm
+#old#	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
+#old#	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
+#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work4.s --output=_work4.o --list=_work4.list
+#old#	$(LWLINK) --output=_work4.rom --map=_work4.map --raw --script=$F/helper/axiom.script _work4.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#	$(LWOBJDUMP) _work4.o > _work.4objdump
+#old#	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work4.s --map _work4.map -o axiom4-whole.s
+#old#	rm -f axiom4-whole.list
+#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
+#old#	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#	$(GO) run $A/helper/customize-axiom/customize-axiom.go --hostname="$$COCOHOST" --secret="$$COCOSECRET" axiom4-whole.rom
+#old#
+#old#axiom4-whole6k.decb: axiom4-whole.rom
+#old#	$(LWLINK) --output=axiom4-whole6k.decb --map=axiom4-whole6k.map --decb --script=$F/helper/axiom6k.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#
+#old#axiom4-whole.l3k: axiom4-whole.rom
+#old#	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom4-whole.rom > axiom4-whole.l3k
+#old#
+#old#### axiom (without the 4) is the old axiom.
+#old#
+#old#axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
+#old#	cat  $^ > _axiom_whole.c
+#old#	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
+#old#	cat $F/axiom/preboot3.asm _axiom_whole.s > _work.s
+#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
+#old#	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#	$(LWOBJDUMP) _work.o > _work.objdump
+#old#	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
+#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
+#old#	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#
+#old#axiom-whole6k.decb: axiom-whole.rom
+#old#	$(LWLINK) --output=axiom-whole6k.decb --map=axiom-whole6k.map --decb --script=$F/helper/axiom6k.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#
+#old#axiom-whole.l3k: axiom-whole.rom
+#old#	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
+#old#
+#old#axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
+#old#	cat  $^ > _axiom_gomar.c
+#old#	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'__GOMAR__' -D'NEED_STDLIB_IN_NETLIB3' _axiom_gomar.c
+#old#	cat $F/axiom/preboot3.asm _axiom_gomar.s > _work.s
+#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
+#old#	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#	$(LWOBJDUMP) _work.o > _work.objdump
+#old#	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
+#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-gomar.s --output=axiom-gomar.o --list=axiom-gomar.list
+#old#	$(LWLINK) --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script axiom-gomar.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
+#old#
 ###############################################
 
 NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd r.os9cmd
@@ -458,8 +444,6 @@ lem.os9mod: lem.asm defsfile
 #######################################################################################
 
 all-lemmings: burn-rom-fast.lem
-	-test -s ../eou-h6309/63EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_H6309.new EOU_H6309.go)
-	-test -s ../eou-m6809/68EMU.dsk && (cd ../frobio/frob3/lemmings && cp -vf EOU_M6809.new EOU_M6809.go)
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
 	mkdir -p results/LEMMINGS/
 	ln *.lem results/LEMMINGS/
@@ -477,7 +461,6 @@ server: all-without-gccretro
 	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
 run-server: run-lemma  # Alias.
 run-lemma: server
-	cp -fv ../frobio/built/wip-2023-04-22-cocofest/netboot3.dsk /tmp/disk0.dsk
 	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
 
 ##############  Old Junk Follows
