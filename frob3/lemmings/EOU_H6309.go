@@ -1,20 +1,16 @@
 package main
 
-// TODO -- fix this, after fixing EOU_M6809.
-// TODO -- copy same modules as M6809
-// TODO -- untested but known to be broken.
-
 func init() {
 	Os9(&Os9ConfigForLemma{
 		Name:        "EOU_H6309",
 		Level:       "level2",
 		Port:        "coco3",
 		DefaultDisk: "../eou-h6309/63SDC.VHD",
-		Boot1Base: "eou-h6309/63EMU.dsk",
+		Boot1Base:   "eou-h6309/63EMU.dsk",
 		Boot1Mods: []string{
-			"<rel",
-			"./boot.lemma",
-			"<krn",
+			"_HEAD_",       // Special mark to keep the Base's head.
+			"./boot.lemma", // Insert our own boot.lemma file.
+			"_TAIL_",       // Special mark to keep the Base's tail.
 		},
 		Boot2Base: "eou-h6309/63EMU.dsk",
 		Boot2Mods: []string{
@@ -24,9 +20,13 @@ func init() {
 			"<init",
 
 			"<RBF",
+			//"<EmuDsk",
+			//"<Rammer",
+			//"<R0",
+			// "<MD",
+
 			"<SCF",
 			"<vtio",
-			//"<keydrv",
 			"<snddrv",
 			"<joydrv",
 			"<cowin",
@@ -34,6 +34,7 @@ func init() {
 			"<term",
 
 			"<verm",
+			"<vrn",
 			"<nil",
 			"<vi",
 			"<ftdd",
@@ -46,23 +47,33 @@ func init() {
 			"<w5",
 			"<w6",
 			"<w7",
+			"<w8",
+			"<w9",
+			"<w10",
+			"<w11",
+			"<w12",
+			"<w13",
+			"<w14",
+			"<w15",
+
+			//"<scbbp",
+			//"<P",
+
+			"<PipeMan",
+			"<Piper",
+			"<Pipe",
 
 			"<clock",
 			"<clock2",
-			// "<sysgo",
-
-				"<pipeman",
-				"<piper",
-				"<pipe",
 
 			/*
-				"rbsuper.dr",
-				"llcocosdc.dr",
-				"sd0_cocosdc.dd",
-				"sd1_cocosdc.dd",
-			"./fuseman",
-			"./fuser",
-			"./fuse",
+			           "rbsuper.dr",
+			           "llcocosdc.dr",
+			           "sd0_cocosdc.dd",
+			           "sd1_cocosdc.dd",
+			   "./fuseman",
+			   "./fuser",
+			   "./fuse",
 			*/
 
 			"./rblemma",

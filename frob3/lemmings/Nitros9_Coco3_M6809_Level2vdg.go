@@ -2,9 +2,9 @@ package main
 
 func init() {
 	Os9(&Os9ConfigForLemma{
-		Name:        "Nitros9_Coco3_M6809_Level2vdg",
-		Level:       "level2",
-		Port:        "coco3",
+		Name:  "Nitros9_Coco3_M6809_Level2vdg",
+		Level: "level2",
+		Port:  "coco3",
 		// DefaultDisk: "nitros9/level2/coco3/NOS9_6809_L2_cocosdc.dsk",
 		DefaultDisk: "NOS9_6809_L2_coco3_80d.dsk",
 		Boot1Mods: []string{
@@ -20,7 +20,7 @@ func init() {
 			// "keydrv_cc3.sb",
 			"snddrv_cc3.sb",
 			"joydrv_joy.sb",
-			"covdg.io", // "cowin.io",
+			"covdg.io",    // "cowin.io",
 			"term_vdg.dt", // "term_win80.dt",
 
 			"w.dw",

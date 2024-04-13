@@ -51,6 +51,24 @@ func splitModules(b []byte) map[string][]byte {
 	return mods
 }
 
+func splitBootTrackAroundBootModule(b []byte) ([]byte, []byte, []byte) {
+	for i := 0; i < len(b); i++ {
+		if b[i] != 0x87 || b[i+1] != 0xCD {
+			continue
+		}
+		name, n := parseModule(b[i:])
+		if n == 0 {
+			continue
+		}
+		if strings.ToLower(name) != "boot" {
+			continue
+		}
+		return b[0:i], b[i : i+n], b[i+n:]
+	}
+	log.Panicf("splitBootTrackAroundBootModule did not find boot")
+	panic(0)
+}
+
 func GetBootTrackOf(filename string) []byte {
 	// sectorsPerTrack = 18, sectorSize = 256
 	const offset = 34 * 18 * 256 // 35th track
