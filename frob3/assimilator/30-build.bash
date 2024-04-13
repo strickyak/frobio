@@ -23,7 +23,7 @@ ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 		env | cat -n
 		test -d coco-shelf || git clone https://github.com/strickyak/coco-shelf.git
 		cd coco-shelf
-		time make ANON=1 2>&1 | tee /tmp/make.log
+		time make ANON=1 KEEP=1 2>&1 | tee /tmp/make.log
 	" | su - coco 
 
 '

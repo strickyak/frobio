@@ -10,6 +10,16 @@ export PATH="$shelf_bin:/usr/bin:/bin"
 export HOME="$shelf_home"
 export GOPATH="$shelf_home"
 
+# Find IP ADDY of the droplet in Digital Ocean.
+(
+	cd $HOME/godo-client &&
+	which go >&2 &&
+	go env >&2 &&
+	go get github.com/digitalocean/godo &&
+	go run godo-client.go -f=n $(cat /tmp/temp.droplet.name) > /tmp/temp.droplet.ip
+)
+head /tmp/temp.droplet.name /tmp/temp.droplet.ip
+
 H=`cat /tmp/temp.droplet.ip`
 ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 	set -euxo pipefail

@@ -20,5 +20,5 @@ export GOPATH="$shelf_home"
 	go run godo-client.go -f=n $(cat /tmp/temp.droplet.name) > /tmp/temp.droplet.ip
 )
 
-cat /tmp/temp.droplet.name /tmp/temp.droplet.ip
+head /tmp/temp.droplet.name
 echo $0 OKAY >&2
