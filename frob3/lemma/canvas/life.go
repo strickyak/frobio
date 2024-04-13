@@ -18,9 +18,9 @@ func init() {
 		lem.Demos = make(map[string]func(net.Conn))
 	}
 	lem.Demos["life"] = func(conn net.Conn) { RunLife(conn, false, 128) }
-	//lem.Demos["life2"] = func(conn net.Conn) { RunLife(conn, false, 128) }
-	lem.Demos["test"] = func(conn net.Conn) { RunLife(conn, true, 96) }
-	//lem.Demos["test2"] = func(conn net.Conn) { RunLife(conn, true, 96) }
+	lem.Demos["life-check"] = func(conn net.Conn) { RunLife(conn, true, 128) }
+	lem.Demos["life-stats"] = func(conn net.Conn) { RunLife(conn, false, 96) }
+	lem.Demos["life-stats-check"] = func(conn net.Conn) { RunLife(conn, true, 96) }
 }
 
 func RunLife(conn net.Conn, verify bool, width int) {
@@ -57,16 +57,12 @@ func RunLife(conn net.Conn, verify bool, width int) {
 		}
 
 		duration := time.Since(life.Start)
-		mtbf := "Inf"
-		if life.Errors > 0 {
-			mtbf = fmt.Sprintf("%0.2f", duration/time.Duration(life.Errors))
-		}
 		fps := float64(life.Generation) / duration.Seconds()
 
 		s := fmt.Sprintf("Generation: %d Duration: %v  FPS: %.2f",
 			life.Generation, duration, fps)
 		if verify {
-			s += fmt.Sprintf("  Errors: %d  MTBF: %v", life.Errors, mtbf)
+			s += fmt.Sprintf("  Errors: %d", life.Errors)
 		}
 		log.Print(s)
 	}
@@ -158,7 +154,9 @@ func LifeNext(life *Life, curr *Canvas, width int) *Canvas {
 		}
 	}
 
-	Impress(next, life, nMagenta, nOrange)
+	if width <= 96 {
+		Impress(next, life, nMagenta, nOrange)
+	}
 
 	return next
 }
