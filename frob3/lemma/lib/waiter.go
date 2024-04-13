@@ -7,6 +7,7 @@ package lib
 import (
 	"bytes"
 	"flag"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"io/ioutil"
 	"log"
