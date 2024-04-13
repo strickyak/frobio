@@ -1,11 +1,13 @@
 package lib
 
 import (
+	"bytes"
 	"flag"
 	"io/ioutil"
 	"log"
 	"os"
 	PFP "path/filepath"
+	"strings"
 	// "time"
 )
 
@@ -18,7 +20,7 @@ const NumDrives = 10
 const FloppySize = 161280
 
 type HdbDosDrive struct {
-	Path string
+	Path  string
 	Image []byte
 	Dirty bool
 }
@@ -30,7 +32,7 @@ type HdbDosSession struct {
 	Drives [NumDrives]*HdbDosDrive
 }
 
-func (h * HdbDosSession) SetDrive(drive byte, c *Chooser) {
+func (h *HdbDosSession) SetDrive(drive byte, c *Chooser) {
 	log.Printf("SetDrive: %d %v", drive, *c)
 
 	// Create the drive record, if needed.  Call it d.
@@ -52,7 +54,7 @@ func TextChooserShell(ses *Session) {
 	t := &TextVGA{
 		Ses: ses,
 	}
-	t.Loop()  // Loop until we return from Hijack.
+	t.Loop() // Loop until we return from Hijack.
 }
 
 // Entry from waiter.go for a Hijack.
@@ -73,11 +75,18 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	WriteQuint(ses.Conn, CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
+func HdbDosCleanup(ses *Session) {
+}
+
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{}
 	}
+	ses.Cleanups = append(ses.Cleanups, func() {
+		HdbDosCleanup(ses)
+	})
+
 	h := ses.HdbDos
 	cmd := payload[0]
 	lsn3 := uint(payload[1])
@@ -105,7 +114,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 	// Has it been mounted?
 	if d.Path == "" {
 		// No mount, so make it an empty disk.
-		d.Path = "--new--"  // temporary bogus name
+		d.Path = "--new--" // temporary bogus name
 		d.Image = EmptyDecbInitializedDiskImage()
 		d.Dirty = false
 		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} number %d.", drive)
@@ -169,18 +178,37 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 	DumpHexLines("Injection", 0, buf)
 }
 
-func SendInitialInjections(ses *Session) {
-	var splash []byte
-	for i := 0; i < 32; i++ {
-		// Splash some semigraphics chars
-		splash = append(splash, byte(256-32+i))
+func AsciiToInjectBytes(s string) []byte {
+	var bb bytes.Buffer
+	for _, ch := range strings.ToUpper(s) {
+		bb.WriteByte(63 & byte(ch))
 	}
+	return bb.Bytes()
+}
+
+func SendInitialInjections(ses *Session) {
+	//var splash []byte
+	//for i := 0; i < 32; i++ {
+		//// Splash some semigraphics chars
+		//splash = append(splash, byte(256-32+i))
+	//}
+	/*
+	const splashStr = "CLEAR KEY TOGGLES DISK CHOOSER"
+	var bb bytes.Buffer
+	for _, ch := range splashStr {
+		bb.WriteByte(63 & byte(ch))
+	}
+	splash := bb.Bytes()
+	*/
 
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
-	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, splash)
+	Inject(ses, sideload, 0x0580 /* on text screen*/, false, AsciiToInjectBytes("CLEAR KEY TOGGLES DISK CHOOSER:"))
+	Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
+	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
+	Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
 
 	inkey := Value(ioutil.ReadFile(*FlagInkeyRaw))
-	Inject(ses, sideload, 0xC0 + 0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])
+	Inject(ses, sideload, 0xC0+0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])
 	Inject(ses, sideload, 0xFA12 /* INKEY_TRAP_INIT */, true, inkey[:0xC0])
 }
 

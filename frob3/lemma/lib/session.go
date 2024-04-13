@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -48,12 +49,11 @@ func ReadQuint(conn net.Conn) []bytes {
 TODO */
 
 func WriteQuint(conn net.Conn, cmd byte, p uint, bb []byte) {
-  n := len(bb)
-  q := NewQuint(cmd, uint(n), p)
-  Value( conn.Write(q[:]) )
-  Value( conn.Write(bb) )
+	n := len(bb)
+	q := NewQuint(cmd, uint(n), p)
+	Value(conn.Write(q[:]))
+	Value(conn.Write(bb))
 }
-
 
 func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	n := uint(len(pay))
@@ -79,14 +79,16 @@ type Screen interface {
 	Clear()
 	PutChar(ch byte)
 	PutStr(s string)
+	Push()
 	//Width() int
 	//Height() int
-	//Push(*Session)
-	//Redraw()
 }
 
 type AxScreen struct {
 	Ses *Session
+}
+
+func (ax *AxScreen) Push() {
 }
 
 func (ax *AxScreen) Clear() {
@@ -106,59 +108,93 @@ func (ax *AxScreen) PutStr(s string) {
 	}
 }
 
-/*
-# type TextScreen struct {
-# 	Old  []byte // screen RAM already sent.
-# 	New  []byte // screen RAM not yet sent.
-# 	W, H int    // screen dimensions
-# 	P    int    // cursor
-# 	Addr int
-# }
-#
-# func NewTextScreen(w, h int, addr int) *TextScreen {
-# 	o := make([]byte, w*h)
-# 	n := make([]byte, w*h)
-# 	for i := 0; i < w*h; i++ {
-# 		o[i] = ' '
-# 		n[i] = ' '
-# 	}
-#
-# 	return &TextScreen{
-# 		Old:  o,
-# 		New:  n,
-# 		W:    w,
-# 		H:    h,
-# 		P:    0,
-# 		Addr: addr,
-# 	}
-# }
-#
-# func (t *TextScreen) Clear() {
-# 	t.New = make([]byte, t.W*t.H)
-# 	for i := range t.New {
-# 		t.New[i] = 32
-# 	}
-# }
-# func (t *TextScreen) PutChar(ch byte) {
-# 	if ch == 10 || ch == 13 {
-# 		PutChar(' ')
-# 		for (t.P & (t.W - 1)) != 0 {
-# 			PutChar(' ')
-# 		}
-# 		return
-# 	}
-#
-# 	if ' ' <= ch && ch <= '~' {
-# 		t.New[t.P] = ch
-# 		t.P++
-# 		for t.P >= t.W*t.H {
-# 			for i := t.W; i < t.W*t.H; i++ {
-# 				t.New[i-t.W] = t.New[i]
-# 			}
-# 		}
-# 	}
-# }
-*/
+type TextScreen struct {
+	B         []byte // screen RAM not yet sent.
+	W, H      int    // screen dimensions
+	P         int    // cursor
+	Addr      int
+	Majuscule bool // Use 0..63
+	Ses       *Session
+}
+
+func NewTextScreen(ses *Session, w, h int, addr int) *TextScreen {
+	o := make([]byte, w*h)
+	n := make([]byte, w*h)
+	for i := 0; i < w*h; i++ {
+		o[i] = ' '
+		n[i] = ' '
+	}
+
+	return &TextScreen{
+		B:         n,
+		W:         w,
+		H:         h,
+		P:         0,
+		Addr:      addr,
+		Majuscule: true,
+		Ses:       ses,
+	}
+}
+
+func (ax *TextScreen) PutStr(s string) {
+	for _, r := range s {
+		ax.PutChar(byte(r))
+	}
+}
+func (t *TextScreen) Push() {
+	AssertEQ(len(t.B), 512)
+	AssertEQ(t.Addr, 0x0400)
+	WriteQuint(t.Ses.Conn, CMD_POKE, uint(t.Addr), t.B)
+}
+func (t *TextScreen) Clear() {
+	t.B = make([]byte, t.W*t.H)
+	for i := range t.B {
+		t.B[i] = 32
+	}
+}
+func (t *TextScreen) PutChar(ch byte) {
+	//println("putchar", ch)
+	if ch == 10 || ch == 13 {
+		t.PutChar(' ')
+		for (t.P & (t.W - 1)) != 0 {
+			//println(t.P, t.W, (t.P & (t.W - 1)))
+			t.PutChar(' ')
+		}
+		return
+	}
+
+	if ch == 1 && t.P > 0 { // Invert previous char
+		p := t.P - 1
+		t.B[p] |= 0x40
+		return
+	}
+
+	if ch == 8 && t.P > 0 { // Delete previous char
+		t.B[t.P] = 32 // wipe out old curser
+		t.P--         // new cursor will be put here.
+	}
+
+	if ' ' <= ch && ch <= '~' {
+		d := ch
+		if t.Majuscule {
+			if 64 <= ch && ch <= 127 {
+				d = ch & 31 // becomes uppercase 0..31
+			}
+		}
+		t.B[t.P] = d
+		t.P++
+		for t.P >= t.W*t.H {
+			for i := t.W; i < t.W*t.H; i++ {
+				t.B[i-t.W] = t.B[i]
+			}
+			for i := t.W * (t.H - 1); i < t.W*t.H; i++ {
+				t.B[i] = 32
+			}
+			t.P -= t.W
+		}
+	}
+	t.B[t.P] = 0xA3 // Blue Bar for Cursor
+}
 
 type LineBuf struct {
 	Ses *Session
@@ -175,21 +211,28 @@ func (lb *LineBuf) GetLine() string {
 		switch cmd {
 		case CMD_INKEY:
 			ch := byte(q.P())
+			// log.Printf("GetLine: INKEY: ch=%d buf=%q", ch, buf)
 			switch ch {
 			case 10, 13:
+				//println("@", 1)
 				lb.Ses.Screen.PutChar(ch)
+				//println("@", 2)
+				lb.Ses.Screen.Push()
+				//println("@", 3)
 				return string(buf)
 			case 8:
 				if len(buf) > 0 {
 					buf = buf[:len(buf)-1] // trim last
 					lb.Ses.Screen.PutChar(ch)
+					lb.Ses.Screen.Push()
 				}
 			default:
 				if ' ' <= ch && ch <= '~' {
 					buf = append(buf, ch)
 					lb.Ses.Screen.PutChar(ch)
+					lb.Ses.Screen.Push()
 				} else {
-					// log.Panicf("LineBuf: weird char: %d", ch)
+					log.Printf("LineBuf: weird char: %d", ch)
 				}
 			} // switch ch
 		default:
@@ -199,17 +242,21 @@ func (lb *LineBuf) GetLine() string {
 }
 
 type Session struct {
-	ID      string
-	Conn    net.Conn
-	Screen  Screen
-	LineBuf *LineBuf
+	ID       string
+	Conn     net.Conn
+	Screen   Screen
+	LineBuf  *LineBuf
+	Hostname string
+	IdBytes  []byte
 
 	Block0 *os.File
 	Block1 *os.File
 
-	Procs map[uint]*Proc
+	Procs map[uint]*Proc // mux.go
 
-	HdbDos	*HdbDosSession
+	HdbDos *HdbDosSession
+
+	Cleanups []func()
 
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
@@ -223,13 +270,15 @@ func (ses *Session) String() string {
 // Run() is called with "go" to manage a connection session.
 var nextID int = 1001
 
-func NewSession(conn net.Conn) *Session {
+func NewSession(conn net.Conn, hostname string) *Session {
 	ses := &Session{
-		ID:    fmt.Sprintf("ses%d", nextID),
-		Conn:  conn,
-		Procs: make(map[uint]*Proc),
+		ID:       fmt.Sprintf("s%d_%s", nextID, hostname),
+		Conn:     conn,
+		Procs:    make(map[uint]*Proc), // mux.go
+		Hostname: hostname,
 	}
-	ses.Screen = &AxScreen{ses}
+	// ses.Screen = &AxScreen{ses}
+	ses.Screen = NewTextScreen(ses, 32, 16, 0x0400)
 	ses.LineBuf = &LineBuf{ses}
 	nextID++
 
@@ -244,7 +293,8 @@ type Card struct {
 	Moms []int
 	Kids map[int]*Card
 
-	Text string
+	Text     string
+	Template *template.Template
 
 	Launch string
 	Block0 string
@@ -267,6 +317,8 @@ func Add(num int, parent int, name string, tc *Card) {
 			parent.Kids[num] = tc
 		}
 	}
+
+	tc.Template = template.Must(template.New(Str(tc.Num)).Parse(tc.Text))
 }
 
 func DuplicateFileToTemp(filename string, startup string) *os.File {
@@ -328,7 +380,8 @@ func Run(ses *Session) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			ses.Screen.PutStr(fmt.Sprintf("\n\n(session Run) ERROR: %v\n", r))
+			ses.Screen.PutStr(fmt.Sprintf("\n\n(session Run) FATAL ERROR: %v\n", r))
+			ses.Screen.Push()
 			panic(r)
 		}
 	}()
@@ -341,7 +394,17 @@ CARD:
 		log.Printf("%#v", *current)
 		ses.Screen.Clear()
 		ses.Screen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
-		ses.Screen.PutStr(current.Text + "\n")
+
+		// ses.Screen.PutStr("(*" + current.Text + "*)\n")
+
+		var buf bytes.Buffer
+		err := current.Template.Execute(&buf, ses)
+		if err != nil {
+			log.Printf("Template Error p%d: %v", current.Num, err)
+			ses.Screen.PutStr("Template Error: " + Str(err))
+		} else {
+			ses.Screen.PutStr(buf.String())
+		}
 
 		if current.Launch != "" {
 			ses.Screen.PutStr("[@] Launch!\n")
@@ -356,7 +419,8 @@ CARD:
 		for _, ns := range vec {
 			ses.Screen.PutStr(ns.Str)
 		}
-		ses.Screen.PutStr(">\001")
+		ses.Screen.PutStr("> ")
+		ses.Screen.Push()
 
 		line := ses.LineBuf.GetLine()
 		line = strings.Trim(line, " \t\r\n")
@@ -412,28 +476,7 @@ CARD:
 		}
 		continue CARD
 	DELAY:
+		ses.Screen.Push()
 		time.Sleep(3 * time.Second)
 	}
 }
-
-/*
-
-Notes on creating an OS9 disk
-
-~/coco-shelf/bin/os9 format -l'1000000' /tmp/qg
-Format Summary
---------------
-Geometry Data:
-      Cylinders: 1600
-          Heads: 125
-  Sectors/track: 5
-    Sector size: 256
-
-Logical Data:
-  Total sectors: 1000000
-  Size in bytes: 256000000
-   Cluster size: 2
-strick@nand:~/coco-shelf/frobio/frob3/lemma/lib$ ls -s /tmp/qg
-64 /tmp/qg
-
-*/

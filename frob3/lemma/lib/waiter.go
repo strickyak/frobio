@@ -5,15 +5,16 @@ package lib
 // TODO: gc Life Generator goroutines.
 
 import (
+	"bytes"
 	"flag"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
-	"runtime/debug"
 )
 
 var PORT = flag.Int("port", 2319, "Listen on this TCP port")
@@ -32,7 +33,7 @@ const (
 	CMD_POKE = 0
 	CMD_CALL = 255
 
-	CMD_PEEK2 = 195      // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
+	CMD_PEEK2     = 195 // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
 	CMD_BEGIN_MUX = 196
 	CMD_MID_MUX   = 197
 	CMD_END_MUX   = 198
@@ -57,12 +58,12 @@ const (
 	CMD_LEMMAN_REQUEST = 214 // LemMan
 	CMD_LEMMAN_REPLY   = 215 // LemMan
 
-	CMD_RTI = 216
-	CMD_ECHO = 217  // reply with CMD_DATA, with high bits toggled.
-	CMD_DW = 218
-	CMD_HDBDOS_SECTOR = 219  // Normal HDBDOS block I/O.
-	CMD_HDBDOS_EXEC = 220    // Slip in sideloaded pages via EXEC records.
-	CMD_HDBDOS_HIJACK = 221  // CLEAR key hijacks the machine from BASIC.
+	CMD_RTI           = 216
+	CMD_ECHO          = 217 // reply with CMD_DATA, with high bits toggled.
+	CMD_DW            = 218
+	CMD_HDBDOS_SECTOR = 219 // Normal HDBDOS block I/O.
+	CMD_HDBDOS_EXEC   = 220 // Slip in sideloaded pages via EXEC records.
+	CMD_HDBDOS_HIJACK = 221 // CLEAR key hijacks the machine from BASIC.
 )
 
 var Demos map[string]func(net.Conn)
@@ -141,7 +142,7 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	}
 }
 
-func GetBlockDevice(ses *Session) *os.File {
+func GetBlockDevice(ses *Session) *os.File { // Nitros9 RBLemma devices
 	var err error
 	if *BLOCK0 != "" {
 		if Block0 == nil {
@@ -206,6 +207,14 @@ func RegsString(b []byte) string {
 }
 
 func ReadFiveLoop(conn net.Conn, ses *Session) {
+	defer func() {
+		// Do Cleanup functions in backwards order.
+		n := len(ses.Cleanups)
+		for i := range ses.Cleanups {
+			Catch(ses.Cleanups[n-1-i])
+		}
+	}()
+
 	var block0 *os.File
 	quint := make([]byte, 5)
 
@@ -256,7 +265,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				DumpHexLines("M", p, data)
 			}
 
-		case CMD_BLOCK_READ:
+		case CMD_BLOCK_READ: // Nitros9 RBLemma devices
 			{
 				// block0, lsn := prepareBlockDevice(ses, n, p)
 				// lsn := prepareBlockDevice(n, p)
@@ -282,7 +291,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
 			}
-		case CMD_BLOCK_WRITE:
+		case CMD_BLOCK_WRITE: // Nitros9 RBLemma devices
 			{
 				// block0, lsn := prepareBlockDevice(ses, n, p)
 				// lsn := prepareBlockDevice(n, p)
@@ -358,15 +367,15 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			pay := ReadN(conn, n)
 			EndMux(ses, p, pay)
 
-		case CMD_ECHO:  // echos back data with high bit toggled.
+		case CMD_ECHO: // echos back data with high bit toggled.
 			pay := ReadN(conn, 4)
 			WriteFive(conn, CMD_DATA, 4, p)
 			for i, e := range pay {
-				pay[i] = 128 ^ e  // toggle high bits in payload.
+				pay[i] = 128 ^ e // toggle high bits in payload.
 			}
 			conn.Write(pay)
 
-		case CMD_DW:  // echos back data with high bit toggled.
+		case CMD_DW: // echos back data with high bit toggled.
 			log.Printf("DW [n=%d. p=%d.]", n, p)
 			panic("TODO")
 
@@ -402,6 +411,32 @@ func UploadProgram(conn net.Conn, filename string) {
 	log.Printf("Uploaded %q", filename)
 }
 
+func UpperCleanName(s []byte, maxLen int) string {
+	var buf bytes.Buffer
+	for _, b := range s {
+		if 'A' <= b && b <= 'Z' {
+			buf.WriteByte(b)
+		} else if '0' <= b && b <= '9' {
+			buf.WriteByte(b)
+		} else if 'a' <= b && b <= 'z' {
+			buf.WriteByte(b - 32)
+		} else {
+			buf.WriteByte('_')
+		}
+	}
+	z := strings.TrimRight(buf.String(), "_")
+	if z == "" {
+		z = "EMPTY"
+	}
+	if !('A' <= z[0] && z[0] <= 'Z') {
+		z = "X" + z
+	}
+	if len(z) > maxLen {
+		z = z[:maxLen]
+	}
+	return z
+}
+
 func Serve(conn net.Conn) {
 	defer func() {
 		r := recover()
@@ -415,21 +450,21 @@ func Serve(conn net.Conn) {
 		conn.Close()
 	}()
 
-	log.Printf("Serving: Poke to 0x400")
-	PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
-	hostbytes := PeekRam(conn, 0xDFE0, 8) // Hostname in ROM
-	hostname := strings.TrimRight(string(hostbytes), " _\377\n\r\000")
-	if hostname == "" {
-		hostname = "EMPTY"
-	}
-	log.Printf("hostname = %q", hostname)
+	//log.Printf("Serving: Poke to 0x400")
+	//PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
+	idSector := PeekRam(conn, 0xDF00, 256-12) // Identity Last Half Sector, less 12 bytes of secret.
+	DumpHexLines("idSector", 0xDF00, idSector)
+	hostBytes := idSector[0xE0:0xE8]
+	DumpHexLines("hostBytes", 0xDFE0, hostBytes)
+	hostName := UpperCleanName(hostBytes, 8)
+	log.Printf("hostName = %q", hostName)
 	log.Printf("*TESTHOST = %q", *TESTHOST)
 
 	log.Printf("~~~~~~~~~~~~~~ a  ")
-	if false && hostname == *TESTHOST {
-	log.Printf("~~~~~~~~~~~~~~ b  ")
-		ses := NewSession(conn)
-		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostname))
+	if false && hostName == *TESTHOST {
+		log.Printf("~~~~~~~~~~~~~~ b  ")
+		ses := NewSession(conn, hostName)
+		ses.Screen.PutStr(Format("TEST MODE for host '%q'\n", hostName))
 		test_card := Cards[328] // Nitros9 Level 2 for M6809
 
 		dur, _ := time.ParseDuration("5s")
@@ -454,7 +489,7 @@ func Serve(conn net.Conn) {
 		}
 
 	} else if *DEMO != "" {
-	log.Printf("~~~~~~~~~~~~~~ c  ")
+		log.Printf("~~~~~~~~~~~~~~ c  ")
 
 		demo, ok := Demos[*DEMO]
 		if !ok {
@@ -466,28 +501,29 @@ func Serve(conn net.Conn) {
 		demo(conn)
 
 	} else if *LEVEL0 != "" {
-	log.Printf("~~~~~~~~~~~~~~ d  ")
+		log.Printf("~~~~~~~~~~~~~~ d  ")
 
 		go ReadFiveLoop(conn, nil)
 		time.Sleep(time.Second) // Handle anything pushed, first.
 		UploadProgram(conn, *LEVEL0)
 
 	} else if *PROGRAM != "" {
-	log.Printf("~~~~~~~~~~~~~~ e  ")
+		log.Printf("~~~~~~~~~~~~~~ e  ")
 
-		ses := NewSession(conn)
+		ses := NewSession(conn, hostName)
 		func() {
 			defer func() {
 				println("recover: ", recover())
 			}()
 			go Catch(func() { ReadFiveLoop(conn, ses) })
-			time.Sleep(time.Second) // Handle anything pushed, first.
+			time.Sleep(time.Second) // Handle anything pushed, first.  // TODO: wait for Hello packet.
 			Catch(func() { UploadProgram(conn, *PROGRAM) })
 		}()
 	} else {
-	log.Printf("~~~~~~~~~~~~~~ f  ")
-		ses := NewSession(conn)
-		ses.Screen.PutStr(Format("host '%q' connected.\n", hostname))
+		log.Printf("~~~~~~~~~~~~~~ f  ")
+		ses := NewSession(conn, hostName)
+		ses.IdBytes = idSector
+		ses.Screen.PutStr(Format("host '%q' connected.\n", hostName))
 		Run(ses)
 		log.Panicf("Run Cards: quit")
 	}
@@ -501,7 +537,7 @@ func Serve(conn net.Conn) {
 
 func Catch(fn func()) {
 	defer func() {
-		log.Printf("catch: %v", recover())
+		log.Printf("%v: catch: %v", fn, recover())
 	}()
 	fn()
 }
