@@ -41,10 +41,6 @@ LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importu
 results1:
 	rm -rf results
 	mkdir -p results/CMDS results/MODULES
-	ln -s . results/lem
-	date | tr -c ' -~' '\r' > results/one
-	uname -a | tr -c ' -~' '\r' > results/two
-	cat /proc/zoneinfo | tr -c ' -~' '\r' > results/three
 	set -x; for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
