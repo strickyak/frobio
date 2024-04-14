@@ -6,11 +6,27 @@ import (
 	"log"
 	"os"
 	PFP "path/filepath"
+
+	"github.com/strickyak/frobio/frob3/lemma/rsdos"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 type TextVGA struct {
 	Screen [32 * 16]byte
 	Ses    *Session
+}
+
+type Chooser struct {
+	Order  int
+	Name   string
+	Kids   []*Chooser
+	Parent *Chooser
+
+	IsDir bool
+	Size  int64
+	Disk  rsdos.DiskRec
+
+	Line int // in Parent's chooser
 }
 
 func (t *TextVGA) Loop() {
@@ -158,24 +174,16 @@ func (t *TextVGA) Render(c *Chooser, focus int) {
 		if row < len(c.Kids)+3 {
 			kid := c.Kids[row-3]
 			kid.FillChooser()
-			t.WriteLine(row, "%c %s", t.Decoration(kid), kid.Name)
+			var codes string
+			if kid.Disk != nil {
+				codes = kid.Disk.Codes()
+			}
+			t.WriteLine(row, "%c %-2s %s", t.Decoration(kid), codes, kid.Name)
 		} else {
 			t.WriteLine(row, "...")
 		}
 	}
 	t.InvertLine(focus)
-}
-
-type Chooser struct {
-	Order  int
-	Name   string
-	Kids   []*Chooser
-	Parent *Chooser
-
-	IsDir bool
-	Size  int64
-
-	Line int // in Parent's chooser
 }
 
 func TopChooser() *Chooser {
@@ -225,6 +233,8 @@ func (c *Chooser) FillChooser() {
 	} else {
 		// Not a directory.
 		c.Size = stat.Size()
+		contents := Value(os.ReadFile(uPath))
+		c.Disk = rsdos.DiskParse(contents)
 	}
 }
 

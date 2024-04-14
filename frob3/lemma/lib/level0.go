@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"flag"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io/ioutil"
 	"log"
 	"net"

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"flag"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"log"
 	"os"

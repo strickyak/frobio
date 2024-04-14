@@ -20,7 +20,7 @@ typedef unsigned int word;
 
 typedef void (*func)();
 
-#include "frob2/wiz/w5100s_defs.h"
+#include "frob3/wiz/w5100s_defs.h"
 
 //////////////////////////////////////////////////
 //

@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"fmt"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"log"
 	"net"
