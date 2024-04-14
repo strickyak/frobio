@@ -123,21 +123,24 @@ Repair16BytesAfterX:
         ;; };
 
 ;TRAILING_DATA:
-        FCC /LEMMA.YAK.NET/          ; 32 bytes for Lemma Server DNS Hostname (NOT USED YET BY AXIOM).
-	FILL 0,TRAILING_DATA+28-.    ; ... rest fill with zeroes.
-	FILL 8,4                ; public DNS 8.8.8.8  (NOT USED YET).
+	; 64 bytes $DF80-$DFBF
+        FILL 0,64               ; reserved 64 bytes, for anyone.
 
-        FILL 0,32               ; reserved 32 bytes, for anyone.
+	; 32 bytes $DFC0-$DFDF
+        FILL 0,16               ; reserved 16 bytes, for frobio. [not yet used by axiom41]
+	FCB 134,122,16,44       ; $DFD0: default waiter: lemma.yak.net. [not yet used by axiom41]
+	FCB 8,8,8,8             ; $DFD4: default DNS server: dns.google. [not yet used by axiom41]
+	FCC /--------/          ; $DFD8: 8-byte hailing frequency 
 
-        FILL 0,24               ; reserved 24 bytes, for frobio.
-
-	FCC /--------/          ; hailing 8-byte frequency 
-	FCC /UNKNOWN /          ; default 8-byte hostname
-	FILL 0,3                ; default 3-byte flags
-	FCC /AXIOM/             ; default 5-byte MAC tail
-	FCC /ABCDEFGHIJKLMNOP/  ; default 16-byte secret
+	; 32 bytes $DFE0-$DFFF
+	FCC /UNKNOWN /          ; $DFE0: default 8-byte hostname (space padded)
+	FILL 0,3                ; $DFE8: default 3-byte flags
+	FCC /AXIOM/             ; $DFEB: default 5-byte MAC tail
+	FCC /ABCDEFGHIJKLMNOP/  ; $DFF0: default 16-byte secret
 
 MUST_BE_E000:
+	FILL 255,MUST_BE_E000-$E000  ; Assertion: difference should be 0; breaks if negative
+	FILL 255,$E000-MUST_BE_E000  ; Assertion: difference should be 0; breaks if negative
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
