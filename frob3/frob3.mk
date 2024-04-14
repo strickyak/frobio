@@ -2,7 +2,7 @@
 # from the directory where you actually build (whose Makefile
 # is created and configured by ./configure).
 
-LAN=10.23.23.23
+LAN=127.0.0.1
 DHCP=0
 
 all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom41 all-hdbdos results1 results2 all-lemmings results2b results3
@@ -20,7 +20,7 @@ NUM_MODULES = 14
 
 ###############################################
 
-VPATH = $F $F/axiom $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos
+VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma
 
 FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
 WIZ_C = $F/wiz/wiz5100s.c
@@ -46,8 +46,10 @@ results1:
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
-results2: results1 os9disks
-	mkdir -p results/OS9DISKS results/LEMMINGS results/BOOTING
+results2: results1 os9disks server broadcast-burn
+	mkdir -p results/OS9DISKS results/LEMMINGS results/BOOTING results/bin
+	ln -fv server results/bin
+	ln -fv broadcast-burn results/bin
 
 NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
 	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
@@ -453,11 +455,15 @@ all-lemmings: burn-rom-fast.lem
 #   It's a server, so it will run forever, as long as nothing goes wrong.
 #   You can hit ^C to kill it.  `make` will then print an error message
 #   that you can ignore.
-server: all-without-gccretro
-	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
+server: server.go all-without-gccretro
+	P=`pwd` && cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/server -x server.go
+	ln -fv server ../bin
+broadcast-burn: broadcast-burn.go all-without-gccretro
+	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/broadcast-burn -x broadcast-burn.go
+	ln -fv broadcast-burn ../bin
 run-server: run-lemma  # Alias.
 run-lemma: server
-	$(SHELF)/bin/server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
+	./server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
 
 ##############  Old Junk Follows
 #   For debugging with Gomar on Loopback.
