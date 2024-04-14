@@ -22,9 +22,18 @@ ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 		cat -n /proc/cpuinfo
 		env | cat -n
 		test -d coco-shelf || git clone https://github.com/strickyak/coco-shelf.git
+
 		cd coco-shelf
 		time make ANON=1 KEEP=1 2>&1 | tee /tmp/make.log
-	" | su - coco 
 
-'
-echo $0 OKAY >&2
+		cd
+		bash ~/coco-shelf/frobio/frob3/assimilator/make-frobball.bash /tmp/frobball
+
+		cd /tmp/
+		tar cjf frobball.tar.bz2 frobball
+	" | su - coco >&2
+
+	cat /tmp/frobball.tar.bz2
+' > /tmp/frobball.tar.bz2
+
+echo $0 : OKAY /tmp/frobball.tar.bz2 >&2 

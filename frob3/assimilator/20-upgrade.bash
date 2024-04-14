@@ -31,6 +31,7 @@ ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 	apt -y install gcc make flex bison gdb build-essential < /dev/null
 	apt -y install git golang zip curl python3-serial < /dev/null
 	apt -y install libgmp-dev libmpfr-dev libmpc-dev libfuse-dev < /dev/null
+	apt -y install net-tools < /dev/null
 
 	test -d /home/coco || useradd --create-home --shell /bin/bash coco 
 '
