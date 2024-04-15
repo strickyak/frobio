@@ -9,14 +9,17 @@ import (
 	"os"
 	PFP "path/filepath"
 	"strings"
-	// "time"
+	"time"
 )
 
-var FlagDosRoot = flag.String("dos_root", "", "for HdbDos")
+var FlagHomesRoot = flag.String("homes_root", "", "User home directories, for HdbDos")
+var FlagPublicRoot = flag.String("public_root", "", "public files, for HdbDos")
 var FlagSideloadRaw = flag.String("sideload_raw", "sideload.lwraw", "raw machine code fragment for HdbDos")
 var FlagInkeyRaw = flag.String("inkey_raw", "inkey_trap.lwraw", "raw machine code fragment for HdbDos")
 
 const NumDrives = 10
+const DirPerm = 0775
+const FilePerm = 0664
 
 const FloppySize = 161280
 
@@ -58,25 +61,51 @@ func TextChooserShell(ses *Session) {
 	t.Loop() // Loop until we return from Hijack.
 }
 
+func CreateHomeIfNeeded(ses *Session) {
+	os.Mkdir(*FlagHomesRoot, 0770)
+	os.Mkdir(PFP.Join(*FlagHomesRoot, ses.Hostname), DirPerm)
+}
+
 // Entry from waiter.go for a Hijack.
 func HdbDosHijack(ses *Session, payload []byte) {
-	ses.HdbDos.SavedText = payload
+	savedText := payload // default text screen: $0400 to $05FF
 
-	slashes := make([]byte, 512)
-	for i := 0; i < 512; i++ {
-		slashes[i] = '/'
-	}
-	WriteQuint(ses.Conn, CMD_POKE, 0x400, slashes)
+	const GIME = 0xFF90
+	const GIME_LEN = 0x0050
+
+	savedGime := Peek2Ram(ses.Conn, GIME, GIME_LEN)
+	DumpHexLines("savedGime", GIME, savedGime)
+
+	CreateHomeIfNeeded(ses)
 	TextChooserShell(ses)
 
-	WriteQuint(ses.Conn, CMD_POKE, 0x400, slashes)
-	WriteQuint(ses.Conn, CMD_POKE, 0x400, ses.HdbDos.SavedText)
-
+	// Restore screen
+	PokeRam(ses.Conn, 0x0400, savedText)
+	//PokeRam(ses.Conn, GIME, savedGime)
 	// We tell coco that this is the END of the HIJACK.
 	WriteQuint(ses.Conn, CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
+func HdbDosCleanupOneDrive(ses *Session, driveNum int, timestamp string) {
+	drive := ses.HdbDos.Drives[driveNum]
+	if drive == nil || !drive.Dirty {
+		return
+	}
+	// if dirty:
+	dest := PFP.Join(*FlagHomesRoot, ses.Hostname, PFP.Base(drive.Path)) + "-" + timestamp
+	err := os.WriteFile(dest, drive.Image, FilePerm)
+	if err != nil {
+		log.Printf("BAD: HdbDosCleanup: Error saving dirty file %d bytes %q as %q: %v", len(drive.Image), drive.Path, dest, err)
+	} else {
+		log.Printf("HdbDosCleanup: Saved dirty file %d bytes %q as %q", len(drive.Image), drive.Path, dest)
+	}
+	ses.HdbDos.Drives[driveNum] = nil // Delete the drive record.
+}
 func HdbDosCleanup(ses *Session) {
+	timestamp := time.Now().Format("2006-01-02-150405")
+	for driveNum, _ := range ses.HdbDos.Drives {
+		HdbDosCleanupOneDrive(ses, driveNum, timestamp)
+	}
 }
 
 // Entry from waiter.go for a Sector.
@@ -121,7 +150,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} number %d.", drive)
 	}
 	if d.Image == nil {
-		bb, err := os.ReadFile(PFP.Join(*FlagDosRoot, d.Path))
+		bb, err := os.ReadFile(PFP.Join(*FlagPublicRoot, d.Path))
 		if err != nil {
 			log.Panicf("HdbDosSector ReadFile failed %q: %v", d.Path, err)
 		}
@@ -162,6 +191,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 }
 
 func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte) {
+	log.Printf("Inject: len=%4x dest=%4x exec=%v", len(payload), dest, exec)
 	buf := make([]byte, 5+256)
 	copy(buf[5:], sideload)
 	copy(buf[5+64:], payload)
@@ -176,7 +206,7 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 	}
 
 	WriteQuint(ses.Conn, CMD_HDBDOS_EXEC, 0, buf)
-	DumpHexLines("Injection", 0, buf)
+	DumpHexLines("Inject: did ", dest, buf)
 }
 
 func AsciiToInjectBytes(s string) []byte {
@@ -190,16 +220,16 @@ func AsciiToInjectBytes(s string) []byte {
 func SendInitialInjections(ses *Session) {
 	//var splash []byte
 	//for i := 0; i < 32; i++ {
-		//// Splash some semigraphics chars
-		//splash = append(splash, byte(256-32+i))
+	//// Splash some semigraphics chars
+	//splash = append(splash, byte(256-32+i))
 	//}
 	/*
-	const splashStr = "CLEAR KEY TOGGLES DISK CHOOSER"
-	var bb bytes.Buffer
-	for _, ch := range splashStr {
-		bb.WriteByte(63 & byte(ch))
-	}
-	splash := bb.Bytes()
+		const splashStr = "CLEAR KEY TOGGLES DISK CHOOSER"
+		var bb bytes.Buffer
+		for _, ch := range splashStr {
+			bb.WriteByte(63 & byte(ch))
+		}
+		splash := bb.Bytes()
 	*/
 
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
@@ -208,9 +238,24 @@ func SendInitialInjections(ses *Session) {
 	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
 	Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
 
-	inkey := Value(ioutil.ReadFile(*FlagInkeyRaw))
-	Inject(ses, sideload, 0xC0+0xFA12 /* INKEY_TRAP_INIT */, false, inkey[0xC0:])
-	Inject(ses, sideload, 0xFA12 /* INKEY_TRAP_INIT */, true, inkey[:0xC0])
+	bb := Value(ioutil.ReadFile(*FlagInkeyRaw))
+
+	const InkeyTrapInit = 0xFA12
+	const ChunkSize = 0xC0
+	endAddr := uint(InkeyTrapInit + len(bb))
+	for len(bb) > 0 {
+		n := len(bb)
+		if n > ChunkSize {
+			// All-but-last injection:
+			endAddr -= ChunkSize
+			Inject(ses, sideload, endAddr, false, bb[n-ChunkSize:])
+			bb = bb[:n-ChunkSize]
+		} else {
+			// Last injection:
+			Inject(ses, sideload, InkeyTrapInit, true, bb)
+			bb = bb[:0]
+		}
+	}
 }
 
 func EmptyDecbInitializedDiskImage() []byte {

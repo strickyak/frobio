@@ -77,9 +77,8 @@ struct wiz_port {
 
 // Global state for axiom4.
 struct axiom4_vars {
-    // THE FIELD orig_s_reg MUST BE FIRST (due to how we zero the vars).
-    word orig_s_reg;  // Remember original stack pointer.
-    // word main;        // where is axiom, rom or ram?
+    word stack;       // Remember original SP, a hint a ram size.
+    word main;        // where is axiom, rom or ram?
     word rom_sum_0;
     word rom_sum_1;
     word rom_sum_2;
@@ -159,6 +158,8 @@ extern const struct sock WizSocketFacts[4];
 
 enum Commands {
   CMD_POKE = 0,
+  CMD_SUM = 194,
+  CMD_PEEK2 = 195,
   CMD_LOG = 200,
   CMD_INKEY = 201,
   CMD_PUTCHAR = 202,
@@ -708,13 +709,13 @@ void WizConfigure() {
 }
 
 errnum ValidateWizPort(struct wiz_port* p) {
-    PrintF("?%x ", p);
+    // PrintF("?%x ", p);
     byte status = p->command;
-    PrintF("s:%x ", status);
+    // PrintF("s:%x ", status);
     if (status != 3) return 11;
     p->addr = 0x0080; // Query Version
     byte version = p->data;
-    PrintF("v:%x ", version);
+    // PrintF("v:%x ", version);
     if (version != 0x51) return 12;
     p->addr = 0x0009; // Hardware Addr (mac)
     p->data = 0xA1;
@@ -725,7 +726,7 @@ errnum ValidateWizPort(struct wiz_port* p) {
     byte x = p->data;
     byte y = p->data;
     byte z = p->data;
-    PrintF("(%x,%x,%x)\n", x, y, z);
+    // PrintF("(%x,%x,%x)\n", x, y, z);
     if (x!=0xA1 || y!=0xB2 || z!=0xC3) return 13;
 
     return 0;
@@ -813,13 +814,14 @@ struct lan_discovery_request {
   byte lan_xid[4];
   byte lan_reserved[8];
 
-  word orig_s_reg;     // how big is memory?
+  word stack;     // how big is memory?
   word main;           // where is axiom, rom or ram?
   word rom_sum_0;      // what roms are visible?
   word rom_sum_1;
   word rom_sum_2;
   word rom_sum_3;
   byte mac_tail[5];    // 5 bytes from Rom.
+  byte hostname[8];    // 8 bytes from Rom.
 };
 
 struct lan_discovery_reply {
@@ -836,9 +838,10 @@ void SendLanRequest(const struct sock* sockp) {
   struct lan_discovery_request *q = (struct lan_discovery_request*) PACKET_BUF;
 
   q->lan_opcode[0] = 'Q';
-  memcpy(&q->lan_xid, &Vars->transaction_id, 4);
-  memcpy(&q->orig_s_reg, &Vars->orig_s_reg, 6*2); // six words.
-  memcpy(&q->mac_tail, &Rom->rom_mac_tail, 5); // five bytes.
+  memcpy(q->lan_xid, Vars->transaction_id, 4);
+  memcpy(&q->stack, &Vars->stack, 6*2); // six words.
+  memcpy(q->mac_tail, Rom->rom_mac_tail, 5); // five bytes.
+  memcpy(q->hostname, Rom->rom_hostname, 8);
 
   // Set a special bit to tell Lemma that we are a H6309.
   if (CpuType() == 0x9821) q->lan_reserved[0] |= LAN_RES0_H6309;
@@ -1471,7 +1474,9 @@ void WizClose(PARAM_JUST_SOCK) {
 extern void DoKeyboardCommands(char initial_char);
 extern errnum RunDhcp(const struct sock* sockp, const char* name4, word ticks);
 
-word RomSum(word begin, word end) {
+// Very simple checksum.
+// Sums 16 bits at a time, so must be an even number of words.
+word CheckSum16(word begin, word end) {
   word sum = 0;
   while (begin < end) {
     sum += *(word*)begin;
@@ -1497,11 +1502,8 @@ errnum OneDiscoveryRound() {
   struct UdpRecvHeader hdr;
   if (!Vars->got_lan) {
     e = WizRecvChunkTry(SOCK0_AND  (char*)&hdr, sizeof hdr);
-    // PrintF(" $$$%x ", e);
     if (!e) {
-      // PrintF("$$$%x ", hdr.len);
       e = RecvLanReply(SOCK0_AND hdr.len);
-      // PrintF("$$$%x ", e);
       if (!e) {
         Vars->got_lan = true;
         PutStr(" [[ LAN: ");
@@ -1513,23 +1515,18 @@ errnum OneDiscoveryRound() {
 
   if (!Vars->got_dhcp) {
     e = WizRecvChunkTry(SOCK1_AND  (char*)&hdr, sizeof hdr);
-    //PrintF("R1:%x,", e);
     if (!e) {
-      //PrintF("R1=%x,", hdr.len);
       e = RecvDhcpReply(SOCK1_AND hdr.len, false);
-      //PrintF("=%x;", e);
       if (!e) Vars->got_dhcp = true;
     }
   }
 
   if (!Vars->got_lan) {
     SendLanRequest(JUST_SOCK0);
-    //PrintF("S0;");
   }
 
   if (!Vars->got_dhcp) {
     SendDhcpRequest(SOCK1_AND  false/*not second time*/);
-    //PrintF("S1;");
   }
   return 0;
 }
@@ -1582,19 +1579,18 @@ char CountdownOrInitialChar() {
 }
 
 void ComputeRomSums() {
-    Vars->rom_sum_0 = RomSum(0x8000, 0xA000);
-    Vars->rom_sum_1 = RomSum(0xA000, 0xC000);
-    Vars->rom_sum_2 = RomSum(0xC100, 0xC800);
-    Vars->rom_sum_3 = RomSum(0xE000, 0xF000);
+    Vars->rom_sum_0 = CheckSum16(0x8000, 0xA000);
+    Vars->rom_sum_1 = CheckSum16(0xA000, 0xC000);
+    Vars->rom_sum_2 = CheckSum16(0xC100, 0xC800);
+    Vars->rom_sum_3 = CheckSum16(0xE000, 0xF000);
 }
 
 
 errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
-  char inkey;
   errnum e;  // was bool e, but that was a mistake.
-    // PrintH("PolC");
-    inkey = PolCat();
+
+    char inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
       quint[0] = CMD_INKEY;
@@ -1603,7 +1599,6 @@ errnum LemmaClientS1() {  // old style does not loop.
       if (e) return e;
     }
 
-    // PrintH("RTry");
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
       word n = *(word*)(quint+1);
@@ -1611,9 +1606,7 @@ errnum LemmaClientS1() {  // old style does not loop.
       switch ((byte)quint[0]) {
         case CMD_POKE:
           {
-            // PrintH("POKE(%x@%x)\n", n, p);
             TcpRecv(SOCK1_AND (char*)p, n);
-            // PrintH("POKE DONE\n");
           }
           break;
         case CMD_PUTCHAR:
@@ -1621,20 +1614,25 @@ errnum LemmaClientS1() {  // old style does not loop.
               PutChar(p);
           }
           break;
+        case CMD_SUM:
+          {
+            // quint[0] remains CMD_SUM.
+	    word sum = CheckSum16(p, p+n);
+	    POKE2(quint+1, 0);
+	    POKE2(quint+3, sum);
+            WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
+          }
+          break;
         case CMD_PEEK:
           {
-            // PrintH("PEEK(%x@%x)\n", n, p);
-
             quint[0] = CMD_DATA;
             WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
             TcpSend(SOCK1_AND (char*)p, n);
-            // PrintH("PEEK DONE\n");
           }
           break;
         case CMD_JSR:
           {
             func_t fn = (func_t)p;
-            // PrintH("JSR(%x@%x)\n", p);
 	    SetDP(0x00);
             fn();
 	    SetDP(0xFF);
@@ -1645,39 +1643,16 @@ errnum LemmaClientS1() {  // old style does not loop.
           break;
       } // switch
     }
-//SPIN(20);
     return (e==NOTYET) ? OKAY : e;
 }
 
-struct wiz_port* DetectWizPort() {
-    // The wiznet contorl port reads as 0x03, after a reset.
-    // We use that as its signature, to determine which of the two
-    // standard addresses the wiznet card is jumpered for.
-    word ff68 = 0xff68;
-    word ff78 = 0xff78;
-    word result = ff68;
-    byte b68 = *(volatile byte*)ff68;
-    //Delay(2345);
-    byte b78 = *(volatile byte*)ff78;
-    if ( b68 != 3 && b78 == 3 ) result = ff78;
-    PrintF(" wiz<%x %x %x> ", b68, b78, result);
-
-    for (byte i = 0; i < 4; i++) {
-        byte a=*(volatile byte*)(ff68+i);
-        //Delay(2345);
-        byte b=*(volatile byte*)(ff78+i);
-        //Delay(2345);
-        PrintF("<%x %x> ", a, b);
-    }
-    return (struct wiz_port*) result;
-}
-
 void WaitForLink() {
+    PrintF("Link: ");
     while (1) {
         byte phys = WizGet1(0x003C); // PHYSR0: physical register 0
         if ((phys & 1) == 1) {
             // link up
-            PrintF(" LINK=%x ", phys);
+            PrintF("UP=%x ", phys);
             return;
         }
         PrintF("down=%x ", phys);
@@ -1688,18 +1663,18 @@ void WaitForLink() {
 void LemmaLoop() {
     while (1) {
         errnum e = LemmaClientS1();
-        if (e) Fatal("S1", e);
+        if (e) Fatal("ZZ", e);
     }
 }
 
 extern int main();
 void AxiomMain() {
     SetDP(0xFF);  // Immediately on entry.
-
     SetOrangeScreen();
-    // Clear our global variables to zero, except first 4 bytes,
-    // which are orig_s_reg and address of main.
-    memset(((char*)Vars) + 4, 0, sizeof *Vars - 4);
+
+    memset(((char*)Vars), 0, sizeof *Vars);
+    Vars->stack = StackPointer();
+    Vars->main = (word)&AxiomMain;
 
     // Set VDG 32x16 text screen to dots.
     // Preserve the top line.
@@ -1721,10 +1696,12 @@ void AxiomMain() {
     PrintF("Wiznet found at %x\n", Vars->wiz_port);
 
     Vars->rand_word = WizTicks();
-    memcpy(Vars->transaction_id, Rom->rom_mac_tail+1, 4);
     memcpy(Vars->hostname, Rom->rom_hostname, 8);
 
-    PrintF("?=%x V=%x M=%x:%x:%x\n",
+    memcpy(Vars->transaction_id, Rom->rom_mac_tail+1, 4);
+    POKE2(&Vars->transaction_id, PEEK2(&Vars->transaction_id) + Vars->rand_word);
+
+    if (0) PrintF("?=%x V=%x M=%x:%x:%x\n",
         Vars->rand_word,
         sizeof(*Vars),
         *(byte*)(Rom->rom_mac_tail+0),
@@ -1732,8 +1709,8 @@ void AxiomMain() {
         *(word*)(Rom->rom_mac_tail+3));
 
     ComputeRomSums();
-    PrintF("S=%x E=%x R=%x:%x:%x:%x CPU=",
-      Vars->orig_s_reg,
+    if (0) PrintF("S=%x E=%x R=%x:%x:%x:%x CPU=",
+      Vars->stack,
       (word)&AxiomMain,
       Vars->rom_sum_0,
       Vars->rom_sum_1,
@@ -1746,12 +1723,12 @@ void AxiomMain() {
       PrintF("MOTOROLA ");
     }
 
-    PutChar('\"');
+    PrintF("NAME=\"");
     for (byte i = 0; i<8; i++) {
         char ch = Vars->hostname[i];
         if (' ' <= ch && ch <= '~') PutChar(ch);
     }
-    PutChar('\"');
+    PrintF("\" ");
 
     /////////////////
     if (IsThisGomar()) {
@@ -1815,8 +1792,8 @@ void AxiomMain() {
 
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
+    Delay(1000);
     SetGreenScreen();
-    Delay(500);
 
     Vars->lemma_loop = &LemmaLoop;
     LemmaLoop();

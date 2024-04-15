@@ -3,14 +3,15 @@ package lib
 import (
 	"bytes"
 	"fmt"
-	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"log"
+
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 func DumpHexLines(label string, offset uint, bb []byte) {
 	for i := uint(0); i < uint(len(bb)); i += 32 {
 		n := Min(uint(len(bb))-i, 32)
-		DumpHexLine(fmt.Sprintf("%s $%04x: ", label, offset+i), bb[i:i+n])
+		DumpHexLine(fmt.Sprintf("%s $%04x:", label, offset+i), bb[i:i+n])
 	}
 }
 
@@ -23,7 +24,7 @@ func DumpHexLine(label string, bb []byte) {
 		}
 		fmt.Fprintf(&buf, "%02x", b)
 	}
-	buf.WriteRune(' ')
+	buf.WriteString(" | ")
 	for _, b := range bb {
 		c := b & 127
 		if ' ' <= c && c <= '~' {

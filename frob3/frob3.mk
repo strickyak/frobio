@@ -463,7 +463,7 @@ broadcast-burn: broadcast-burn.go all-without-gccretro
 	ln -fv broadcast-burn ../bin
 run-server: run-lemma  # Alias.
 run-lemma: server
-	./server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --dos_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/
+	./server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --public_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/  $(FORCE)
 
 ##############  Old Junk Follows
 #   For debugging with Gomar on Loopback.

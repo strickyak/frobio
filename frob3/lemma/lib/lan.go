@@ -3,9 +3,10 @@ package lib
 import (
 	"flag"
 	"fmt"
-	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"log"
 	"net"
+
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 var FlagConfigByDHCP = flag.Bool("config_by_dhcp", false, "Client gets IP and Gateway via dhcp")
@@ -52,7 +53,7 @@ func ListenForLan(lan string) {
 		}
 		println("Lan 5")
 
-		log.Printf("GOT LAN REQUEST FROM %v: %v", addr, request[:n])
+		log.Printf("GOT LAN REQUEST FROM %v: % 3x", addr, request[:n])
 
 		if request[0] == 'Q' && (request[1]|request[2]|request[3]) == 0 {
 
@@ -75,11 +76,10 @@ func ListenForLan(lan string) {
 			copy(reply[16:], []byte(command))
 
 			_, err := conn.Write(reply)
-			// _, err := pc.WriteTo(reply, remote)
 			if err != nil {
 				log.Fatalf("cannot Write UDP Broadcast for LAN: %v", err)
 			}
-			log.Printf("SENT LAN REPLY %v", reply)
+			log.Printf("SENT LAN REPLY: % 3x", reply)
 		}
 	}
 }

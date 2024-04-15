@@ -2,8 +2,8 @@ package lib
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
-	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"log"
 	"net"
@@ -14,7 +14,11 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
+
+var ForcePage = flag.Int("force_page", 0, "Always launch this page")
 
 type Quint [5]byte // Quintabyte commands.
 
@@ -212,14 +216,10 @@ func (lb *LineBuf) GetLine() string {
 		switch cmd {
 		case CMD_INKEY:
 			ch := byte(q.P())
-			// log.Printf("GetLine: INKEY: ch=%d buf=%q", ch, buf)
 			switch ch {
 			case 10, 13:
-				//println("@", 1)
 				lb.Ses.Screen.PutChar(ch)
-				//println("@", 2)
 				lb.Ses.Screen.Push()
-				//println("@", 3)
 				return string(buf)
 			case 8:
 				if len(buf) > 0 {
@@ -243,12 +243,13 @@ func (lb *LineBuf) GetLine() string {
 }
 
 type Session struct {
-	ID       string
-	Conn     net.Conn
-	Screen   Screen
-	LineBuf  *LineBuf
-	Hostname string
-	IdBytes  []byte
+	ID        string
+	Conn      net.Conn
+	Screen    Screen
+	LineBuf   *LineBuf
+	Hostname  string
+	RomID     []byte
+	AxiomVars []byte
 
 	Block0 *os.File
 	Block1 *os.File
@@ -258,6 +259,9 @@ type Session struct {
 	HdbDos *HdbDosSession
 
 	Cleanups []func()
+
+	InitGimeRegs  []byte
+	BasicGimeRegs []byte
 
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
@@ -388,6 +392,9 @@ func Run(ses *Session) {
 	}()
 
 	current := Cards[0]
+	if *ForcePage != 0 {
+		current = Cards[*ForcePage]
+	}
 
 CARD:
 	for {
@@ -423,8 +430,12 @@ CARD:
 		ses.Screen.PutStr("> ")
 		ses.Screen.Push()
 
-		line := ses.LineBuf.GetLine()
-		line = strings.Trim(line, " \t\r\n")
+		line := "@"
+		if *ForcePage == 0 {
+			line = ses.LineBuf.GetLine()
+			line = strings.Trim(line, " \t\r\n")
+		}
+
 		log.Printf("GetLine => %q", line)
 		aNum, err := strconv.Atoi(line)
 		if err == nil {

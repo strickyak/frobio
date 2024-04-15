@@ -34,6 +34,7 @@ const (
 	CMD_POKE = 0
 	CMD_CALL = 255
 
+	CMD_SUM       = 194 // request with n & p.  reply with sum in p.
 	CMD_PEEK2     = 195 // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
 	CMD_BEGIN_MUX = 196
 	CMD_MID_MUX   = 197
@@ -110,6 +111,48 @@ func ReadN(conn net.Conn, n uint) []byte {
 		log.Panicf("ReadN=%d.: stopping due to error: %v", n, err)
 	}
 	return bb
+}
+
+func CheckSum16Ram(conn net.Conn, addr uint, n uint) uint {
+	_, err := conn.Write([]byte{CMD_SUM, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
+	if err != nil {
+		panic(err)
+	}
+
+	sumReply := ReadN(conn, 5)
+	log.Printf("sumReply: % 3x", sumReply)
+	if sumReply[0] != CMD_SUM {
+		log.Panicf("Expected DATA, got %d.", sumReply[0])
+	}
+
+	return HiLo(sumReply[3], sumReply[4])
+}
+
+func Peek2Ram(conn net.Conn, addr uint, n uint) []byte {
+	n1, n2 := byte(n>>8), byte(n)
+	p1, p2 := byte(addr>>8), byte(addr)
+	sending := []byte{CMD_PEEK2, 0, 4, 0, 0, n1, n2, p1, p2}
+	log.Printf("peek2ram sending: % 3x", sending)
+	_, err := conn.Write(sending)
+	if err != nil {
+		panic(err)
+	}
+	i := 0 // for i := 0; i < 3; i++ {
+	recvHeader := ReadN(conn, 5)
+	log.Printf("[%d] peek2Header: % 3x", i, recvHeader)
+	if recvHeader[0] != CMD_PEEK2 {
+		log.Panicf("Peek2Ram: Expected PEEK2, got %d", recvHeader[0])
+	}
+	sezN := (uint(recvHeader[1]) << 8) | uint(recvHeader[2])
+	if sezN != n {
+		log.Panicf("Peek2Ram: Expected recvHeader N=%d., but got N=%d.", n, sezN)
+	}
+	// }
+
+	log.Printf("Peek2Ram -- reading reply payload %d. bytes", n)
+	z := ReadN(conn, n)
+	log.Printf("peek2: % 3x", z)
+	return z
 }
 
 func PeekRam(conn net.Conn, addr uint, n uint) []byte {
@@ -453,11 +496,22 @@ func Serve(conn net.Conn) {
 
 	//log.Printf("Serving: Poke to 0x400")
 	//PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
-	idSector := PeekRam(conn, 0xDF00, 256-12) // Identity Last Half Sector, less 12 bytes of secret.
-	DumpHexLines("idSector", 0xDF00, idSector)
-	hostBytes := idSector[0xE0:0xE8]
-	DumpHexLines("hostBytes", 0xDFE0, hostBytes)
-	hostName := UpperCleanName(hostBytes, 8)
+	romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
+	axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
+
+	sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
+	sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
+	sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
+	sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
+	log.Printf("CheckSum16s: %04x %04x %04x %04x", sum8, sumA, sumC, sumE)
+
+	hostRaw := romID[0xE0:0xE8]
+	hostName := UpperCleanName(hostRaw, 8)
+
+	DumpHexLines("romID", 0xDF00, romID)
+	DumpHexLines("axiomVars", 0, axiomVars)
+
+	log.Printf("hostRaw = % 3x | %q", hostRaw, hostRaw)
 	log.Printf("hostName = %q", hostName)
 	log.Printf("*TESTHOST = %q", *TESTHOST)
 
@@ -523,7 +577,8 @@ func Serve(conn net.Conn) {
 	} else {
 		log.Printf("~~~~~~~~~~~~~~ f  ")
 		ses := NewSession(conn, hostName)
-		ses.IdBytes = idSector
+		ses.RomID = romID
+		ses.AxiomVars = axiomVars
 		ses.Screen.PutStr(Format("host '%q' connected.\n", hostName))
 		Run(ses)
 		log.Panicf("Run Cards: quit")

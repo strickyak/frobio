@@ -1,6 +1,7 @@
 POLCAT equ $A000
 CASBUF equ $01DA
 MYBUF equ CASBUF+60
+PUTCHR equ $A282
 
 PTR_TO_TCP1READ equ $FA0C
 PTR_TO_TCP1WRITE equ $FA0E
@@ -37,9 +38,22 @@ CALL_OLD_KEYIN:
 INKEY_HIJACK:
   pshs cc
   orcc #$50      ; no interrupts, please
+
+     * ldd #$2468
+     * lbsr PUTHEX2
+     * ldd #$1357
+     * lbsr PUTHEX4
+     * lda #'/'
+     * ldx #$FACE
+     * lbsr PUTHEX
+
+     * ldx #$FFFF
+* @delay mul
+     * leax -1,x
+     * bne @delay
+
   leas -24,s     ; local vars (alternative?: ldu #CASBUF)
   leau ,s        ; U points to them.
-
   ;; TODO ;; switch to the VDG Text Screen.
 
   ldx #HIJACK_KEY_PACKET   ; tell lemma that HIJACK occurred.
@@ -57,16 +71,16 @@ SERVE_HIJACK:
 
   ldb MYBUF
   cmpb #CMD_HDBDOS_HIJACK
-  beq DONE_HIJACK
+  lbeq DONE_HIJACK
 
   cmpb #CMD_PEEK2
-  beq DO_PEEK2
+  lbeq DO_PEEK2
 
   cmpb #CMD_POKE
-  beq DO_POKE
+  lbeq DO_POKE
 
   cmpb #CMD_INKEY
-  beq DO_INKEY
+  lbeq DO_INKEY
 
   ; otherwise
   ldx #$0400    ; splash junk on the screen, to show it.
@@ -80,23 +94,95 @@ POKE_AT:
   bra SERVE_HIJACK
 
 DO_PEEK2:
+  * leax ,u
+  * lda #'A'
+  * lbsr PUTHEX
+
   ldx #CASBUF
-  ldy MYBUF+1   ; N
+  ldy #4 ;;; MYBUF+1   ; N, should be 4.
   jsr [PTR_TO_TCP1READ]  ; read arguments to CASBUF
 
-  ldx CASBUF    ; copy args to N and P of PEEK2_PACKET.
-  stx PEEK2_PACKET+1  ; N
-  ldx CASBUF+2
+  ldy CASBUF    ; payload N
+  sty PEEK2_PACKET+1  ; N
+  ldx CASBUF+2        ; payload P
   stx PEEK2_PACKET+3  ; P
 
+  * leax ,u
+  * lda #'B'
+  * lbsr PUTHEX
+
   ldx #PEEK2_PACKET   ; send the packet header.
-  ldy 5
+  ldy #5
   jsr [PTR_TO_TCP1WRITE]
 
-  ldx CASBUF+2        ; send the data
-  ldy CASBUF
-  jsr [PTR_TO_TCP1WRITE]
-  bra SERVE_HIJACK
+  * leax ,u
+  * lda #'C'
+  * lbsr PUTHEX
+
+* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #'X'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 2+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 4+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 6+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 8+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
+* thrice *   ldy #5
+* thrice *   jsr [PTR_TO_TCP1WRITE]
+* thrice * 
+* thrice *   * leax ,u
+* thrice *   * lda #'C'
+* thrice *   * lbsr PUTHEX
+* thrice * 
+* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #'X'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 2+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 4+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 6+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx 8+PEEK2_PACKET   ; send the packet header.
+* thrice *   lda #':'
+* thrice *   lbsr PUTHEX
+* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
+* thrice *   ldy #5
+* thrice *   jsr [PTR_TO_TCP1WRITE]
+* thrice * 
+* thrice *   * leax ,u
+* thrice *   * lda #'C'
+* thrice *   * lbsr PUTHEX
+
+
+* @stuck bra @stuck
+
+  ldx CASBUF+2        ; address (from payload P)
+  ldy CASBUF          ; count (from payload N)
+  jsr [PTR_TO_TCP1WRITE]  ; send the peeked data
+
+  * leax ,u
+  * lda #'F'
+  * lbsr PUTHEX
+
+  lbra SERVE_HIJACK
 
 DO_INKEY:
   lbsr CALL_OLD_KEYIN
@@ -105,11 +191,62 @@ DO_INKEY:
   ldx #INKEY_PACKET
   ldy #5
   jsr [PTR_TO_TCP1WRITE]
-  bra SERVE_HIJACK
+  lbra SERVE_HIJACK
 
 DONE_HIJACK:
   leas 24,s
   puls cc,pc    ; restore interrupts & return
+
+  IFDEF HEX_DEBUG_PRINTS
+
+HEXCHARS:
+  fcc /0123456789ABCDEF/
+
+PUTHEX: ; emit four hex chars of X, with prefix in A
+  pshs d,x,y,u
+  pshs x
+
+  jsr PUTCHR
+  lda #'$'
+  jsr PUTCHR
+
+  puls d
+  bsr PUTHEX4
+
+  lda #' '
+  jsr PUTCHR
+  puls d,x,y,u,pc
+
+PUTHEX4: ; emit two hex chars of D
+  pshs d
+  bsr PUTHEX2
+  puls d
+  tfr b,a
+  bsr PUTHEX2
+  rts
+
+
+PUTHEX2: ; emit two hex chars of A
+  tfr a,b
+  lsra
+  lsra
+  lsra
+  lsra
+  bsr PUTHEX1
+  tfr b,a
+  bsr PUTHEX1
+  rts
+
+PUTHEX1:  ; emit Hex Char of low nybble of A
+  pshs d,x,y,u
+  anda #15
+  ldx #HEXCHARS
+  ldb #'!'
+  lda a,x
+  jsr PUTCHR
+  puls d,x,y,u,pc
+
+  ENDC
 
 HIJACK_KEY_PACKET:
   fcb CMD_HDBDOS_HIJACK

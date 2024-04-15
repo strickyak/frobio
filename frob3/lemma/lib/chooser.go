@@ -194,10 +194,10 @@ func TopChooser() *Chooser {
 }
 
 func (c *Chooser) UnixPath() string {
-	if *FlagDosRoot == "" {
+	if *FlagPublicRoot == "" {
 		log.Panicf("Missing --dos_root flag on server")
 	}
-	return PFP.Join(*FlagDosRoot, c.Path())
+	return PFP.Join(*FlagPublicRoot, c.Path())
 }
 func (c *Chooser) Path() string {
 	if c.Parent == nil {
