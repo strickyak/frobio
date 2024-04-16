@@ -11,6 +11,11 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
+type Text40 struct {
+	Screen [2 * 40 * 24]byte
+	Ses    *Session
+}
+
 type TextVGA struct {
 	Screen [32 * 16]byte
 	Ses    *Session
@@ -27,6 +32,18 @@ type Chooser struct {
 	Disk  rsdos.DiskRec
 
 	Line int // in Parent's chooser
+}
+
+func (t *Text40) Loop() {
+	c := TopChooser()
+	for {
+		c.FillChooser()
+		log.Printf("nav at %q", c.Path())
+		c = t.NavChoice(c)
+		if c == nil {
+			break // got Clear; exit.
+		}
+	}
 }
 
 func (t *TextVGA) Loop() {
@@ -51,6 +68,60 @@ func AtFocus(c *Chooser, focus int) *Chooser {
 	}
 	return c.Kids[focus-3]
 }
+func (t *Text40) NavChoice(c *Chooser) *Chooser {
+	focus := 2
+	for {
+		c.FillChooser()
+		t.Render(c, focus)
+		t.Push()
+		b := t.Inkey()
+		log.Printf("NavChoice: GOT INKEY %d.", b)
+		switch b {
+		case 94: // Up arrow
+			if focus > 2 {
+				focus--
+			}
+		case 10: // Down arrow
+			if focus < 14 {
+				focus++
+			}
+		case 8: // Left arrow
+			if c.Parent != nil {
+				return c.Parent
+			}
+		case 9, 13: // Right arrow, Enter
+			kid := AtFocus(c, focus)
+			kid.FillChooser()
+			return kid
+		case 12: // Clear (exit)
+			return nil
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			driveNum := b - '0'
+			kid := AtFocus(c, focus)
+			kid.FillChooser()
+			t.Ses.HdbDos.SetDrive(driveNum, kid)
+		}
+	}
+}
+
+func (t *Text40) Inkey() byte {
+	WriteQuint(t.Ses.Conn, CMD_INKEY, 0, nil) // request inkey
+
+	var q Quint
+	Value(io.ReadFull(t.Ses.Conn, q[:]))
+	switch q.Command() {
+	case CMD_INKEY:
+		return byte(q.P())
+	default:
+		log.Panicf("Text40.Inkey: Unexpected quint: %02x", q)
+	}
+	panic(0)
+}
+
+func (t *Text40) Push() {
+	WriteQuint(t.Ses.Conn, CMD_POKE, 0x2000, t.Screen[:])
+}
+
 func (t *TextVGA) NavChoice(c *Chooser) *Chooser {
 	focus := 2
 	for {
@@ -119,6 +190,83 @@ func DisplayCode(b byte) byte {
 		return b - 96
 	}
 	return b // Semigraphics
+}
+
+func (t *Text40) InvertLine(y int) {
+	for i := 0; i < 40; i++ {
+		j := y*80 + i*2
+		bg := 7 & t.Screen[j+1]        // old bg
+		fg := 7 & (t.Screen[j+1] >> 3) // old fg
+		c := FgBg(bg, fg)
+		t.Screen[j+1] = c
+	}
+}
+func (t *Text40) WriteLine(y int, format string, args ...any) {
+	s := fmt.Sprintf(format, args...)
+	if len(s) > 40 {
+		s = s[:40] // Trim to 40 bytes
+	}
+	for i := 0; i < len(s); i++ {
+		j := y*80 + i*2
+		t.Screen[j] = s[i]
+		t.Screen[j+1] = FgBg(Yellow, Black)
+	}
+	for i := len(s); i < 40; i++ {
+		j := y*80 + i*2
+		t.Screen[j] = ' ' // Clear rest of line
+		t.Screen[j+1] = FgBg(Yellow, Black)
+	}
+}
+
+func FgBg(fg, bg byte) byte {
+	return ((fg & 7) << 3) | (bg & 7)
+}
+
+func (t *Text40) Decoration(c *Chooser) byte {
+	h := t.Ses.HdbDos
+	if c.IsDir {
+		return '/'
+	}
+	if c.Size != FloppySize {
+		return '-'
+	}
+	path := c.Path()
+	for d := byte(0); d < NumDrives; d++ {
+		if h.Drives[d] != nil && h.Drives[d].Path == path {
+			return '0' + d
+		}
+	}
+	return '=' // not mounted
+}
+func (t *Text40) Render(c *Chooser, focus int) {
+	for row := 0; row < 24; row++ {
+		for col := 0; col < 40; col++ {
+			j := row*80 + col*2
+			t.Screen[j] = '.' // clear screen with purple dots
+			t.Screen[j+1] = FgBg(Magenta, Blue)
+		}
+	}
+	path := c.Path()
+	t.WriteLine(1, "(%s)", path)
+	if c.Parent == nil {
+		t.WriteLine(2, "/ (this is the top)")
+	} else {
+		t.WriteLine(2, "/ (parent directory)")
+	}
+	for row := 3; row < 15; row++ {
+		if row < len(c.Kids)+3 {
+			kid := c.Kids[row-3]
+			kid.FillChooser()
+			var codes string
+			if kid.Disk != nil {
+				codes = kid.Disk.Codes()
+			}
+			t.WriteLine(row, "%c %-2s %s", t.Decoration(kid), codes, kid.Name)
+		} else {
+			t.WriteLine(row, "...")
+		}
+	}
+	t.InvertLine(focus)
 }
 
 func (t *TextVGA) InvertLine(y int) {

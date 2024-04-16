@@ -39,29 +39,19 @@ INKEY_HIJACK:
   pshs cc
   orcc #$50      ; no interrupts, please
 
-     * ldd #$2468
-     * lbsr PUTHEX2
-     * ldd #$1357
-     * lbsr PUTHEX4
-     * lda #'/'
-     * ldx #$FACE
-     * lbsr PUTHEX
-
-     * ldx #$FFFF
-* @delay mul
-     * leax -1,x
-     * bne @delay
-
   leas -24,s     ; local vars (alternative?: ldu #CASBUF)
   leau ,s        ; U points to them.
-  ;; TODO ;; switch to the VDG Text Screen.
 
   ldx #HIJACK_KEY_PACKET   ; tell lemma that HIJACK occurred.
   ldy #5
   jsr [PTR_TO_TCP1WRITE]
 
-  ldx #$0400     ; send a copy of the screen, as payload.
-  ldy #512
+  ; Send page 0, MMAP, and Palette registers to server.
+  ldx #$0000     ; page 0
+  ldy #256
+  jsr [PTR_TO_TCP1WRITE]
+  ldx #$FFA0     ; MMAP and Palette regs.
+  ldy #32
   jsr [PTR_TO_TCP1WRITE]
 
 SERVE_HIJACK:
@@ -94,10 +84,6 @@ POKE_AT:
   bra SERVE_HIJACK
 
 DO_PEEK2:
-  * leax ,u
-  * lda #'A'
-  * lbsr PUTHEX
-
   ldx #CASBUF
   ldy #4 ;;; MYBUF+1   ; N, should be 4.
   jsr [PTR_TO_TCP1READ]  ; read arguments to CASBUF
@@ -107,80 +93,13 @@ DO_PEEK2:
   ldx CASBUF+2        ; payload P
   stx PEEK2_PACKET+3  ; P
 
-  * leax ,u
-  * lda #'B'
-  * lbsr PUTHEX
-
   ldx #PEEK2_PACKET   ; send the packet header.
   ldy #5
   jsr [PTR_TO_TCP1WRITE]
 
-  * leax ,u
-  * lda #'C'
-  * lbsr PUTHEX
-
-* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #'X'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 2+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 4+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 6+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 8+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
-* thrice *   ldy #5
-* thrice *   jsr [PTR_TO_TCP1WRITE]
-* thrice * 
-* thrice *   * leax ,u
-* thrice *   * lda #'C'
-* thrice *   * lbsr PUTHEX
-* thrice * 
-* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #'X'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 2+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 4+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 6+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx 8+PEEK2_PACKET   ; send the packet header.
-* thrice *   lda #':'
-* thrice *   lbsr PUTHEX
-* thrice *   ldx #PEEK2_PACKET   ; send the packet header.
-* thrice *   ldy #5
-* thrice *   jsr [PTR_TO_TCP1WRITE]
-* thrice * 
-* thrice *   * leax ,u
-* thrice *   * lda #'C'
-* thrice *   * lbsr PUTHEX
-
-
-* @stuck bra @stuck
-
   ldx CASBUF+2        ; address (from payload P)
   ldy CASBUF          ; count (from payload N)
   jsr [PTR_TO_TCP1WRITE]  ; send the peeked data
-
-  * leax ,u
-  * lda #'F'
-  * lbsr PUTHEX
 
   lbra SERVE_HIJACK
 
@@ -225,7 +144,6 @@ PUTHEX4: ; emit two hex chars of D
   bsr PUTHEX2
   rts
 
-
 PUTHEX2: ; emit two hex chars of A
   tfr a,b
   lsra
@@ -250,7 +168,7 @@ PUTHEX1:  ; emit Hex Char of low nybble of A
 
 HIJACK_KEY_PACKET:
   fcb CMD_HDBDOS_HIJACK
-  fdb 512   ; 512 byte screen,
+  fdb 256+32  ; len(p0) + len(MMU + Palette)
   fdb 0
 INKEY_PACKET:
   fcb CMD_INKEY
