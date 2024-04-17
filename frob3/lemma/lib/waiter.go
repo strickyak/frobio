@@ -31,8 +31,9 @@ var TESTHOST = flag.String("testhost", "", "Host that runs tests")
 var Block0 *os.File
 
 const (
-	CMD_POKE = 0
-	CMD_CALL = 255
+	CMD_POKE  = 0
+	CMD_HELLO = 1 // Similar to Peek Data.
+	CMD_CALL  = 255
 
 	CMD_SUM       = 194 // request with n & p.  reply with sum in p.
 	CMD_PEEK2     = 195 // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
@@ -267,6 +268,22 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		log.Printf("===== ReadFive: cmd=%02x n=%04x p=%04x ........", cmd, n, p)
 
 		switch cmd {
+		case CMD_HELLO:
+			{
+				// Very much like CMD_DATA.
+				log.Printf("ReadFive: HELLO $%x @ $%x", n, p)
+				if n > 0 {
+					data := make([]byte, n)
+					_, err := io.ReadFull(conn, data)
+					if err != nil {
+						log.Panicf("ReadFive: HELLO: stopping due to error: %v", err)
+					}
+					for i := uint(0); i < n; i++ {
+						LogicalRamImage[p+i] = data[i]
+					}
+					DumpHexLines("M", p, data)
+				}
+			}
 
 		case CMD_SP_PC: // MISUSES N
 			log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
@@ -311,8 +328,6 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 
 		case CMD_BLOCK_READ: // Nitros9 RBLemma devices
 			{
-				// block0, lsn := prepareBlockDevice(ses, n, p)
-				// lsn := prepareBlockDevice(n, p)
 				block0 = GetBlockDevice(ses)
 				lsn := SeekSectorReturnLSN(block0, n, p)
 				var err error
@@ -337,8 +352,6 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			}
 		case CMD_BLOCK_WRITE: // Nitros9 RBLemma devices
 			{
-				// block0, lsn := prepareBlockDevice(ses, n, p)
-				// lsn := prepareBlockDevice(n, p)
 				block0 = GetBlockDevice(ses)
 				lsn := SeekSectorReturnLSN(block0, n, p)
 				var err error
@@ -481,6 +494,28 @@ func UpperCleanName(s []byte, maxLen int) string {
 	return z
 }
 
+func GetHellos(conn net.Conn) map[uint][]byte {
+	dict := make(map[uint][]byte)
+	for {
+		bb := ReadN(conn, 5)
+		cmd, n, p := bb[0], HiLo(bb[1], bb[2]), HiLo(bb[3], bb[4])
+		log.Printf("GetHellos: % 3x", bb)
+		if cmd != CMD_HELLO {
+			log.Panicf("Expected CMD_HELLO, got % 3x", bb)
+		}
+		if n == 0 && p == 0 {
+			return dict
+		}
+
+		payload := ReadN(conn, n)
+		dict[p] = payload
+	}
+}
+
+func HiLoBy(bb []byte) uint {
+	return HiLo(bb[0], bb[1])
+}
+
 func Serve(conn net.Conn) {
 	defer func() {
 		r := recover()
@@ -494,16 +529,33 @@ func Serve(conn net.Conn) {
 		conn.Close()
 	}()
 
-	//log.Printf("Serving: Poke to 0x400")
-	//PokeRam(conn, 0x400, []byte("IT'S A COCO SYSTEM! I KNOW THIS!"))
-	romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
-	axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
+	hellos := GetHellos(conn)
 
-	sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
-	sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
-	sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
-	sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
-	log.Printf("CheckSum16s: %04x %04x %04x %04x", sum8, sumA, sumC, sumE)
+	// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
+	romID, ok := hellos[0xDF00]
+	if !ok {
+		log.Panicf("Missing HELLO for 0xDF00")
+	}
+
+	axiomVars, ok := hellos[0x01DA]
+	if !ok {
+		log.Panicf("Missing HELLO for 0x01DA")
+	}
+
+	// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
+	// axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
+
+	// sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
+	// sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
+	// sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
+	// sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
+	stack := HiLoBy(axiomVars[0:2])
+	main := HiLoBy(axiomVars[2:4])
+	sum8 := HiLoBy(axiomVars[4:6])   // CheckSum16Ram(conn, 0x8000, 0x2000)
+	sumA := HiLoBy(axiomVars[6:8])   // CheckSum16Ram(conn, 0xA000, 0x2000)
+	sumC := HiLoBy(axiomVars[8:10])  // CheckSum16Ram(conn, 0xC100, 0x0700)
+	sumE := HiLoBy(axiomVars[10:12]) // CheckSum16Ram(conn, 0xE000, 0xF000)
+	log.Printf("CheckSum16s: %04x %04x %04x %04x stack=%04x main=%04x", sum8, sumA, sumC, sumE, stack, main)
 
 	hostRaw := romID[0xE0:0xE8]
 	hostName := UpperCleanName(hostRaw, 8)

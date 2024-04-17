@@ -66,6 +66,7 @@ RepairRomToRam:
 	ldb $C000
 	cmpb #'C'        ; did it become 'C'?
 	bne @return      ; no, we're not in RAM.
+	inc $C000        ; restore 'D'
 	ldx #$C0D0       ; just before first spot that needs repair.
 	bsr Repair16BytesAfterX
 	ldx #$C8B0       ; just before second spot that needs repair.

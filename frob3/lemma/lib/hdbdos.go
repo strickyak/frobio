@@ -25,15 +25,15 @@ const FilePerm = 0664
 const FloppySize = 161280
 
 type HdbDosDrive struct {
-	Path  string
-	Image []byte
-	Dirty bool
+	Path              string
+	Image             []byte
+	Dirty             bool
 	CreationTimestamp string
 }
 
 type HdbDosSession struct {
-	Ses  *Session
-	NumReads  int64   // When 1, send injections.
+	Ses      *Session
+	NumReads int64 // When 1, send injections.
 
 	Drives [NumDrives]*HdbDosDrive
 }
@@ -264,7 +264,7 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	CreateHomeIfNeeded(ses)
 
 	OnText40At2000Run(ses, payload, func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		TextChooserShell(ses)
 	})
 
@@ -339,7 +339,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 		d.Path = Format("new-rs%02d.dsk", drive) // temporary name
 		d.Image = EmptyDecbInitializedDiskImage()
 		d.Dirty = false
-		d.CreationTimestamp =  Timestamp()
+		d.CreationTimestamp = Timestamp()
 		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 	if d.Image == nil {
@@ -352,7 +352,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 		}
 		d.Image = bb
 		d.Dirty = false
-		d.CreationTimestamp =  Timestamp()
+		d.CreationTimestamp = Timestamp()
 		log.Printf("@@@@@@@@@@ opend file %q HdbDosDrive{} number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 

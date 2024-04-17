@@ -23,9 +23,6 @@ typedef void (*func_t)();
 #define VDG_END  0x0600
 #define PACKET_BUF 0x600
 #define PACKET_MAX 256
-const byte waiter_default [4] = {
-      134, 122, 16, 44 }; // lemma.yak.net
-
 
 #include "frob3/wiz/w5100s_defs.h"
 
@@ -57,9 +54,11 @@ void WhichCompilerAreYouUsingQuestionMark();
 
 // XXX #define SPIN(N) {(*(byte*)(VDG_RAM+(N))) = 0x80 | (1 + *(byte*)(VDG_RAM+(N)));}
 void SPIN(byte n) {
+/*
     byte b = 1 + *(byte*)(VDG_RAM+(n));
     if ((b&15) == 0) b++;  // Skip blank patterns.
     (*(byte*)(VDG_RAM+(n))) = b | 0x80;
+*/
 }
 
 struct UdpRecvHeader {
@@ -116,13 +115,17 @@ struct axiom4_vars {
 #define Vars ((struct axiom4_vars*)CASBUF)
 #define WIZ  (Vars->wiz_port)
 
-struct axiom4_rom_tail { // $DFE0..$DFFF
-  byte rom_hostname[8];
-  byte rom_reserved[3];
+struct axiom4_rom_tail { // $DFC0..$DFFF
+  byte rom_reserved_16[16];  // $DFC0
+  byte rom_waiter[4];   // $DFD0
+  byte rom_dns[4];
+  byte rom_hailing[8];
+  byte rom_hostname[8];  // $DFE0
+  byte rom_reserved_3[3];
   byte rom_mac_tail[5];  // After initial $02 byte, 5 random bytes!
   byte rom_secrets[16];  // For Challenge/Response Authentication Protocols.
 };
-#define Rom ((struct axiom4_rom_tail*)0xDFE0)
+#define Rom ((struct axiom4_rom_tail*)0xDFC0)
 
 // Constants for the (four) Wiznet sockets' registers.
 struct sock {
@@ -158,6 +161,7 @@ extern const struct sock WizSocketFacts[4];
 
 enum Commands {
   CMD_POKE = 0,
+  CMD_HELLO = 1,
   CMD_SUM = 194,
   CMD_PEEK2 = 195,
   CMD_LOG = 200,
@@ -1585,6 +1589,34 @@ void ComputeRomSums() {
     Vars->rom_sum_3 = CheckSum16(0xE000, 0xF000);
 }
 
+errnum ClientSaysHello() {
+  char quint[5];
+  errnum e;
+
+  // Send our Vars.
+  quint[0] = CMD_HELLO;
+  POKE2(quint+1, 0x80);
+  POKE2(quint+3, CASBUF);
+  e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
+  if (e) return e;
+  e = WizSendChunk(SOCK1_AND &TcpProto,  (char*)CASBUF, 0x80);
+  if (e) return e;
+
+  // Send the ID section at the end of ROM,
+  // less the last 12 bytes of the secret.
+  POKE2(quint+1, 0xF4);
+  POKE2(quint+3, 0xDF00);
+  e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
+  if (e) return e;
+  e = WizSendChunk(SOCK1_AND &TcpProto,  (char*)0xDF00, 0xF4);
+  if (e) return e;
+
+  // HELLO (0, 0) is the end of the HELLOs.
+  POKE2(quint+1, 0);
+  POKE2(quint+3, 0);
+  e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
+  return e;
+}
 
 errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
@@ -1663,12 +1695,14 @@ void WaitForLink() {
 void LemmaLoop() {
     while (1) {
         errnum e = LemmaClientS1();
-        if (e) Fatal("ZZ", e);
+        if (e) Fatal("BYE", e);
     }
 }
 
 extern int main();
 void AxiomMain() {
+    errnum e = OKAY;
+
     SetDP(0xFF);  // Immediately on entry.
     SetOrangeScreen();
 
@@ -1744,7 +1778,7 @@ void AxiomMain() {
       // FOR HUMANS
 
       // Preset defaults for Waiter.
-      memcpy(Vars->ip_waiter, waiter_default, 4);
+      memcpy(Vars->ip_waiter, Rom->rom_waiter, 4);
       Vars->waiter_port = WAITER_TCP_PORT;
 
       WizReset();
@@ -1771,7 +1805,6 @@ void AxiomMain() {
       }
 
       if (Vars->use_dhcp) {
-        errnum e = OKAY;
         e = DhcpPhaseTwo();
         if (e) Fatal("Dhcp2", e);
       }
@@ -1794,6 +1827,9 @@ void AxiomMain() {
     PrintF(" CONN; ");
     Delay(1000);
     SetGreenScreen();
+
+    e = ClientSaysHello();
+    if (e) Fatal("Hello", e);
 
     Vars->lemma_loop = &LemmaLoop;
     LemmaLoop();

@@ -82,7 +82,7 @@ func (t *Text40) NavChoice(c *Chooser) *Chooser {
 				focus--
 			}
 		case 10: // Down arrow
-			if focus < 14 {
+			if focus < 18 {
 				focus++
 			}
 		case 8: // Left arrow
@@ -253,7 +253,7 @@ func (t *Text40) Render(c *Chooser, focus int) {
 	} else {
 		t.WriteLine(2, "/ (parent directory)")
 	}
-	for row := 3; row < 15; row++ {
+	for row := 3; row < 19; row++ {
 		if row < len(c.Kids)+3 {
 			kid := c.Kids[row-3]
 			kid.FillChooser()
