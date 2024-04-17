@@ -28,16 +28,19 @@ type HdbDosDrive struct {
 	Path  string
 	Image []byte
 	Dirty bool
+	CreationTimestamp string
 }
 
 type HdbDosSession struct {
-	NumReads  int64
-	SavedText []byte
+	Ses  *Session
+	NumReads  int64   // When 1, send injections.
 
 	Drives [NumDrives]*HdbDosDrive
 }
 
 func (h *HdbDosSession) SetDrive(drive byte, c *Chooser) {
+	HdbDosCleanupOneDrive(h.Ses, drive)
+
 	log.Printf("SetDrive: %d %v", drive, *c)
 
 	// Create the drive record, if needed.  Call it d.
@@ -48,7 +51,6 @@ func (h *HdbDosSession) SetDrive(drive byte, c *Chooser) {
 	d := h.Drives[drive]
 
 	if !c.IsDir && c.Size == FloppySize {
-		// TODO: if drive is dirty, save it somewhere.
 		d.Path = c.Path()
 		d.Image = nil
 		d.Dirty = false
@@ -272,13 +274,13 @@ func HdbDosHijack(ses *Session, payload []byte) {
 
 const TTL_10_DAY_DIR_NAME = "TTL-10-day"
 
-func HdbDosCleanupOneDrive(ses *Session, driveNum int, timestamp string) {
+func HdbDosCleanupOneDrive(ses *Session, driveNum byte) {
 	drive := ses.HdbDos.Drives[driveNum]
 	if drive == nil || !drive.Dirty {
 		return
 	}
 	// if dirty:
-	dest := PFP.Join(*FlagHomesRoot, ses.Hostname, TTL_10_DAY_DIR_NAME, timestamp+"-"+PFP.Base(drive.Path))
+	dest := PFP.Join(*FlagHomesRoot, ses.Hostname, TTL_10_DAY_DIR_NAME, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
 	err := os.WriteFile(dest, drive.Image, FilePerm)
 	if err != nil {
 		log.Printf("BAD: HdbDosCleanup: Error saving dirty file %d bytes %q as %q: %v", len(drive.Image), drive.Path, dest, err)
@@ -287,17 +289,21 @@ func HdbDosCleanupOneDrive(ses *Session, driveNum int, timestamp string) {
 	}
 	ses.HdbDos.Drives[driveNum] = nil // Delete the drive record.
 }
+func Timestamp() string {
+	return time.Now().UTC().Format("2006-01-02-150405Z")
+}
 func HdbDosCleanup(ses *Session) {
-	timestamp := time.Now().UTC().Format("2006-01-02-150405")
 	for driveNum, _ := range ses.HdbDos.Drives {
-		HdbDosCleanupOneDrive(ses, driveNum, timestamp)
+		HdbDosCleanupOneDrive(ses, byte(driveNum))
 	}
 }
 
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
 	if ses.HdbDos == nil {
-		ses.HdbDos = &HdbDosSession{}
+		ses.HdbDos = &HdbDosSession{
+			Ses: ses,
+		}
 	}
 	ses.Cleanups = append(ses.Cleanups, func() {
 		HdbDosCleanup(ses)
@@ -333,7 +339,8 @@ func HdbDosSector(ses *Session, payload []byte) {
 		d.Path = Format("new-rs%02d.dsk", drive) // temporary name
 		d.Image = EmptyDecbInitializedDiskImage()
 		d.Dirty = false
-		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} number %d.", drive)
+		d.CreationTimestamp =  Timestamp()
+		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 	if d.Image == nil {
 		bb, err := os.ReadFile(PFP.Join(*FlagPublicRoot, d.Path))
@@ -345,13 +352,14 @@ func HdbDosSector(ses *Session, payload []byte) {
 		}
 		d.Image = bb
 		d.Dirty = false
-		log.Printf("@@@@@@@@@@ opend file %q HdbDosDrive{} number %d.", d.Path, drive)
+		d.CreationTimestamp =  Timestamp()
+		log.Printf("@@@@@@@@@@ opend file %q HdbDosDrive{} number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 
 	switch cmd {
 	case 2: // Read
 		h.NumReads++
-		if true && h.NumReads == 1 {
+		if h.NumReads == 1 {
 			SendInitialInjections(ses)
 		}
 
@@ -404,25 +412,11 @@ func AsciiToInjectBytes(s string) []byte {
 }
 
 func SendInitialInjections(ses *Session) {
-	//var splash []byte
-	//for i := 0; i < 32; i++ {
-	//// Splash some semigraphics chars
-	//splash = append(splash, byte(256-32+i))
-	//}
-	/*
-		const splashStr = "CLEAR KEY TOGGLES DISK CHOOSER"
-		var bb bytes.Buffer
-		for _, ch := range splashStr {
-			bb.WriteByte(63 & byte(ch))
-		}
-		splash := bb.Bytes()
-	*/
-
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
-	Inject(ses, sideload, 0x0580 /* on text screen*/, false, AsciiToInjectBytes("CLEAR KEY TOGGLES DISK CHOOSER:"))
-	Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
-	Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
-	Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
+	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES DISK CHOOSER)"))
+	// Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
+	// Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
+	// Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
 
 	bb := Value(ioutil.ReadFile(*FlagInkeyRaw))
 
