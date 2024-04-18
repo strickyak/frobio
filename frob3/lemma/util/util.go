@@ -125,3 +125,25 @@ var Format = fmt.Sprintf
 func BytesFormat(format string, args ...any) []byte {
 	return []byte(Format(format, args...))
 }
+
+func Len[T any](x []T) uint {
+	return uint(len(x))
+}
+
+func Slen(s string) uint {
+	return uint(len(s))
+}
+
+func In[T comparable_](x T, slice []T) bool {
+	for _, e := range slice {
+		if e == x {
+			return true
+		}
+	}
+	return false
+}
+
+// Until Go 1.20:
+type comparable_ interface {
+	~byte | ~rune | ~int | ~uint | int64 | ~string
+}

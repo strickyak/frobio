@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+const FloppySize35 = 161280
+const FloppySize40 = 184320
+const FloppySize80 = 368640
+
 const BytesPerSector = 256
 const SectorsPerTrack = 18
 const SectorsPerGranule = 9

@@ -22,7 +22,11 @@ const NumDrives = 10
 const DirPerm = 0775
 const FilePerm = 0664
 
-const FloppySize = 161280
+const FloppySize35 = 161280
+const FloppySize40 = 184320
+const FloppySize80 = 368640
+
+var FloppySizes = []int64{FloppySize35, FloppySize40, FloppySize80}
 
 type HdbDosDrive struct {
 	Path              string
@@ -50,18 +54,23 @@ func (h *HdbDosSession) SetDrive(drive byte, c *Chooser) {
 	}
 	d := h.Drives[drive]
 
-	if !c.IsDir && c.Size == FloppySize {
-		d.Path = c.Path()
-		d.Image = nil
-		d.Dirty = false
+	if !c.IsDir {
+		// if c.Size == FloppySize35 || c.Size == FloppySize40 || c.Size == FloppySize80  {
+		if In(c.Size, FloppySizes) {
+			d.Path = c.Path()
+			d.Image = nil
+			d.Dirty = false
+		}
 	}
 }
 
 func TextChooserShell(ses *Session) {
-	t := &Text40{
-		Ses: ses,
+	txt := &Text40{}
+	nav := &TextNav{
+		screen: txt,
+		Ses:    ses,
 	}
-	t.Loop() // Loop until we return from Hijack.
+	nav.Loop() // Loop until we return from Hijack.
 }
 
 func RGB(r, g, b byte) byte {
@@ -124,37 +133,39 @@ func UndoSimplePalette(ses *Session, savedPalette []byte) {
 }
 
 const (
-	White = iota
+	Black = iota
 	Red
 	Green
 	Blue
 	Yellow
 	Magenta
 	Cyan
-	Black
+	White
 )
 
 func SetSimplePaletteReturnCurrent(ses *Session, payload []byte) []byte {
 	// savedPalette := Peek2Ram(ses.Conn, 0xFFB0, 16)
 	savedPalette := payload[256+16 : 256+32]
 	palette := []byte{
-		RGB(3, 3, 3), // 0 = white
+		// Background Text:
+		RGB(0, 0, 0), // 0 = black
 		RGB(3, 0, 0), // 1 = red
 		RGB(0, 3, 0), // 2 = green
 		RGB(0, 0, 3), // 3 = blue
 		RGB(3, 3, 0), // 4 = yellow
 		RGB(2, 0, 2), // 5 = magenta
 		RGB(0, 2, 2), // 6 = cyan
-		RGB(0, 0, 0), // 7 = black
+		RGB(3, 3, 3), // 7 = white
 
-		RGB(3, 3, 3), // 0 = white
+		// Foreground Text:
+		RGB(0, 0, 0), // 0 = black
 		RGB(3, 0, 0), // 1 = red
 		RGB(0, 3, 0), // 2 = green
 		RGB(0, 0, 3), // 3 = blue
 		RGB(3, 3, 0), // 4 = yellow
 		RGB(2, 0, 2), // 5 = magenta
 		RGB(0, 2, 2), // 6 = cyan
-		RGB(0, 0, 0), // 7 = black
+		RGB(3, 3, 3), // 7 = white
 	}
 	PokeRam(ses.Conn, 0xFFB0, palette)
 	return savedPalette
@@ -200,7 +211,7 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 
 	log.Printf("Incoming Video Modes: %s", strV)
 
-	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 1)
+	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 0)
 	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
 	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
 
@@ -347,7 +358,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 		if err != nil {
 			log.Panicf("HdbDosSector ReadFile failed %q: %v", d.Path, err)
 		}
-		if len(bb) != 161280 {
+		if !In(int64(len(bb)), FloppySizes) {
 			log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
 		}
 		d.Image = bb

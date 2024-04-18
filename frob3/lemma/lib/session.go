@@ -113,7 +113,10 @@ func (ax *AxScreen) PutStr(s string) {
 	}
 }
 
-type TextScreen struct {
+// TODO: convert to new Screen.
+// TODO: requires dealing with LineBuf::GetLine
+// this one depends on CMD_PUTCHAR.
+type XTextScreen struct {
 	B         []byte // screen RAM not yet sent.
 	W, H      int    // screen dimensions
 	P         int    // cursor
@@ -122,7 +125,7 @@ type TextScreen struct {
 	Ses       *Session
 }
 
-func NewTextScreen(ses *Session, w, h int, addr int) *TextScreen {
+func NewTextScreen(ses *Session, w, h int, addr int) *XTextScreen {
 	o := make([]byte, w*h)
 	n := make([]byte, w*h)
 	for i := 0; i < w*h; i++ {
@@ -130,7 +133,7 @@ func NewTextScreen(ses *Session, w, h int, addr int) *TextScreen {
 		n[i] = ' '
 	}
 
-	return &TextScreen{
+	return &XTextScreen{
 		B:         n,
 		W:         w,
 		H:         h,
@@ -141,23 +144,23 @@ func NewTextScreen(ses *Session, w, h int, addr int) *TextScreen {
 	}
 }
 
-func (ax *TextScreen) PutStr(s string) {
+func (ax *XTextScreen) PutStr(s string) {
 	for _, r := range s {
 		ax.PutChar(byte(r))
 	}
 }
-func (t *TextScreen) Push() {
+func (t *XTextScreen) Push() {
 	AssertEQ(len(t.B), 512)
 	AssertEQ(t.Addr, 0x0400)
 	WriteQuint(t.Ses.Conn, CMD_POKE, uint(t.Addr), t.B)
 }
-func (t *TextScreen) Clear() {
+func (t *XTextScreen) Clear() {
 	t.B = make([]byte, t.W*t.H)
 	for i := range t.B {
 		t.B[i] = 32
 	}
 }
-func (t *TextScreen) PutChar(ch byte) {
+func (t *XTextScreen) PutChar(ch byte) {
 	//println("putchar", ch)
 	if ch == 10 || ch == 13 {
 		t.PutChar(' ')
