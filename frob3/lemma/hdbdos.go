@@ -224,14 +224,14 @@ func HdbDosSector(ses *Session, payload []byte) {
 	if d.Path == "" {
 		// No mount, so make it an empty disk.
 		d.Path = Format("new-rs%02d.dsk", drive) // temporary name
-Log("HdbDosSector: d.Path empty, creating path %q, empty dskini", d.Path)
+		Log("HdbDosSector: d.Path empty, creating path %q, empty dskini", d.Path)
 		d.Image = EmptyDecbInitializedDiskImage()
 		d.Dirty = false
 		d.CreationTimestamp = finder.Timestamp()
 		log.Printf("@@@@@@@@@@ made empty DriveImage name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 	if d.Image == nil {
-Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
+		Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
 		unixfile := PFP.Join(*finder.FlagNavRoot, d.Path)
 		bb, err := os.ReadFile(unixfile)
 		if err != nil {

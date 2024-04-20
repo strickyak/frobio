@@ -154,7 +154,7 @@ func Len[T any](x []T) uint {
 }
 
 // Slen is for strings; it returns uint.
-func Slen(s string) uint {  // returns unsigned
+func Slen(s string) uint { // returns unsigned
 	return uint(len(s))
 }
 

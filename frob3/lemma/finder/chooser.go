@@ -18,16 +18,19 @@ type Chooser interface {
 	AtFocus(focus uint) Chooser
 }
 
-func (uc *UnixChooser) Order() int      { return uc.order }
-func (uc *UnixChooser) Name() string    { return uc.name }
-func (uc *UnixChooser) Parent() Chooser { return uc.parent }
-
-type UnixChooser struct {
+type NamedChooser struct {
 	order  int
 	name   string
 	kids   []Chooser
 	parent Chooser
+}
 
+func (uc *NamedChooser) Order() int      { return uc.order }
+func (uc *NamedChooser) Name() string    { return uc.name }
+func (uc *NamedChooser) Parent() Chooser { return uc.parent }
+
+type UnixChooser struct {
+	NamedChooser
 	isDir      bool
 	size       int64
 	kidsFilled bool
@@ -50,8 +53,10 @@ func (uc *UnixChooser) AtFocus(focus uint) Chooser {
 
 func TopChooser() *UnixChooser {
 	return &UnixChooser{
-		order: 100,
-		name:  ".",
+		NamedChooser: NamedChooser{
+			order: 100,
+			name:  ".",
+		},
 	}
 }
 
@@ -61,7 +66,7 @@ func (uc *UnixChooser) UnixPath() string {
 	}
 	return PFP.Join(*FlagNavRoot, uc.Path())
 }
-func (uc *UnixChooser) Path() string {
+func (uc *NamedChooser) Path() string {
 	if uc.parent == nil {
 		return "."
 	} else {
@@ -84,9 +89,11 @@ func (uc *UnixChooser) Kids() []Chooser {
 				continue
 			}
 			uc.kids = append(uc.kids, &UnixChooser{
-				order:  100,
-				name:   name,
-				parent: uc,
+				NamedChooser: NamedChooser{
+					order:  100,
+					name:   name,
+					parent: uc,
+				},
 			})
 		}
 	} else {
