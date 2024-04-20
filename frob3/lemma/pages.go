@@ -1,4 +1,4 @@
-package lib
+package lemma
 
 func init() {
 	Add(0, 0, "Home", &Card{

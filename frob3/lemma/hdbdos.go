@@ -1,99 +1,30 @@
-package lib
+package lemma
 
 import (
 	"bytes"
 	"flag"
 	"fmt"
-	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io/ioutil"
 	"log"
 	"os"
 	PFP "path/filepath"
 	"strings"
 	"time"
+
+	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/finder"
+	T "github.com/strickyak/frobio/frob3/lemma/text"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-var FlagHomesRoot = flag.String("homes_root", "", "User home directories, for HdbDos")
-var FlagPublicRoot = flag.String("public_root", "", "public files, for HdbDos")
 var FlagSideloadRaw = flag.String("sideload_raw", "sideload.lwraw", "raw machine code fragment for HdbDos")
 var FlagInkeyRaw = flag.String("inkey_raw", "inkey_trap.lwraw", "raw machine code fragment for HdbDos")
-
-const NumDrives = 10
-const DirPerm = 0775
-const FilePerm = 0664
-
-const FloppySize35 = 161280
-const FloppySize40 = 184320
-const FloppySize80 = 368640
-
-var FloppySizes = []int64{FloppySize35, FloppySize40, FloppySize80}
-
-type HdbDosDrive struct {
-	Path              string
-	Image             []byte
-	Dirty             bool
-	CreationTimestamp string
-}
 
 type HdbDosSession struct {
 	Ses      *Session
 	NumReads int64 // When 1, send injections.
 
-	Drives [NumDrives]*HdbDosDrive
-}
-
-func (h *HdbDosSession) SetDrive(drive byte, c *Chooser) {
-	HdbDosCleanupOneDrive(h.Ses, drive)
-
-	log.Printf("SetDrive: %d %v", drive, *c)
-
-	// Create the drive record, if needed.  Call it d.
-	if h.Drives[drive] == nil {
-		h.Drives[drive] = &HdbDosDrive{}
-		log.Printf("@@@@@@@@@@ created HdbDosDrive{} number %d.", drive)
-	}
-	d := h.Drives[drive]
-
-	if !c.IsDir {
-		// if c.Size == FloppySize35 || c.Size == FloppySize40 || c.Size == FloppySize80  {
-		if In(c.Size, FloppySizes) {
-			d.Path = c.Path()
-			d.Image = nil
-			d.Dirty = false
-		}
-	}
-}
-
-func TextChooserShell(ses *Session) {
-	txt := &Text40{}
-	nav := &TextNav{
-		screen: txt,
-		Ses:    ses,
-	}
-	nav.Loop() // Loop until we return from Hijack.
-}
-
-func RGB(r, g, b byte) byte {
-	var z byte
-	if (r & 2) != 0 {
-		z |= 0x20
-	}
-	if (g & 2) != 0 {
-		z |= 0x10
-	}
-	if (b & 2) != 0 {
-		z |= 0x08
-	}
-	if (r & 1) != 0 {
-		z |= 0x04
-	}
-	if (g & 1) != 0 {
-		z |= 0x02
-	}
-	if (b & 1) != 0 {
-		z |= 0x01
-	}
-	return z
+	DriveSession *finder.DriveSession
 }
 
 func UndoAlterTask0(ses *Session, saved byte) {
@@ -128,48 +59,6 @@ func GimeText40x24_OnPage37_ReturnNumRows(ses *Session, payload []byte, extraVer
 	panic(0)
 }
 
-func UndoSimplePalette(ses *Session, savedPalette []byte) {
-	PokeRam(ses.Conn, 0xFFB0, savedPalette)
-}
-
-const (
-	Black = iota
-	Red
-	Green
-	Blue
-	Yellow
-	Magenta
-	Cyan
-	White
-)
-
-func SetSimplePaletteReturnCurrent(ses *Session, payload []byte) []byte {
-	// savedPalette := Peek2Ram(ses.Conn, 0xFFB0, 16)
-	savedPalette := payload[256+16 : 256+32]
-	palette := []byte{
-		// Background Text:
-		RGB(0, 0, 0), // 0 = black
-		RGB(3, 0, 0), // 1 = red
-		RGB(0, 3, 0), // 2 = green
-		RGB(0, 0, 3), // 3 = blue
-		RGB(3, 3, 0), // 4 = yellow
-		RGB(2, 0, 2), // 5 = magenta
-		RGB(0, 2, 2), // 6 = cyan
-		RGB(3, 3, 3), // 7 = white
-
-		// Foreground Text:
-		RGB(0, 0, 0), // 0 = black
-		RGB(3, 0, 0), // 1 = red
-		RGB(0, 3, 0), // 2 = green
-		RGB(0, 0, 3), // 3 = blue
-		RGB(3, 3, 0), // 4 = yellow
-		RGB(2, 0, 2), // 5 = magenta
-		RGB(0, 2, 2), // 6 = cyan
-		RGB(3, 3, 3), // 7 = white
-	}
-	PokeRam(ses.Conn, 0xFFB0, palette)
-	return savedPalette
-}
 func PeekPage0(ses *Session) []byte {
 	return Peek2Ram(ses.Conn, 0x0000, 256)
 }
@@ -194,7 +83,7 @@ func TestCharRow40(nthRow byte) []byte {
 	bb := make([]byte, 2*40)
 	for i := byte(0); i < 40; i++ {
 		bb[2*i] = (nthRow * 29) + i
-		bb[2*i+1] = ((i % 7) << 3) | Black
+		bb[2*i+1] = ((i % 7) << 3) | T.SimpleBlack
 		if bb[2*i+1] == 077 {
 			bb[2*i+1] = 7
 		}
@@ -204,8 +93,11 @@ func TestCharRow40(nthRow byte) []byte {
 }
 
 func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
-	// savedPage0 := PeekPage0(ses)
+	com := comm.Wrap(ses.Conn)
+
 	savedPage0 := payload[:256]
+	// _ = payload[256 : 256+16] // savedMMU
+	savedPalette := payload[256+16 : 256+32]
 	hrmode, hrwidth, pmode := VideoModes(savedPage0)
 	strV, bytV := DescribeVideoModes(savedPage0)
 
@@ -215,14 +107,14 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
 	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
 
-	savedPalette := SetSimplePaletteReturnCurrent(ses, payload)
+	T.SetSimplePalette(com)
 
 	for row := byte(0); row < 24; row++ {
 		bb := TestCharRow40(row)
 		for i := byte(0); i < 40; i++ { // invert some bg/fg
 			if uint(row+i)%13 == 9 { // choose which ones
 				x := bb[i+i+1]
-				x = (x >> 3) | 070 // the inversion, assuming bg is Black.
+				x = (x >> 3) | (T.SimpleBlack << 3) // the inversion, assuming bg is T.SimpleBlack.
 				bb[i+i+1] = x
 			}
 		}
@@ -231,7 +123,7 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 
 	defer func() {
 		SetVideoMode(ses, hrmode, hrwidth, pmode)
-		UndoSimplePalette(ses, savedPalette)
+		T.UndoSimplePalette(com, savedPalette)
 		UndoAlterTask0(ses, savedMMUByte)
 	}()
 
@@ -264,60 +156,47 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 	}
 }
 
-func CreateHomeIfNeeded(ses *Session) {
-	os.Mkdir(*FlagHomesRoot, 0770)
-	os.Mkdir(PFP.Join(*FlagHomesRoot, ses.Hostname), DirPerm)
-	os.Mkdir(PFP.Join(*FlagHomesRoot, ses.Hostname, TTL_10_DAY_DIR_NAME), DirPerm)
+func CreateHomeIfNeeded(ses *Session) (string, string) {
+	root := *finder.FlagNavRoot
+	homes := "HOMES"
+	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
+	retain := PFP.Join(home, finder.RETAIN_10_DAYS)
+
+	os.Mkdir(root, finder.DirPerm)
+	os.Mkdir(PFP.Join(root, homes), finder.DirPerm)
+	os.Mkdir(PFP.Join(root, home), finder.DirPerm)
+	os.Mkdir(PFP.Join(root, retain), finder.DirPerm)
+	Log("CreateHomeIfNeeded: home = %q", home)
+	return home, retain
 }
 
 // Entry from waiter.go for a Hijack.
 func HdbDosHijack(ses *Session, payload []byte) {
-	CreateHomeIfNeeded(ses)
+	com := comm.Wrap(ses.Conn)
 
 	OnText40At2000Run(ses, payload, func() {
 		time.Sleep(1 * time.Second)
-		TextChooserShell(ses)
+		TextChooserShell(com, ses.HdbDos.DriveSession)
 	})
 
 	// We tell coco that this is the END of the HIJACK.
-	WriteQuint(ses.Conn, CMD_HDBDOS_HIJACK, 0, []byte{})
-}
-
-const TTL_10_DAY_DIR_NAME = "TTL-10-day"
-
-func HdbDosCleanupOneDrive(ses *Session, driveNum byte) {
-	drive := ses.HdbDos.Drives[driveNum]
-	if drive == nil || !drive.Dirty {
-		return
-	}
-	// if dirty:
-	dest := PFP.Join(*FlagHomesRoot, ses.Hostname, TTL_10_DAY_DIR_NAME, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
-	err := os.WriteFile(dest, drive.Image, FilePerm)
-	if err != nil {
-		log.Printf("BAD: HdbDosCleanup: Error saving dirty file %d bytes %q as %q: %v", len(drive.Image), drive.Path, dest, err)
-	} else {
-		log.Printf("HdbDosCleanup: Saved dirty file %d bytes %q as %q", len(drive.Image), drive.Path, dest)
-	}
-	ses.HdbDos.Drives[driveNum] = nil // Delete the drive record.
-}
-func Timestamp() string {
-	return time.Now().UTC().Format("2006-01-02-150405Z")
-}
-func HdbDosCleanup(ses *Session) {
-	for driveNum, _ := range ses.HdbDos.Drives {
-		HdbDosCleanupOneDrive(ses, byte(driveNum))
-	}
+	com.WriteQuint(comm.CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
+	home, retain := CreateHomeIfNeeded(ses)
+	com := comm.Wrap(ses.Conn)
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
+			DriveSession: finder.NewDriveSession(
+				comm.Wrap(ses.Conn),
+				home, retain),
 		}
 	}
 	ses.Cleanups = append(ses.Cleanups, func() {
-		HdbDosCleanup(ses)
+		ses.HdbDos.DriveSession.HdbDosCleanup()
 	})
 
 	h := ses.HdbDos
@@ -337,34 +216,34 @@ func HdbDosSector(ses *Session, payload []byte) {
 	DumpHexLines("payload", 0, payload)
 
 	// Create the drive record, if needed.  Call it d.
-	if h.Drives[drive] == nil {
-		h.Drives[drive] = &HdbDosDrive{}
-		log.Printf("@@@@@@@@@@ created HdbDosDrive{} number %d.", drive)
-	}
-	d := h.Drives[drive]
+	ds := h.DriveSession
+	d := ds.CreateDriveIfNeeded(byte(drive))
 
 	// Open the drive, if needed.
 	// Has it been mounted?
 	if d.Path == "" {
 		// No mount, so make it an empty disk.
 		d.Path = Format("new-rs%02d.dsk", drive) // temporary name
+Log("HdbDosSector: d.Path empty, creating path %q, empty dskini", d.Path)
 		d.Image = EmptyDecbInitializedDiskImage()
 		d.Dirty = false
-		d.CreationTimestamp = Timestamp()
-		log.Printf("@@@@@@@@@@ made empty HdbDosDrive{} name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
+		d.CreationTimestamp = finder.Timestamp()
+		log.Printf("@@@@@@@@@@ made empty DriveImage name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 	if d.Image == nil {
-		bb, err := os.ReadFile(PFP.Join(*FlagPublicRoot, d.Path))
+Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
+		unixfile := PFP.Join(*finder.FlagNavRoot, d.Path)
+		bb, err := os.ReadFile(unixfile)
 		if err != nil {
-			log.Panicf("HdbDosSector ReadFile failed %q: %v", d.Path, err)
+			log.Panicf("HdbDosSector ReadFile failed %q: %q: %v", d.Path, unixfile, err)
 		}
-		if !In(int64(len(bb)), FloppySizes) {
+		if !In(int64(len(bb)), finder.FloppySizes) {
 			log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
 		}
 		d.Image = bb
 		d.Dirty = false
-		d.CreationTimestamp = Timestamp()
-		log.Printf("@@@@@@@@@@ opend file %q HdbDosDrive{} number %d. TS %q", d.Path, drive, d.CreationTimestamp)
+		d.CreationTimestamp = finder.Timestamp()
+		log.Printf("@@@@@@@@@@ HdbDosSector: opend file %q DriveImage number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 
 	switch cmd {
@@ -383,7 +262,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
 		DumpHexLines("REPLY", 0, buf)
-		WriteQuint(ses.Conn, CMD_HDBDOS_SECTOR, 0, buf)
+		com.WriteQuint(comm.CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
 		copy(d.Image[front:back], payload[5:])
@@ -396,6 +275,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 }
 
 func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte) {
+	com := comm.Wrap(ses.Conn)
 	log.Printf("Inject: len=%4x dest=%4x exec=%v", len(payload), dest, exec)
 	buf := make([]byte, 5+256)
 	copy(buf[5:], sideload)
@@ -410,7 +290,7 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 		buf[5+0x3B] = byte(dest)
 	}
 
-	WriteQuint(ses.Conn, CMD_HDBDOS_EXEC, 0, buf)
+	com.WriteQuint(comm.CMD_HDBDOS_EXEC, 0, buf)
 	DumpHexLines("Inject: did ", dest, buf)
 }
 
@@ -424,7 +304,7 @@ func AsciiToInjectBytes(s string) []byte {
 
 func SendInitialInjections(ses *Session) {
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
-	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES DISK CHOOSER)"))
+	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES DISK FINDER)"))
 	// Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
 	// Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
 	// Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))

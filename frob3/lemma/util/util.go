@@ -1,10 +1,29 @@
-package lib
+package util
 
 import (
 	"errors"
 	"fmt"
 	"log"
+	// "reflect"
+	// "unsafe"
 )
+
+/*
+func ID(obj any) string {
+	tn := reflect.TypeOf(obj).Name()
+	hash := Hash(obj)
+	return Format("%s~%d", tn, hash)
+}
+
+func Hash(obj any) uint {
+	return uint(Addr(obj) % 9999)
+}
+
+func Addr(obj any) uintptr {
+	return uintptr(reflect.ValueOf(obj).Elem().Elem().UnsafePointer())
+	// return uintptr(unsafe.Pointer(obj))
+}
+*/
 
 func Value[T any](value T, err error) T {
 	if err != nil {
@@ -121,16 +140,21 @@ func Repr[T any](a T) string {
 }
 
 var Format = fmt.Sprintf
+var Log = log.Printf
+var Panic = log.Panicf
+var Fatal = log.Fatalf
 
 func BytesFormat(format string, args ...any) []byte {
 	return []byte(Format(format, args...))
 }
 
+// Len is for slices; it returns uint.
 func Len[T any](x []T) uint {
 	return uint(len(x))
 }
 
-func Slen(s string) uint {
+// Slen is for strings; it returns uint.
+func Slen(s string) uint {  // returns unsigned
 	return uint(len(s))
 }
 

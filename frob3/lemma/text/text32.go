@@ -1,4 +1,4 @@
-package lib
+package text
 
 import (
 	//"fmt"
@@ -7,7 +7,7 @@ import (
 	//"os"
 	//PFP "path/filepath"
 
-	//"github.com/strickyak/frobio/frob3/lemma/rsdos"
+	"github.com/strickyak/frobio/frob3/lemma/comm"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
@@ -21,8 +21,8 @@ func (t *TextVDG) W() uint { return 32 }
 func (t *TextVDG) H() uint { return 16 }
 
 // Push
-func (t *TextVDG) Push(ses *Session) {
-	WriteQuint(ses.Conn, CMD_POKE, 0x400, t.Screen[:])
+func (t *TextVDG) Push(com *comm.Comm) {
+	com.WriteQuint(comm.CMD_POKE, 0x400, t.Screen[:])
 }
 
 // InvertChar

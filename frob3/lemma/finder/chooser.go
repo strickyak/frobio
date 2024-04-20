@@ -1,101 +1,142 @@
-package lib
+package finder
 
 import (
-	// "fmt"
-	// "io"
 	"log"
 	"os"
 	PFP "path/filepath"
 
-	"github.com/strickyak/frobio/frob3/lemma/rsdos"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-type Chooser struct {
-	Order  int
-	Name   string
-	Kids   []*Chooser
-	Parent *Chooser
-
-	IsDir bool
-	Size  int64
-	Disk  rsdos.DiskRec
-
-	Line int // in Parent's chooser
+type Chooser interface {
+	Order() int
+	Path() string
+	Name() string
+	Kids() []Chooser
+	Parent() Chooser
+	Decoration(ds *DriveSession) string
+	AtFocus(focus uint) Chooser
 }
 
-func AtFocus(c *Chooser, focus uint) *Chooser {
+func (uc *UnixChooser) Order() int      { return uc.order }
+func (uc *UnixChooser) Name() string    { return uc.name }
+func (uc *UnixChooser) Parent() Chooser { return uc.parent }
+
+type UnixChooser struct {
+	order  int
+	name   string
+	kids   []Chooser
+	parent Chooser
+
+	isDir      bool
+	size       int64
+	kidsFilled bool
+}
+
+func (uc *UnixChooser) String() string {
+	return Format("{UC(%s)%d}", uc.name, len(uc.kids))
+}
+
+func (uc *UnixChooser) AtFocus(focus uint) Chooser {
 	if focus == 2 { // Parent
-		if c.Parent != nil {
-			return c.Parent
+		if uc.parent != nil {
+			return uc.parent
 		} else {
-			return c
+			return uc
 		}
 	}
-	return c.Kids[focus-3]
+	return uc.kids[focus-3]
 }
 
-func TopChooser() *Chooser {
-	return &Chooser{
-		Order: 100,
-		Name:  ".",
+func TopChooser() *UnixChooser {
+	return &UnixChooser{
+		order: 100,
+		name:  ".",
 	}
 }
 
-func (c *Chooser) UnixPath() string {
-	if *FlagPublicRoot == "" {
+func (uc *UnixChooser) UnixPath() string {
+	if *FlagNavRoot == "" {
 		log.Panicf("Missing --dos_root flag on server")
 	}
-	return PFP.Join(*FlagPublicRoot, c.Path())
+	return PFP.Join(*FlagNavRoot, uc.Path())
 }
-func (c *Chooser) Path() string {
-	if c.Parent == nil {
+func (uc *UnixChooser) Path() string {
+	if uc.parent == nil {
 		return "."
 	} else {
-		return PFP.Join(c.Parent.Path(), c.Name)
+		return PFP.Join(uc.parent.Path(), uc.name)
 	}
 }
 
-func (c *Chooser) FillChooser() {
-	if c.Kids != nil {
-		return
+func (uc *UnixChooser) Kids() []Chooser {
+	if uc.kidsFilled {
+		return uc.kids
 	}
-	uPath := c.UnixPath()
+	uPath := uc.UnixPath()
 	stat := Value(os.Stat(uPath))
 	if stat.IsDir() {
-		c.IsDir = true
+		uc.isDir = true
 		entries := Value(os.ReadDir(uPath))
-		line := 0
 		for _, e := range entries {
 			name := e.Name()
 			if name[0] == '.' {
 				continue
 			}
-			c.Kids = append(c.Kids, &Chooser{
-				Order:  100,
-				Name:   name,
-				Parent: c,
-				Line:   line,
+			uc.kids = append(uc.kids, &UnixChooser{
+				order:  100,
+				name:   name,
+				parent: uc,
 			})
-			line++
 		}
 	} else {
 		// Not a directory.
-		c.Size = stat.Size()
-		// TODO // contents := Value(os.ReadFile(uPath))
-		// TODO // c.Disk = rsdos.DiskParse(contents)
+		uc.size = stat.Size()
 	}
+	uc.kidsFilled = true
+	return uc.kids
 }
 
-func (c *Chooser) MakeChoice(kid string) *Chooser {
-	c.FillChooser()
+func (uc *UnixChooser) MakeChoice(kid string) Chooser {
+	kids := uc.Kids() // Forces filling kids.
 
-	for _, e := range c.Kids {
-		if e.Name == kid {
+	for _, e := range kids {
+		if e.Name() == kid {
 			return e
 		}
 	}
 
-	log.Panicf("Kid %q not found in Chooser %q", kid, c.Path())
+	log.Panicf("Kid %q not found in UnixChooser %q", kid, uc.Path())
 	panic(0)
 }
+
+func (uc *UnixChooser) Decoration(ds *DriveSession) string {
+	if uc.isDir {
+		return "/"
+	}
+	floppySized := (uc.size == FloppySize35 || uc.size == FloppySize40 || uc.size == FloppySize80)
+	if !floppySized {
+		return "-"
+	}
+	path := uc.Path()
+	for d := byte(0); d < NumDrives; d++ {
+		if ds.drives[d] != nil && ds.drives[d].Path == path {
+			return string('0' + d)
+		}
+	}
+	switch uc.size {
+	case FloppySize35:
+		return "=" // not mounted
+	case FloppySize40:
+		return "+" // not mounted
+	case FloppySize80:
+		return "#" // not mounted
+	}
+	panic(uc.size)
+}
+
+const FloppySize35 = 161280
+const FloppySize40 = 184320
+const FloppySize80 = 368640
+
+var FloppySizes = []int64{FloppySize35, FloppySize40, FloppySize80}

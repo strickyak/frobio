@@ -1,4 +1,4 @@
-package lib
+package lemma
 
 import (
 	"bytes"
@@ -15,50 +15,12 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/strickyak/frobio/frob3/lemma/comm"
+
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 var ForcePage = flag.Int("force_page", 0, "Always launch this page")
-
-type Quint [5]byte // Quintabyte commands.
-
-func NewQuint(cmd byte, n uint, p uint) Quint {
-	var q Quint
-	q[0] = cmd
-	q[1], q[2] = Hi(n), Lo(n)
-	q[3], q[4] = Hi(p), Lo(p)
-	return q
-}
-
-func (q Quint) Command() byte {
-	return q[0]
-}
-func (q Quint) N() uint {
-	return HiLo(q[1], q[2])
-}
-func (q Quint) P() uint {
-	return HiLo(q[3], q[4])
-}
-
-/* TODO
-
-func ReadQuint(conn net.Conn) []bytes {
-  var q Quint
-  _, err := io.ReadFull(conn, q[:])
-  Check(err)
-  n := q.N()
-  bb := make([]byte, n)
-  _, err = io.ReadFull(conn, bb)
-  Check(err)
-}
-TODO */
-
-func WriteQuint(conn net.Conn, cmd byte, p uint, bb []byte) {
-	n := len(bb)
-	q := NewQuint(cmd, uint(n), p)
-	Value(conn.Write(q[:]))
-	Value(conn.Write(bb))
-}
 
 func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	n := uint(len(pay))
@@ -80,7 +42,7 @@ func (ses *Session) ReplyOnChannel(cmd byte, p uint, pay []byte) {
 	}
 }
 
-type Screen interface {
+type IScreen interface {
 	Clear()
 	PutChar(ch byte)
 	PutStr(s string)
@@ -89,6 +51,7 @@ type Screen interface {
 	//Height() int
 }
 
+/*
 type AxScreen struct {
 	Ses *Session
 }
@@ -102,7 +65,7 @@ func (ax *AxScreen) Clear() {
 	}
 }
 func (ax *AxScreen) PutChar(ch byte) {
-	q := NewQuint(CMD_PUTCHAR, 0, uint(ch))
+	q := comm.NewQuint(CMD_PUTCHAR, 0, uint(ch))
 	_, err := ax.Ses.Conn.Write(q[:])
 	Check(err)
 }
@@ -112,6 +75,7 @@ func (ax *AxScreen) PutStr(s string) {
 		ax.PutChar(byte(r))
 	}
 }
+*/
 
 // TODO: convert to new Screen.
 // TODO: requires dealing with LineBuf::GetLine
@@ -152,7 +116,7 @@ func (ax *XTextScreen) PutStr(s string) {
 func (t *XTextScreen) Push() {
 	AssertEQ(len(t.B), 512)
 	AssertEQ(t.Addr, 0x0400)
-	WriteQuint(t.Ses.Conn, CMD_POKE, uint(t.Addr), t.B)
+	comm.Wrap(t.Ses.Conn).WriteQuint(comm.CMD_POKE, uint(t.Addr), t.B)
 }
 func (t *XTextScreen) Clear() {
 	t.B = make([]byte, t.W*t.H)
@@ -211,30 +175,30 @@ type LineBuf struct {
 func (lb *LineBuf) GetLine() string {
 	var buf []byte
 	for {
-		var q Quint
+		var q comm.Quint
 		_, err := io.ReadFull(lb.Ses.Conn, q[:])
 		Check(err)
 		cmd := q.Command()
 
 		switch cmd {
-		case CMD_INKEY:
+		case comm.CMD_INKEY:
 			ch := byte(q.P())
 			switch ch {
 			case 10, 13:
-				lb.Ses.Screen.PutChar(ch)
-				lb.Ses.Screen.Push()
+				lb.Ses.IScreen.PutChar(ch)
+				lb.Ses.IScreen.Push()
 				return string(buf)
 			case 8:
 				if len(buf) > 0 {
 					buf = buf[:len(buf)-1] // trim last
-					lb.Ses.Screen.PutChar(ch)
-					lb.Ses.Screen.Push()
+					lb.Ses.IScreen.PutChar(ch)
+					lb.Ses.IScreen.Push()
 				}
 			default:
 				if ' ' <= ch && ch <= '~' {
 					buf = append(buf, ch)
-					lb.Ses.Screen.PutChar(ch)
-					lb.Ses.Screen.Push()
+					lb.Ses.IScreen.PutChar(ch)
+					lb.Ses.IScreen.Push()
 				} else {
 					log.Printf("LineBuf: weird char: %d", ch)
 				}
@@ -248,7 +212,7 @@ func (lb *LineBuf) GetLine() string {
 type Session struct {
 	ID        string
 	Conn      net.Conn
-	Screen    Screen
+	IScreen   IScreen
 	LineBuf   *LineBuf
 	Hostname  string
 	RomID     []byte
@@ -285,8 +249,8 @@ func NewSession(conn net.Conn, hostname string) *Session {
 		Procs:    make(map[uint]*Proc), // mux.go
 		Hostname: hostname,
 	}
-	// ses.Screen = &AxScreen{ses}
-	ses.Screen = NewTextScreen(ses, 32, 16, 0x0400)
+	// ses.IScreen = &AxScreen{ses}
+	ses.IScreen = NewTextScreen(ses, 32, 16, 0x0400)
 	ses.LineBuf = &LineBuf{ses}
 	nextID++
 
@@ -388,8 +352,8 @@ func Run(ses *Session) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			ses.Screen.PutStr(fmt.Sprintf("\n\n(session Run) FATAL ERROR: %v\n", r))
-			ses.Screen.Push()
+			ses.IScreen.PutStr(fmt.Sprintf("\n\n(session Run) FATAL ERROR: %v\n", r))
+			ses.IScreen.Push()
 			panic(r)
 		}
 	}()
@@ -403,22 +367,22 @@ CARD:
 	for {
 		log.Printf("== %d == %q ==", current.Num, current.Name)
 		log.Printf("%#v", *current)
-		ses.Screen.Clear()
-		ses.Screen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
+		ses.IScreen.Clear()
+		ses.IScreen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
 
-		// ses.Screen.PutStr("(*" + current.Text + "*)\n")
+		// ses.IScreen.PutStr("(*" + current.Text + "*)\n")
 
 		var buf bytes.Buffer
 		err := current.Template.Execute(&buf, ses)
 		if err != nil {
 			log.Printf("Template Error p%d: %v", current.Num, err)
-			ses.Screen.PutStr("Template Error: " + Str(err))
+			ses.IScreen.PutStr("Template Error: " + Str(err))
 		} else {
-			ses.Screen.PutStr(buf.String())
+			ses.IScreen.PutStr(buf.String())
 		}
 
 		if current.Launch != "" {
-			ses.Screen.PutStr("[@] Launch!\n")
+			ses.IScreen.PutStr("[@] Launch!\n")
 		}
 
 		// Sort kids and show them.
@@ -428,10 +392,10 @@ CARD:
 		}
 		sort.Sort(vec)
 		for _, ns := range vec {
-			ses.Screen.PutStr(ns.Str)
+			ses.IScreen.PutStr(ns.Str)
 		}
-		ses.Screen.PutStr("> ")
-		ses.Screen.Push()
+		ses.IScreen.PutStr("> ")
+		ses.IScreen.Push()
 
 		line := "@"
 		if *ForcePage == 0 {
@@ -447,20 +411,20 @@ CARD:
 			if ok {
 				current = card
 			} else {
-				ses.Screen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
+				ses.IScreen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
 				goto DELAY
 			}
 		} else if line == "@" {
 
 			if current.Launch == "" {
-				ses.Screen.PutStr("There is no \"@\" command on this page.")
+				ses.IScreen.PutStr("There is no \"@\" command on this page.")
 				goto DELAY
 			}
 
 			if current.Block0 != "" {
 				tail := strings.TrimPrefix(current.Block0, ".")
 				log.Printf("Block0: %q", tail)
-				ses.Screen.PutStr(fmt.Sprintf("Block0: %q", tail))
+				ses.IScreen.PutStr(fmt.Sprintf("Block0: %q", tail))
 				ses.Block0 = DuplicateFileToTemp(*READONLY+"/"+tail, "")
 			}
 
@@ -472,7 +436,7 @@ CARD:
 						log.Printf("known demo: %q", k)
 					}
 					log.Printf("Unknown demo: %q", name)
-					ses.Screen.PutStr(fmt.Sprintf("\nUnknown Demo: %q", name))
+					ses.IScreen.PutStr(fmt.Sprintf("\nUnknown Demo: %q", name))
 					goto DELAY
 				}
 				demo(ses.Conn)
@@ -486,12 +450,12 @@ CARD:
 			return
 		} else {
 			// It was something else.
-			ses.Screen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
+			ses.IScreen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
 			goto DELAY
 		}
 		continue CARD
 	DELAY:
-		ses.Screen.Push()
+		ses.IScreen.Push()
 		time.Sleep(3 * time.Second)
 	}
 }

@@ -1,10 +1,9 @@
-package lib
+package lemma
 
 import (
 	"bufio"
 	"bytes"
 	"flag"
-	. "github.com/strickyak/frobio/frob3/lemma/util"
 	"io"
 	"log"
 	"os"
@@ -13,6 +12,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/strickyak/frobio/frob3/lemma/comm"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 var FS = flag.String("fs", "", "Danger: Filesystem root that can be read and written remotely")
@@ -49,7 +51,7 @@ func BeginMux(ses *Session, p uint, pay []byte) {
 	{ // Error if channel p already exists.
 		_, exists := ses.Procs[p]
 		if exists {
-			ses.ReplyOnChannel(CMD_END_MUX, p, BytesFormat("- Channel %d already exists in session %v", p, ses))
+			ses.ReplyOnChannel(comm.CMD_END_MUX, p, BytesFormat("- Channel %d already exists in session %v", p, ses))
 			return
 		}
 	}
@@ -61,14 +63,14 @@ func BeginMux(ses *Session, p uint, pay []byte) {
 	}
 	log.Printf("argv=%#v", argv)
 	if len(argv) == 0 {
-		ses.ReplyOnChannel(CMD_END_MUX, p, BytesFormat("- Empty Command"))
+		ses.ReplyOnChannel(comm.CMD_END_MUX, p, BytesFormat("- Empty Command"))
 		return
 	}
 
 	cname := strings.ToLower(argv[0])
 	fn, ok := CommandFuncs[cname]
 	if !ok {
-		ses.ReplyOnChannel(CMD_END_MUX, p, BytesFormat("- No such command: %v", cname))
+		ses.ReplyOnChannel(comm.CMD_END_MUX, p, BytesFormat("- No such command: %v", cname))
 		return
 	}
 
@@ -86,7 +88,7 @@ func BeginMux(ses *Session, p uint, pay []byte) {
 	// is called, and the client gets that, and then sends a MID request.
 	go proc.RunCommandFunc(fn)
 
-	ses.ReplyOnChannel(CMD_BEGIN_MUX, p, []byte{MuxGood})
+	ses.ReplyOnChannel(comm.CMD_BEGIN_MUX, p, []byte{MuxGood})
 }
 
 func MidMux(ses *Session, p uint, pay []byte) {
@@ -94,12 +96,12 @@ func MidMux(ses *Session, p uint, pay []byte) {
 
 	proc, ok := ses.Procs[p]
 	if !ok {
-		ses.ReplyOnChannel(CMD_MID_MUX, p,
+		ses.ReplyOnChannel(comm.CMD_MID_MUX, p,
 			BytesFormat("- Proc %d not found in session %v", p, ses))
 		return
 	}
 
-	proc.InPacket <- TaggedBytes{CMD_MID_MUX, pay}
+	proc.InPacket <- TaggedBytes{comm.CMD_MID_MUX, pay}
 }
 
 func EndMux(ses *Session, p uint, pay []byte) {
@@ -107,7 +109,7 @@ func EndMux(ses *Session, p uint, pay []byte) {
 
 	proc, ok := ses.Procs[p]
 	if !ok {
-		ses.ReplyOnChannel(CMD_END_MUX, p,
+		ses.ReplyOnChannel(comm.CMD_END_MUX, p,
 			BytesFormat("- Proc %d not found in session %v", p, ses))
 		return
 	}
@@ -116,7 +118,7 @@ func EndMux(ses *Session, p uint, pay []byte) {
 	// and shut down the channel.  The goroutine should either be
 	// expecting the CMD_END_MUX packet, or it will be panicked
 	// as a KILL signal.
-	proc.InPacket <- TaggedBytes{CMD_END_MUX, pay}
+	proc.InPacket <- TaggedBytes{comm.CMD_END_MUX, pay}
 	close(proc.InPacket)
 	delete(ses.Procs, p)
 }
@@ -141,7 +143,7 @@ func (o *Proc) LowGetOne(expected byte) []byte {
 	log.Printf("LowGetOne: %d:%q <-", packet.Tag, packet.Bytes)
 
 	// How kill signal is received.
-	if expected == CMD_MID_MUX && packet.Tag == CMD_END_MUX {
+	if expected == comm.CMD_MID_MUX && packet.Tag == comm.CMD_END_MUX {
 		debug.PrintStack()
 		log.Panicf("KILL Proc %d: %q", o.Channel, packet.Bytes)
 	}
@@ -156,7 +158,7 @@ func (o *Proc) LowGetOne(expected byte) []byte {
 	return packet.Bytes
 }
 
-func (o *Proc) LowPutOne(q Quint, args ...any) {
+func (o *Proc) LowPutOne(q comm.Quint, args ...any) {
 	var bb bytes.Buffer
 	bb.Write(q[:])
 	for _, a := range args {
@@ -197,52 +199,52 @@ func (o *Proc) Read(buf []byte) {
 }
 
 func (o *Proc) CocoError(message string) {
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1+len(message)), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1+len(message)), o.Channel)
 	o.LowPutOne(q, "3", message)
 }
 func (o *Proc) CocoCreate(filename string) {
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1+len(filename)), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1+len(filename)), o.Channel)
 	o.LowPutOne(q, "a", filename)
 }
 func (o *Proc) CocoOpen(filename string) {
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1+len(filename)), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1+len(filename)), o.Channel)
 	o.LowPutOne(q, "b", filename)
 }
 func (o *Proc) CocoClose() {
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1), o.Channel)
 	o.LowPutOne(q, "c")
 }
 
 func (o *Proc) PrintfStderr(format string, args ...any) {
 	line := Format(format, args...)
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1+len(line)), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1+len(line)), o.Channel)
 	o.LowPutOne(q, "2", line)
 }
 func (o *Proc) WriteLine(line string) {
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1+len(line)), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1+len(line)), o.Channel)
 	o.LowPutOne(q, "1", line)
 }
 func (o *Proc) WriteBytes(buf []byte) {
-	o.LowGetOne(CMD_MID_MUX)
-	q := NewQuint(CMD_MID_MUX, uint(1+len(buf)), o.Channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q := comm.NewQuint(comm.CMD_MID_MUX, uint(1+len(buf)), o.Channel)
 	o.LowPutOne(q, "4", buf)
 }
 
 func (o *Proc) Exit3(verdict string) {
 	channel := o.Channel
 	AssertGT(channel, 0)
-	o.LowGetOne(CMD_MID_MUX)
-	q1 := NewQuint(CMD_MID_MUX, 1, channel)
+	o.LowGetOne(comm.CMD_MID_MUX)
+	q1 := comm.NewQuint(comm.CMD_MID_MUX, 1, channel)
 	o.LowPutOne(q1, ".")
 
-	o.LowGetOne(CMD_END_MUX)
-	q2 := NewQuint(CMD_END_MUX, uint(len(verdict)), channel)
+	o.LowGetOne(comm.CMD_END_MUX)
+	q2 := comm.NewQuint(comm.CMD_END_MUX, uint(len(verdict)), channel)
 	o.LowPutOne(q2, verdict)
 }
 
@@ -329,16 +331,16 @@ func PutTCommand(o *Proc) string {
 	defer w.Close()
 
 	o.CocoOpen(src)
-	error_packet := o.LowGetOne(CMD_MID_MUX)
+	error_packet := o.LowGetOne(comm.CMD_MID_MUX)
 	if len(error_packet) > 0 {
 		log.Panicf("Did not local open: %q", src)
 	}
 
 	for {
-		q := NewQuint(CMD_MID_MUX, 1, o.Channel)
+		q := comm.NewQuint(comm.CMD_MID_MUX, 1, o.Channel)
 		o.LowPutOne(q, byte('6'))
 
-		packet := o.LowGetOne(CMD_MID_MUX)
+		packet := o.LowGetOne(comm.CMD_MID_MUX)
 		if len(packet) == 0 {
 			break
 		} else if packet[0] == '6' && len(packet) == 1 {
@@ -361,7 +363,7 @@ func PutTCommand(o *Proc) string {
 			log.Panicf("Error: %q", packet)
 		}
 	}
-	q9 := NewQuint(CMD_MID_MUX, 1, o.Channel)
+	q9 := comm.NewQuint(comm.CMD_MID_MUX, 1, o.Channel)
 	o.LowPutOne(q9, byte('c')) // Close.
 	// yak //
 

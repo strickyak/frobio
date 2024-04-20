@@ -20,7 +20,7 @@ NUM_MODULES = 14
 
 ###############################################
 
-VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma
+VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter
 
 FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
 WIZ_C = $F/wiz/wiz5100s.c
@@ -46,9 +46,9 @@ results1:
 	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
-results2: results1 os9disks server broadcast-burn
+results2: results1 os9disks lemma-waiter broadcast-burn
 	mkdir -p results/OS9DISKS results/LEMMINGS results/BOOTING results/bin
-	ln -fv server results/bin
+	ln -fv lemma-waiter results/bin
 	ln -fv broadcast-burn results/bin
 
 NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
@@ -451,47 +451,22 @@ all-lemmings: burn-rom-fast.lem
 
 # run-lemma
 #   This target is not called by default.
-#   If you do `make run-lemma` then it will build and run the lemma server.
+#   If you do `make run-lemma-waiter` then it will build and run the lemma-waiter.
 #   It's a server, so it will run forever, as long as nothing goes wrong.
 #   You can hit ^C to kill it.  `make` will then print an error message
 #   that you can ignore.
-server: server.go all-without-gccretro
-	P=`pwd` && cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/server -x server.go
-	ln -fv server ../bin
+lemma-waiter: lemma-waiter.go all-without-gccretro
+	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/lemma-waiter -x lemma-waiter.go
+	ln -fv lemma-waiter ../bin
 broadcast-burn: broadcast-burn.go all-without-gccretro
 	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/broadcast-burn -x broadcast-burn.go
 	ln -fv broadcast-burn ../bin
-run-server: run-lemma  # Alias.
-run-lemma: server
-	./server  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --public_root $F/../../../shelving/lemniscate/Coco-Disk-Tree/  $(FORCE)
+run-server: run-lemma-waiter  # Alias.
+run-lemma: run-lemma-waiter   # Alias.
+run-lemma-waiter: lemma-waiter
+	./lemma-waiter  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $F/../../../shelving/nav-root/ $(FORCE)
 
-##############  Old Junk Follows
-#   For debugging with Gomar on Loopback.
-run-lemma-L: all
-	cd $A/lemma/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) install -x server.go
-	(echo t; echo dir; echo date -t ; echo setime 2020/12/25 01:02:03 ; echo date -t ; \
-      echo dir /lem; echo dir -e /lem; echo dir -e /lem/foo ; \
-      echo dump /lem/tuesday.txt ; \
-      echo list /lem/tuesday.txt ; \
-      echo dump /lem/foo/bar.txt ; \
-      echo list /lem/foo/bar.txt ; \
-      echo list /lem/xattr.conf ; \
-      echo 'dir > /lem/abc' ; \
-      echo dir -e /lem ; \
-      echo dump /lem/abc ; \
-        )| \
-          os9 copy -l -r /dev/stdin Nitros9_Coco3_M6809_Level2.dsk,startup
-	$(SHELF)/bin/server --program ./Nitros9_Coco3_M6809_Level2_L.lem --block0 Nitros9_Coco3_M6809_Level2.dsk -lemman_fs=$F/testdata
-
-run-axiom-L:
-	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log
-
-trace-axiom-L:
-	go run /sy/doing_os9/gomar/borges/borges.go --outdir /sy/doing_os9/borges/ -glob '*.list,*.lst' .
-	cd /sy/doing_os9/gomar && go run --tags=coco3,level2,cocoio gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=  2>/tmp/log
-	cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,hyper,trace gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -basic_text  -v=dmw  --borges ../borges --trigger_os9='(?i:fork.*file=.dir)'  2>/tmp/log
-	# cd /sy/doing_os9/gomar && go run --tags=d,coco3,level2,cocoio,trace,hyper gomar.go  --rom_a000 /home/strick/6809/ROMS/color64bas.rom  --rom_8000 /home/strick/6809/ROMS/color64extbas.rom  -cart  ~/coco-shelf/build-frobio/axiom-gomar.rom -v=w   -basic_text  -v=d  2>/tmp/log
-
+##############################
 # Disable RCS & SCCS patterns.
 %:: %,v
 %:: RCS/%,v
