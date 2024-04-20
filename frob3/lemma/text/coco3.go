@@ -1,7 +1,7 @@
 package text
 
 import (
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 	SimpleWhite
 )
 
-func SetSimplePalette(com *comm.Comm) {
+func SetSimplePalette(com *coms.Comm) {
 	com.PokeRam(0xFFB0, []byte{
 		// Background Text:
 		RGB(0, 0, 0), // 0 = black
@@ -39,7 +39,7 @@ func SetSimplePalette(com *comm.Comm) {
 	})
 }
 
-func UndoSimplePalette(com *comm.Comm, savedPalette []byte) {
+func UndoSimplePalette(com *coms.Comm, savedPalette []byte) {
 	com.PokeRam(0xFFB0, savedPalette)
 }
 

@@ -15,7 +15,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -65,7 +65,7 @@ func (ax *AxScreen) Clear() {
 	}
 }
 func (ax *AxScreen) PutChar(ch byte) {
-	q := comm.NewQuint(CMD_PUTCHAR, 0, uint(ch))
+	q := coms.NewQuint(CMD_PUTCHAR, 0, uint(ch))
 	_, err := ax.Ses.Conn.Write(q[:])
 	Check(err)
 }
@@ -116,7 +116,7 @@ func (ax *XTextScreen) PutStr(s string) {
 func (t *XTextScreen) Push() {
 	AssertEQ(len(t.B), 512)
 	AssertEQ(t.Addr, 0x0400)
-	comm.Wrap(t.Ses.Conn).WriteQuint(comm.CMD_POKE, uint(t.Addr), t.B)
+	coms.Wrap(t.Ses.Conn).WriteQuint(coms.CMD_POKE, uint(t.Addr), t.B)
 }
 func (t *XTextScreen) Clear() {
 	t.B = make([]byte, t.W*t.H)
@@ -175,13 +175,13 @@ type LineBuf struct {
 func (lb *LineBuf) GetLine() string {
 	var buf []byte
 	for {
-		var q comm.Quint
+		var q coms.Quint
 		_, err := io.ReadFull(lb.Ses.Conn, q[:])
 		Check(err)
 		cmd := q.Command()
 
 		switch cmd {
-		case comm.CMD_INKEY:
+		case coms.CMD_INKEY:
 			ch := byte(q.P())
 			switch ch {
 			case 10, 13:

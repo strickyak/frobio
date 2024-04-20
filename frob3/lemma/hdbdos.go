@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	"github.com/strickyak/frobio/frob3/lemma/finder"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
@@ -93,7 +93,7 @@ func TestCharRow40(nthRow byte) []byte {
 }
 
 func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
-	com := comm.Wrap(ses.Conn)
+	com := coms.Wrap(ses.Conn)
 
 	savedPage0 := payload[:256]
 	// _ = payload[256 : 256+16] // savedMMU
@@ -172,7 +172,7 @@ func CreateHomeIfNeeded(ses *Session) (string, string) {
 
 // Entry from waiter.go for a Hijack.
 func HdbDosHijack(ses *Session, payload []byte) {
-	com := comm.Wrap(ses.Conn)
+	com := coms.Wrap(ses.Conn)
 
 	OnText40At2000Run(ses, payload, func() {
 		time.Sleep(1 * time.Second)
@@ -180,18 +180,18 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	})
 
 	// We tell coco that this is the END of the HIJACK.
-	com.WriteQuint(comm.CMD_HDBDOS_HIJACK, 0, []byte{})
+	com.WriteQuint(coms.CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
 	home, retain := CreateHomeIfNeeded(ses)
-	com := comm.Wrap(ses.Conn)
+	com := coms.Wrap(ses.Conn)
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
 			DriveSession: finder.NewDriveSession(
-				comm.Wrap(ses.Conn),
+				coms.Wrap(ses.Conn),
 				home, retain),
 		}
 	}
@@ -262,7 +262,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
 		DumpHexLines("REPLY", 0, buf)
-		com.WriteQuint(comm.CMD_HDBDOS_SECTOR, 0, buf)
+		com.WriteQuint(coms.CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
 		copy(d.Image[front:back], payload[5:])
@@ -275,7 +275,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 }
 
 func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte) {
-	com := comm.Wrap(ses.Conn)
+	com := coms.Wrap(ses.Conn)
 	log.Printf("Inject: len=%4x dest=%4x exec=%v", len(payload), dest, exec)
 	buf := make([]byte, 5+256)
 	copy(buf[5:], sideload)
@@ -290,7 +290,7 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 		buf[5+0x3B] = byte(dest)
 	}
 
-	com.WriteQuint(comm.CMD_HDBDOS_EXEC, 0, buf)
+	com.WriteQuint(coms.CMD_HDBDOS_EXEC, 0, buf)
 	DumpHexLines("Inject: did ", dest, buf)
 }
 

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
@@ -68,14 +68,14 @@ func ReadN(conn net.Conn, n uint) []byte {
 }
 
 func CheckSum16Ram(conn net.Conn, addr uint, n uint) uint {
-	_, err := conn.Write([]byte{comm.CMD_SUM, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
+	_, err := conn.Write([]byte{coms.CMD_SUM, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
 	if err != nil {
 		panic(err)
 	}
 
 	sumReply := ReadN(conn, 5)
 	log.Printf("sumReply: % 3x", sumReply)
-	if sumReply[0] != comm.CMD_SUM {
+	if sumReply[0] != coms.CMD_SUM {
 		log.Panicf("Expected DATA, got %d.", sumReply[0])
 	}
 
@@ -85,7 +85,7 @@ func CheckSum16Ram(conn net.Conn, addr uint, n uint) uint {
 func Peek2Ram(conn net.Conn, addr uint, n uint) []byte {
 	n1, n2 := byte(n>>8), byte(n)
 	p1, p2 := byte(addr>>8), byte(addr)
-	sending := []byte{comm.CMD_PEEK2, 0, 4, 0, 0, n1, n2, p1, p2}
+	sending := []byte{coms.CMD_PEEK2, 0, 4, 0, 0, n1, n2, p1, p2}
 	log.Printf("peek2ram sending: % 3x", sending)
 	_, err := conn.Write(sending)
 	if err != nil {
@@ -94,7 +94,7 @@ func Peek2Ram(conn net.Conn, addr uint, n uint) []byte {
 	i := 0 // for i := 0; i < 3; i++ {
 	recvHeader := ReadN(conn, 5)
 	log.Printf("[%d] peek2Header: % 3x", i, recvHeader)
-	if recvHeader[0] != comm.CMD_PEEK2 {
+	if recvHeader[0] != coms.CMD_PEEK2 {
 		log.Panicf("Peek2Ram: Expected PEEK2, got %d", recvHeader[0])
 	}
 	sezN := (uint(recvHeader[1]) << 8) | uint(recvHeader[2])
@@ -110,14 +110,14 @@ func Peek2Ram(conn net.Conn, addr uint, n uint) []byte {
 }
 
 func PeekRam(conn net.Conn, addr uint, n uint) []byte {
-	_, err := conn.Write([]byte{comm.CMD_PEEK, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
+	_, err := conn.Write([]byte{coms.CMD_PEEK, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
 	if err != nil {
 		panic(err)
 	}
 
 	peekHeader := ReadN(conn, 5)
 	log.Printf("peekHeader: %#v", peekHeader)
-	if peekHeader[0] != comm.CMD_DATA {
+	if peekHeader[0] != coms.CMD_DATA {
 		log.Panicf("Expected DATA")
 	}
 
@@ -129,7 +129,7 @@ func PeekRam(conn net.Conn, addr uint, n uint) []byte {
 func PokeRam(conn net.Conn, addr uint, data []byte) {
 	n := uint(len(data))
 
-	_, err := conn.Write([]byte{comm.CMD_POKE, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
+	_, err := conn.Write([]byte{coms.CMD_POKE, Hi(n), Lo(n), Hi(addr), Lo(addr)}) // == WriteFull
 	if err != nil {
 		panic(err)
 	}
@@ -221,7 +221,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		log.Printf("===== ReadFive: cmd=%02x n=%04x p=%04x ........", cmd, n, p)
 
 		switch cmd {
-		case comm.CMD_HELLO:
+		case coms.CMD_HELLO:
 			{
 				// Very much like CMD_DATA.
 				log.Printf("ReadFive: HELLO $%x @ $%x", n, p)
@@ -238,11 +238,11 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				}
 			}
 
-		case comm.CMD_SP_PC: // MISUSES N
+		case coms.CMD_SP_PC: // MISUSES N
 			log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
 			log.Printf("ReadFive: sp=%x pc=%x", n, p)
 
-		case comm.CMD_LOG:
+		case coms.CMD_LOG:
 			{
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
@@ -252,7 +252,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				log.Printf("ReadFive: LOG %q", data)
 			}
 
-		case comm.CMD_REV:
+		case coms.CMD_REV:
 			{
 				data := make([]byte, n)
 				_, err := io.ReadFull(conn, data)
@@ -262,10 +262,10 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				log.Printf("ReadFive: REV %q", data)
 			}
 
-		case comm.CMD_INKEY: // N=0, OR MISUSES N
+		case coms.CMD_INKEY: // N=0, OR MISUSES N
 			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
-		case comm.CMD_DATA: // Sort of a core dump?
+		case coms.CMD_DATA: // Sort of a core dump?
 			{
 				log.Printf("ReadFive: DATA $%x @ $%x", n, p)
 				data := make([]byte, n)
@@ -279,7 +279,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				DumpHexLines("M", p, data)
 			}
 
-		case comm.CMD_BLOCK_READ: // Nitros9 RBLemma devices
+		case coms.CMD_BLOCK_READ: // Nitros9 RBLemma devices
 			{
 				block0 = GetBlockDevice(ses)
 				lsn := SeekSectorReturnLSN(block0, n, p)
@@ -296,14 +296,14 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 						log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 					}
 				}
-				WriteFive(conn, comm.CMD_BLOCK_OKAY, 0, 0)
+				WriteFive(conn, coms.CMD_BLOCK_OKAY, 0, 0)
 
 				cc, err = conn.Write(buf) // == WriteFull
 				if err != nil {
 					log.Panicf("BLOCK_READ: Write256: network block write failed: %v", err)
 				}
 			}
-		case comm.CMD_BLOCK_WRITE: // Nitros9 RBLemma devices
+		case coms.CMD_BLOCK_WRITE: // Nitros9 RBLemma devices
 			{
 				block0 = GetBlockDevice(ses)
 				lsn := SeekSectorReturnLSN(block0, n, p)
@@ -325,10 +325,10 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				if cc != 256 {
 					log.Panicf("BLOCK_WRITE: Short Write Block device 0 at LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 				}
-				WriteFive(conn, comm.CMD_BLOCK_OKAY, 0, 0)
+				WriteFive(conn, coms.CMD_BLOCK_OKAY, 0, 0)
 
 			}
-		case comm.CMD_LEMMAN_REQUEST:
+		case coms.CMD_LEMMAN_REQUEST:
 			{
 				var buf []byte
 				if n > 0 {
@@ -351,7 +351,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				}
 
 				reply := DoLemMan(conn, buf, p)
-				WriteFive(conn, comm.CMD_LEMMAN_REPLY, uint(len(reply)), p)
+				WriteFive(conn, coms.CMD_LEMMAN_REPLY, uint(len(reply)), p)
 
 				{
 					cc, err := conn.Write(reply)
@@ -364,37 +364,37 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				}
 			}
 
-		case comm.CMD_LEVEL0:
+		case coms.CMD_LEVEL0:
 			Level0Control(conn, ses)
 
-		case comm.CMD_BEGIN_MUX: //  = 196
+		case coms.CMD_BEGIN_MUX: //  = 196
 			pay := ReadN(conn, n)
 			BeginMux(ses, p, pay)
-		case comm.CMD_MID_MUX: //  = 197
+		case coms.CMD_MID_MUX: //  = 197
 			pay := ReadN(conn, n)
 			MidMux(ses, p, pay)
-		case comm.CMD_END_MUX: //    = 198
+		case coms.CMD_END_MUX: //    = 198
 			pay := ReadN(conn, n)
 			EndMux(ses, p, pay)
 
-		case comm.CMD_ECHO: // echos back data with high bit toggled.
+		case coms.CMD_ECHO: // echos back data with high bit toggled.
 			pay := ReadN(conn, 4)
-			WriteFive(conn, comm.CMD_DATA, 4, p)
+			WriteFive(conn, coms.CMD_DATA, 4, p)
 			for i, e := range pay {
 				pay[i] = 128 ^ e // toggle high bits in payload.
 			}
 			conn.Write(pay)
 
-		case comm.CMD_DW: // echos back data with high bit toggled.
+		case coms.CMD_DW: // echos back data with high bit toggled.
 			log.Printf("DW [n=%d. p=%d.]", n, p)
 			panic("TODO")
 
-		case comm.CMD_HDBDOS_SECTOR:
+		case coms.CMD_HDBDOS_SECTOR:
 			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
 			pay := ReadN(conn, n)
 			HdbDosSector(ses, pay)
 
-		case comm.CMD_HDBDOS_HIJACK:
+		case coms.CMD_HDBDOS_HIJACK:
 			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
 			pay := ReadN(conn, n)
 			HdbDosHijack(ses, pay)
@@ -453,7 +453,7 @@ func GetHellos(conn net.Conn) map[uint][]byte {
 		bb := ReadN(conn, 5)
 		cmd, n, p := bb[0], HiLo(bb[1], bb[2]), HiLo(bb[3], bb[4])
 		log.Printf("GetHellos: % 3x", bb)
-		if cmd != comm.CMD_HELLO {
+		if cmd != coms.CMD_HELLO {
 			log.Panicf("Expected CMD_HELLO, got % 3x", bb)
 		}
 		if n == 0 && p == 0 {

@@ -7,7 +7,7 @@ import (
 	//"os"
 	//PFP "path/filepath"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
@@ -21,8 +21,8 @@ func (t *Text40) W() uint { return 40 }
 func (t *Text40) H() uint { return 24 }
 
 // Push
-func (t *Text40) Push(com *comm.Comm) {
-	com.WriteQuint(comm.CMD_POKE, 0x2000, t.Screen[:])
+func (t *Text40) Push(com *coms.Comm) {
+	com.WriteQuint(coms.CMD_POKE, 0x2000, t.Screen[:])
 }
 
 // InvertChar

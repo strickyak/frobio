@@ -5,8 +5,26 @@ import (
 	"os"
 	PFP "path/filepath"
 
+	"github.com/strickyak/frobio/frob3/lemma/menu"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
+
+/*
+type Region int
+const (
+	KidsRegion = iota
+	MenusRegion
+	MenuRegion
+	HelpRegion
+	InfoRegion
+)
+
+type Focus struct {
+	Region Region
+	Major uint
+	Minor uint
+}
+*/
 
 type Chooser interface {
 	Order() int
@@ -15,7 +33,9 @@ type Chooser interface {
 	Kids() []Chooser
 	Parent() Chooser
 	Decoration(ds *DriveSession) string
-	AtFocus(focus uint) Chooser
+	KidAtFocus(focus uint) Chooser
+	ShowMenuGroups() []*menu.MenuGroup
+	Hot() bool // turn ENTER or -> into Action.
 }
 
 type NamedChooser struct {
@@ -40,7 +60,13 @@ func (uc *UnixChooser) String() string {
 	return Format("{UC(%s)%d}", uc.name, len(uc.kids))
 }
 
-func (uc *UnixChooser) AtFocus(focus uint) Chooser {
+func (uc *UnixChooser) ShowMenuGroups() []*menu.MenuGroup {
+	return menu.MenuGroups
+}
+
+func (uc *UnixChooser) Hot() bool { return false }
+
+func (uc *UnixChooser) KidAtFocus(focus uint) Chooser {
 	if focus == 2 { // Parent
 		if uc.parent != nil {
 			return uc.parent

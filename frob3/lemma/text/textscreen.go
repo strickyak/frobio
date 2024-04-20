@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 // Struct
 type TextNav struct {
 	glass TextScreen
-	com   *comm.Comm
+	com   *coms.Comm
 }
 
-func NewTextNav(glass TextScreen, com *comm.Comm) *TextNav {
+func NewTextNav(glass TextScreen, com *coms.Comm) *TextNav {
 	return &TextNav{
 		glass: glass,
 		com:   com,
@@ -75,12 +75,12 @@ func (t *TextNav) WriteLine(y uint, format string, args ...any) {
 // Inkey
 
 func (t *TextNav) Inkey() byte {
-	t.com.WriteQuint(comm.CMD_INKEY, 0, nil) // request inkey
+	t.com.WriteQuint(coms.CMD_INKEY, 0, nil) // request inkey
 
-	var q comm.Quint
+	var q coms.Quint
 	t.com.ReadFull(q[:])
 	switch q.Command() {
-	case comm.CMD_INKEY:
+	case coms.CMD_INKEY:
 		return byte(q.P())
 	default:
 		log.Panicf("TextNav.Inkey: Unexpected quint: %02x", q)
@@ -100,5 +100,5 @@ type TextScreen interface {
 	Put(x, y uint, ch byte, fl TextFlags)
 	Get(x, y uint) (ch byte, fl TextFlags)
 	InvertChar(x, y uint)
-	Push(com *comm.Comm)
+	Push(com *coms.Comm)
 }

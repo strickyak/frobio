@@ -3,7 +3,7 @@ package lemma
 import (
 	"log"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	"github.com/strickyak/frobio/frob3/lemma/finder"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
@@ -12,7 +12,7 @@ import (
 type Navigator struct {
 	t   *T.TextNav
 	ds  *finder.DriveSession
-	com *comm.Comm
+	com *coms.Comm
 }
 
 // Render
@@ -76,14 +76,14 @@ func (nav *Navigator) NavStep(c finder.Chooser) finder.Chooser {
 				return c.Parent()
 			}
 		case 9, 13: // Right arrow, Enter
-			kid := c.AtFocus(focus)
+			kid := c.KidAtFocus(focus)
 			kid.Kids()
 			return kid
 		case 12: // Clear (exit)
 			return nil
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			driveNum := b - '0'
-			kid := c.AtFocus(focus)
+			kid := c.KidAtFocus(focus)
 			kid.Kids()
 			Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, driveNum, kid)
 			nav.ds.SetDrive(driveNum, kid) // mounter.go
@@ -105,7 +105,7 @@ func (t *Navigator) Loop() {
 }
 
 // called by hdbdos HdbDosHijack
-func TextChooserShell(com *comm.Comm, ds *finder.DriveSession) {
+func TextChooserShell(com *coms.Comm, ds *finder.DriveSession) {
 	t40 := &T.Text40{}
 
 	nav := &Navigator{

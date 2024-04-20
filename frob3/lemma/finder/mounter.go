@@ -7,7 +7,7 @@ import (
 	PFP "path/filepath"
 	"time"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
@@ -36,7 +36,7 @@ func (di *DriveImage) GoString() string {
 }
 
 type DriveSession struct {
-	com    *comm.Comm
+	com    *coms.Comm
 	drives [NumDrives]*DriveImage
 	home   string
 	retain string
@@ -46,7 +46,7 @@ func (di *DriveSession) String() string {
 	return Format("{DriveSession: %v home=%q}", di.drives, di.home)
 }
 
-func NewDriveSession(com *comm.Comm, home string, retain string) *DriveSession {
+func NewDriveSession(com *coms.Comm, home string, retain string) *DriveSession {
 	return &DriveSession{
 		com:    com,
 		home:   home,

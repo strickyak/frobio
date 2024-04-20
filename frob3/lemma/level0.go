@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/strickyak/frobio/frob3/lemma/comm"
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
@@ -134,7 +134,7 @@ func Launch(conn net.Conn, module string, params string, parent *L0Proc) (*L0Pro
 	log.Printf("block...")
 	PokeRam(conn, 0x7FF0, bb)
 	log.Printf("sent RTI block")
-	WriteFive(conn, comm.CMD_RTI, 0, 0x7FF0)
+	WriteFive(conn, coms.CMD_RTI, 0, 0x7FF0)
 	return p, nil
 }
 
@@ -183,11 +183,11 @@ func AttemptToLoadModule(filename string) {
 
 func Peek(conn net.Conn, addr uint, n uint) []byte {
 	log.Printf("Peek1 %x %x", addr, n)
-	WriteFive(conn, comm.CMD_PEEK, n, addr)
+	WriteFive(conn, coms.CMD_PEEK, n, addr)
 	log.Printf("Peek2")
 	cmd, m, p := ReadFive(conn)
 	log.Printf("Peek3")
-	if cmd != comm.CMD_DATA || m != n || p != addr {
+	if cmd != coms.CMD_DATA || m != n || p != addr {
 		log.Panicf("bad globals data quint")
 	}
 	log.Printf("Peek4")
