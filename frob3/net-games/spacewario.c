@@ -20,6 +20,10 @@ typedef unsigned int word;
 
 #define PrintH(F,...) // nothing
 
+#define PEEK(ADDR) (*(volatile byte*)(ADDR))
+#define POKE(ADDR, X) ( (*(volatile byte*)(ADDR)) = (byte)(X) )
+#define XOR(ADDR, X) ( (*(volatile byte*)(ADDR)) ^= (byte)(X) )
+
 #include "frob3/wiz/w5100s_defs.h"
 
 #ifdef __GNUC__
@@ -153,11 +157,23 @@ void Delay(word n);
 
 const byte HexAlphabet[] = "0123456789abcdef";
 
+#define NUM_SHIPS 3
+
+struct body {
+	word x, y;
+	word r, s;
+};
+
 // Global state stolen from axiom4.
 struct wario_vars {
     volatile struct wiz_port* wiz_port;  // which hardware port?
     word rand_word;
     volatile word bogus;
+
+    struct body ship[NUM_SHIPS];
+    struct body missle[NUM_SHIPS];
+
+
 /*
     byte transaction_id[4];
     bool got_dhcp;
@@ -640,8 +656,99 @@ void WaitForLink() {
     }
 }
 
+//////////////////////////////////////////////////////////////////
+
+#define GRAF_LEN 0xC00  // (i.e. 3072 bytes) for G3CMode
+
+// G3CMode is 128 columns, 96 rows, 4 colors,
+// using a buffer size of 3072 bytes.
+// Rows are 32 bytes with 4 pixels per byte.
+// Color set C=0: enum { Green, Yellow, Blue, Red } border Green.
+// Color set C=1: enum { Buff, Cyan, Magenta, Orange } border Buff.
+// Color set is bit 3 of $FF22.
+void G3CMode() {
+	POKE(0xFFC5, 0);
+	POKE(0xFFC2, 0);
+	POKE(0xFFC0, 0);
+	POKE(0xFF22, 0xC8);  // C0 for color0, C8 for color1.
+}
+
+#define W 128u
+#define H 96u
+
+void ShowShips() {
+	word ship = 0; // Index into Ships[] char gen to display.
+
+	// c is column number.  We can make 8 columns, each 4 bytes
+	// wide, which is 16 pixels wide.  The two bytes in the middle
+	// will be populated with space ships.  The two bytes on the
+	// edge of each column just show a border line, one pixel back.
+	for (word c = 0; c < 8; c++) {
+		// row is graphics screen row number.
+		// Shifted left 5, it is a RAM offset for the row (32 bytes).
+		for (word row = 0; row < 96; row++) {
+			// v is the video address, of the 4-byte slot.
+			word v = VDG_RAM + (row<<5) + (c<<2);
+
+			POKE(v, 8); // border
+			POKE(v+1, Ships[ship++]);
+			POKE(v+2, Ships[ship++]);
+			POKE(v+3, 12<<2); // border
+		}
+	}
+}
+
+void DrawShip(struct body* p, word ship, word direction, word x, word y) {
+	word xoff = (p->x >> 8) & 3;  // mod 4 // pixel offset within byte
+	word xbyte = (p->x >> 8) >> 2;  // div 4
+	word index = (xoff * 5*2) + (direction * 5*4*2) + (ship * 5*4*16*2);
+	word yval = p->y >> 8;
+	for (byte row = 0; row < 5*32; row+=32) {
+		word v = VDG_RAM + xbyte + (yval << 5);
+		XOR(v + row + 0, Ships[index++]);
+		XOR(v + row + 1, Ships[index++]);
+	}
+}
+#define XWRAP (word)(W*256u)
+#define YWRAP (word)(H*256u)
+void GlideShips() {
+	word direction = 0;
+	word g = 0;
+	for (word i = 0; i < NUM_SHIPS; i++) {
+		volatile struct body* p = Vars->ship+i;
+		p->x = (i<<13);
+		p->y = (i<<12);
+		p->r = 31+7*i;
+		p->s = 17+3*i;
+	}
+	while (1) {
+		// Advance the ships.
+		for (word ship = 0; ship < NUM_SHIPS; ship++) {
+			struct body* p = Vars->ship+ship;
+
+			p->x += p->r;
+			p->y += p->s;
+			while (p->x >= XWRAP) { p->x -= XWRAP; }
+			while (p->y >= YWRAP) { p->y -= YWRAP; }
+		}
+
+		for (word ship = 0; ship < NUM_SHIPS; ship++) {
+			struct body* p = Vars->ship+ship;
+			DrawShip(p, ship, 15 & direction, p->x >> 8, p->y >> 8);
+		}
+		Delay(100);
+		for (word ship = 0; ship < NUM_SHIPS; ship++) {
+			struct body* p = Vars->ship+ship;
+			DrawShip(p, ship, 15 & direction, p->x >> 8, p->y >> 8);
+		}
+		g++;
+		if ((g&255)==0) {
+			direction++;
+		}
+	}
+}
+
 int main() {
-#if 1
     memset(((char*)Vars), 0, sizeof *Vars);
     Vars->bogus = (word)Ships;
 
@@ -651,14 +758,9 @@ int main() {
     Vars->vdg_begin = VDG_RAM+32; // Skip top status line.
     Vars->vdg_ptr = VDG_RAM+32;
     Vars->vdg_end = VDG_END;
-#endif
 
-    memset((byte*)VDG_RAM, '+', VDG_END-VDG_RAM);
-    while (1) {
-    	strcpy((char*)VDG_RAM+20, "SPACEWARIO");
-    }
-#if 0
-	
+    memset((byte*)VDG_RAM, '-', VDG_END-VDG_RAM);
+    strcpy((char*)VDG_RAM+20, "SPACEWARIO");
 
     if (ValidateWizPort((struct wiz_port*)0xFF68)==OKAY) {
         Vars->wiz_port = (struct wiz_port*)0xFF68;
@@ -680,5 +782,26 @@ int main() {
     WizReset();
     WaitForLink();
     WizConfigure();
+
+#if 0
+    PrintF("\n\nMulti-Player 1, 2, 3,\n");
+    PrintF("or Single-Player S ?\n");
+    byte mode;
+    while (1) {
+    	mode = PolCat();
+	if ('1' <= mode && mode <= '4' || mode=='S' || mode=='s') break;
+    }
+    PrintF("MODE == %d\n\n", mode);
 #endif
+    Delay(25000);
+
+    G3CMode();
+    memset((byte*)VDG_RAM, 0, GRAF_LEN);
+    ShowShips();
+    Delay(25000);
+    memset((byte*)VDG_RAM, 0, GRAF_LEN);
+    GlideShips();
+    while (1) {
+    	POKE(VDG_RAM, 1+PEEK(VDG_RAM));
+    }
 }
