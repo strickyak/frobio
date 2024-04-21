@@ -7,6 +7,7 @@ package lemma
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/strickyak/frobio/frob3/lemma/canvas"
 	"github.com/strickyak/frobio/frob3/lemma/coms"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -209,7 +211,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 		// Do Cleanup functions in backwards order.
 		n := len(ses.Cleanups)
 		for i := range ses.Cleanups {
-			Catch(ses.Cleanups[n-1-i])
+			Catch("ses.Cleanups", ses.Cleanups[n-1-i])
 		}
 	}()
 
@@ -571,9 +573,9 @@ func Serve(conn net.Conn) {
 			defer func() {
 				println("recover: ", recover())
 			}()
-			go Catch(func() { ReadFiveLoop(conn, ses) })
+			go Catch("ReadFiveLoop", func() { ReadFiveLoop(conn, ses) })
 			time.Sleep(time.Second) // Handle anything pushed, first.  // TODO: wait for Hello packet.
-			Catch(func() { UploadProgram(conn, *PROGRAM) })
+			Catch("Upload", func() { UploadProgram(conn, *PROGRAM) })
 		}()
 	} else {
 		log.Printf("~~~~~~~~~~~~~~ f  ")
@@ -592,19 +594,38 @@ func Serve(conn net.Conn) {
 	<-done
 }
 
-func Catch(fn func()) {
+func Catch(label string, fn func()) (err string) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			log.Printf("%v: catch: %v", fn, r)
+			err = fmt.Sprintf("%v", r)
+			log.Printf("Catch %q: %q", label, err)
 		}
 	}()
 	fn()
+	return ""
 }
 
 ///////////////////////////////////////////////////
 
+func InitDemos() {
+	api := &canvas.DemosAPI{
+		WriteFive: WriteFive,
+		CMD_POKE:  coms.CMD_POKE,
+		CMD_PEEK:  coms.CMD_PEEK,
+		CMD_DATA:  coms.CMD_DATA,
+		CMD_REV:   coms.CMD_REV,
+		CMD_SP_PC: coms.CMD_SP_PC,
+	}
+
+	// Some server-side demos live in canvas/life.go.
+	Demos = make(map[string]func(net.Conn))
+	canvas.Init(Demos, api)
+}
+
 func Listen() {
+	InitDemos()
+
 	if *LAN != "" {
 		go ListenForLan(*LAN)
 	}
@@ -614,7 +635,7 @@ func Listen() {
 		log.Panicf("Cannot Listen(): %v", err)
 	}
 	defer l.Close()
-	log.Printf("Listening on port %d", *PORT)
+	log.Printf("Waiter listening on TCP port %d", *PORT)
 
 	for {
 		conn, err := l.Accept()
@@ -625,15 +646,3 @@ func Listen() {
 		go Serve(conn)
 	}
 }
-
-/*
-	                   // Add this code to save a snapshot of Ram that we've seen:
-
-			if p == 0xFE00 && n == 256 {
-				const RamFile = "/tmp/coco.ram"
-				err = ioutil.WriteFile(RamFile, LogicalRamImage[:], 0777)
-				if err != nil {
-					log.Panicf("ReadFive: DATA: writing %q: %v", RamFile, err)
-				}
-			}
-*/

@@ -6,21 +6,18 @@ import (
 	"math/rand"
 	"net"
 	"time"
-
-	lem "github.com/strickyak/frobio/frob3/lemma/lib"
 )
 
 const StirFreq = 100
 
 // Install demos in Lemma.
-func init() {
-	if lem.Demos == nil {
-		lem.Demos = make(map[string]func(net.Conn))
-	}
-	lem.Demos["life"] = func(conn net.Conn) { RunLife(conn, false, 128) }
-	lem.Demos["life-check"] = func(conn net.Conn) { RunLife(conn, true, 128) }
-	lem.Demos["life-stats"] = func(conn net.Conn) { RunLife(conn, false, 96) }
-	lem.Demos["life-stats-check"] = func(conn net.Conn) { RunLife(conn, true, 96) }
+func Init(demos map[string]func(net.Conn), api *DemosAPI) {
+	API = api
+
+	demos["life"] = func(conn net.Conn) { RunLife(conn, false, 128) }
+	demos["life-check"] = func(conn net.Conn) { RunLife(conn, true, 128) }
+	demos["life-stats"] = func(conn net.Conn) { RunLife(conn, false, 96) }
+	demos["life-stats-check"] = func(conn net.Conn) { RunLife(conn, true, 96) }
 }
 
 func RunLife(conn net.Conn, verify bool, width int) {
