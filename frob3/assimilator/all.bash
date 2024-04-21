@@ -20,6 +20,4 @@ bash 20-upgrade.bash
 bash 30-build.bash
 
 head /tmp/temp.droplet.name /tmp/temp.droplet.ip
-exit $?
-
-: 90-delete.bash
+echo $0 OKAY >&2
