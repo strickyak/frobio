@@ -20,7 +20,7 @@ NUM_MODULES = 14
 
 ###############################################
 
-VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter
+VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter $F/net-games
 
 FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
 WIZ_C = $F/wiz/wiz5100s.c
@@ -112,6 +112,15 @@ clean: _FORCE_
 	rm -rf results
 
 _FORCE_:
+
+###############################################
+
+all-net-games: spacewario.bin
+
+spacewario.bin: spacewario.c spacewar-ships.h _FORCE_
+	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
+	lwasm --format=obj --pragma=newsource --pragma=cescapes spacewario.s -ospacewario.o
+	lwlink --format=decb --entry=_main --script=$F/net-games/spacewario.script spacewario.o -o$@
 
 ###############################################
 
@@ -441,10 +450,11 @@ lem.os9mod: lem.asm defsfile
 
 #######################################################################################
 
-all-lemmings: burn-rom-fast.lem
+all-lemmings: burn-rom-fast.lem all-net-games
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
 	mkdir -p results/LEMMINGS/
 	ln *.lem results/LEMMINGS/
+	ln *.bin results/LEMMINGS/
 	ln *.dsk results/LEMMINGS/ || echo Ignore errors above, if some already existed.
 
 #######################################################################################

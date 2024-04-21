@@ -7,9 +7,6 @@ This is the home card.
 You can return here by typing 0.
 `,
 	})
-	Add(1, 0, "testing", &Card{
-		Launch: ".test1.lemma",
-	})
 
 	Add(10, 0, "CocoIO Stress Tests", &Card{
 		Text: `These are some tests you can try
@@ -35,6 +32,16 @@ to stress your CocoIO Card.
 	})
 	Add(22, 20, "DGNPEPPR (coco1, coco2?)", &Card{
 		Launch: ".demo-dgnpeppr.coco1.loadm",
+	})
+
+	Add(25, 0, "COCOIO Network Games", &Card{
+	})
+	Add(26, 25, "spacewario for COCOIO", &Card{
+		Text: `
+Uses broadcast UDP/IP on a LAN.
+You must be on the same LAN to play multi-user.
+`,
+		Launch: ".spacewario.bin",
 	})
 
 	Add(30, 0, "OS: Nitros-9", &Card{})
