@@ -45,25 +45,25 @@ var NorthNorthEast = []int{
 	1, 0,
 	1, 1,
 	0, 0,
-	-1, -1, 
+	-1, -1,
 	-2, -2,
 }
 
-var Ships = [4][]int { East, EastNorthEast, NorthEast, NorthNorthEast }
+var Ships = [4][]int{East, EastNorthEast, NorthEast, NorthNorthEast}
 
 // 2D Rotation Matrix
 //
 // [ cos A  -sin A ]  x
 // [ sin A   cos A ]  y
 
-var Degree0 = [4]int{ +1, 0, 0, +1 }
-var Degree90 = [4]int{ 0, -1, +1, 0 }
-var Degree180 = [4]int{ -1, 0, 0, -1 }
-var Degree270 = [4]int{ 0, +1, -1, 0 }
-var Rots = [4][4]int{ Degree0, Degree90, Degree180, Degree270 }
+var Degree0 = [4]int{+1, 0, 0, +1}
+var Degree90 = [4]int{0, -1, +1, 0}
+var Degree180 = [4]int{-1, 0, 0, -1}
+var Degree270 = [4]int{0, +1, -1, 0}
+var Rots = [4][4]int{Degree0, Degree90, Degree180, Degree270}
 
 func RenderMono(ship []int, rot [4]int) (z [5][5]bool) {
-	for i:=0; i < len(ship); i+=2 {
+	for i := 0; i < len(ship); i += 2 {
 		x, y := ship[i], ship[i+1]
 		x, y = Mult(x, y, rot)
 		z[x+2][y+2] = true
@@ -81,7 +81,7 @@ var Directions [16][5][5]bool
 
 func SetBitsInPair(pair [2]byte, color, pos int) [2]byte {
 	i := uint(pos) >> 2
-	c := byte(color) << (2*(3-(pos&3)))
+	c := byte(color) << (2 * (3 - (pos & 3)))
 	pair[i] |= c
 	return pair
 }
@@ -98,7 +98,8 @@ func Binary(x byte) string {
 	return bb.String()
 }
 
-func GenerateRow(color, dir, offset int) {
+func GenerateRow(dir, offset int) {
+	const color = 3 // Use only color 3 in table, and mask for color at runtime.
 	fmt.Printf("// ------ color=%d dir=%d offset=%d ---------------------\n", color, dir, offset)
 	d := Directions[dir]
 	p := 0 + offset
@@ -119,24 +120,24 @@ func GenerateRow(color, dir, offset int) {
 }
 
 func GenerateShips() {
-	for rot := 0; rot < 4; rot ++ {
-		for ship := 0; ship < 4; ship ++ {
+	for rot := 0; rot < 4; rot++ {
+		for ship := 0; ship < 4; ship++ {
 			fmt.Printf("// // rot %d ship %d\n", rot, ship)
 			bits := RenderMono(Ships[ship], Rots[rot])
-			Directions[ship + 4*rot] = bits
+			Directions[ship+4*rot] = bits
 			ShowBits(bits)
 		}
 	}
 	fmt.Printf("// %v", Directions)
 
 	fmt.Printf("// -----------------------------------------\n")
-	for color := 1; color < 4; color ++ {
-		for dir := 0; dir < 16; dir++ {
-			for offset := 0; offset < 4; offset++ {
-				GenerateRow(color, dir, offset)
-			}
+
+	for dir := 0; dir < 16; dir++ {
+		for offset := 0; offset < 4; offset++ {
+			GenerateRow(dir, offset)
 		}
 	}
+
 }
 
 func ShowBits(bits [5][5]bool) {

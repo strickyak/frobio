@@ -7,11 +7,43 @@
 typedef unsigned char bool;
 typedef unsigned char byte;
 typedef unsigned char errnum;
-typedef unsigned int word;
 
-#define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
-//#define WIZ_PORT  0xFF68   // Hardware port.
-#define WAITER_TCP_PORT  2319   // w# a# i#
+#ifdef unix
+typedef unsigned long word;
+#define Debug(...) printf(__VA_ARGS__)
+#else
+typedef unsigned int word;
+typedef unsigned int size_t;
+#define Debug(...) // nothing
+#endif
+
+#define NUM_SHIPS 3
+
+struct body {
+	word x, y;
+	int r, s;
+};
+
+#ifdef unix
+
+#include <stdio.h>
+
+struct wario_vars {
+    struct body ship[NUM_SHIPS];
+    struct body missle[NUM_SHIPS];
+
+} WarioVars;
+#define Vars (&WarioVars)
+
+byte vdg_ram[8 * 1024];
+#define VDG_RAM ((word)(size_t)vdg_ram)
+#define PEEK(ADDR) (*(volatile byte*)(size_t)(ADDR))
+#define POKE(ADDR, X) ( (*(volatile byte*)(size_t)(ADDR)) = (byte)(X) )
+#define PXOR(ADDR, X) ( (*(volatile byte*)(size_t)(ADDR)) ^= (byte)(X) )
+void Delay(word n) {}
+
+#else
+
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
@@ -22,7 +54,7 @@ typedef unsigned int word;
 
 #define PEEK(ADDR) (*(volatile byte*)(ADDR))
 #define POKE(ADDR, X) ( (*(volatile byte*)(ADDR)) = (byte)(X) )
-#define XOR(ADDR, X) ( (*(volatile byte*)(ADDR)) ^= (byte)(X) )
+#define PXOR(ADDR, X) ( (*(volatile byte*)(ADDR)) ^= (byte)(X) )
 
 #include "frob3/wiz/w5100s_defs.h"
 
@@ -157,13 +189,6 @@ void Delay(word n);
 
 const byte HexAlphabet[] = "0123456789abcdef";
 
-#define NUM_SHIPS 3
-
-struct body {
-	word x, y;
-	word r, s;
-};
-
 // Global state stolen from axiom4.
 struct wario_vars {
     volatile struct wiz_port* wiz_port;  // which hardware port?
@@ -216,12 +241,6 @@ struct axiom4_rom_tail { // $DFC0..$DFFF
   byte rom_secrets[16];  // For Challenge/Response Authentication Protocols.
 };
 #define Rom ((struct axiom4_rom_tail*)0xDFC0)
-
-#define GRAF 0x0600
-
-byte Ships[] = {
-#include "spacewar-ships.h"
-};
 
 ////////////////////////////////////////////////////////
 ///
@@ -504,7 +523,7 @@ void Pia1bOn(byte x) { *(volatile byte*)0xFF22 |= x; }
 void Pia1bOff(byte x) { *(volatile byte*)0xFF22 &= ~x; }
 void SetOrangeScreen() { Pia1bOn(0x08); }
 void SetGreenScreen() { Pia1bOff(0x08); }
-#if 1
+
 void Enable1BitSound() {
     *(volatile byte*)0xFF23 &= ~0x04;  // Clear bit 2 to enable Data Direction access
     *(volatile byte*)0xFF22 |= 0x02;   // Bit 1 and bits 3-7 are outputs.
@@ -518,7 +537,7 @@ void Beep(byte n, byte f) {
     Pia1bOff(0x02);
     Delay(10);
 }
-#endif
+
 
 byte WizGet1(word reg) {
   WIZ->addr = reg;
@@ -657,6 +676,15 @@ void WaitForLink() {
 }
 
 //////////////////////////////////////////////////////////////////
+#endif
+
+byte Ships[] = {
+#include "spacewar-ships.h"
+};
+
+byte Gravity[] = {
+#include "spacewar-gravity.h"
+};
 
 #define GRAF_LEN 0xC00  // (i.e. 3072 bytes) for G3CMode
 
@@ -667,15 +695,70 @@ void WaitForLink() {
 // Color set C=1: enum { Buff, Cyan, Magenta, Orange } border Buff.
 // Color set is bit 3 of $FF22.
 void G3CMode() {
+#if !defined(unix)
 	POKE(0xFFC5, 0);
 	POKE(0xFFC2, 0);
 	POKE(0xFFC0, 0);
 	POKE(0xFF22, 0xC8);  // C0 for color0, C8 for color1.
+#endif
 }
 
 #define W 128u
 #define H 96u
 
+void PeekScreen() {
+#ifdef unix
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < 32; x++) {
+			int i = x + y*32;
+			printf("%2x ", vdg_ram[i]);
+		}
+		printf("\n");
+	}
+	printf("------------------------------------------------------------------------------------\n");
+#endif
+}
+
+void ComputeGravity(word x, word y, int* gx_out, int* gy_out) {
+	*gx_out = *gy_out = 0;
+	x >>= 8;  // No fractional part.
+	y >>= 8;  // No fractional part.
+
+	// tx: table x, reduced to one quadrant, 0..W/2-1.
+ 	word tx = (x > W/2) ? W-1-x : x;
+	// ty: table y, reduced to one quadrant, 0..H/2-1.
+ 	word ty = (y > H/2) ? H-1-y : y;
+Debug("G: x,y=%d,%d tx,ty=%d,%d\n", x, y, tx, ty);
+
+	int abs_gx, abs_gy;
+	if (tx >= W/2-W/8 && ty >= H/2-H/8) {
+		// High resolution
+		word ix = (tx - (W/2-W/8));  // index x
+		word iy = (ty - (H/2-H/8));  // index y
+		word index = 2*(H/2)*(W/2) + (ix<<2) + (iy<<(2+3));  // four-byte records.
+		abs_gx = (Gravity[index]<<8) + Gravity[index+1];
+		abs_gy = (Gravity[index+2]<<8) + Gravity[index+3];
+Debug("G:HI:    ix,iy=%d,%d index=%d  abs=%d,%d\n", ix, iy, index, abs_gx, abs_gy);
+	} else {
+		// Low resolution
+		word ix = (tx>>1);  // index x
+		word iy = (ty>>1);  // index y
+		word index = (ix<<1) + (iy<<(1+5));  // two-byte records.
+		abs_gx = Gravity[index];
+		abs_gy = Gravity[index+1];
+Debug("G:LO:    ix,iy=%d,%d index=%d  abs=%d,%d\n", ix, iy, index, abs_gx, abs_gy);
+	}
+#define GL 1000
+	abs_gx = (abs_gx > GL) ? GL : abs_gx;
+	abs_gy = (abs_gy > GL) ? GL : abs_gy;
+	abs_gx >>= 4;
+	abs_gy >>= 4;
+	*gx_out = (x<W/2) ? abs_gx : -abs_gx;
+	*gy_out = (y<H/2) ? abs_gy : -abs_gy;
+Debug("G:RET    out = %d,%d\n", *gx_out, *gy_out);
+}
+
+#if 0
 void ShowShips() {
 	word ship = 0; // Index into Ships[] char gen to display.
 
@@ -697,20 +780,38 @@ void ShowShips() {
 		}
 	}
 }
+#endif
 
 void DrawShip(struct body* p, word ship, word direction, word x, word y) {
+	byte mask = 0xFF;  // four of color "11": 11111111
+	switch (ship) {
+	case 0:
+		mask = 0x55;  // four of color "01": 01010101
+		break;
+	case 1:
+		mask = 0xAA;  // four of color "10": 10101010
+		break;
+	}
+
 	word xoff = (p->x >> 8) & 3;  // mod 4 // pixel offset within byte
 	word xbyte = (p->x >> 8) >> 2;  // div 4
-	word index = (xoff * 5*2) + (direction * 5*4*2) + (ship * 5*4*16*2);
+	word index = (xoff * 5*2) + (direction * 5*4*2);
 	word yval = p->y >> 8;
 	for (byte row = 0; row < 5*32; row+=32) {
-		word v = VDG_RAM + xbyte + (yval << 5);
-		XOR(v + row + 0, Ships[index++]);
-		XOR(v + row + 1, Ships[index++]);
+		word v = (size_t)VDG_RAM + xbyte + (yval << 5);
+		PXOR(v + row + 0, mask & Ships[index++]);
+		PXOR(v + row + 1, mask & Ships[index++]);
 	}
 }
 #define XWRAP (word)(W*256u)
 #define YWRAP (word)(H*256u)
+
+void DrawSun(byte sun) {
+	byte* p = VDG_RAM + 1024 + 512;
+	// p[16] += sun;
+	p[17] += 64;
+}
+
 void GlideShips() {
 	word direction = 0;
 	word g = 0;
@@ -721,22 +822,50 @@ void GlideShips() {
 		p->r = 31+7*i;
 		p->s = 17+3*i;
 	}
+	byte sun = 1;
 	while (1) {
+		if ((g&3)==0) {
+		  DrawSun(sun);
+		  sun++;
+		  if (sun>3) sun=1;
+		}
+
 		// Advance the ships.
 		for (word ship = 0; ship < NUM_SHIPS; ship++) {
 			struct body* p = Vars->ship+ship;
+#define SLOW 3
+			int new_x = (int)(p->x) + (p->r >> SLOW);
+			int new_y = (int)(p->y) + (p->s >> SLOW);
+			// Wrap to stay on torus.
+			while (new_x < 0) { new_x += XWRAP; }
+			while (new_y < 0) { new_y += YWRAP; }
+			while (new_x >= XWRAP) { new_x -= XWRAP; }
+			while (new_y >= YWRAP) { new_y -= YWRAP; }
+Debug("xy=%d,%d  new=%d,%d  r,s=%d,%d\n", p->x, p->y, new_x, new_y, p->r, p->s);
 
-			p->x += p->r;
-			p->y += p->s;
-			while (p->x >= XWRAP) { p->x -= XWRAP; }
-			while (p->y >= YWRAP) { p->y -= YWRAP; }
+#define USE_GRAVITY 1
+#ifdef USE_GRAVITY
+			int gx, gy;
+			ComputeGravity(new_x, new_y, &gx, &gy);
+			p->r += gx;
+			p->s += gy;
+Debug("grav=%d,%d  r,s=%d,%d\n", gx, gy, p->r, p->s);
+
+#define SL 2000
+
+			p->r = (p->r < -SL) ? -SL : (p->r > SL) ? SL : p->r;
+			p->s = (p->s < -SL) ? -SL : (p->s > SL) ? SL : p->s;
+#endif
+			p->x = (word)new_x;
+			p->y = (word)new_y;
 		}
 
 		for (word ship = 0; ship < NUM_SHIPS; ship++) {
 			struct body* p = Vars->ship+ship;
 			DrawShip(p, ship, 15 & direction, p->x >> 8, p->y >> 8);
 		}
-		Delay(100);
+PeekScreen();
+		Delay(1000);
 		for (word ship = 0; ship < NUM_SHIPS; ship++) {
 			struct body* p = Vars->ship+ship;
 			DrawShip(p, ship, 15 & direction, p->x >> 8, p->y >> 8);
@@ -749,6 +878,7 @@ void GlideShips() {
 }
 
 int main() {
+#if !defined(unix)
     memset(((char*)Vars), 0, sizeof *Vars);
     Vars->bogus = (word)Ships;
 
@@ -793,15 +923,18 @@ int main() {
     }
     PrintF("MODE == %d\n\n", mode);
 #endif
-    Delay(25000);
+    Delay(2500);
 
     G3CMode();
     memset((byte*)VDG_RAM, 0, GRAF_LEN);
-    ShowShips();
-    Delay(25000);
+    // ShowShips();
+    Delay(2500);
     memset((byte*)VDG_RAM, 0, GRAF_LEN);
+#endif
     GlideShips();
+#if !defined(unix)
     while (1) {
     	POKE(VDG_RAM, 1+PEEK(VDG_RAM));
     }
+#endif
 }
