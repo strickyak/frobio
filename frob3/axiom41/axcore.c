@@ -1532,7 +1532,11 @@ errnum OneDiscoveryRound() {
   if (!Vars->got_dhcp) {
     SendDhcpRequest(SOCK1_AND  false/*not second time*/);
   }
-  return 0;
+
+  if (Vars->got_lan && Vars->got_dhcp) {
+    return OKAY;
+  }
+  return NOTYET;
 }
 
 errnum DhcpPhaseTwo() {
@@ -1563,7 +1567,11 @@ char CountdownOrInitialChar() {
   for (byte i = 0; i < 5; i++) { SPIN(0);
     byte t = WizTocks();
     PrintF("%d... ", 5-i);
-    OneDiscoveryRound();
+
+    errnum e = OneDiscoveryRound();
+    // Short circuit return, if ready early.
+    if (i>1 && !e) return '\0';
+
     Beep(8, 12);
     while(1) {
       SPIN(2);
