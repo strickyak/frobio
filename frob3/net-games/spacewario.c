@@ -735,24 +735,35 @@ Debug("G: x,y=%d,%d tx,ty=%d,%d\n", x, y, tx, ty);
 		// High resolution
 		word ix = (tx - (W/2-W/8));  // index x
 		word iy = (ty - (H/2-H/8));  // index y
-		word index = 2*(H/2)*(W/2) + (ix<<2) + (iy<<(2+3));  // four-byte records.
+		word index = /* 2*(H/2)*(W/2) + */ (ix<<2) + (iy<<(2+3));  // four-byte records.
 		abs_gx = (Gravity[index]<<8) + Gravity[index+1];
 		abs_gy = (Gravity[index+2]<<8) + Gravity[index+3];
 Debug("G:HI:    ix,iy=%d,%d index=%d  abs=%d,%d\n", ix, iy, index, abs_gx, abs_gy);
 	} else {
 		// Low resolution
+#define ANTI_GRAVITY 4
+#if 1
+		byte tiny_grav = 3;
+		if (tx + ty < H/4) tiny_grav = 1;
+		else if (tx + ty < H/2) tiny_grav = 2;
+
+		abs_gx = abs_gy = (tiny_grav << ANTI_GRAVITY);
+#else
 		word ix = (tx>>1);  // index x
 		word iy = (ty>>1);  // index y
 		word index = (ix<<1) + (iy<<(1+5));  // two-byte records.
 		abs_gx = Gravity[index];
 		abs_gy = Gravity[index+1];
-Debug("G:LO:    ix,iy=%d,%d index=%d  abs=%d,%d\n", ix, iy, index, abs_gx, abs_gy);
+#endif
+Debug("G:LO:    abs=%d,%d\n", abs_gx, abs_gy);
 	}
+
 #define GL 1000
 	abs_gx = (abs_gx > GL) ? GL : abs_gx;
 	abs_gy = (abs_gy > GL) ? GL : abs_gy;
-	abs_gx >>= 4;
-	abs_gy >>= 4;
+
+	abs_gx >>= ANTI_GRAVITY;
+	abs_gy >>= ANTI_GRAVITY;
 	*gx_out = (x<W/2) ? abs_gx : -abs_gx;
 	*gy_out = (y<H/2) ? abs_gy : -abs_gy;
 Debug("G:RET    out = %d,%d\n", *gx_out, *gy_out);
@@ -806,13 +817,34 @@ void DrawShip(struct body* p, word ship, word direction, word x, word y) {
 #define XWRAP (word)(W*256u)
 #define YWRAP (word)(H*256u)
 
+word GraphicsAddr(word x, word y) {
+	return VDG_RAM + (x>>2) + (y<<5);
+}
+
 void DrawSun(byte sun) {
-	byte* p = VDG_RAM + 1024 + 512;
+	byte* p = (byte*)VDG_RAM + 1024 + 512;
 	// p[16] += sun;
 	p[17] += 64;
 }
 
 void GlideShips() {
+	// Draw a constellation around the Strong Gravity Zone.
+	PXOR(GraphicsAddr( W/2-W/8, H/2-H/8 ), 0x02); // 0x80);
+	PXOR(GraphicsAddr( W/2-W/8, H/2+H/8 ), 0x02); // 0x80);
+	PXOR(GraphicsAddr( W/2+W/8, H/2-H/8 ), 0x02);
+	PXOR(GraphicsAddr( W/2+W/8, H/2+H/8 ), 0x02);
+
+	{
+	  word x = 4, y = 7;
+	  for (word i = 0; i < 18; i++) {
+		PXOR(GraphicsAddr( x, y ), 0x02);
+		x += 47 + 64;
+		y += 33;
+		while (x > W) x -= W;
+		while (y > H) y -= H;
+	  }
+	}
+
 	word direction = 0;
 	word g = 0;
 	for (word i = 0; i < NUM_SHIPS; i++) {

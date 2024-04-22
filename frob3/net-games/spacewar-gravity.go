@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	GenerateGravity1()
+	// GenerateGravity1()  // Weak gravity replaced by pseudo-gravity.
 	GenerateGravity2()
 }
 
