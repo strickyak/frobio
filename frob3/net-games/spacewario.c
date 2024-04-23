@@ -19,9 +19,13 @@ typedef unsigned int size_t;
 
 #define NUM_SHIPS 3
 
+#define SPACE_WAR_PORT 3210
+
 struct body {
 	word x, y;
 	int r, s;
+	byte direction;
+	byte ttl;
 };
 
 #ifdef unix
@@ -30,7 +34,7 @@ struct body {
 
 struct wario_vars {
     struct body ship[NUM_SHIPS];
-    struct body missle[NUM_SHIPS];
+    struct body missile[NUM_SHIPS];
 
 } WarioVars;
 #define Vars (&WarioVars)
@@ -144,7 +148,12 @@ struct proto {
   bool is_broadcast;
   byte send_command;
 };
-extern const struct proto TcpProto;
+
+struct wiz_udp_recv_header {
+    byte ip_addr[4];
+    word udp_port;
+    word udp_payload_len;
+};
 
 byte IsThisGomar();
 byte WizGet1(word reg);
@@ -156,7 +165,7 @@ void WizPutN(word reg, const void* data, word size);
 word WizTicks();
 byte WizTocks();
 void WizReset();
-void WizConfigure();
+void WizConfigure(word rando);
 void WizIssueCommand(PARAM_SOCK_AND byte cmd);
 void WizWaitStatus(PARAM_SOCK_AND byte want);
 
@@ -194,28 +203,12 @@ struct wario_vars {
     volatile struct wiz_port* wiz_port;  // which hardware port?
     word rand_word;
     volatile word bogus;
+    byte mode;
 
+    word score[NUM_SHIPS];
     struct body ship[NUM_SHIPS];
-    struct body missle[NUM_SHIPS];
+    struct body missile[NUM_SHIPS];
 
-
-/*
-    byte transaction_id[4];
-    bool got_dhcp;
-    bool got_lan;
-    bool use_dhcp;  // Needs second DHCP round still.
-    bool launch;    // Ready to connect to Waiter.
-
-    byte hostname[8];
-    byte ip_addr[4];      // dhcp fills
-    byte ip_mask[4];      // dhcp fills
-    byte ip_gateway[4];   // dhcp fills
-    byte ip_resolver[4];  // dhcp fills
-    byte ip_dhcp[4];      // dhcp fills.  Needed?
-    byte ip_waiter[4];
-    byte mask_num;
-    word waiter_port;
-*/
     word vdg_addr;   // mapped via SAM
     word vdg_begin;  // begin useable portion
     word vdg_end;    // end usable portion
@@ -223,9 +216,7 @@ struct wario_vars {
 
     void (*lemma_loop)(void);  // Where to re-join the loop.
 
-    char* line_ptr;
-
-    char line_buf[80];
+    char buffer[80];
 };
 #define Vars ((struct wario_vars*)CASBUF)
 #define WIZ  (Vars->wiz_port)
@@ -289,6 +280,76 @@ size_t strnlen(const char *s, size_t max) {
 }
 
 ////////////////////////////////////////////////////////
+
+char Digits[] =
+		" 0 "
+		"0 0"
+		"0 0"
+		"0 0"
+		" 0 "
+
+		" 1 "
+		" 1 "
+		" 1 "
+		" 1 "
+		" 1 "
+
+		"22 "
+		"  2"
+		" 2 "
+		"2  "
+		"222"
+
+		"33 "
+		"  3"
+		"33 "
+		"  3"
+		"33 "
+
+		"4 4"
+		"4 4"
+		"444"
+		"  4"
+		"  4"
+
+		"555"
+		"5  "
+		"55 "
+		"  5"
+		"55 "
+
+		" 66"
+		"6  "
+		"666"
+		"6 6"
+		"666"
+
+		"777"
+		"  7"
+		"  7"
+		"  7"
+		"  7"
+
+		"888"
+		"8 8"
+		"888"
+		"8 8"
+		"888"
+
+		"999"
+		"9 9"
+		"999"
+		"  9"
+		"  9"
+;
+
+////////////////////////////////////////////////////////
+
+void SPIN(byte n) {
+    byte b = 1 + *(byte*)(VDG_RAM+(n));
+    if ((b&15) == 0) b++;  // Skip blank patterns.
+    (*(byte*)(VDG_RAM+(n))) = b | 0x80;
+}
 
 char PolCat() {
   char inkey = 0;
@@ -598,12 +659,19 @@ void WizReset() {
   WizPut1(RCR, 10);
 }
 
-void WizConfigure() {
-  // WizPutN(0x0001/*gateway*/, Vars->ip_gateway, 4);
-  // WizPutN(0x0005/*mask*/, Vars->ip_mask, 4);
-  // WizPutN(0x000f/*ip_addr*/, Vars->ip_addr, 4);
-  // WizPut1(0x0009/*ether_mac+0*/, 0x02);
-  // WizPutN(0x000A/*ether_mac+1*/, Rom->rom_mac_tail, 5);
+byte Zeros[4] = { 0,0,0,0 };
+
+void WizConfigure(word rando) {
+  WizPutN(0x0001/*gateway*/, Zeros, 4);
+
+  WizPut1(0x0005/*mask+0*/, 255);
+  WizPutN(0x0006/*mask+1*/, Zeros, 4-1);
+
+  byte ip[4] = { 10, 10, (byte)(rando>>8), (byte)rando };
+  WizPutN(0x000F/*ip_addr*/, ip, 4);
+
+  byte mac[6] = { 2, 2, 2, 2, (byte)(rando>>8), (byte)rando};
+  WizPutN(0x0009/*ether_mac*/, mac, 6);
 }
 
 errnum ValidateWizPort(struct wiz_port* p) {
@@ -676,7 +744,197 @@ void WaitForLink() {
 }
 
 //////////////////////////////////////////////////////////////////
+const char SixFFs[6] = {(char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF, (char)0xFF};
+
+void UdpDial(const struct sock* sockp,  const struct proto *proto,
+             const byte* dest_ip, word dest_port) {
+  if (proto->is_broadcast) {
+    // Broadcast to 255.255.255.255 to FF:FF:FF:FF:FF:FF.
+    WizPutN(B+6/*Sn_DHAR*/, SixFFs, 6);
+    WizPutN(B+SK_DIPR0, SixFFs, 4);
+  } else {
+    WizPutN(B+SK_DIPR0, dest_ip, 4);
+  }
+  WizPut2(B+SK_DPORTR0, dest_port);
+}
+
+// returns tx_ptr
+tx_ptr_t WizReserveToSend(const struct sock* sockp,  size_t n) {
+  // PrintH("ResTS %x;", n);
+  // Wait until free space is available.
+  word free_size;
+  do {
+    free_size = WizGet2(B+SK_TX_FSR0);
+    // PrintH("Res free %x;", free_size);
+  } while (free_size < n);
+
+  return WizGet2(B+SK_TX_WR0) & RING_MASK;
+}
+
+tx_ptr_t WizBytesToSend(const struct sock* sockp, tx_ptr_t tx_ptr, const byte* data, size_t n) {
+  return WizDataToSend(SOCK_AND tx_ptr, (char*)data, n);
+}
+tx_ptr_t WizDataToSend(const struct sock* sockp, tx_ptr_t tx_ptr, const char* data, size_t n) {
+
+  word begin = tx_ptr;  // begin: Beneath RING_SIZE.
+  word end = begin + n;       // end:  Sum may not be beneath RING_SIZE.
+
+  if (end >= RING_SIZE) {
+    word first_n = RING_SIZE - begin;
+    word second_n = n - first_n;
+    WizPutN(T+begin, data, first_n);
+    WizPutN(T, data+first_n, second_n);
+  } else {
+    WizPutN(T+begin, data, n);
+  }
+  return (n + tx_ptr) & RING_MASK;
+}
+
+void WizFinalizeSend(const struct sock* sockp, const struct proto *proto, size_t n) {
+  word tx_wr = WizGet2(B+SK_TX_WR0);
+  tx_wr += n;
+  WizPut2(B+SK_TX_WR0, tx_wr);
+  WizIssueCommand(SOCK_AND  proto->send_command);
+}
+
+errnum WizSendChunk(const struct sock* sockp,  const struct proto* proto, char* data, size_t n) {
+  // PrintH("Ax WizSendChunk %x@%x : %x %x %x %x %x", n, data, data[0], data[1], data[2], data[3], data[4]);
+  errnum e = WizCheck(JUST_SOCK);
+  if (e) return e;
+  tx_ptr_t tx_ptr = WizReserveToSend(SOCK_AND  n);
+  WizDataToSend(SOCK_AND tx_ptr, data, n);
+  WizFinalizeSend(SOCK_AND proto, n);
+  // PrintH("Ax WSC.");
+  return OKAY;
+}
+
+errnum WizCheck(PARAM_JUST_SOCK) {
+      byte ir = WizGet1(B+SK_IR); // Socket Interrupt Register.
+      if (ir & SK_IR_TOUT) { // Timeout?
+        return SK_IR_TOUT;
+      }
+      if (ir & SK_IR_DISC) { // Disconnect?
+        return SK_IR_DISC;
+      }
+      return OKAY;
+}
+//////////////////////////////////////////////////////////////////
+
+errnum WizRecvGetBytesWaiting(const struct sock* sockp, word* bytes_waiting_out) {
+  errnum e = WizCheck(JUST_SOCK);
+  if (e) return e;
+
+  *bytes_waiting_out = WizGet2(B+SK_RX_RSR0);  // Unread Received Size.
+  return OKAY;
+}
+
+errnum WizRecvChunkTry(const struct sock* sockp, char* buf, size_t n) {
+  word bytes_waiting = 0;
+  errnum e = WizRecvGetBytesWaiting(SOCK_AND &bytes_waiting);
+  if (e) return e;
+  if( bytes_waiting < n) return NOTYET;
+
+  word rd = WizGet2(B+SK_RX_RD0);
+  word begin = rd & RING_MASK; // begin: Beneath RING_SIZE.
+  word end = begin + n;    // end: Sum may not be beneath RING_SIZE.
+
+  if (end >= RING_SIZE) {
+    word first_n = RING_SIZE - begin;
+    word second_n = n - first_n;
+    WizGetN(R+begin, buf, first_n);
+    WizGetN(R, buf+first_n, second_n);
+  } else {
+    WizGetN(R+begin, buf, n);
+  }
+
+  WizPut2(B+SK_RX_RD0, rd + n);
+  WizIssueCommand(SOCK_AND  SK_CR_RECV); // Inform socket of changed SK_RX_RD.
+  return OKAY;
+}
+
+errnum WizRecvChunk(const struct sock* sockp, char* buf, size_t n) {
+  // PrintH("WizRecvChunk %x...", n);
+  errnum e;
+  do {
+    e = WizRecvChunkTry(SOCK_AND buf, n);
+  } while (e == NOTYET);
+  // PrintH("WRC %x: %x %x %x %x %x.", n, buf[0], buf[1], buf[2], buf[3], buf[4]);
+  return e;
+}
+errnum WizRecvChunkBytes(const struct sock* sockp, byte* buf, size_t n) {
+  return WizRecvChunk(sockp, (char*)buf, n);
+}
+//////////////////////////////////////////////////////////////////
 #endif
+
+// gcc6809 -f'whole-program' doesn't like libgcc runtime library calls.
+// So here are ShiftRight and ArithShiftRight tht avoid library calls.
+int ShiftRight(int x, byte count) {
+	word z = (word)x;
+	for (byte i = 0; i < count; i++) {
+		z >>= 1;
+	}
+	return (int)z;
+}
+
+int ArithShiftRight(int x, byte count) {
+	word z = (word)x;
+	for (byte i = 0; i < count; i++) {
+		z >>= 1;
+		if (x & 0x8000) z |= 0x8000;
+	}
+	return (int)z;
+}
+
+/////////////////////////////////////////////////////////////
+
+// We only scan this keyboard row 3:
+#define KEY_X  (1<<0)
+#define KEY_Y  (1<<1)
+#define KEY_Z  (1<<2)
+#define KEY_UP   (1<<3)
+#define KEY_DOWN (1<<4)
+#define KEY_LEFT (1<<5)
+#define KEY_RIGHT (1<<6)
+#define KEY_SPACE (1<<7)
+
+// Returns a bitmap of the above bits, 1 if key down, otherwise 0.
+byte RelevantKeysDown() {
+  const byte row3 = (1<<3);
+  byte z = 0;
+  for (byte b = 0x80; b; b>>=1) {
+  	POKE(0xFF02, 0xFF ^ b);  // Key sense is active low.
+	byte c = PEEK(0xFF00);
+	if ((c & row3) == 0) z |= b;
+  }
+  POKE(0xFF02, 0xFF);  // turn off the current.
+  return z;
+}
+
+/////////////////////////////////////////////////////////////
+
+struct broadcast_payload {
+	byte magic_aa;
+	byte ship_num;
+	word score;
+	struct body ship, missile;
+};
+void BroadcastShip(int ship_num) {
+	if (Vars->mode == 'S') return;
+
+	struct broadcast_payload p = {
+		.magic_aa= 0xAA,
+		.ship_num= ship_num,
+		.score = 0x2345,
+		.ship= Vars->ship[ship_num],
+		.missile= Vars->missile[ship_num],
+	};
+	
+	word plen = sizeof(p);
+  	tx_ptr_t tx_ptr = WizReserveToSend(SOCK0_AND plen);
+  	tx_ptr = WizBytesToSend(SOCK0_AND tx_ptr, (byte*)(&p), plen);
+  	WizFinalizeSend(SOCK0_AND &BroadcastUdpProto, plen);
+}
 
 byte Ships[] = {
 #include "spacewar-ships.h"
@@ -741,13 +999,13 @@ Debug("G: x,y=%d,%d tx,ty=%d,%d\n", x, y, tx, ty);
 Debug("G:HI:    ix,iy=%d,%d index=%d  abs=%d,%d\n", ix, iy, index, abs_gx, abs_gy);
 	} else {
 		// Low resolution
-#define ANTI_GRAVITY 4
+#define ANTTI_GRAVITY 0 // 4
 #if 1
 		byte tiny_grav = 3;
 		if (tx + ty < H/4) tiny_grav = 1;
 		else if (tx + ty < H/2) tiny_grav = 2;
 
-		abs_gx = abs_gy = (tiny_grav << ANTI_GRAVITY);
+		abs_gx = abs_gy = (tiny_grav << ANTTI_GRAVITY);
 #else
 		word ix = (tx>>1);  // index x
 		word iy = (ty>>1);  // index y
@@ -762,8 +1020,8 @@ Debug("G:LO:    abs=%d,%d\n", abs_gx, abs_gy);
 	abs_gx = (abs_gx > GL) ? GL : abs_gx;
 	abs_gy = (abs_gy > GL) ? GL : abs_gy;
 
-	abs_gx >>= ANTI_GRAVITY;
-	abs_gy >>= ANTI_GRAVITY;
+	abs_gx = ArithShiftRight(abs_gx, ANTTI_GRAVITY);
+	abs_gy = ArithShiftRight(abs_gy, ANTTI_GRAVITY);
 	*gx_out = (x<W/2) ? abs_gx : -abs_gx;
 	*gy_out = (y<H/2) ? abs_gy : -abs_gy;
 Debug("G:RET    out = %d,%d\n", *gx_out, *gy_out);
@@ -793,7 +1051,9 @@ void ShowShips() {
 }
 #endif
 
-void DrawShip(struct body* p, word ship, word direction, word x, word y) {
+void DrawShip(struct body* p, word ship, bool isaMissile) {
+	if (!p->ttl) return;
+
 	byte mask = 0xFF;  // four of color "11": 11111111
 	switch (ship) {
 	case 0:
@@ -806,12 +1066,21 @@ void DrawShip(struct body* p, word ship, word direction, word x, word y) {
 
 	word xoff = (p->x >> 8) & 3;  // mod 4 // pixel offset within byte
 	word xbyte = (p->x >> 8) >> 2;  // div 4
-	word index = (xoff * 5*2) + (direction * 5*4*2);
+	word index = (xoff * 5*2) + (p->direction * 5*4*2);
 	word yval = p->y >> 8;
-	for (byte row = 0; row < 5*32; row+=32) {
+
+	if (isaMissile) {
 		word v = (size_t)VDG_RAM + xbyte + (yval << 5);
-		PXOR(v + row + 0, mask & Ships[index++]);
-		PXOR(v + row + 1, mask & Ships[index++]);
+		word c0 = 0xC0;
+                byte spot = ShiftRight(c0&mask , xoff);
+		PXOR(v + 2, spot);
+	} else {
+		for (byte row = 0; row < 5*32; row+=32) {
+			word v = (size_t)VDG_RAM + xbyte + (yval << 5);
+			if (v > (size_t)VDG_RAM + 3*1024) v -= 3*1024;   // wrap
+			PXOR(v + row + 0, mask & Ships[index++]);
+			PXOR(v + row + 1, mask & Ships[index++]);
+		}
 	}
 }
 #define XWRAP (word)(W*256u)
@@ -821,22 +1090,110 @@ word GraphicsAddr(word x, word y) {
 	return VDG_RAM + (x>>2) + (y<<5);
 }
 
-void DrawSun(byte sun) {
+void DrawSun() {
 	byte* p = (byte*)VDG_RAM + 1024 + 512;
-	// p[16] += sun;
 	p[17] += 64;
 }
 
-void GlideShips() {
-	// Draw a constellation around the Strong Gravity Zone.
-	PXOR(GraphicsAddr( W/2-W/8, H/2-H/8 ), 0x02); // 0x80);
-	PXOR(GraphicsAddr( W/2-W/8, H/2+H/8 ), 0x02); // 0x80);
-	PXOR(GraphicsAddr( W/2+W/8, H/2-H/8 ), 0x02);
-	PXOR(GraphicsAddr( W/2+W/8, H/2+H/8 ), 0x02);
+#define ACCEL 8 // 3
+int AccelR[16] = {
+  5*ACCEL, 4*ACCEL, 3*ACCEL, 1*ACCEL,
+  0*ACCEL, -1*ACCEL, -3*ACCEL, -4*ACCEL,
+  -5*ACCEL, -4*ACCEL, -3*ACCEL, -1*ACCEL,
+  0*ACCEL, 1*ACCEL, 3*ACCEL, 4*ACCEL,
+};
+int AccelS[16] = {
+  0*ACCEL, 1*ACCEL, 3*ACCEL, 4*ACCEL,
+  5*ACCEL, 4*ACCEL, 3*ACCEL, 1*ACCEL,
+  0*ACCEL, -1*ACCEL, -3*ACCEL, -4*ACCEL,
+  -5*ACCEL, -4*ACCEL, -3*ACCEL, -1*ACCEL,
+};
 
-	{
+void ProcessIncomingPacket() {
+  // struct broadcast_payload {
+  // 	byte magic_aa;
+  // 	byte ship_num;
+  // 	word score;
+  // 	struct body ship, missile;
+  // };
+  struct broadcast_payload *p = (void*)Vars->buffer;
+  if (p->magic_aa != 0xAA) return;
+  byte n = p->ship_num;
+  if (n >= NUM_SHIPS) return;
+  Vars->score[n] = p->score;
+  Vars->ship[n] = p->ship;
+  Vars->missile[n] = p->missile;
+}
+
+void CheckIncomingPackets() {
+	if (Vars->mode == 'S') return;
+
+	  errnum e = WizRecvChunkTry(SOCK0_AND Vars->buffer, 8);
+	  if (e == OKAY) {
+		struct wiz_udp_recv_header* h = (void*)Vars->buffer;
+		word len = h->udp_payload_len;
+		if (h->udp_port == SPACE_WAR_PORT && len == sizeof(struct broadcast_payload)) {
+	  		WizRecvChunkBytes(SOCK0_AND (void*)Vars->buffer, len);
+			ProcessIncomingPacket();
+		} else {
+			// Bad incoming packet.
+	  		WizRecvChunkBytes(SOCK0_AND (void*)0x000, len);
+		}
+	  }
+}
+
+void FireMissile(byte direction, byte who) {
+	struct body* s = Vars->ship + who;
+	struct body* m = Vars->missile + who;
+	*m = *s; // copy ship's position and momentum
+#define M_SPEED 30
+	m->x += M_SPEED * AccelR[direction];
+	m->y -= M_SPEED * AccelS[direction];
+	m->r += M_SPEED * AccelR[direction];
+	m->s -= M_SPEED * AccelS[direction];
+	m->ttl = 148;
+}
+
+void AdvanceBody(struct body* p, int ship, bool useGravity) {
+#define SLOW 3
+			int new_x = (int)(p->x) + ArithShiftRight(p->r , SLOW);
+			int new_y = (int)(p->y) + ArithShiftRight(p->s , SLOW);
+			// Wrap to stay on torus.
+			while (new_x < 0) { new_x += XWRAP; }
+			while (new_y < 0) { new_y += YWRAP; }
+			while (new_x >= XWRAP) { new_x -= XWRAP; }
+			while (new_y >= YWRAP) { new_y -= YWRAP; }
+Debug("xy=%d,%d  new=%d,%d  r,s=%d,%d\n", p->x, p->y, new_x, new_y, p->r, p->s);
+
+			if (useGravity) {
+				int gx, gy;
+				ComputeGravity(new_x, new_y, &gx, &gy);
+				p->r += gx;
+				p->s += gy;
+Debug("grav=%d,%d  r,s=%d,%d\n", gx, gy, p->r, p->s);
+			}
+
+#define SpeedLimit 6000
+
+			p->r = (p->r < -SpeedLimit) ? -SpeedLimit : (p->r > SpeedLimit) ? SpeedLimit : p->r;
+			p->s = (p->s < -SpeedLimit) ? -SpeedLimit : (p->s > SpeedLimit) ? SpeedLimit : p->s;
+			p->x = (word)new_x;
+			p->y = (word)new_y;
+}
+
+void Run() {
+	byte my_num = Vars->mode == 'S' ? 1 : Vars->mode-'1';
+	struct body* my = Vars->ship + my_num;
+
+	// // Draw a constellation around the Strong Gravity Zone.
+	// PXOR(GraphicsAddr( W/2-W/8, H/2-H/8 ), 0x02); // 0x80);
+	// PXOR(GraphicsAddr( W/2-W/8, H/2+H/8 ), 0x02); // 0x80);
+	// PXOR(GraphicsAddr( W/2+W/8, H/2-H/8 ), 0x02);
+	// PXOR(GraphicsAddr( W/2+W/8, H/2+H/8 ), 0x02);
+
+	if (0) {  // background stars
 	  word x = 4, y = 7;
-	  for (word i = 0; i < 18; i++) {
+	  for (word i = 0; i < 8; i++) {
 		PXOR(GraphicsAddr( x, y ), 0x02);
 		x += 47 + 64;
 		y += 33;
@@ -845,67 +1202,103 @@ void GlideShips() {
 	  }
 	}
 
-	word direction = 0;
+	// byte direction = 0;
 	word g = 0;
 	for (word i = 0; i < NUM_SHIPS; i++) {
 		volatile struct body* p = Vars->ship+i;
 		p->x = (i<<13);
 		p->y = (i<<12);
-		p->r = 31+7*i;
-		p->s = 17+3*i;
+		p->r = 0; //31+7*i;
+		p->s = 0; //17+3*i;
+		p->ttl = (i == my_num) ? 255 : 0;
 	}
-	byte sun = 1;
+LOOP:
 	while (1) {
-		if ((g&3)==0) {
-		  DrawSun(sun);
-		  sun++;
-		  if (sun>3) sun=1;
+		// Check keyboard.
+		byte keys = RelevantKeysDown();
+		if (keys & KEY_Z) POKE(0xFF22, 0xC8);  // C0 for color0, C8 for color1.
+		if (keys & KEY_X) POKE(0xFF22, 0xC0);  // C0 for color0, C8 for color1.
+		if (keys & KEY_LEFT) my->direction = (my->direction+1)&15;
+		if (keys & KEY_RIGHT) my->direction = (my->direction-1)&15;
+		if (keys & KEY_UP) {
+#define THRUST 10
+			my->r += THRUST * AccelR[my->direction];
+			my->s -= THRUST * AccelS[my->direction];
+		}
+		if (keys & KEY_SPACE) {
+			FireMissile(my->direction, my_num);
 		}
 
 		// Advance the ships.
+		// byte modeship = Vars->mode-'1';
+		// if (modeship < NUM_SHIPS) {
+			// Vars->ship[modeship].direction = direction;
+		// }
 		for (word ship = 0; ship < NUM_SHIPS; ship++) {
-			struct body* p = Vars->ship+ship;
-#define SLOW 3
-			int new_x = (int)(p->x) + (p->r >> SLOW);
-			int new_y = (int)(p->y) + (p->s >> SLOW);
-			// Wrap to stay on torus.
-			while (new_x < 0) { new_x += XWRAP; }
-			while (new_y < 0) { new_y += YWRAP; }
-			while (new_x >= XWRAP) { new_x -= XWRAP; }
-			while (new_y >= YWRAP) { new_y -= YWRAP; }
-Debug("xy=%d,%d  new=%d,%d  r,s=%d,%d\n", p->x, p->y, new_x, new_y, p->r, p->s);
-
-#define USE_GRAVITY 1
-#ifdef USE_GRAVITY
-			int gx, gy;
-			ComputeGravity(new_x, new_y, &gx, &gy);
-			p->r += gx;
-			p->s += gy;
-Debug("grav=%d,%d  r,s=%d,%d\n", gx, gy, p->r, p->s);
-
-#define SL 2000
-
-			p->r = (p->r < -SL) ? -SL : (p->r > SL) ? SL : p->r;
-			p->s = (p->s < -SL) ? -SL : (p->s > SL) ? SL : p->s;
-#endif
-			p->x = (word)new_x;
-			p->y = (word)new_y;
+			AdvanceBody(Vars->ship+ship, ship, true);
+			AdvanceBody(Vars->missile+ship, ship, false);
 		}
-
-		for (word ship = 0; ship < NUM_SHIPS; ship++) {
+DRAW:
+		for (byte ship = 0; ship < NUM_SHIPS; ship++) {
 			struct body* p = Vars->ship+ship;
-			DrawShip(p, ship, 15 & direction, p->x >> 8, p->y >> 8);
+			DrawShip(p, ship, false);
+			struct body* m = Vars->missile+ship;
+			DrawShip(m, ship, true);
 		}
 PeekScreen();
-		Delay(1000);
-		for (word ship = 0; ship < NUM_SHIPS; ship++) {
+WORK:
+		{
+			if ((Vars->mode != 'S') && ((g&15)==0)) {
+				BroadcastShip(Vars->mode - '1'); 
+			} else {
+				Delay(1000);
+			}
+
+			if ((g&3)==0) {
+			  DrawSun();
+			}
+		}
+UNDRAW:
+		for (byte ship = 0; ship < NUM_SHIPS; ship++) {
 			struct body* p = Vars->ship+ship;
-			DrawShip(p, ship, 15 & direction, p->x >> 8, p->y >> 8);
+			DrawShip(p, ship, false);
+			struct body* m = Vars->missile+ship;
+			DrawShip(m, ship, true);
 		}
+
+CHECK:
+		// Must UNDRAW before checking and depreciating.
+		CheckIncomingPackets();
+
+DEPRECIATE:
+		if (Vars->mode == 'S') {
+			  	for (byte i = 0; i < NUM_SHIPS; i++) {
+  			  		Vars->ship[i].ttl = 255;  // keep everyone alive!
+				}
+		} else {
+			  	for (byte i = 0; i < NUM_SHIPS; i++) {
+					if (Vars->mode - '1' == i) {
+  			  		  Vars->ship[i].ttl = 255;  // keep myself alive!
+					} else {
+  			  		    if (Vars->ship[i].ttl) Vars->ship[i].ttl--;   // depreciate others.
+					}
+				}
+		}
+		for (byte i = 0; i < NUM_SHIPS; i++) {
+				if (Vars->missile[i].ttl) Vars->missile[i].ttl--;
+		}
+
 		g++;
-		if ((g&255)==0) {
-			direction++;
+#if 0
+		if ((g&63)==0) {  // automatic direction turning
+			direction = (1 + direction) & 15;
 		}
+		if ((g&255)==3) {  // automatic missile firing
+			byte who = 1;
+			if (Vars->mode != 'S') who = Vars->mode - '1';
+			FireMissile(direction, who);
+		}
+#endif
 	}
 }
 
@@ -933,7 +1326,6 @@ int main() {
     }
     PrintF("Wiznet found at %x\n", Vars->wiz_port);
 
-    Vars->rand_word = WizTicks();
     PrintF("HOSTNAME=\"");
     for (byte i = 0; i<8; i++) {
         char ch = Rom->rom_hostname[i];
@@ -941,32 +1333,43 @@ int main() {
     }
     PrintF("\"\n");
 
-    WizReset();
-    WaitForLink();
-    WizConfigure();
+    {
+    	// Reset before asking for input.
+        WizReset();
+        WaitForLink();
+    }
 
-#if 0
-    PrintF("\n\nMulti-Player 1, 2, 3,\n");
-    PrintF("or Single-Player S ?\n");
+    Vars->mode = 'S';
+#if 1
+    PrintF("\n\nChoose player number 1, 2, 3\n");
+    PrintF("or for solitaire, hit S.\n");
     byte mode;
     while (1) {
     	mode = PolCat();
-	if ('1' <= mode && mode <= '4' || mode=='S' || mode=='s') break;
+	if (mode > 96) mode -= 32;  // ToUpper
+	if ('1' <= mode && mode <= '4' || mode=='S') break;
     }
     PrintF("MODE == %d\n\n", mode);
+    Vars->mode = mode;
 #endif
-    Delay(2500);
+    // Delay(2500);
+
+    {
+    	// Get rand_word after asking for input,
+	// so the timing will add randomness.
+	Vars->rand_word = WizTicks();
+
+        WizConfigure(Vars->rand_word);
+  	WizOpen(SOCK0_AND &BroadcastUdpProto, SPACE_WAR_PORT);
+  	UdpDial(SOCK0_AND  &BroadcastUdpProto,
+          /*dest_ip=*/ (const byte*)SixFFs, SPACE_WAR_PORT);
+    }
 
     G3CMode();
     memset((byte*)VDG_RAM, 0, GRAF_LEN);
     // ShowShips();
-    Delay(2500);
+    // Delay(2500);
     memset((byte*)VDG_RAM, 0, GRAF_LEN);
 #endif
-    GlideShips();
-#if !defined(unix)
-    while (1) {
-    	POKE(VDG_RAM, 1+PEEK(VDG_RAM));
-    }
-#endif
+    Run();
 }
