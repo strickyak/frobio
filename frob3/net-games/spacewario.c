@@ -24,6 +24,7 @@ typedef unsigned int size_t;
 struct body {
 	word x, y;
 	int r, s;
+	word score;
 	byte direction;
 	byte ttl;
 };
@@ -205,7 +206,7 @@ struct wario_vars {
     volatile word bogus;
     byte mode;
 
-    word score[NUM_SHIPS];
+    word displayed_score[NUM_SHIPS];
     struct body ship[NUM_SHIPS];
     struct body missile[NUM_SHIPS];
 
@@ -593,10 +594,12 @@ void Enable1BitSound() {
 void Beep(byte n, byte f) {
     Enable1BitSound();
 
-    Pia1bOn(0x02);
-    Delay(10);
-    Pia1bOff(0x02);
-    Delay(10);
+    for (byte i = 0; i < n; i++) {
+    	Pia1bOn(0x02);
+    	Delay(f);
+    	Pia1bOff(0x02);
+    	Delay(f);
+    }
 }
 
 
@@ -869,6 +872,20 @@ errnum WizRecvChunkBytes(const struct sock* sockp, byte* buf, size_t n) {
 
 // gcc6809 -f'whole-program' doesn't like libgcc runtime library calls.
 // So here are ShiftRight and ArithShiftRight tht avoid library calls.
+word ShiftLeft(word x, byte count) {
+	for (byte i = 0; i < count; i++) {
+		x <<= 1;
+	}
+	return x;
+}
+
+byte ByteShiftLeft(byte x, byte count) {
+	for (byte i = 0; i < count; i++) {
+		x <<= 1;
+	}
+	return x;
+}
+
 int ShiftRight(int x, byte count) {
 	word z = (word)x;
 	for (byte i = 0; i < count; i++) {
@@ -1051,6 +1068,39 @@ void ShowShips() {
 }
 #endif
 
+void DrawSpot(byte x, byte y, byte color) {
+	byte xshift = x & 3;    // mod 4
+	byte xdist = x >> 2;    // div 4
+	word v = (size_t)VDG_RAM + xdist + ((word)y << 5);
+	PXOR(v, ByteShiftLeft(color, (3-xshift)<<1));
+}
+
+void DrawDigit(byte x, byte y, byte color, byte digit) {
+	char* pattern = Digits + (digit<<4) - digit; // that is, 15*digit.
+	for (int i = 0; i < 5; i++) {
+	  for (int j = 0; j < 3; j++) {
+	    char spot = *pattern++;
+	    if (spot != ' ') {
+	    	DrawSpot(x+j, i+y, color);
+	    }
+	  }
+	}
+}
+
+void DrawDecimal(byte x, byte y, byte color, word val) {
+	byte a=0, b=0, c=0, d=0, e=0;
+	while (val > 10000) { a++; val -= 10000; }
+	while (val > 1000) { b++; val -= 1000; }
+	while (val > 100) { c++; val -= 100; }
+	while (val > 10) { d++; val -= 10; }
+	bool show = false;
+	if (a) { DrawDigit(x, y, color, a); show = true; }
+	if (b || show) { DrawDigit(x+4, y, color, b); show = true; }
+	if (c || show) { DrawDigit(x+8, y, color, c); show = true; }
+	if (d || show) { DrawDigit(x+12, y, color, d); show = true; }
+	DrawDigit(x+16, y, color, (byte)val);
+}
+
 void DrawShip(struct body* p, word ship, bool isaMissile) {
 	if (!p->ttl) return;
 
@@ -1064,19 +1114,19 @@ void DrawShip(struct body* p, word ship, bool isaMissile) {
 		break;
 	}
 
-	word xoff = (p->x >> 8) & 3;  // mod 4 // pixel offset within byte
-	word xbyte = (p->x >> 8) >> 2;  // div 4
-	word index = (xoff * 5*2) + (p->direction * 5*4*2);
+	word xshift = (p->x >> 8) & 3;  // mod 4 // pixel offset within byte
+	word xdist = (p->x >> 8) >> 2;  // div 4
+	word index = (xshift * 5*2) + (p->direction * 5*4*2);
 	word yval = p->y >> 8;
 
 	if (isaMissile) {
-		word v = (size_t)VDG_RAM + xbyte + (yval << 5);
+		word v = (size_t)VDG_RAM + xdist + (yval << 5);
 		word c0 = 0xC0;
-                byte spot = ShiftRight(c0&mask , xoff);
+                byte spot = ShiftRight(c0&mask , xshift);
 		PXOR(v + 2, spot);
 	} else {
 		for (byte row = 0; row < 5*32; row+=32) {
-			word v = (size_t)VDG_RAM + xbyte + (yval << 5);
+			word v = (size_t)VDG_RAM + xdist + (yval << 5);
 			if (v > (size_t)VDG_RAM + 3*1024) v -= 3*1024;   // wrap
 			PXOR(v + row + 0, mask & Ships[index++]);
 			PXOR(v + row + 1, mask & Ships[index++]);
@@ -1120,7 +1170,7 @@ void ProcessIncomingPacket() {
   if (p->magic_aa != 0xAA) return;
   byte n = p->ship_num;
   if (n >= NUM_SHIPS) return;
-  Vars->score[n] = p->score;
+
   Vars->ship[n] = p->ship;
   Vars->missile[n] = p->missile;
 }
@@ -1154,6 +1204,24 @@ void FireMissile(byte direction, byte who) {
 	m->ttl = 148;
 }
 
+bool DetectHits(struct body* my_missile, byte my_num) {
+	for (byte i = 0; i < NUM_SHIPS; i++) {
+		if (i == my_num) continue;  // dont count self-hits
+		struct body* p = Vars->ship + i;
+		if (!p->ttl) continue;  // that ship does not exist
+		word dx = (my_missile->x > p->x) ? (my_missile->x - p->x) : (p->x - my_missile->x);
+		word dy = (my_missile->y > p->y) ? (my_missile->y - p->y) : (p->y - my_missile->y);
+		word dist = dx + dy;
+#define NEARBY 0x0600
+		if (dist < NEARBY) {
+			Vars->ship[my_num].score ++;
+			my_missile->ttl = 0;  // expire the missile.
+			return true;
+		}
+	}
+	return false;
+}
+
 void AdvanceBody(struct body* p, int ship, bool useGravity) {
 #define SLOW 3
 			int new_x = (int)(p->x) + ArithShiftRight(p->r , SLOW);
@@ -1181,9 +1249,30 @@ Debug("grav=%d,%d  r,s=%d,%d\n", gx, gy, p->r, p->s);
 			p->y = (word)new_y;
 }
 
+void DrawScores() {
+	for (byte i = 0; i < NUM_SHIPS; i++) {
+		struct body* p = Vars->ship + i;
+		if (p->score != Vars->displayed_score[i]) {
+			DrawDecimal(100, i<<3, i+1, p->score);  // erase old score
+			DrawDecimal(100, i<<3, i+1, Vars->displayed_score[i]);  // add new score
+			Vars->displayed_score[i] = p->score;
+		}
+	}
+}
+
+void DrawAll() {
+		for (byte ship = 0; ship < NUM_SHIPS; ship++) {
+			struct body* p = Vars->ship+ship;
+			DrawShip(p, ship, false);
+			struct body* m = Vars->missile+ship;
+			DrawShip(m, ship, true);
+		}
+}
+
 void Run() {
 	byte my_num = Vars->mode == 'S' ? 1 : Vars->mode-'1';
 	struct body* my = Vars->ship + my_num;
+	struct body* my_missile = Vars->missile + my_num;
 
 	// // Draw a constellation around the Strong Gravity Zone.
 	// PXOR(GraphicsAddr( W/2-W/8, H/2-H/8 ), 0x02); // 0x80);
@@ -1204,6 +1293,7 @@ void Run() {
 
 	// byte direction = 0;
 	word g = 0;
+	word embargo = 0;
 	for (word i = 0; i < NUM_SHIPS; i++) {
 		volatile struct body* p = Vars->ship+i;
 		p->x = (i<<13);
@@ -1211,22 +1301,27 @@ void Run() {
 		p->r = 0; //31+7*i;
 		p->s = 0; //17+3*i;
 		p->ttl = (i == my_num) ? 255 : 0;
+
+		Vars->displayed_score[i] = p->score;
+		DrawDecimal(100, i<<3, i+1, p->score);
 	}
 LOOP:
 	while (1) {
-		// Check keyboard.
-		byte keys = RelevantKeysDown();
-		if (keys & KEY_Z) POKE(0xFF22, 0xC8);  // C0 for color0, C8 for color1.
-		if (keys & KEY_X) POKE(0xFF22, 0xC0);  // C0 for color0, C8 for color1.
-		if (keys & KEY_LEFT) my->direction = (my->direction+1)&15;
-		if (keys & KEY_RIGHT) my->direction = (my->direction-1)&15;
-		if (keys & KEY_UP) {
-#define THRUST 10
-			my->r += THRUST * AccelR[my->direction];
-			my->s -= THRUST * AccelS[my->direction];
-		}
-		if (keys & KEY_SPACE) {
-			FireMissile(my->direction, my_num);
+		if (true || g&1) { // every time was to toucy.
+			// Check keyboard.
+			byte keys = RelevantKeysDown();
+			if (keys & KEY_Z) POKE(0xFF22, 0xC8);  // C0 for color0, C8 for color1.
+			if (keys & KEY_X) POKE(0xFF22, 0xC0);  // C0 for color0, C8 for color1.
+			if (keys & KEY_LEFT) my->direction = (my->direction+1)&15;
+			if (keys & KEY_RIGHT) my->direction = (my->direction-1)&15;
+			if (keys & KEY_UP) {
+#define THRUST 3
+				my->r += THRUST * AccelR[my->direction];
+				my->s -= THRUST * AccelS[my->direction];
+			}
+			if (keys & KEY_SPACE && embargo < g) {
+				FireMissile(my->direction, my_num);
+			}
 		}
 
 		// Advance the ships.
@@ -1238,14 +1333,21 @@ LOOP:
 			AdvanceBody(Vars->ship+ship, ship, true);
 			AdvanceBody(Vars->missile+ship, ship, false);
 		}
-DRAW:
-		for (byte ship = 0; ship < NUM_SHIPS; ship++) {
-			struct body* p = Vars->ship+ship;
-			DrawShip(p, ship, false);
-			struct body* m = Vars->missile+ship;
-			DrawShip(m, ship, true);
+
+		if (my_missile->ttl && embargo < g) {
+			bool hit = DetectHits(my_missile, my_num);
+			if (hit) {
+				embargo = g+100;
+				Beep(30, 30);
+			}
 		}
-PeekScreen();
+		if (g == embargo - 1) {
+			Beep(10, 90);
+		}
+DRAW:
+		DrawAll();
+		DrawScores();
+// PeekScreen();
 WORK:
 		{
 			if ((Vars->mode != 'S') && ((g&15)==0)) {
@@ -1259,12 +1361,7 @@ WORK:
 			}
 		}
 UNDRAW:
-		for (byte ship = 0; ship < NUM_SHIPS; ship++) {
-			struct body* p = Vars->ship+ship;
-			DrawShip(p, ship, false);
-			struct body* m = Vars->missile+ship;
-			DrawShip(m, ship, true);
-		}
+		DrawAll();
 
 CHECK:
 		// Must UNDRAW before checking and depreciating.
