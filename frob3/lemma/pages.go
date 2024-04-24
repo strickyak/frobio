@@ -142,6 +142,17 @@ Launch only if you are sure!
 `,
 	})
 
+	Add(43, 40, "burn hostname into eeprom", &Card{
+		Launch: ".burn-hostname.bin",
+		Text: `
+This is how you set the name
+for you computer.  You burn the
+hostname into the tail end of
+the eeprom.  Lemma will use
+this name.
+`,
+	})
+
 	Add(90, 0, "(tests)", &Card{})
 	Add(91, 90, "(test 91)", &Card{
 		Launch: ".test91.lem",

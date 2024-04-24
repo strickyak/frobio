@@ -20,7 +20,7 @@ NUM_MODULES = 14
 
 ###############################################
 
-VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter $F/net-games
+VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter $F/net-games $F/metal
 
 FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
 WIZ_C = $F/wiz/wiz5100s.c
@@ -116,11 +116,17 @@ _FORCE_:
 ###############################################
 
 all-net-games: spacewario.bin
+all-metal: burn-hostname.bin
 
 spacewario.bin: spacewario.c spacewar-ships.h _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
 	lwasm --format=obj --pragma=newsource --pragma=cescapes spacewario.s -ospacewario.o
 	lwlink --format=decb --entry=_main --script=$F/net-games/spacewario.script spacewario.o -o$@
+
+burn-hostname.bin: burn-hostname.c _FORCE_
+	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
+	lwasm --format=obj --pragma=newsource --pragma=cescapes burn-hostname.s -oburn-hostname.o
+	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script burn-hostname.o -o$@
 
 ###############################################
 
