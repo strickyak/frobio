@@ -662,9 +662,10 @@ void WizReset() {
   WizPut1(RCR, 10);
 }
 
-byte Zeros[4] = { 0,0,0,0 };
 
 void WizConfigure(word rando) {
+  byte Zeros[4] = { 0,0,0,0 };
+
   WizPutN(0x0001/*gateway*/, Zeros, 4);
 
   WizPut1(0x0005/*mask+0*/, 255);
@@ -1399,7 +1400,8 @@ DEPRECIATE:
 	}
 }
 
-int main() {
+int main2() {
+    Beep(30, 15);
 #if !defined(unix)
     memset(((char*)Vars), 0, sizeof *Vars);
     Vars->bogus = (word)Ships;
@@ -1469,4 +1471,13 @@ int main() {
     memset((byte*)VDG_RAM, 0, GRAF_LEN);
 #endif
     Run();
+}
+
+int main() {
+  POKE2(CASBUF, main2);
+  asm (
+  	"  lds #$3FFC\n" // To fit in 16K RAM.
+	"  ldu #0\n"     // Initial NULL frame pointer.
+	"  jsr _main2\n"
+  );
 }

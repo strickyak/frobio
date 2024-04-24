@@ -1,4 +1,6 @@
-section .text.start load 0x3000
+section .text.start load 0x2000
 section .text
 section .data
+section .bss
+section .fits.in.16k
 section *
