@@ -18,7 +18,7 @@ typedef unsigned int size_t;
 #define Debug(...)  // nothing
 #endif
 
-#define NUM_SHIPS 3
+#define NUM_SHIPS 4
 
 #define SPACE_WAR_PORT 3210
 
@@ -915,6 +915,7 @@ struct broadcast_payload {
   byte ship_num;
   word score;
   struct body ship, missile;
+  word dings[NUM_SHIPS];
 };
 void BroadcastShip(int ship_num) {
   if (Vars->mode == 'S') return;
@@ -1067,7 +1068,7 @@ void DrawDigit(byte x, byte y, byte color, byte digit) {
     for (int j = 0; j < 3; j++) {
       char spot = *pattern++;
       if (spot != ' ') {
-        DrawSpot(x + j, i + y, color);
+        DrawSpot(x + j, i + y, (color < 4) ? color : (i<2) ? 3 : 2);
       }
     }
   }
@@ -1111,6 +1112,14 @@ void DrawDecimal(byte x, byte y, byte color, word val) {
   DrawDigit(x + 16, y, color, (byte)val);
 }
 
+void DrawSpot2(int x, int y, byte color) {
+	while (x<0) x += 128;
+	while (y<0) x += 96;
+	while (x>128) x -= 128;
+	while (y>96) x -= 96;
+	DrawSpot(x, y, color);
+}
+
 void DrawShip(struct body* p, word ship, bool isaMissile) {
   if (!p->ttl) return;
 
@@ -1124,24 +1133,41 @@ void DrawShip(struct body* p, word ship, bool isaMissile) {
       break;
   }
 
-  word xshift = (p->x >> 8) & 3;  // mod 4 // pixel offset within byte
-  word xdist = (p->x >> 8) >> 2;  // div 4
+  int x = (p->x >> 8) - 2;
+  int y = (p->y >> 8) - 2;
+  word xshift = x & 3;  // mod 4 // pixel offset within byte
+  word xdist = x >> 2;  // div 4
   word index = (xshift * 5 * 2) + (p->direction * 5 * 4 * 2);
-  word yval = p->y >> 8;
+  word yval = y;
 
   if (isaMissile) {
-    word v = (size_t)VDG_RAM + xdist + (yval << 5);
-    word c0 = 0xC0;
-    byte spot = ShiftRight(c0 & mask, xshift);
-    PXOR(v + 2, spot);
+    DrawSpot2(x+2, y+2, 2);
+    // word v = (size_t)VDG_RAM + xdist + (yval << 5);
+    // word c0 = 0xC0;
+    // byte spot = ShiftRight(c0 & mask, xshift);
+    // PXOR(v + 2, spot);
   } else {
     for (byte row = 0; row < 5 * 32; row += 32) {
-      word v = (size_t)VDG_RAM + xdist + (yval << 5);
-      if (v > (size_t)VDG_RAM + 3 * 1024) v -= 3 * 1024;  // wrap
-      PXOR(v + row + 0, mask & Ships[index++]);
-      PXOR(v + row + 1, mask & Ships[index++]);
+      if (ship == 3 && row == 64)  mask=0xAA;  // change color
+      word v = (size_t)VDG_RAM + xdist + (yval << 5) + row;
+      if (v < (size_t)VDG_RAM + 3 * 1024) v += 3 * 1024;  // wrap
+      if (v >= (size_t)VDG_RAM + 3 * 1024) v -= 3 * 1024;  // wrap
+      PXOR(v + 0, mask & Ships[index++]);
+      PXOR(v + 1, mask & Ships[index++]);
     }
   }
+
+  // debugging: box it
+#if 0
+  x = (p->x >> 8);
+  y = (p->y >> 8);
+  for (byte i = 0; i < 9; i++) {
+  	DrawSpot2(x-4, y-4+i, 1);
+  	DrawSpot2(x+4, y-4+i, 1);
+  	DrawSpot2(x-4+i, y-4, 1);
+  	DrawSpot2(x-4+i, y+4, 1);
+  }
+#endif
 }
 #define XWRAP (word)(W * 256u)
 #define YWRAP (word)(H * 256u)
@@ -1199,15 +1225,15 @@ void CheckIncomingPackets() {
   }
 }
 
-void FireMissile(byte direction, byte who) {
+void FireMissile(byte who) {
   struct body* s = Vars->ship + who;
   struct body* m = Vars->missile + who;
   *m = *s;  // copy ship's position and momentum
 #define M_SPEED 30
-  m->x += M_SPEED * AccelR[direction];
-  m->y -= M_SPEED * AccelS[direction];
-  m->r += M_SPEED * AccelR[direction];
-  m->s -= M_SPEED * AccelS[direction];
+  m->x += M_SPEED * AccelR[s->direction];
+  m->y -= M_SPEED * AccelS[s->direction];
+  m->r += M_SPEED * AccelR[s->direction];
+  m->s -= M_SPEED * AccelS[s->direction];
   m->ttl = 148;
 }
 
@@ -1221,7 +1247,7 @@ bool DetectHits(struct body* my_missile, byte my_num) {
     word dy = (my_missile->y > p->y) ? (my_missile->y - p->y)
                                      : (p->y - my_missile->y);
     word dist = dx + dy;
-#define NEARBY 0x0600
+#define NEARBY 0x0400
     if (dist < NEARBY) {
       Vars->ship[my_num].score++;
       my_missile->ttl = 0;  // expire the missile.
@@ -1275,8 +1301,8 @@ void DrawScores() {
   for (byte i = 0; i < NUM_SHIPS; i++) {
     struct body* p = Vars->ship + i;
     if (p->score != Vars->displayed_score[i]) {
-      DrawDecimal(100, i << 3, i + 1, p->score);  // erase old score
-      DrawDecimal(100, i << 3, i + 1,
+      DrawDecimal(/*x=*/100, /*y=*/i << 3, /*color=*/i + 1, p->score);  // erase old score
+      DrawDecimal(/*x=*/100, /*y=*/i << 3, /*color=*/i + 1,
                   Vars->displayed_score[i]);  // add new score
       Vars->displayed_score[i] = p->score;
     }
@@ -1314,16 +1340,20 @@ void Run() {
     }
   }
 
-  // byte direction = 0;
+  // Create Ships
   word g = 0;
   word embargo = 0;
   for (word i = 0; i < NUM_SHIPS; i++) {
     volatile struct body* p = Vars->ship + i;
-    p->x = (i << 13);
-    p->y = (i << 12);
-    p->r = 0;  // 31+7*i;
+    p->x = 0x0800;
+    p->y = ((i+1) << 12) + ((i+1) << 10);
+    p->r = 30;  // 31+7*i;
     p->s = 0;  // 17+3*i;
     p->ttl = (i == my_num) ? 255 : 0;
+
+    if (Vars->mode == 'S' || i == my_num) {
+    	FireMissile(i);
+    }
 
     Vars->displayed_score[i] = p->score;
     DrawDecimal(100, i << 3, i + 1, p->score);
@@ -1343,7 +1373,7 @@ LOOP:
         my->s -= THRUST * AccelS[my->direction];
       }
       if (keys & KEY_SPACE && embargo < g) {
-        FireMissile(my->direction, my_num);
+        FireMissile(my_num);
       }
     }
 
@@ -1464,7 +1494,7 @@ int main2() {
   PrintF("\n\nLEFT and RIGHT rotate ship.\n");
   PrintF("UP to fire engine.\n");
   PrintF("SPACE to fire missile.\n");
-  PrintF("\n\nChoose player number 1, 2, 3\n");
+  PrintF("\n\nChoose player number 1, 2, 3, 4\n");
   PrintF("or for solitaire, hit S.\n");
   byte mode;
   while (1) {
@@ -1492,7 +1522,7 @@ int main2() {
   memset((byte*)VDG_RAM, 0, GRAF_LEN);
   // ShowShips();
   // Delay(2500);
-  memset((byte*)VDG_RAM, 0, GRAF_LEN);
+  // memset((byte*)VDG_RAM, 0, GRAF_LEN);
 #endif
   Run();
 }
