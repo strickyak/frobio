@@ -2,6 +2,9 @@
 // Conventional types and constants for metal programs on Frobio.
 // Assumes gcc6809 (our gcc 4.6.4 for M6809).
 
+// All compilers define stdarg for va_list.
+#include <stdarg.h>
+
 #define true (bool)1
 #define false (bool)0
 #define OKAY (errnum)0
@@ -35,7 +38,7 @@ byte IsThisGomar();
 void Delay(word n);
 word ScreenAt(byte x, byte y);
 void PrintAt(byte x, byte y, const char *s);
-void Fatal(const char *s);
+void SimpleFatal(const char *s);
 void ClearScreen(byte ch);
 void PrintHex(word loc, word val);
 
@@ -66,5 +69,16 @@ char *strcpy(char *restrict dest, const char *restrict src);
 char *strncpy(char *restrict dest, const char *restrict src, size_t n);
 size_t strlen(const char *s);
 size_t strnlen(const char *s, size_t max);
+
+// tty.h
+void PutChar(char ch);
+void PutStr(const char* s);
+void PutHex(word x);
+void PutDec(word x);
+void Fatal(const char* wut, word arg);
+void ShowLine(word line);
+void PrintF(const char* format, ...);
+void AssertEQ(word a, word b);
+void AssertLE(word a, word b);
 
 // END

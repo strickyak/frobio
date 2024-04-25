@@ -10,19 +10,10 @@
 #include "frob3/metal/standard.h"
 // clang-format on
 
-char hailing[8];
+#define HAILING "SWI4SWI5"
 char hostname[8];
 struct rc4_engine engine;
 struct axiom4_rom_tail rom;
-
-/////////////////////////////////////////
-
-//#define PEEK1(A) (*(volatile byte*)(A))
-//#define POKE1(A, X) (*(volatile byte*)(A)) = (X)
-
-#include "frob3/wiz/w5100s_defs.h"
-
-/////////////////////////////////////////
 
 byte Randomize(void* p, size_t len) { rc4_mix_key(p, len, &engine); }
 
@@ -32,12 +23,19 @@ byte RandomByte() {
   return x;
 }
 
-void BurnNow() {
+void BurnNow(char how) {
   EepromDisableProtection();
   EepromDisableProtection();
   EepromDisableProtection();
 
-  EepromBurn(0xDFC0, (word)&rom, sizeof rom);
+  switch (how) {
+    case 'H':
+    	EepromBurn(0xDFE0, (word)&rom.rom_hostname, 8);
+	break;
+    case 'I':
+    	EepromBurn(0xDFC0, (word)&rom, sizeof rom);
+	break;
+  }
 
   EepromEnableProtection();
   EepromEnableProtection();
@@ -65,8 +63,12 @@ bool EnterAlfa(byte* dest, bool can_num, bool can_enter) {
   vars.w = 0;
   while (true) {
     vars.w++;
+    SimpleShowHex(0x0600-8, vars.w);
+
     vars.c = PolCat();
-    if (can_enter && (vars.c == 10 || vars.c == 13)) {
+    if (!vars.c) continue;
+
+    if (can_enter && (vars.c <= 32)) { // space, CR, LF, any control.
       z = true;
       break;
     }
@@ -76,7 +78,7 @@ bool EnterAlfa(byte* dest, bool can_num, bool can_enter) {
       break;
     }
     if (IsAlfa(vars.c)) {
-      *dest = vars.c;
+      *dest = vars.c & 63;
       z = false;
       break;
     }
@@ -87,35 +89,36 @@ bool EnterAlfa(byte* dest, bool can_num, bool can_enter) {
 }
 
 int main() {
-  ClearScreen(':');
+  ClearScreen(' ');
   rc4_init_engine(&engine);
 
   PrintAt(0, 0, "Configure your CocoIOr ROM:");
 
-  PrintAt(0, 2, "Enter 3 to 8 letter hostname.");
-  PrintAt(0, 3, "Use only A-Z and 0-9.");
+  PrintAt(0, 2, "Choose 3 to 8 letter hostname.");
+  PrintAt(0, 3, "Use only A\001-Z\001 and 0\001-9\001.");
 
-  PrintAt(0, 5, "Also set your CocoIO to burn.");
-  PrintAt(0, 5, "Hit ENTER when done.");
+  PrintAt(0, 5, "Hit E\001N\001T\001E\001R\001 when done.");
 
-  PrintAt(0, 7, "  \x9f \x9f \x9f \x9f \x9f \x9f \x9f \x9f");
+  PrintAt(0, 7, "  \xAF \xAF \xAF \xAF \xAF \xAF \xAF \xAF");
 
   byte* p = (byte*)ScreenAt(2, 7);
   bool done = false;
   if (!done) done = EnterAlfa(p + 0, false, false);
   if (!done) done = EnterAlfa(p + 2, true, false);
   if (!done) done = EnterAlfa(p + 4, true, false);
-  if (!done) done = EnterAlfa(p + 6, true, false);
-  if (!done) done = EnterAlfa(p + 8, true, false);
-  if (!done) done = EnterAlfa(p + 10, true, false);
-  if (!done) done = EnterAlfa(p + 12, true, false);
-  if (!done) done = EnterAlfa(p + 14, true, false);
+  if (!done) done = EnterAlfa(p + 6, true, true);
+  if (!done) done = EnterAlfa(p + 8, true, true);
+  if (!done) done = EnterAlfa(p + 10, true, true);
+  if (!done) done = EnterAlfa(p + 12, true, true);
+  if (!done) done = EnterAlfa(p + 14, true, true);
 
   memset(&rom, 0, sizeof rom);
+  rom.rom_waiter_port = 2321;  // V41 port number.
+
   for (byte i = 0; i < 8; i++) {
     byte c = Peek(p + (i << 1));
-    if (IsAlfa(c) || IsNum(c)) {
-      rom.rom_hostname[i] = c;
+    if (c<128) {
+      rom.rom_hostname[i] = (c<32) ? (c+64) : c;
     } else {
       rom.rom_hostname[i] = 32;
     }
@@ -130,15 +133,30 @@ int main() {
     rom.rom_dns[i] = 8;  // Google 8.8.8.8
   }
   for (byte i = 0; i < 8; i++) {
-    rom.rom_hailing[i] = '-';  // for now
+    rom.rom_hailing[i] = HAILING[i];
   }
   byte lemma_yak_net[4] = {134, 122, 16, 44};
   for (byte i = 0; i < 4; i++) {
-    rom.rom_waiter[i] = 8;  // Google 8.8.8.8
+    rom.rom_waiter[i] = lemma_yak_net[i];
   }
 
-  BurnNow();
+  PrintAt(0, 9, "If needed, switch your CocoIOr");
+  PrintAt(0, 10, "to burn.  To only change the");
+  PrintAt(0, 11, "hostname, hit H\001.  To init the");
+  PrintAt(0, 12, "entire config, with a new random");
+  PrintAt(0, 13, "secret, hit I\001.");
 
-  PrintAt(0, 14, "DONE");
+  char how;
+  while (true) {
+  	how = 31 & PolCat();
+	if (how==(31&'H') || how==(31&'I')) {
+		break;
+	}
+  }
+
+  BurnNow(how+64);
+
+  PrintAt(0, 14, "D\001O\001N\001E\001");
+  PrintAt(0, 15, "(Undo the switch and REBOOT!)    ");
   while (1) continue;
 }

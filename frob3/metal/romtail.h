@@ -1,5 +1,6 @@
 struct axiom4_rom_tail {     // $DFC0..$DFFF
-  byte rom_reserved_16[16];  // $DFC0
+  byte rom_reserved_14[14];  // $DFC0
+  word rom_waiter_port;      // $DFCE
   byte rom_waiter[4];        // $DFD0
   byte rom_dns[4];
   byte rom_hailing[8];
