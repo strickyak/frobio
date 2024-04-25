@@ -36,7 +36,7 @@ to stress your CocoIO Card.
 
 	Add(25, 0, "COCOIO Network Games", &Card{
 	})
-	Add(26, 25, "spacewario for COCOIO", &Card{
+	Add(251, 25, "spacewario for COCOIO", &Card{
 		Text: `
 Uses broadcast UDP/IP on a LAN.
 You must be on the same LAN to play multi-user.
@@ -151,6 +151,9 @@ hostname into the tail end of
 the eeprom.  Lemma will use
 this name.
 `,
+	})
+	Add(49, 40, "show rom config & secrets", &Card{
+		Launch: ".show-secrets.bin",
 	})
 
 	Add(90, 0, "(tests)", &Card{})

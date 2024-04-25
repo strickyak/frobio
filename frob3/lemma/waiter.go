@@ -22,7 +22,8 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-var PORT = flag.Int("port", 2319, "Listen on this TCP port")
+var PRINT_VERSION = flag.Bool("version", false, "Just print protocol version")
+var PORT = flag.Int("port", 2321, "Listen on this TCP port (V41)")
 var PROGRAM = flag.String("program", "", "[one program mode] Program to upload to COCOs")
 var BLOCK0 = flag.String("block0", "", "[one program mode] filename of block drive 0")
 var DEMO = flag.String("demo", "", "[demo mode] run a demo")
@@ -452,11 +453,10 @@ func UpperCleanName(s []byte, maxLen int) string {
 func GetHellos(conn net.Conn) map[uint][]byte {
 	dict := make(map[uint][]byte)
 	for {
-		bb := ReadN(conn, 5)
-		cmd, n, p := bb[0], HiLo(bb[1], bb[2]), HiLo(bb[3], bb[4])
-		log.Printf("GetHellos: % 3x", bb)
+		cmd, n, p := ReadFive(conn)
+		log.Printf("GetHellos: $%x $%x $%x", cmd, n, p)
 		if cmd != coms.CMD_HELLO {
-			log.Panicf("Expected CMD_HELLO, got % 3x", bb)
+			log.Panicf("Expected CMD_HELLO, got $%x $%x $%x", cmd, n, p)
 		}
 		if n == 0 && p == 0 {
 			return dict
@@ -480,7 +480,13 @@ func Serve(conn net.Conn) {
 		conn.Close()
 	}()
 
+	// You have 10 seconds to say Hello.
+	timeoutDuration := 10 * time.Second
+	conn.SetReadDeadline(time.Now().Add(timeoutDuration))
 	hellos := GetHellos(conn)
+	// You pass the test.  No more time limits.
+	var noMoreDeadline time.Time  // the "zero" value.
+	conn.SetReadDeadline(noMoreDeadline)
 
 	// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
 	romID, ok := hellos[0xDF00]

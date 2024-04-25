@@ -17,7 +17,7 @@ typedef void (*func_t)();
 
 #define TCP_CHUNK_SIZE 1024  // Chunk to send or recv in TCP.
 #define WIZ_PORT  0xFF68   // Hardware port.
-#define WAITER_TCP_PORT  2319   // w# a# i#
+#define V41_DEFAULT_WAITER_TCP_PORT  2321   // Before v41, it was 2319 = w# a# i#.
 #define CASBUF 0x01DA // Rock the CASBUF, rock the CASBUF!
 #define VDG_RAM  0x0400  // default 32x16 64-char screen
 #define VDG_END  0x0600
@@ -116,7 +116,8 @@ struct axiom4_vars {
 #define WIZ  (Vars->wiz_port)
 
 struct axiom4_rom_tail { // $DFC0..$DFFF
-  byte rom_reserved_16[16];  // $DFC0
+  byte rom_reserved_14[14];  // $DFC0
+  word rom_waiter_port;
   byte rom_waiter[4];   // $DFD0
   byte rom_dns[4];
   byte rom_hailing[8];
@@ -1224,6 +1225,8 @@ void DoOneCommand() {
     word port;
     if (GetNum2Bytes(&port)) {
         Vars->waiter_port = port;
+    } else {
+        Vars->waiter_port = V41_DEFAULT_WAITER_TCP_PORT;
     }
 
   } else if (cmd == 'S') {
@@ -1276,7 +1279,7 @@ void DoOneCommand() {
     PrintF("D\1 :use DHCP\n");
     PrintF("I\1 1.2.3.4/24 5.6.7.8\n");
     PrintF("  :Set IP addr, mask, gateway\n");
-    PrintF("W\1 3.4.5.6:%d :set waiter\n", WAITER_TCP_PORT);
+    PrintF("W\1 3.4.5.6:%d :set waiter\n", V41_DEFAULT_WAITER_TCP_PORT);
     PrintF("A\1 :preset 10.23.23.*\n");
     PrintF("B\1 :preset 176.23.23.*\n");
     PrintF("C\1 :preset 192.168.23.*\n");
@@ -1772,13 +1775,18 @@ void AxiomMain() {
     }
     PrintF("\" ");
 
+    Vars->waiter_port = V41_DEFAULT_WAITER_TCP_PORT;
+    // Roms without an explicit port have $00s or $FFs here.
+    if (Rom->rom_waiter_port != 0 && Rom->rom_waiter_port != 0xFFFF) {
+    	Vars->waiter_port = Rom->rom_waiter_port;
+    }
+
     /////////////////
     if (IsThisGomar()) {
       // FOR EMULATOR
       memcpy(Vars->ip_addr, "\x7f\x00\x00\x01", 4);
       memcpy(Vars->ip_waiter, "\x7f\x00\x00\x01", 4);
       memcpy(Vars->ip_mask, "\xff\xff\xff\x00", 4);
-      Vars->waiter_port = 2319;
       Vars->use_dhcp = 0; // Just so ShowNetwork will show network.
       PrintH("For Emu");
 
@@ -1787,7 +1795,6 @@ void AxiomMain() {
 
       // Preset defaults for Waiter.
       memcpy(Vars->ip_waiter, Rom->rom_waiter, 4);
-      Vars->waiter_port = WAITER_TCP_PORT;
 
       WizReset();
       WaitForLink();

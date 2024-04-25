@@ -116,7 +116,7 @@ _FORCE_:
 ###############################################
 
 all-net-games: spacewario.bin
-all-metal: burn-hostname.bin
+all-metal: burn-hostname.bin show-secrets.bin
 
 spacewario.bin: spacewario.c spacewar-ships.h _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
@@ -127,6 +127,11 @@ burn-hostname.bin: burn-hostname.c _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
 	lwasm --format=obj --pragma=newsource --pragma=cescapes burn-hostname.s -oburn-hostname.o
 	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script burn-hostname.o -o$@
+
+show-secrets.bin: show-secrets.c _FORCE_
+	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
+	lwasm --format=obj --pragma=newsource --pragma=cescapes show-secrets.s -oshow-secrets.o
+	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script show-secrets.o -o$@
 
 ###############################################
 
@@ -456,7 +461,7 @@ lem.os9mod: lem.asm defsfile
 
 #######################################################################################
 
-all-lemmings: burn-rom-fast.lem all-net-games
+all-lemmings: burn-rom-fast.lem all-net-games all-metal
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
 	mkdir -p results/LEMMINGS/
 	ln *.lem results/LEMMINGS/

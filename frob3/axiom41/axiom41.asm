@@ -20,21 +20,14 @@ PAD            EQU  $FF
 	ORG   THIS_ROM
 	FCB   'D'		; magic bytes for ROM at $C000
 	FCB   'K'
+	NEGA            ; opcode $40 twice, for Version $41
+	NEGA            ; opcode $40 twice, for Version $41
 
 	orcc  #$50	; disable interrupts
 
-;	ldd   #$34ff
 	ldb   #$ff
 	tfr   b,dp
 	SETDP $FF	; optimized for the $FF device page
-
-	; make sure keyboard is usable.
-;	clr $FF01   ; choose Data Direction on PIA0 Port A
-;	clr $FF03   ; choose Data Direction on PIA0 Port B
-;	clr $FF00   ; PIA0 Port A are all inputs (mostly keyboard)
-;	stb $FF02   ; PIA0 Port B are all outputs (mostly keyboard) := $FF
-;	sta $FF01   ; PIA0 Port A is Data Reg; CA1 DISABLED, CA2 ENABLED AS INPUT
-;	sta $FF03   ; PIA0 Port B is Data Reg; CA1 DISABLED, CA2 ENABLED AS INPUT
 
 	bsr RepairRomToRam
 
@@ -110,28 +103,29 @@ Repair16BytesAfterX:
 	FILL PAD,TRAILING_DATA-.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        ;; struct trailing_data { // $DF80 up to $E000.   sizeof is 128.
-        ;;   byte lemma_dns_hostname[28];
-        ;;   byte public_dns[4];
-        ;;   byte reserved[32];
-        ;;   byte axiom_reserved[24];
-        ;;   byte axiom_hailing[8];
-        ;;   byte axiom_hostname[8];
-        ;;   byte axiom_flags[3];
-        ;;   byte axiom_mac_tail[5];  // After initial $02 byte, 5 random bytes!
-        ;;   byte axiom_secrets[16];  // For Challenge/Response Authentication Protocols.
-        ;; };
+;
+; struct axiom4_rom_tail {     // $DFC0..$DFFF
+;   byte rom_reserved_14[14];  // $DFC0
+;   word rom_waiter_port;      // $DFCE
+;   byte rom_waiter[4];        // $DFD0
+;   byte rom_dns[4];
+;   byte rom_hailing[8];
+;   byte rom_hostname[8];  // $DFE0
+;   byte rom_reserved_3[3];
+;   byte rom_mac_tail[5];  // After initial $02 byte, 5 random bytes!
+;   byte rom_secrets[16];  // For Challenge/Response Authentication Protocols.
+; };
 
 ;TRAILING_DATA:
 	; 64 bytes $DF80-$DFBF
         FILL 0,64               ; reserved 64 bytes, for anyone.
 
 	; 32 bytes $DFC0-$DFDF
-        FILL 0,16               ; reserved 16 bytes, for frobio. [not yet used by axiom41]
+        FILL 0,14               ; reserved 14 bytes, for frobio. [not yet used by axiom41]
+	FDB 2321                ; Default waiter port (2321 for V41; 2319 for older)
 	FCB 134,122,16,44       ; $DFD0: default waiter: lemma.yak.net. [not yet used by axiom41]
 	FCB 8,8,8,8             ; $DFD4: default DNS server: dns.google. [not yet used by axiom41]
-	FCC /--------/          ; $DFD8: 8-byte hailing frequency 
+	FCC /SWI4SWI5/          ; $DFD8: 8-byte hailing frequency 
 
 	; 32 bytes $DFE0-$DFFF
 	FCC /UNKNOWN /          ; $DFE0: default 8-byte hostname (space padded)
