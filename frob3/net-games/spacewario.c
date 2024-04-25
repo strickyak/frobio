@@ -1069,7 +1069,7 @@ void DrawDigit(byte x, byte y, byte color, byte digit) {
     for (int j = 0; j < 3; j++) {
       char spot = *pattern++;
       if (spot != ' ') {
-        DrawSpot(x + j, i + y, (color < 4) ? color : (i<2) ? 3 : 2);
+        DrawSpot(x + j, i + y, (color < 4) ? color : (i<2) ? 3 : (i<3) ? 2 : 1);
       }
     }
   }
@@ -1081,10 +1081,9 @@ byte DrawDecimal(byte x, byte y, byte color, int val) {
   byte left_most = 255;
   if (val < 0) {
      byte left = DrawDecimal(x, y, color, -val);
-     byte clr = (color < 3)? color : 1;
-     DrawSpot(left-2, y+1, clr);
-     DrawSpot(left-3, y+1, clr);
-     DrawSpot(left-4, y+1, clr);
+     DrawSpot(left-2, y+1, 2);
+     DrawSpot(left-3, y+1, 2);
+     DrawSpot(left-4, y+1, 2);
      return;
   }
   while (val >= 10000) {
@@ -1165,7 +1164,10 @@ void DrawShip(struct body* p, word ship, bool isaMissile) {
     // PXOR(v + 2, spot);
   } else {
     for (byte row = 0; row < 5 * 32; row += 32) {
-      if (ship == 3 && row == 64)  mask=0xAA;  // change color
+      if (ship == 3) {
+      	if (row == 64)  mask=0xAA;  // change color
+        else if (row == 96)  mask=0x55;  // change color
+      }
       word v = (size_t)VDG_RAM + xdist + (yval << 5) + row;
       if (v < (size_t)VDG_RAM + 3 * 1024) v += 3 * 1024;  // wrap
       if (v >= (size_t)VDG_RAM + 3 * 1024) v -= 3 * 1024;  // wrap
@@ -1267,8 +1269,8 @@ bool DetectHits(struct body* my_missile, byte my_num) {
     word dist = dx + dy;
 #define NEARBY 0x0400
     if (dist < NEARBY) {
-      Vars->ship[my_num].score++;  // Give me a point.
-      Vars->ship[my_num].dings[i]++;  // Ding the victim.
+      Vars->ship[my_num].score+=3;  // Give me a point.
+      Vars->ship[my_num].dings[i]+=2;  // Ding the victim.
       my_missile->ttl = 0;  // expire the missile.
       z = true;
       // continue to hit other ships simultaneously!
@@ -1394,6 +1396,14 @@ LOOP:
       byte keys = RelevantKeysDown();
       if (keys & KEY_Z) POKE(0xFF22, 0xC8);  // C0 for color0, C8 for color1.
       if (keys & KEY_X) POKE(0xFF22, 0xC0);  // C0 for color0, C8 for color1.
+      if (keys & KEY_Y) {
+      	  my->direction = 8 ^ my->direction;
+	  my->x = W/2 - 1 - my->x;
+	  my->y = H/2 - 1 - my->y;
+	  my->r = - my->r;
+	  my->s = - my->s;
+	  my->score--;
+      }
       if (keys & KEY_LEFT) my->direction = (my->direction + 1) & 15;
       if (keys & KEY_RIGHT) my->direction = (my->direction - 1) & 15;
       if (keys & KEY_UP) {
@@ -1528,6 +1538,8 @@ int main2() {
   PrintF("\n\nLEFT and RIGHT rotate ship.\n");
   PrintF("UP to fire engine.\n");
   PrintF("SPACE to fire missile.\n");
+  PrintF("Y for wormhole, costs 1 point.\n");
+  PrintF("X or Z changes hue.\n");
   PrintF("\n\nChoose player number 1, 2, 3, 4\n");
   PrintF("or for solitaire, hit S.\n");
   byte mode;
