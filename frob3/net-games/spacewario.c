@@ -25,9 +25,10 @@ typedef unsigned int size_t;
 struct body {
   word x, y;
   int r, s;
-  word score;
+  int score;
   byte direction;
   byte ttl;
+  word dings[NUM_SHIPS];
 };
 
 #ifdef unix
@@ -209,7 +210,7 @@ struct wario_vars {
   volatile word bogus;
   byte mode;
 
-  word displayed_score[NUM_SHIPS];
+  int displayed_score[NUM_SHIPS];
   struct body ship[NUM_SHIPS];
   struct body missile[NUM_SHIPS];
 
@@ -913,19 +914,19 @@ byte RelevantKeysDown() {
 struct broadcast_payload {
   byte magic_aa;
   byte ship_num;
-  word score;
   struct body ship, missile;
   word dings[NUM_SHIPS];
 };
 void BroadcastShip(int ship_num) {
   if (Vars->mode == 'S') return;
 
+      struct body* ship = Vars->ship + ship_num;
+      struct body* missile = Vars->missile + ship_num;
   struct broadcast_payload p = {
       .magic_aa = 0xAA,
       .ship_num = ship_num,
-      .score = 0x2345,
-      .ship = Vars->ship[ship_num],
-      .missile = Vars->missile[ship_num],
+      .ship = *ship,
+      .missile = *missile,
   };
 
   word plen = sizeof(p);
@@ -1074,21 +1075,31 @@ void DrawDigit(byte x, byte y, byte color, byte digit) {
   }
 }
 
-void DrawDecimal(byte x, byte y, byte color, word val) {
+// Returns leftmost x position drawn (so a minus can be inserted in front).
+byte DrawDecimal(byte x, byte y, byte color, int val) {
   byte a = 0, b = 0, c = 0, d = 0, e = 0;
-  while (val > 10000) {
+  byte left_most = 255;
+  if (val < 0) {
+     byte left = DrawDecimal(x, y, color, -val);
+     byte clr = (color < 3)? color : 1;
+     DrawSpot(left-2, y+1, clr);
+     DrawSpot(left-3, y+1, clr);
+     DrawSpot(left-4, y+1, clr);
+     return;
+  }
+  while (val >= 10000) {
     a++;
     val -= 10000;
   }
-  while (val > 1000) {
+  while (val >= 1000) {
     b++;
     val -= 1000;
   }
-  while (val > 100) {
+  while (val >= 100) {
     c++;
     val -= 100;
   }
-  while (val > 10) {
+  while (val >= 10) {
     d++;
     val -= 10;
   }
@@ -1096,20 +1107,26 @@ void DrawDecimal(byte x, byte y, byte color, word val) {
   if (a) {
     DrawDigit(x, y, color, a);
     show = true;
+    left_most = (x+0 < left_most? x+0 : left_most);
   }
   if (b || show) {
     DrawDigit(x + 4, y, color, b);
     show = true;
+    left_most = (x+4 < left_most? x+4 : left_most);
   }
   if (c || show) {
     DrawDigit(x + 8, y, color, c);
     show = true;
+    left_most = (x+8 < left_most? x+8 : left_most);
   }
   if (d || show) {
     DrawDigit(x + 12, y, color, d);
     show = true;
+    left_most = (x+12 < left_most? x+12 : left_most);
   }
   DrawDigit(x + 16, y, color, (byte)val);
+  left_most = (x+16 < left_most? x+16 : left_most);
+  return left_most;
 }
 
 void DrawSpot2(int x, int y, byte color) {
@@ -1238,6 +1255,7 @@ void FireMissile(byte who) {
 }
 
 bool DetectHits(struct body* my_missile, byte my_num) {
+  bool z = false;
   for (byte i = 0; i < NUM_SHIPS; i++) {
     if (i == my_num) continue;  // dont count self-hits
     struct body* p = Vars->ship + i;
@@ -1249,12 +1267,14 @@ bool DetectHits(struct body* my_missile, byte my_num) {
     word dist = dx + dy;
 #define NEARBY 0x0400
     if (dist < NEARBY) {
-      Vars->ship[my_num].score++;
+      Vars->ship[my_num].score++;  // Give me a point.
+      Vars->ship[my_num].dings[i]++;  // Ding the victim.
       my_missile->ttl = 0;  // expire the missile.
-      return true;
+      z = true;
+      // continue to hit other ships simultaneously!
     }
   }
-  return false;
+  return z;
 }
 
 void AdvanceBody(struct body* p, int ship, bool useGravity) {
@@ -1300,11 +1320,20 @@ void AdvanceBody(struct body* p, int ship, bool useGravity) {
 void DrawScores() {
   for (byte i = 0; i < NUM_SHIPS; i++) {
     struct body* p = Vars->ship + i;
-    if (p->score != Vars->displayed_score[i]) {
-      DrawDecimal(/*x=*/100, /*y=*/i << 3, /*color=*/i + 1, p->score);  // erase old score
+    int score = p->score;  // My claimed score.
+
+    for (byte j = 0; j < NUM_SHIPS; j++) {  // Deduct dings.
+      struct body* q = Vars->ship + j;
+      score -= q->dings[i];
+    }
+    // if (score<0) score=0;  // Be kind.
+
+    if (score != Vars->displayed_score[i]) {
       DrawDecimal(/*x=*/100, /*y=*/i << 3, /*color=*/i + 1,
                   Vars->displayed_score[i]);  // add new score
-      Vars->displayed_score[i] = p->score;
+      DrawDecimal(/*x=*/100, /*y=*/i << 3, /*color=*/i + 1, score);  // erase old score
+
+      Vars->displayed_score[i] = score;
     }
   }
 }
@@ -1368,7 +1397,7 @@ LOOP:
       if (keys & KEY_LEFT) my->direction = (my->direction + 1) & 15;
       if (keys & KEY_RIGHT) my->direction = (my->direction - 1) & 15;
       if (keys & KEY_UP) {
-#define THRUST 3
+#define THRUST 2  // was 3
         my->r += THRUST * AccelR[my->direction];
         my->s -= THRUST * AccelS[my->direction];
       }
@@ -1387,11 +1416,16 @@ LOOP:
       AdvanceBody(Vars->missile + ship, ship, false);
     }
 
-    if (my_missile->ttl && embargo < g) {
-      bool hit = DetectHits(my_missile, my_num);
-      if (hit) {
-        embargo = g + 100;
-        Beep(30, 30);
+    for (word who = 0; who < NUM_SHIPS; who++) {
+    	if (Vars->mode=='S' || who == my_num) {
+	    struct body* who_missile = Vars->missile + who;
+	    if (who_missile->ttl && (Vars->mode == 'S' || embargo < g)) {
+	      bool hit = DetectHits(who_missile, who);
+	      if (hit) {
+	      	if (Vars->mode != 'S') embargo = g + 55;  // about 5 seconds.
+		Beep(30, 30);
+	      }
+	    }
       }
     }
     if (g == embargo - 1) {
@@ -1438,16 +1472,16 @@ LOOP:
     }
 
     g++;
-#if 0
-		if ((g&63)==0) {  // automatic direction turning
-			direction = (1 + direction) & 15;
-		}
-		if ((g&255)==3) {  // automatic missile firing
-			byte who = 1;
-			if (Vars->mode != 'S') who = Vars->mode - '1';
-			FireMissile(direction, who);
-		}
-#endif
+    if (Vars->mode == 'S') {
+	    switch (g & 255) {
+	      case 20:	FireMissile(0); break;
+	      case 90:	FireMissile(2); break;
+	      case 140:	FireMissile(3); break;
+	      case 120:	Vars->ship[0].direction = (Vars->ship[0].direction + 1) & 15;
+	      case 190:	Vars->ship[3].direction = (Vars->ship[0].direction + 7) & 15;
+	      case 40:	Vars->ship[2].direction = (Vars->ship[0].direction + 13) & 15;
+	    }
+    }
   }
 }
 
