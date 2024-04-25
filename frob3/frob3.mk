@@ -115,8 +115,13 @@ _FORCE_:
 
 ###############################################
 
-all-net-games: spacewario.bin
+all-net-games: spacewario.bin spcwario.dsk
 all-metal: burn-hostname.bin show-secrets.bin
+
+spcwario.dsk: spacewario.bin
+	rm -f $@
+	decb dskini -n'SPCWARIO' $@
+	decb copy -2 -b $< $@,SPCWARIO.BIN
 
 spacewario.bin: spacewario.c spacewar-ships.h _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
