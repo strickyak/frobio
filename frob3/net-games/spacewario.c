@@ -1084,7 +1084,7 @@ byte DrawDecimal(byte x, byte y, byte color, int val) {
      DrawSpot(left-2, y+1, 2);
      DrawSpot(left-3, y+1, 2);
      DrawSpot(left-4, y+1, 2);
-     return;
+     return left-4;
   }
   while (val >= 10000) {
     a++;
@@ -1193,9 +1193,12 @@ void DrawShip(struct body* p, word ship, bool isaMissile) {
 
 word GraphicsAddr(word x, word y) { return VDG_RAM + (x >> 2) + (y << 5); }
 
-void DrawSun() {
+void DrawSun(word g) {
+	DrawSpot(W/2, H/2, 3&(g>>2));
+/*
   byte* p = (byte*)VDG_RAM + 1024 + 512;
   p[17] += 64;
+*/
 }
 
 #define ACCEL 8  // 3
@@ -1453,7 +1456,7 @@ LOOP:
     }
 
     if ((g & 3) == 0) {
-      DrawSun();
+      DrawSun(g);
     }
   }
   UNDRAW:
@@ -1516,18 +1519,23 @@ int main2() {
   } else if (ValidateWizPort((struct wiz_port*)0xFF78) == OKAY) {
     Vars->wiz_port = (struct wiz_port*)0xFF78;
   } else {
-    Fatal("nowiz", 9);
+    Vars->wiz_port = 0;
   }
-  PrintF("Wiznet found at %x\n", Vars->wiz_port);
+  if (Vars->wiz_port) {
+  	PrintF("COCOIO found at %x\n", Vars->wiz_port);
+  } else {
+  	PrintF("No COCOIO found, but you may play solitaire.\n");
+  }
 
+#if 0
   PrintF("HOSTNAME=\"");
   for (byte i = 0; i < 8; i++) {
     char ch = Rom->rom_hostname[i];
     if (' ' <= ch && ch <= '~') PutChar(ch);
   }
   PrintF("\"\n");
-
-  {
+#endif
+  if (Vars->wiz_port) {
     // Reset before asking for input.
     WizReset();
     WaitForLink();
@@ -1546,14 +1554,15 @@ int main2() {
   while (1) {
     mode = PolCat();
     if (mode > 96) mode -= 32;  // ToUpper
-    if ('1' <= mode && mode <= '4' || mode == 'S') break;
+    if (mode == 'S') break;
+    if (Vars->wiz_port && '1' <= mode && mode <= '4') break;
   }
   PrintF("MODE == %d\n\n", mode);
   Vars->mode = mode;
 #endif
   // Delay(2500);
 
-  {
+  if (Vars->wiz_port) {
     // Get rand_word after asking for input,
     // so the timing will add randomness.
     Vars->rand_word = WizTicks();
@@ -1574,7 +1583,7 @@ int main2() {
 }
 
 int main() {
-  POKE2(CASBUF, main2);
+  POKE2(CASBUF, (word)main2);
   asm("  lds #$3FFC\n"  // To fit in 16K RAM.
       "  ldu #0\n"      // Initial NULL frame pointer.
       "  jsr _main2\n");
