@@ -226,7 +226,8 @@ struct wario_vars {
 #define WIZ (Vars->wiz_port)
 
 struct axiom4_rom_tail {     // $DFC0..$DFFF
-  byte rom_reserved_16[16];  // $DFC0
+  byte rom_reserved_14[14];  // $DFC0
+  word rom_waiter_port;      // $DFCE
   byte rom_waiter[4];        // $DFD0
   byte rom_dns[4];
   byte rom_hailing[8];
@@ -258,29 +259,6 @@ char* strcpy(char* restrict dest, const char* restrict src) {
   void* z = dest;
   while (*src) *dest++ = *src++;
   return z;
-}
-
-char* strncpy(char* restrict dest, const char* restrict src, size_t n) {
-  void* z = dest;
-  int i = 0;
-  while (*src) {
-    *dest++ = *src++;
-    i++;
-    if (i >= n) break;
-  }
-  return z;
-}
-
-size_t strlen(const char* s) {
-  const char* p = s;
-  while (*p) p++;
-  return p - s;
-}
-
-size_t strnlen(const char* s, size_t max) {
-  const char* p = s;
-  while (*p && (p - s < max)) p++;
-  return p - s;
 }
 
 ////////////////////////////////////////////////////////
@@ -1456,7 +1434,7 @@ int main2() {
   Vars->vdg_ptr = VDG_RAM + 32;
   Vars->vdg_end = VDG_END;
 
-  memset((byte*)VDG_RAM, '-', VDG_END - VDG_RAM);
+  memset((byte*)VDG_RAM, ' ', VDG_END - VDG_RAM);
   strcpy((char*)VDG_RAM + 20, "SPACEWARIO");
 
   if (ValidateWizPort((struct wiz_port*)0xFF68) == OKAY) {
@@ -1483,6 +1461,9 @@ int main2() {
 
   Vars->mode = 'S';
 #if 1
+  PrintF("\n\nLEFT and RIGHT rotate ship.\n");
+  PrintF("UP to fire engine.\n");
+  PrintF("SPACE to fire missile.\n");
   PrintF("\n\nChoose player number 1, 2, 3\n");
   PrintF("or for solitaire, hit S.\n");
   byte mode;
