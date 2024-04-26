@@ -163,6 +163,7 @@ extern const struct sock WizSocketFacts[4];
 enum Commands {
   CMD_POKE = 0,
   CMD_HELLO = 1,
+  CMD_KEYBOARD = 193,
   CMD_SUM = 194,
   CMD_PEEK2 = 195,
   CMD_LOG = 200,
@@ -1593,6 +1594,13 @@ char CountdownOrInitialChar() {
   return '\0';
 }
 
+void ScanKeyboard(char* out) {
+  for (byte bit = 0x80; bit; bit >>= 1) {
+    POKE1(0xFF02, ~bit);  // Set probe bit (inverted)
+    *out++ = (char) ~ PEEK1(0xFF00);  // Read sense (inverted)
+  }
+}
+
 void ComputeRomSums() {
     Vars->rom_sum_0 = CheckSum16(0x8000, 0xA000);
     Vars->rom_sum_1 = CheckSum16(0xA000, 0xC000);
@@ -1631,6 +1639,7 @@ errnum ClientSaysHello() {
 
 errnum LemmaClientS1() {  // old style does not loop.
   char quint[5];
+  char buf8[8];  // extra 8 for small payload
   errnum e;  // was bool e, but that was a mistake.
 
     char inkey = PolCat();
@@ -1655,6 +1664,14 @@ errnum LemmaClientS1() {  // old style does not loop.
         case CMD_PUTCHAR:
           {
               PutChar(p);
+          }
+          break;
+        case CMD_KEYBOARD:
+          {
+              ScanKeyboard(buf8);
+              *(word*)(quint+2) = 8;  // new length
+              e = WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
+              e = WizSendChunk(SOCK1_AND &TcpProto, buf8, 8);
           }
           break;
         case CMD_SUM:

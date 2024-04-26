@@ -92,6 +92,9 @@ results2b: results2 all-axiom41
 	decb copy -2 -b axiom41.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
 	decb dir results/BOOTING/netboot3.dsk
 	:
+	mkdir -p results/LEMMINGS
+	cp -vf *.lwraw results/LEMMINGS
+	:
 	ls -l results/BOOTING/
 
 results3: results2b

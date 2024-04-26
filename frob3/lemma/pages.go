@@ -1,9 +1,9 @@
 package lemma
 
 func init() {
-	Add(0, 0, "Home", &Card{
-		Text: `Welcome to Lemma, "{{ .Hostname }}".
-This is the home card.
+	Add(0, 0, "LEMMA41", &Card{
+		Text: `Welcome to Lemma41, "{{ .Hostname }}".
+This is LEMMA's starting point.
 You can return here by typing 0.
 `,
 	})
@@ -34,8 +34,7 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
-	Add(25, 0, "COCOIO Network Games", &Card{
-	})
+	Add(25, 0, "COCOIO Network Games", &Card{})
 	Add(251, 25, "spacewario for COCOIO", &Card{
 		Text: `
 Uses broadcast UDP/IP on a LAN.
@@ -156,7 +155,11 @@ this name.
 		Launch: ".show-secrets.bin",
 	})
 
-	Add(90, 0, "(tests)", &Card{})
+	Add(90, 0, "Empty test slots", &Card{
+		Text: `
+These probably do nothing, unless the 'LEMMINGS' directory has files test9[1-9].lem added to it for testing.
+`,
+	})
 	Add(91, 90, "(test 91)", &Card{
 		Launch: ".test91.lem",
 	})
@@ -171,6 +174,18 @@ this name.
 	})
 	Add(95, 90, "(test 95)", &Card{
 		Launch: ".test95.lem",
+	})
+	Add(96, 90, "(test 96)", &Card{
+		Launch: ".test96.lem",
+	})
+	Add(97, 90, "(test 97)", &Card{
+		Launch: ".test97.lem",
+	})
+	Add(98, 90, "(test 98)", &Card{
+		Launch: ".test98.lem",
+	})
+	Add(99, 90, "(test 99)", &Card{
+		Launch: ".test99.lem",
 	})
 
 	Add(80, 0, "Video Player for coco3", &Card{})

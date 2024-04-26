@@ -22,6 +22,8 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
+var SCAN_KEYBOARD = flag.Bool("scan_keyboard", false, "flag flip for CMD_KEYBOARD (to detect SHIFT, etc)")
+
 var PRINT_VERSION = flag.Bool("version", false, "Just print protocol version")
 var PORT = flag.Int("port", 2321, "Listen on this TCP port (V41)")
 var PROGRAM = flag.String("program", "", "[one program mode] Program to upload to COCOs")
@@ -121,7 +123,7 @@ func PeekRam(conn net.Conn, addr uint, n uint) []byte {
 	peekHeader := ReadN(conn, 5)
 	log.Printf("peekHeader: %#v", peekHeader)
 	if peekHeader[0] != coms.CMD_DATA {
-		log.Panicf("Expected DATA")
+		log.Panicf("Expected DATA, got $%2x", peekHeader)
 	}
 
 	z := ReadN(conn, n)
@@ -141,6 +143,27 @@ func PokeRam(conn net.Conn, addr uint, data []byte) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func ScanKeyboard(conn net.Conn) (keybits [8]byte) {
+	_, err := conn.Write([]byte{coms.CMD_KEYBOARD, 0, 0, 0, 0}) // == WriteFull
+	if err != nil {
+		panic(err)
+	}
+	peekHeader := ReadN(conn, 5)
+	log.Printf("peekHeader: %#v", peekHeader)
+	if peekHeader[0] != coms.CMD_KEYBOARD {
+		log.Panicf("Expected KEYBOARD, got $%2x", peekHeader)
+	}
+
+	if peekHeader[1] != 0 && peekHeader[2] != 8 {
+		log.Panicf("Expected KEYBOARD n=8, got $%2x", peekHeader)
+	}
+
+	z := ReadN(conn, 8)
+	log.Printf("scan keyboard: $ % 3x", z)
+	copy(keybits[:], z)
+	return
 }
 
 func GetBlockDevice(ses *Session) *os.File { // Nitros9 RBLemma devices
@@ -497,6 +520,11 @@ func Serve(conn net.Conn) {
 	axiomVars, ok := hellos[0x01DA]
 	if !ok {
 		log.Panicf("Missing HELLO for 0x01DA")
+	}
+
+	if *SCAN_KEYBOARD {
+        	keybits := ScanKeyboard(conn)
+		log.Printf("Keybits: % 03x", keybits)
 	}
 
 	// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.

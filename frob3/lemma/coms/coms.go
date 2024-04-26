@@ -13,6 +13,7 @@ const (
 	CMD_HELLO = 1 // Similar to Peek Data.
 	CMD_CALL  = 255
 
+	CMD_KEYBOARD  = 193 // request with n=0.  reply with n=8.
 	CMD_SUM       = 194 // request with n & p.  reply with sum in p.
 	CMD_PEEK2     = 195 // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
 	CMD_BEGIN_MUX = 196
