@@ -26,15 +26,10 @@ ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 		cd coco-shelf
 		time make ANON=1 KEEP=1 2>&1 | tee /tmp/make.log
 
-		cd
-		rm -rf /tmp/lemma
-		bash ~/coco-shelf/frobio/frob3/assimilator/make-release.bash /tmp/lemma
-
-		cd /tmp/
-		tar cjf lemma.tar.bz2 lemma
+		cd build-frobio
+		make tarballs
 	" | su - coco >&2
 
-	cat /tmp/lemma.tar.bz2
-' > /tmp/lemma.tar.bz2
+'
 
-echo $0 : OKAY /tmp/lemma.tar.bz2 >&2 
+echo $0 : OKAY >&2 
