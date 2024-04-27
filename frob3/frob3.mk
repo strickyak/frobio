@@ -4,14 +4,18 @@
 
 LAN=127.0.0.1
 DHCP=0
+# This becomes the superdirectory in the release tarballs.
+RELEASE=lemma
 
 all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom41 all-hdbdos results1 results2 all-lemmings results2b results3
-	find results -type f -print | LC_ALL=C sort
+	find $(RELEASE) -type f -print | LC_ALL=C sort
 	sync
 
-all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 all-lemmings results3-without-gccretro
-	find results -type f -print | LC_ALL=C sort
-	sync
+tarballs: all lemma-base.tar.bz2 lemma-eou.tar.bz2
+
+#all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 all-lemmings results3-without-gccretro tarballs
+#	find $(RELEASE) -type f -print | LC_ALL=C sort
+#	sync
 
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
@@ -39,71 +43,75 @@ LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importu
 ###############################################
 
 results1:
-	rm -rf results
-	mkdir -p results/CMDS results/MODULES
-	set -x; for x in *.os9cmd; do cp -v $$x results/CMDS/$$(basename $$x .os9cmd) ; done
-	set -x; for x in *.os9mod; do cp -v $$x results/MODULES/$$(basename $$x .os9mod) ; done
-	n=$$(ls results/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
-	n=$$(ls results/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
+	rm -rf ./$(RELEASE)/
+	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES $(RELEASE)/NAVROOT $(RELEASE)/NAVROOT/PUBLIC $(RELEASE)/NAVROOT/HOMES
+	cp -vf $F/helper/release-runners/*.sh $(RELEASE)/
+	set -x; for x in *.os9cmd; do cp -v $$x $(RELEASE)/CMDS/$$(basename $$x .os9cmd) ; done
+	set -x; for x in *.os9mod; do cp -v $$x $(RELEASE)/MODULES/$$(basename $$x .os9mod) ; done
+	n=$$(ls $(RELEASE)/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
+	n=$$(ls $(RELEASE)/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
 results2: results1 os9disks lemma-waiter broadcast-burn
-	mkdir -p results/OS9DISKS results/LEMMINGS results/BOOTING results/bin
-	ln -fv lemma-waiter results/bin
-	ln -fv broadcast-burn results/bin
+	mkdir -p $(RELEASE)/OS9DISKS $(RELEASE)/LEMMINGS $(RELEASE)/BOOTING $(RELEASE)/bin
+	ln -fv lemma-waiter $(RELEASE)/bin
+	ln -fv broadcast-burn $(RELEASE)/bin
 
 NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
 	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
 NOS9_6809_L1_coco1_80d.dsk : NOS9_6809_L1_coco1_80d.bigdup results1
 	rm -f $@
 	cp -vf $< $@
-	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
-	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r $(RELEASE)/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r $(RELEASE)/MODULES/*
 
 NOS9_6809_L2_coco3_80d.bigdup : ../nitros9/level2/coco3/NOS9_6809_L2_80d.dsk
 	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
 NOS9_6809_L2_coco3_80d.dsk : NOS9_6809_L2_coco3_80d.bigdup results1
 	rm -f $@
 	cp -vf $< $@
-	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
-	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r $(RELEASE)/CMDS/*
+	sh ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r $(RELEASE)/MODULES/*
 
 NOS9_6309_L2_coco3_80d.bigdup : ../nitros9/level2/coco3_6309/NOS9_6309_L2_80d.dsk 
 	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
 NOS9_6309_L2_coco3_80d.dsk : NOS9_6309_L2_coco3_80d.bigdup results1
 	rm -f $@
 	cp -vf $< $@
-	bash ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r results/CMDS/*
-	bash ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r results/MODULES/*
+	bash ../frobio/frob3/helper/os9-install.sh -r $@,CMDS -pe -pr -e -r $(RELEASE)/CMDS/*
+	bash ../frobio/frob3/helper/os9-install.sh -r $@,MODULES -pe -pr -e -r $(RELEASE)/MODULES/*
 
 os9disks: NOS9_6809_L1_coco1_80d.dsk NOS9_6809_L2_coco3_80d.dsk NOS9_6309_L2_coco3_80d.dsk
-	mkdir -p results/OS9DISKS results/LEMMINGS
-	set -x; for x in $^; do rm -f results/LEMMINGS/$$x; ln $$x results/LEMMINGS/; done
-	set -x; for x in $^; do rm -f results/OS9DISKS/$$x; ln $$x results/OS9DISKS/; done
+	mkdir -p $(RELEASE)/OS9DISKS $(RELEASE)/LEMMINGS
+	set -x; for x in $^; do rm -f $(RELEASE)/LEMMINGS/$$x; ln $$x $(RELEASE)/LEMMINGS/; done
+	set -x; for x in $^; do rm -f $(RELEASE)/OS9DISKS/$$x; ln $$x $(RELEASE)/OS9DISKS/; done
 
 
 results2b: results2 all-axiom41
-	mkdir -p results/BOOTING
-	cp -v $F/booting/README.md results/BOOTING/README.md
+	mkdir -p $(RELEASE)/BOOTING $(RELEASE)/ETC $(RELEASE)/LEMMINGS
+	cp -vf $F/booting/README.md $(RELEASE)/BOOTING/
+	cp -vf axiom41-c300.decb $(RELEASE)/ETC/
+	cp -vf axiom41.rom $(RELEASE)/ETC/
+	cp -vf axiom41.rom.list $(RELEASE)/ETC/
+	cp -vf primes41.rom $(RELEASE)/ETC/
+	cp -vf primes41.rom.list $(RELEASE)/ETC/
+	cp -vf hdbdos.rom $(RELEASE)/ETC/
+	cp -vf hdbdos.list $(RELEASE)/ETC/
+	cp -vf *.lwraw $(RELEASE)/ETC/
 	:
-	decb dskini results/BOOTING/netboot3.dsk
-	decb copy -0 -b $F/booting/INSTALL4.BAS results/BOOTING/netboot3.dsk,INSTALL4.BAS
-	decb copy -0 -b $F/booting/INSTALL5.BAS results/BOOTING/netboot3.dsk,INSTALL5.BAS
-	decb copy -3 -a $F/booting/README.md results/BOOTING/netboot3.dsk,README.md
-	decb copy -2 -b axiom41.l3k results/BOOTING/netboot3.dsk,NETBOOT.DEC
-	decb dir results/BOOTING/netboot3.dsk
-	:
-	mkdir -p results/LEMMINGS
-	cp -vf *.lwraw results/LEMMINGS
-	:
-	ls -l results/BOOTING/
+	decb dskini $(RELEASE)/BOOTING/netboot3.dsk
+	decb copy -0 -b $F/booting/INSTALL4.BAS $(RELEASE)/BOOTING/netboot3.dsk,INSTALL4.BAS
+	decb copy -0 -b $F/booting/INSTALL5.BAS $(RELEASE)/BOOTING/netboot3.dsk,INSTALL5.BAS
+	decb copy -3 -a $F/booting/README.md $(RELEASE)/BOOTING/netboot3.dsk,README.md
+	decb copy -2 -b axiom41.l3k $(RELEASE)/BOOTING/netboot3.dsk,NETBOOT.DEC
+	decb dir $(RELEASE)/BOOTING/netboot3.dsk
 
 results3: results2b
-	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
-	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
+	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm $(RELEASE)/LEMMINGS
+	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm $(RELEASE)/LEMMINGS
 
-results3-without-gccretro: results2
-	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm results/LEMMINGS
-	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm results/LEMMINGS
+#results3-without-gccretro: results2
+#	cp -v $F/../built/wip-2023-03-29-netboot2/demo-dgnpeppr.coco1.loadm $(RELEASE)/LEMMINGS
+#	cp -v $F/../built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm $(RELEASE)/LEMMINGS
 
 ###############################################
 
@@ -112,12 +120,15 @@ clean: _FORCE_
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup *.raw *.lwraw
 	rm -f utility-* burn
-	rm -rf results
+	rm -rf ./$(RELEASE)
+	rm -f broadcast-burn  done  done-without-gccretro  lemma-base.tar.bz2  lemma-eou.tar.bz2  lemma-waiter  server  SPCWARIO.BIN
+
 
 _FORCE_:
 
 ###############################################
 
+# Todo: convert spacewario to metal dir.
 all-net-games: spacewario.bin spcwario.dsk
 all-metal: burn-hostname.bin show-secrets.bin
 
@@ -202,55 +213,6 @@ primes41.decb: primes41.rom
 primes41-c300.decb: primes41.rom
 	lwasm --decb $F/axiom41/primes41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o$@
 
-#old#### axiom4 is the new axiom.
-#old#axiom4-whole.rom: axiom4.c preboot3.asm
-#old#	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' $<
-#old#	cat $F/axiom/preboot3.asm axiom4.s > _work4.s
-#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work4.s --output=_work4.o --list=_work4.list
-#old#	$(LWLINK) --output=_work4.rom --map=_work4.map --raw --script=$F/helper/axiom.script _work4.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#	$(LWOBJDUMP) _work4.o > _work.4objdump
-#old#	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work4.s --map _work4.map -o axiom4-whole.s
-#old#	rm -f axiom4-whole.list
-#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom4-whole.s --output=axiom4-whole.o --list=axiom4-whole.list
-#old#	$(LWLINK) --output=axiom4-whole.rom --map=axiom4-whole.map --raw --script=$F/helper/axiom.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#	$(GO) run $A/helper/customize-axiom/customize-axiom.go --hostname="$$COCOHOST" --secret="$$COCOSECRET" axiom4-whole.rom
-#old#
-#old#axiom4-whole6k.decb: axiom4-whole.rom
-#old#	$(LWLINK) --output=axiom4-whole6k.decb --map=axiom4-whole6k.map --decb --script=$F/helper/axiom6k.script axiom4-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#
-#old#axiom4-whole.l3k: axiom4-whole.rom
-#old#	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom4-whole.rom > axiom4-whole.l3k
-#old#
-#old#### axiom (without the 4) is the old axiom.
-#old#
-#old#axiom-whole.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
-#old#	cat  $^ > _axiom_whole.c
-#old#	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'NEED_STDLIB_IN_NETLIB3' _axiom_whole.c
-#old#	cat $F/axiom/preboot3.asm _axiom_whole.s > _work.s
-#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
-#old#	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#	$(LWOBJDUMP) _work.o > _work.objdump
-#old#	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-whole.s
-#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-whole.s --output=axiom-whole.o --list=axiom-whole.list
-#old#	$(LWLINK) --output=axiom-whole.rom --map=axiom-whole.map --raw --script=$F/helper/axiom.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#
-#old#axiom-whole6k.decb: axiom-whole.rom
-#old#	$(LWLINK) --output=axiom-whole6k.decb --map=axiom-whole6k.map --decb --script=$F/helper/axiom6k.script axiom-whole.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#
-#old#axiom-whole.l3k: axiom-whole.rom
-#old#	$(GO) run $A/helper/shift-rom-to-3000/main.go < axiom-whole.rom > axiom-whole.l3k
-#old#
-#old#axiom-gomar.rom: axiom.c commands.c dhcp3.c netlib3.c romapi3.c
-#old#	cat  $^ > _axiom_gomar.c
-#old#	gcc6809 -S -I$F/.. -Os -fwhole-program -fomit-frame-pointer --std=gnu99 -Wall -Werror -D'__GOMAR__' -D'NEED_STDLIB_IN_NETLIB3' _axiom_gomar.c
-#old#	cat $F/axiom/preboot3.asm _axiom_gomar.s > _work.s
-#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  _work.s --output=_work.o --list=_work.list
-#old#	$(LWLINK) --output=_work.rom --map=_work.map --raw --script=$F/helper/axiom.script _work.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#	$(LWOBJDUMP) _work.o > _work.objdump
-#old#	$(GO) run $A/helper/insert-gap-in-asm/main.go  --asm _work.s --map _work.map -o axiom-gomar.s
-#old#	$(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource  axiom-gomar.s --output=axiom-gomar.o --list=axiom-gomar.list
-#old#	$(LWLINK) --output=axiom-gomar.rom --map=axiom-gomar.map --raw --script=$F/helper/axiom.script axiom-gomar.o  -L$F/../../lib/gcc/m6809-unknown/4.6.4/  -lgcc
-#old#
 ###############################################
 
 NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd r.os9cmd
@@ -372,7 +334,7 @@ octet2.o: $F/octet/octet2.c $F/octet/octet2.h
 
 wc.os9cmd: /sy/gosub/demo/wc.go octet2.o
 	d=$$(pwd) && cd /sy/gosub/ && $(GO) build gosub.go && cp gosub $$d/
-	t=$$(basename $@ .os9cmd).gosub && rm -rf $$t && mkdir $$t $$t/runtime
+	t=$$(basename $@ .os9cmd).gosub && rm -rf ./$$t && mkdir $$t $$t/runtime
 	t=$$(basename $@ .os9cmd).gosub && cd $$t && ../gosub <"$<" --libdir /sy/gosub/lib > ___.defs.h 2>___.err
 	t=$$(basename $@ .os9cmd).gosub && cp -av $$(ls /sy/gosub/runtime/*.[ch] | grep -v /unix_) $$t/runtime
 	set -ex; t=$$(basename $@ .os9cmd).gosub && cd $$t && set -x; for x in *.c ; do $(CMOC) -i -I. -I../../frobio/ -S $$x ; done
@@ -470,11 +432,20 @@ lem.os9mod: lem.asm defsfile
 #######################################################################################
 
 all-lemmings: burn-rom-fast.lem all-net-games all-metal
-	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)'
-	mkdir -p results/LEMMINGS/
-	ln *.lem results/LEMMINGS/
-	ln *.bin results/LEMMINGS/
-	ln *.dsk results/LEMMINGS/ || echo Ignore errors above, if some already existed.
+	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)' --results_dir='$(RELEASE)'
+	mkdir -p $(RELEASE)/LEMMINGS/
+	ln -fv *.lem $(RELEASE)/LEMMINGS/
+	ln -fv *.bin $(RELEASE)/LEMMINGS/
+	ln -fv *.dsk $(RELEASE)/LEMMINGS/
+
+#######################################################################################
+
+lemma-base.tar.bz2: _FORCE_
+	rm -fv $@
+	tar -cjf $@ --exclude='EOU_*.dsk' $(RELEASE)/
+lemma-eou.tar.bz2: _FORCE_
+	rm -fv $@
+	tar -cjf $@ $(RELEASE)/LEMMINGS/EOU_*.dsk
 
 #######################################################################################
 
@@ -484,16 +455,18 @@ all-lemmings: burn-rom-fast.lem all-net-games all-metal
 #   It's a server, so it will run forever, as long as nothing goes wrong.
 #   You can hit ^C to kill it.  `make` will then print an error message
 #   that you can ignore.
-lemma-waiter: lemma-waiter.go all-without-gccretro
+###lemma-waiter: lemma-waiter.go all-without-gccretro
+lemma-waiter: lemma-waiter.go
 	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/lemma-waiter -x lemma-waiter.go
 	ln -fv lemma-waiter ../bin
-broadcast-burn: broadcast-burn.go all-without-gccretro
+###broadcast-burn: broadcast-burn.go all-without-gccretro
+broadcast-burn: broadcast-burn.go
 	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/broadcast-burn -x broadcast-burn.go
 	ln -fv broadcast-burn ../bin
 run-server: run-lemma-waiter  # Alias.
 run-lemma: run-lemma-waiter   # Alias.
 run-lemma-waiter: lemma-waiter
-	./lemma-waiter  -cards -ro results/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $F/../../../shelving/nav-root/ $(FORCE)
+	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $F/../../../shelving/nav-root/ $(FORCE)
 
 ##############################
 # Disable RCS & SCCS patterns.

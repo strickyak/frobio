@@ -14,6 +14,7 @@ const TODO_shelf = "../"
 
 var shelfFlag = flag.String("shelf", "..", "coco-shelf directory")
 var nitros9dirFlag = flag.String("nitros9dir", "../nitros9", "root of nitros9 sources")
+var RESULTS_DIR = flag.String("results_dir", "lemma", "root of lemma results")
 
 type Os9ConfigForLemma struct {
 	Name        string
@@ -115,7 +116,7 @@ func SlurpFilename(cf *Os9ConfigForLemma, base map[string][]byte, filename strin
 		} else if strings.HasPrefix(filename, "SHELF/") {
 			filename = filepath.Join(*shelfFlag, filename[6:])
 		} else if strings.HasPrefix(filename, "./") {
-			filename = filepath.Join("results/MODULES/", filename)
+			filename = filepath.Join(*RESULTS_DIR, "MODULES", filename)
 		} else {
 			filename = filepath.Join(*nitros9dirFlag, cf.Level, cf.Port, "modules", filename)
 		}

@@ -425,7 +425,7 @@ CARD:
 				tail := strings.TrimPrefix(current.Block0, ".")
 				log.Printf("Block0: %q", tail)
 				ses.IScreen.PutStr(fmt.Sprintf("Block0: %q", tail))
-				ses.Block0 = DuplicateFileToTemp(*READONLY+"/"+tail, "")
+				ses.Block0 = DuplicateFileToTemp(*LEMMINGS_ROOT+"/"+tail, "")
 			}
 
 			if strings.HasPrefix(current.Launch, "@") {
@@ -445,7 +445,7 @@ CARD:
 
 			tail := strings.TrimPrefix(current.Launch, ".")
 			log.Printf("Upload: %q", tail)
-			UploadProgram(ses.Conn, *READONLY+"/"+tail)
+			UploadProgram(ses.Conn, *LEMMINGS_ROOT+"/"+tail)
 			ReadFiveLoop(ses.Conn, ses)
 			return
 		} else {

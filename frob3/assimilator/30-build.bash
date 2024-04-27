@@ -27,13 +27,14 @@ ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 		time make ANON=1 KEEP=1 2>&1 | tee /tmp/make.log
 
 		cd
-		bash ~/coco-shelf/frobio/frob3/assimilator/make-frobball.bash /tmp/frobball
+		rm -rf /tmp/lemma
+		bash ~/coco-shelf/frobio/frob3/assimilator/make-release.bash /tmp/lemma
 
 		cd /tmp/
-		tar cjf frobball.tar.bz2 frobball
+		tar cjf lemma.tar.bz2 lemma
 	" | su - coco >&2
 
-	cat /tmp/frobball.tar.bz2
-' > /tmp/frobball.tar.bz2
+	cat /tmp/lemma.tar.bz2
+' > /tmp/lemma.tar.bz2
 
-echo $0 : OKAY /tmp/frobball.tar.bz2 >&2 
+echo $0 : OKAY /tmp/lemma.tar.bz2 >&2 

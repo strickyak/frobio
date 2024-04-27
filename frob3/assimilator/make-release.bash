@@ -9,30 +9,29 @@ function die() {
 test ! -d "$1" || die "The target directory already exists: $1"
 
 test -d coco-shelf/ || die "Where is coco-shelf/ ?"
-test -d shelving/ || die "Where is shelving/ ?"
-test -d shelving/nav-root/ || die "Where is shelving/nav-root/ ?"
-test -d shelving/nav-root/Coco-Disk-Tree/ || die "Where is shelving/nav-root/Coco-Disk-Tree/ ?"
-test -d shelving/nav-root/Coco-Disk-Tree/APPS/ || die "Where is shelving/nav-root/Coco-Disk-Tree/APPS/ ?"
-test -d shelving/borges-library/ || die "Where is shelving/borges-library/ ?"
+test -d coco-shelf/build-frobio || die "Where is coco-shelf/build-frobio/ ?"
+test -d coco-shelf/build-frobio/results || die "Where is coco-shelf/build-frobio/results/ ?"
 
-mkdir -p $1
-mkdir -p $1/public
-mkdir -p $1/homes
-mkdir -p $1/secrets
-mkdir -p $1/frobio-bin
-mkdir -p $1/frobio-data
-mkdir -p $1/frobio-raw
+cp -a coco-shelf/build-frobio/results "$1"
 
-rsync -av shelving/nav-root/ $1/public/
-rsync -av coco-shelf/build-frobio/results/ $1/frobio-data/
+###mkdir -p $1
+###mkdir -p $1/public
+###mkdir -p $1/homes
+###mkdir -p $1/secrets
+###mkdir -p $1/frobio-bin
+###mkdir -p $1/frobio-data
+###mkdir -p $1/frobio-raw
 
-cp -av coco-shelf/bin/* $1/frobio-bin/
-cp -av coco-shelf/bin/server $1/frobio-bin/lemma-waiter-server
-cp -av coco-shelf/bin/broadcast-burn $1/frobio-bin/rescue-broadcaster
+###rsync -av shelving/nav-root/ $1/public/
+###rsync -av coco-shelf/build-frobio/results/ $1/frobio-data/
 
-cp -av $(find coco-shelf/build-frobio/* -prune -type f) $1/frobio-raw
-cp -av coco-shelf/conf.mk $1/frobio-raw/shelf-conf-mk
-cp -av coco-shelf/Makefile $1/frobio-raw/shelf-makefile
+###cp -av coco-shelf/bin/* $1/frobio-bin/
+###cp -av coco-shelf/bin/server $1/frobio-bin/lemma-waiter-server
+###cp -av coco-shelf/bin/broadcast-burn $1/frobio-bin/rescue-broadcaster
+
+###cp -av $(find coco-shelf/build-frobio/* -prune -type f) $1/frobio-raw
+###cp -av coco-shelf/conf.mk $1/frobio-raw/shelf-conf-mk
+###cp -av coco-shelf/Makefile $1/frobio-raw/shelf-makefile
 
 cat >$1/lemma-waiter.sh <<'EOF' 
 #!/bin/sh

@@ -30,7 +30,7 @@ var PROGRAM = flag.String("program", "", "[one program mode] Program to upload t
 var BLOCK0 = flag.String("block0", "", "[one program mode] filename of block drive 0")
 var DEMO = flag.String("demo", "", "[demo mode] run a demo")
 var CARDS = flag.Bool("cards", false, "Preferred mode: Present numbered pages to choose what to boot.")
-var READONLY = flag.String("ro", "", "read only resource directory, for -cards mode.")
+var LEMMINGS_ROOT = flag.String("lemmings_root", "LEMMINGS/", "read only resource directory, for -cards mode.")
 var LEVEL0 = flag.String("level0", "", "[experimental Level0 mode] level0.bin (decb) to upload")
 var LAN = flag.String("lan", "", "Local IP address of interface for LAN Discovery Response.")
 var TESTHOST = flag.String("testhost", "", "Host that runs tests")
@@ -568,14 +568,14 @@ func Serve(conn net.Conn) {
 			log.Printf("TEST Block0: %q", tail)
 			ses.IScreen.PutStr(Format("TEST Block0: %q", tail))
 			ses.Block0 = DuplicateFileToTemp(
-				*READONLY+"/"+tail,
+				*LEMMINGS_ROOT+"/"+tail,
 				"f.say STARTUP OKAY")
 		}
 
 		{
 			tail := strings.TrimPrefix(test_card.Launch, ".")
 			log.Printf("Upload: %q", tail)
-			UploadProgram(ses.Conn, *READONLY+"/"+tail)
+			UploadProgram(ses.Conn, *LEMMINGS_ROOT+"/"+tail)
 			ReadFiveLoop(ses.Conn, ses)
 			return
 		}
