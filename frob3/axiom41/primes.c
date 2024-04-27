@@ -23,8 +23,6 @@ typedef void (*func_t)();
 #define VDG_END  0x0600
 #define PACKET_BUF 0x600
 #define PACKET_MAX 256
-const byte waiter_default [4] = {
-      134, 122, 16, 44 }; // lemma.yak.net
 
 
 #include "frob3/wiz/w5100s_defs.h"

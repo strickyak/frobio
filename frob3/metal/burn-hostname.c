@@ -135,9 +135,9 @@ int main() {
   for (byte i = 0; i < 8; i++) {
     rom.rom_hailing[i] = HAILING[i];
   }
-  byte lemma_yak_net[4] = {134, 122, 16, 44};
+  byte pizga[4] = {159, 89, 247, 236};
   for (byte i = 0; i < 4; i++) {
-    rom.rom_waiter[i] = lemma_yak_net[i];
+    rom.rom_waiter[i] = pizga[i];
   }
 
   PrintAt(0, 9, "If needed, switch your CocoIOr");

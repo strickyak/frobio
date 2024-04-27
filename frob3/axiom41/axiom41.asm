@@ -123,7 +123,7 @@ Repair16BytesAfterX:
 	; 32 bytes $DFC0-$DFDF
         FILL 0,14               ; reserved 14 bytes, for frobio. [not yet used by axiom41]
 	FDB 2321                ; Default waiter port (2321 for V41; 2319 for older)
-	FCB 134,122,16,44       ; $DFD0: default waiter: lemma.yak.net. [not yet used by axiom41]
+	FCB 159,89,247,236      ; $DFD0: default waiter: reserved IP for pizga.net
 	FCB 8,8,8,8             ; $DFD4: default DNS server: dns.google. [not yet used by axiom41]
 	FCC /SWI4SWI5/          ; $DFD8: 8-byte hailing frequency 
 

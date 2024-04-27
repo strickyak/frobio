@@ -111,17 +111,6 @@ Hit 0 to mount drive 0,
 
 	Add(40, 0, "Utilities", &Card{})
 
-	Add(41, 40, "screen splash burner demo", &Card{
-		Launch: ".burn-splash.lem",
-		Text: `
-This is a Dry Run of
-the burner code.
-
-It only pokes a message
-onto your screen.
-`,
-	})
-
 	Add(4241, 40, "burn prime-sieve (ROM DEMO) into eeprom", &Card{
 		Launch: ".burn-primes-fast.lem",
 		Text: `
@@ -135,7 +124,9 @@ Launch only if you are sure!
 	Add(4242, 40, "burn axiom41 rom code into cocoior eeprom", &Card{
 		Launch: ".burn-rom-fast.lem",
 		Text: `
-Burns the standard ROM code into your eeprom.
+Burns the standard ROM code (Axiom41) into your eeprom.
+(After this, you will want to set your hostname, page 43.)
+
 Danger!  re-burns your eeprom!
 Launch only if you are sure!
 `,
