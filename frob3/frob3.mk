@@ -169,7 +169,7 @@ zed.bin: zed.c _FORCE_
 all-hdbdos: hdbdos.rom hdbdos.lem sideload.lwraw inkey_trap.lwraw
 
 %.lwraw : %.asm
-	$(LWASM) --raw $< -o'$@'' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
+	$(LWASM) --raw $< -o'$@' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
 
 hdbdos.lem: hdbdos.rom
 	cat $F/../../toolshed/hdbdos/preload $< $F/../../toolshed/hdbdos/postload > $@
