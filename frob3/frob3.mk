@@ -45,7 +45,7 @@ LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importu
 results1:
 	rm -rf ./$(RELEASE)/
 	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES $(RELEASE)/NAVROOT $(RELEASE)/NAVROOT/PUBLIC $(RELEASE)/NAVROOT/HOMES
-	cp -vf $F/helper/release-runners/*.sh $(RELEASE)/
+	cp -vf $F/helper/lemma-runners/*.sh $(RELEASE)/
 	set -x; for x in *.os9cmd; do cp -v $$x $(RELEASE)/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x $(RELEASE)/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls $(RELEASE)/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
