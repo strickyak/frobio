@@ -130,7 +130,7 @@ _FORCE_:
 
 # Todo: convert spacewario to metal dir.
 all-net-games: spacewario.bin spcwario.dsk
-all-metal: burn-hostname.bin show-secrets.bin
+all-metal: burn-hostname.bin show-secrets.bin coypu-for-copico.bin
 
 spcwario.dsk: spacewario.bin
 	rm -f $@
@@ -139,25 +139,37 @@ spcwario.dsk: spacewario.bin
 
 spacewario.bin: spacewario.c spacewar-ships.h _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
-	lwasm --format=obj --pragma=newsource --pragma=cescapes spacewario.s -ospacewario.o
-	lwlink --format=decb --entry=_main --script=$F/net-games/spacewario.script spacewario.o -o$@
+	lwasm --format=obj --pragma=newsource --pragma=cescapes spacewario.s -o'spacewario.o'
+	lwlink --format=decb --entry=_main --script=$F/net-games/spacewario.script spacewario.o -o'$@' --map='$@.map'
 
 burn-hostname.bin: burn-hostname.c _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
-	lwasm --format=obj --pragma=newsource --pragma=cescapes burn-hostname.s -oburn-hostname.o
-	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script burn-hostname.o -o$@
+	lwasm --format=obj --pragma=newsource --pragma=cescapes burn-hostname.s -o'burn-hostname.o'
+	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script burn-hostname.o -o'$@' --map='$@.map'
 
 show-secrets.bin: show-secrets.c _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
-	lwasm --format=obj --pragma=newsource --pragma=cescapes show-secrets.s -oshow-secrets.o
-	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script show-secrets.o -o$@
+	lwasm --format=obj --pragma=newsource --pragma=cescapes show-secrets.s -o'show-secrets.o'
+	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script show-secrets.o -o'$@' --map='$@.map'
+
+# Coypu spec is at https://github.com/strickyak/coypu-daemon
+coypu-for-copico.bin: coypu-for-copico.c _FORCE_
+	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
+	lwasm --format=obj --pragma=newsource --pragma=cescapes coypu-for-copico.s -o'coypu-for-copico.o'
+	lwlink --format=decb --entry=_main --script=$F/metal/coypu-for-copico.script coypu-for-copico.o -o'$@' --map='$@.map'
+
+# testing zed.script....
+zed.bin: zed.c _FORCE_
+	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
+	lwasm --format=obj --pragma=newsource --pragma=cescapes zed.s -o'zed.o'
+	lwlink --format=decb --entry=_main --script=$F/metal/zed.script zed.o -o'$@' --map='$@.map'
 
 ###############################################
 
 all-hdbdos: hdbdos.rom hdbdos.lem sideload.lwraw inkey_trap.lwraw
 
 %.lwraw : %.asm
-	$(LWASM) --raw $< -o'$@' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
+	$(LWASM) --raw $< -o'$@'' -I$HOME/coco-shelf/toolshed/hdbdos/ -I../wiz/ --pragma=condundefzero,nodollarlocal,noindex0tonone --list='$@.list' --map='$@.map'
 
 hdbdos.lem: hdbdos.rom
 	cat $F/../../toolshed/hdbdos/preload $< $F/../../toolshed/hdbdos/postload > $@
@@ -196,22 +208,22 @@ axiom41.rom: _FORCE_  primes41.rom
 	sed -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^_main:/,/^$$/d' < axcore.s > _axcore.s
 	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/rescue.c 
 	sed -e 's/jmp/lbra/' -e 's/jsr/lbsr/' -e 's/\<_[A-Za-z0-9_]*\>/R&/' -e 's/\<L[0-9]*\>/R&/' -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^R_main:/,$$d' < rescue.s > _rescue.s
-	lwasm --raw $F/axiom41/axiom41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=axiom41.list --map=axiom41.map -o$@
+	lwasm --raw $F/axiom41/axiom41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=axiom41.list --map=axiom41.map -o'$@'
 axiom41.decb: axiom41.rom
-	lwasm --decb $F/axiom41/axiom41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o$@
+	lwasm --decb $F/axiom41/axiom41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o'$@'
 axiom41-c300.decb: axiom41.rom
-	lwasm --decb $F/axiom41/axiom41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=axiom41-c300.list --map=axiom41-c300.map -o$@
+	lwasm --decb $F/axiom41/axiom41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=axiom41-c300.list --map=axiom41-c300.map -o'$@'
 
 primes41.rom: _FORCE_
 	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/primes.c 
 	sed -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^_main:/,/^$$/d' < primes.s > _primes.s
 	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/rescue.c 
 	sed -e 's/jmp/lbra/' -e 's/jsr/lbsr/' -e 's/\<_[A-Za-z0-9_]*\>/R&/' -e 's/\<L[0-9]*\>/R&/' -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^R_main:/,$$d' < rescue.s > _rescue.s
-	lwasm --raw $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41.list --map=primes41.map -o$@
+	lwasm --raw $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41.list --map=primes41.map -o'$@'
 primes41.decb: primes41.rom
-	lwasm --decb $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o$@
+	lwasm --decb $F/axiom41/primes41.asm -I`pwd` --pragma=newsource --pragma=cescapes --list=$@.list --map=$@.map -o'$@'
 primes41-c300.decb: primes41.rom
-	lwasm --decb $F/axiom41/primes41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o$@
+	lwasm --decb $F/axiom41/primes41.asm -D'JUST_C300' -I`pwd` --pragma=newsource --pragma=cescapes --list=primes41-c300.list --map=primes41-c300.map -o'$@'
 
 ###############################################
 

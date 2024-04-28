@@ -1,0 +1,5 @@
+section .text.start load 0x2000
+section .text
+section .data
+section .bss
+section *
