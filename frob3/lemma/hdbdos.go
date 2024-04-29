@@ -9,7 +9,7 @@ import (
 	"os"
 	PFP "path/filepath"
 	"strings"
-	"time"
+	//"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
 	"github.com/strickyak/frobio/frob3/lemma/finder"
@@ -99,7 +99,7 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 	// _ = payload[256 : 256+16] // savedMMU
 	savedPalette := payload[256+16 : 256+32]
 	hrmode, hrwidth, pmode := VideoModes(savedPage0)
-	strV, bytV := DescribeVideoModes(savedPage0)
+	strV, _ := DescribeVideoModes(savedPage0)
 
 	log.Printf("Incoming Video Modes: %s", strV)
 
@@ -109,17 +109,20 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 
 	T.SetSimplePalette(com)
 
-	for row := byte(0); row < 24; row++ {
-		bb := TestCharRow40(row)
-		for i := byte(0); i < 40; i++ { // invert some bg/fg
-			if uint(row+i)%13 == 9 { // choose which ones
-				x := bb[i+i+1]
-				x = (x >> 3) | (T.SimpleBlack << 3) // the inversion, assuming bg is T.SimpleBlack.
-				bb[i+i+1] = x
+	/*
+		// Demo the palette
+		for row := byte(0); row < 24; row++ {
+			bb := TestCharRow40(row)
+			for i := byte(0); i < 40; i++ { // invert some bg/fg
+				if uint(row+i)%13 == 9 { // choose which ones
+					x := bb[i+i+1]
+					x = (x >> 3) | (T.SimpleBlack << 3) // the inversion, assuming bg is T.SimpleBlack.
+					bb[i+i+1] = x
+				}
 			}
+			PokeRam(ses.Conn, 0x2000+40*2*uint(row), Cond(row == 0, bytV, bb))
 		}
-		PokeRam(ses.Conn, 0x2000+40*2*uint(row), Cond(row == 0, bytV, bb))
-	}
+	*/
 
 	defer func() {
 		SetVideoMode(ses, hrmode, hrwidth, pmode)
@@ -175,7 +178,7 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	com := coms.Wrap(ses.Conn)
 
 	OnText40At2000Run(ses, payload, func() {
-		time.Sleep(1 * time.Second)
+		// time.Sleep(1 * time.Second)
 		TextChooserShell(com, ses.HdbDos.DriveSession)
 	})
 
