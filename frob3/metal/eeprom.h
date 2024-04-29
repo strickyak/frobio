@@ -27,6 +27,9 @@ void EepromDisableProtection() {
 }
 
 void EepromBurn(word dest, word src, word n) {
+#ifdef VERBOSE_EEPROM_BURN
+  PrintF("EE(%x,%x,%x)\n", dest, src, n);
+#endif
   byte* src_ptr = (byte*)src;
   while (n) {
     // Starting at p, what is the most we can burn in a 64 byte chunk?
@@ -40,6 +43,9 @@ void EepromBurn(word dest, word src, word n) {
     n -= size;
     dest += size;
     Delay(500);
+#ifdef VERBOSE_EEPROM_BURN
+    PutChar('*');
+#endif
   }
 }
 
