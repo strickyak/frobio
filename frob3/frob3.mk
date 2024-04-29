@@ -130,7 +130,24 @@ _FORCE_:
 
 # Todo: convert spacewario to metal dir.
 all-net-games: spacewario.bin spcwario.dsk
-all-metal: burn-hostname.bin show-secrets.bin coypu-for-copico.bin
+all-metal: burn-hostname.bin burn-a41.dsk show-secrets.bin coypu-for-copico.bin
+
+generated-axiom41-bytes.h: axiom41.rom
+	python3 -c 'print(repr(list(b for b in open("$<", "rb").read())) [ 1 : -1 ])' > $@
+
+burn-a41.dsk: burn-axiom41.bin
+	rm -f $@
+	decb dskini $@
+	decb copy -2 -b  $<  $@,burn-a41.bin
+	decb dir  $@
+	#notyet# The program goes crazy around writing (D880,3D04,40) ?????
+	#notyet# mkdir -p $(RELEASE)/BOOTING
+	#notyet# cp -fv $@ $(RELEASE)/BOOTING/$@
+
+burn-axiom41.bin: burn-axiom41.c  generated-axiom41-bytes.h _FORCE_
+	gcc6809 -S $< -I$F/.. -I. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
+	lwasm --format=obj --pragma=newsource --pragma=cescapes burn-axiom41.s -o'burn-axiom41.o'
+	lwlink --format=decb --entry=_main --script=$F/metal/burn-hostname.script burn-axiom41.o -o'$@' --map='$@.map'
 
 spcwario.dsk: spacewario.bin
 	rm -f $@
@@ -157,12 +174,6 @@ coypu-for-copico.bin: coypu-for-copico.c _FORCE_
 	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
 	lwasm --format=obj --pragma=newsource --pragma=cescapes coypu-for-copico.s -o'coypu-for-copico.o'
 	lwlink --format=decb --entry=_main --script=$F/metal/coypu-for-copico.script coypu-for-copico.o -o'$@' --map='$@.map'
-
-# testing zed.script....
-zed.bin: zed.c _FORCE_
-	gcc6809 -S $< -I$F/.. --std=gnu99 -Os -f'omit-frame-pointer' -f'whole-program'
-	lwasm --format=obj --pragma=newsource --pragma=cescapes zed.s -o'zed.o'
-	lwlink --format=decb --entry=_main --script=$F/metal/zed.script zed.o -o'$@' --map='$@.map'
 
 ###############################################
 
