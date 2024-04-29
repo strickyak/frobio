@@ -88,6 +88,7 @@ void Delay() {
 
 #define PEEK1(A) (*(volatile byte*)(A))
 #define POKE1(A,X) (*(volatile byte*)(A)) = (X)
+#define POKE2(A,X) (*(volatile word*)(A)) = (X)
 
 void PrimesMain() {
     SetOrangeScreen();
@@ -115,5 +116,5 @@ void PrimesMain() {
 // 'sed' script.  It pins down the actual
 // AxiomMain so gcc -fwhole-program generates it.
 int main() {
-	POKE2(0, (word)PrimesMain);
+	POKE2(4, (word)PrimesMain);  // NEVER CALLED
 }
