@@ -121,11 +121,21 @@ Danger!  re-burns your eeprom!
 Launch only if you are sure!
 `,
 	})
-	Add(4242, 40, "burn axiom41 rom code into cocoior eeprom", &Card{
+	Add(4242, 40, "burn OLD axiom rom code into cocoior eeprom", &Card{
+		Launch: ".burn-rom.lem",
+		Text: `
+You should be using page [4243] instead, unless you have a good reason to run old code.
+
+Burns the OLD ROM code (Axiom41C) into your eeprom.
+
+Danger!  re-burns your eeprom!
+Launch only if you are sure!
+`,
+	})
+	Add(4243, 40, "burn production axiom(41c) rom code into cocoior eeprom", &Card{
 		Launch: ".burn-rom-fast.lem",
 		Text: `
-Burns the standard ROM code (Axiom41) into your eeprom.
-(After this, you will want to set your hostname, page 43.)
+Burns the production ROM code (Axiom41C) into your eeprom.  (After this, you will want to set your hostname, page 43.)
 
 Danger!  re-burns your eeprom!
 Launch only if you are sure!
