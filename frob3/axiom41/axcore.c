@@ -163,16 +163,17 @@ extern const struct sock WizSocketFacts[4];
 enum Commands {
   CMD_POKE = 0,
   CMD_HELLO = 1,
-  CMD_KEYBOARD = 193,
+  CMD_GETCHAR = 192, // blocking, only returns valid char
+  CMD_KEYBOARD = 193,  // nonblocking
   CMD_SUM = 194,
   CMD_PEEK2 = 195,
   CMD_LOG = 200,
-  CMD_INKEY = 201,
+  CMD_INKEY = 201,  // nonblocking, can return 0
   CMD_PUTCHAR = 202,
   CMD_PEEK = 203,
   CMD_DATA = 204,
-  CMD_SP_PC = 205, // deprecate
-  CMD_REV = 206, // deprecate
+  // CMD_SP_PC = 205, // deprecate
+  // CMD_REV = 206, // deprecate
   CMD_RTI = 214,  // experimental
   CMD_JSR = 255,
 };
@@ -1642,6 +1643,8 @@ errnum LemmaClientS1() {  // old style does not loop.
   char buf8[8];  // extra 8 for small payload
   errnum e;  // was bool e, but that was a mistake.
 
+#if 0
+--- we want PolCat to by synchronous now ---
     char inkey = PolCat();
     if (inkey) {
       memset(quint, 0, sizeof quint);
@@ -1650,12 +1653,28 @@ errnum LemmaClientS1() {  // old style does not loop.
       e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
       if (e) return e;
     }
+#endif
 
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
       word n = *(word*)(quint+1);
       word p = *(word*)(quint+3);
-      switch ((byte)quint[0]) {
+      byte cmd = (byte)quint[0];
+      switch (cmd) {
+        case CMD_GETCHAR: // blocking, only returns valid char
+        case CMD_INKEY:  // nonblocking, can return 0
+	  while (true) {
+	    char poll = PolCat();
+	    if (poll || cmd==CMD_INKEY) {
+	      memset(quint, 0, sizeof quint);
+	      quint[0] = cmd;
+	      quint[4] = poll;
+	      e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
+	      if (e) return e;
+	      break;
+	    }
+    	  }
+          break;
         case CMD_POKE:
           {
             TcpRecv(SOCK1_AND (char*)p, n);
@@ -1746,7 +1765,7 @@ void AxiomMain() {
     Vars->vdg_end = VDG_END;
 
     memset((byte*)VDG_RAM, ' ', VDG_END-VDG_RAM);
-    strcpy((char*)VDG_RAM+25, "AXIOM\x74\x71");
+    strcpy((char*)VDG_RAM+22, "AXIOM\150\164\161C\151"); // "AXIOM(41C)"
 
     if (ValidateWizPort((struct wiz_port*)0xFF68)==OKAY) {
         Vars->wiz_port = (struct wiz_port*)0xFF68;

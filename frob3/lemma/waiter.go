@@ -240,7 +240,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 	}()
 
 	var block0 *os.File
-	quint := make([]byte, 5)
+	//XX quint := make([]byte, 5)
 
 	for {
 		cmd, n, p := ReadFive(conn)
@@ -264,9 +264,9 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				}
 			}
 
-		case coms.CMD_SP_PC: // MISUSES N
-			log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
-			log.Printf("ReadFive: sp=%x pc=%x", n, p)
+		// case coms.CMD_SP_PC: // MISUSES N
+			// log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
+			// log.Printf("ReadFive: sp=%x pc=%x", n, p)
 
 		case coms.CMD_LOG:
 			{
@@ -278,18 +278,19 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				log.Printf("ReadFive: LOG %q", data)
 			}
 
-		case coms.CMD_REV:
-			{
-				data := make([]byte, n)
-				_, err := io.ReadFull(conn, data)
-				if err != nil {
-					log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
-				}
-				log.Printf("ReadFive: REV %q", data)
-			}
+		// case coms.CMD_REV:
+			// {
+				// data := make([]byte, n)
+				// _, err := io.ReadFull(conn, data)
+				// if err != nil {
+					// log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
+				// }
+				// log.Printf("ReadFive: REV %q", data)
+			// }
 
-		case coms.CMD_INKEY: // N=0, OR MISUSES N
-			log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+		//XX --- INKEY and GETCHAR are now synchronous. ---
+		//XX case coms.CMD_INKEY: // N=0, OR MISUSES N
+			//XX log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
 		case coms.CMD_DATA: // Sort of a core dump?
 			{
@@ -648,8 +649,8 @@ func InitDemos() {
 		CMD_POKE:  coms.CMD_POKE,
 		CMD_PEEK:  coms.CMD_PEEK,
 		CMD_DATA:  coms.CMD_DATA,
-		CMD_REV:   coms.CMD_REV,
-		CMD_SP_PC: coms.CMD_SP_PC,
+		// CMD_REV:   coms.CMD_REV,
+		// CMD_SP_PC: coms.CMD_SP_PC,
 	}
 
 	// Some server-side demos live in canvas/life.go.

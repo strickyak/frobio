@@ -1,8 +1,8 @@
 package lemma
 
 func init() {
-	Add(0, 0, "LEMMA41", &Card{
-		Text: `Welcome to Lemma41, "{{ .Hostname }}".
+	Add(0, 0, "LEMMA(41C)", &Card{
+		Text: `Welcome to Lemma(41C), "{{ .Hostname }}".
 This is LEMMA's starting point.
 You can return here by typing 0.
 `,
@@ -175,14 +175,8 @@ These probably do nothing, unless the 'LEMMINGS' directory has files test9[1-9].
 	Add(98, 90, "(test 98)", &Card{
 		Launch: ".test98.lem",
 	})
-	Add(99, 90, "(test 99)", &Card{
-		Launch: ".test99.lem",
-	})
-	Add(991, 90, "(test coypu-for-copico)", &Card{
+	Add(99, 90, "(test coypu-for-copico)", &Card{
 		Launch: ".coypu-for-copico.bin",
-	})
-	Add(992, 90, "(test coypu-for-copico2)", &Card{
-		Launch: ".coypu-for-copico2.bin",
 	})
 
 	Add(80, 0, "Video Player for coco3", &Card{})

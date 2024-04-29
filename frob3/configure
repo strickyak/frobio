@@ -62,6 +62,11 @@ cat <<,,,,,,,, >Makefile
 export SHELL := /bin/bash
 
 export SHELF:=$SHELF
+export HOME:=\$(SHELF)
+export PATH:=\$(SHELF)/bin:/usr/bin:/bin
+export GOPATH:=\$(SHELF)
+export GOBIN:=\$(SHELF)/bin
+
 export F:=$F
 export A:=$A
 export NITROS9:=$NITROS9
@@ -79,7 +84,7 @@ export GCC6809:=$GCC6809
 export OS9:=$OS9
 export DECB:=$DECB
 export GO:=$GO
-#notused# export BUILD:=$BUILD
+export BUILD:=$BUILD
 
 include \$F/frob3.mk
 ,,,,,,,,

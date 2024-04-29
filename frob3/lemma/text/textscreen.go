@@ -75,12 +75,12 @@ func (t *TextNav) WriteLine(y uint, format string, args ...any) {
 // Inkey
 
 func (t *TextNav) Inkey() byte {
-	t.com.WriteQuint(coms.CMD_INKEY, 0, nil) // request inkey
+	t.com.WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
 
 	var q coms.Quint
 	t.com.ReadFull(q[:])
 	switch q.Command() {
-	case coms.CMD_INKEY:
+	case coms.CMD_GETCHAR:
 		return byte(q.P())
 	default:
 		log.Panicf("TextNav.Inkey: Unexpected quint: %02x", q)

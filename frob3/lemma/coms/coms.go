@@ -13,6 +13,7 @@ const (
 	CMD_HELLO = 1 // Similar to Peek Data.
 	CMD_CALL  = 255
 
+	CMD_GETCHAR   = 192 // Blocking. request with n=0.  reply with n=0, p is char.
 	CMD_KEYBOARD  = 193 // request with n=0.  reply with n=8.
 	CMD_SUM       = 194 // request with n & p.  reply with sum in p.
 	CMD_PEEK2     = 195 // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
@@ -23,12 +24,12 @@ const (
 	CMD_LEVEL0 = 199 // when Level0 needs attention, it sends 199.
 
 	CMD_LOG     = 200
-	CMD_INKEY   = 201
+	CMD_INKEY   = 201  // Nonblocking. request with n==0.  reply with n=0, p is char.
 	CMD_PUTCHAR = 202
 	CMD_PEEK    = 203
 	CMD_DATA    = 204
-	CMD_SP_PC   = 205
-	CMD_REV     = 206
+	// CMD_SP_PC   = 205
+	// CMD_REV     = 206
 
 	CMD_BLOCK_READ     = 207 // block device
 	CMD_BLOCK_WRITE    = 208 // block device

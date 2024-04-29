@@ -69,8 +69,8 @@ SERVE_HIJACK:
   cmpb #CMD_POKE
   lbeq DO_POKE
 
-  cmpb #CMD_INKEY
-  lbeq DO_INKEY
+  cmpb #CMD_GETCHAR
+  lbeq DO_GETCHAR
 
   ; otherwise
   ldx #$0400    ; splash junk on the screen, to show it.
@@ -103,11 +103,11 @@ DO_PEEK2:
 
   lbra SERVE_HIJACK
 
-DO_INKEY:
+DO_GETCHAR:
   lbsr CALL_OLD_KEYIN
-  beq DO_INKEY   ; keep looking while no key
-  sta INKEY_PACKET+4
-  ldx #INKEY_PACKET
+  beq DO_GETCHAR   ; keep looking while no key
+  sta GETCHAR_PACKET+4
+  ldx #GETCHAR_PACKET
   ldy #5
   jsr [PTR_TO_TCP1WRITE]
   lbra SERVE_HIJACK
@@ -170,8 +170,8 @@ HIJACK_KEY_PACKET:
   fcb CMD_HDBDOS_HIJACK
   fdb 256+32  ; len(p0) + len(MMU + Palette)
   fdb 0
-INKEY_PACKET:
-  fcb CMD_INKEY
+GETCHAR_PACKET:
+  fcb CMD_GETCHAR
   fdb 0     ; empty payload
   fcb 0
   fcb 0     ; poke keystroke here
@@ -181,13 +181,16 @@ PEEK2_PACKET:
   fdb 0     ; P
 
 
-CMD_POKE equ 0
-CMD_CALL equ 255
-CMD_PEEK2 equ 195  // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
+CMD_POKE    equ 0
+CMD_CALL    equ 255
+CMD_GETCHAR equ 192
+CMD_KEYBOARD equ 193
+CMD_SUM      equ 194
+CMD_PEEK2    equ 195  // request: n=4, p=FFFF (wanted n, wanted p)  reply: n, p, data.
 CMD_BEGIN_MUX equ 196
 CMD_MID_MUX   equ 197
 CMD_END_MUX   equ 198
-CMD_LEVEL0 equ 199 // when Level0 needs attention, it sends 199.
+CMD_LEVEL0  equ 199 // when Level0 needs attention, it sends 199.
 CMD_LOG     equ 200
 CMD_INKEY   equ 201
 CMD_PUTCHAR equ 202
