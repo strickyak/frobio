@@ -175,39 +175,39 @@ type LineBuf struct {
 func (lb *LineBuf) GetLine() string {
 	var buf []byte
 	for {
-log.Printf("NANDO @@@ askchar")
+		log.Printf("NANDO @@@ askchar")
 		coms.Wrap(lb.Ses.Conn).WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
-log.Printf("NANDO @@@ read q")
+		log.Printf("NANDO @@@ read q")
 
 		var q coms.Quint
 		_, err := io.ReadFull(lb.Ses.Conn, q[:])
 		Check(err)
 		cmd := q.Command()
-log.Printf("NANDO @@@ cmd %d", cmd)
+		log.Printf("NANDO @@@ cmd %d", cmd)
 
 		switch cmd {
 		case coms.CMD_GETCHAR:
 			ch := byte(q.P())
-log.Printf("NANDO @@@ GETCHAR %d", ch);
+			log.Printf("NANDO @@@ GETCHAR %d", ch)
 			switch ch {
 			case 10, 13:
 				lb.Ses.IScreen.PutChar(ch)
 				lb.Ses.IScreen.Push()
-log.Printf("NANDO @@@ Pushed (10, 13)")
+				log.Printf("NANDO @@@ Pushed (10, 13)")
 				return string(buf)
 			case 8:
 				if len(buf) > 0 {
 					buf = buf[:len(buf)-1] // trim last
 					lb.Ses.IScreen.PutChar(ch)
 					lb.Ses.IScreen.Push()
-log.Printf("NANDO @@@ Pushed (8)")
+					log.Printf("NANDO @@@ Pushed (8)")
 				}
 			default:
 				if ' ' <= ch && ch <= '~' {
 					buf = append(buf, ch)
 					lb.Ses.IScreen.PutChar(ch)
 					lb.Ses.IScreen.Push()
-log.Printf("NANDO @@@ Pushed $d.", ch)
+					log.Printf("NANDO @@@ Pushed $d.", ch)
 				} else {
 					log.Printf("LineBuf: weird char: %d", ch)
 				}

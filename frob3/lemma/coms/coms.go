@@ -24,7 +24,7 @@ const (
 	CMD_LEVEL0 = 199 // when Level0 needs attention, it sends 199.
 
 	CMD_LOG     = 200
-	CMD_INKEY   = 201  // Nonblocking. request with n==0.  reply with n=0, p is char.
+	CMD_INKEY   = 201 // Nonblocking. request with n==0.  reply with n=0, p is char.
 	CMD_PUTCHAR = 202
 	CMD_PEEK    = 203
 	CMD_DATA    = 204

@@ -265,8 +265,8 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			}
 
 		// case coms.CMD_SP_PC: // MISUSES N
-			// log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
-			// log.Printf("ReadFive: sp=%x pc=%x", n, p)
+		// log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
+		// log.Printf("ReadFive: sp=%x pc=%x", n, p)
 
 		case coms.CMD_LOG:
 			{
@@ -279,18 +279,18 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			}
 
 		// case coms.CMD_REV:
-			// {
-				// data := make([]byte, n)
-				// _, err := io.ReadFull(conn, data)
-				// if err != nil {
-					// log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
-				// }
-				// log.Printf("ReadFive: REV %q", data)
-			// }
+		// {
+		// data := make([]byte, n)
+		// _, err := io.ReadFull(conn, data)
+		// if err != nil {
+		// log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
+		// }
+		// log.Printf("ReadFive: REV %q", data)
+		// }
 
 		//XX --- INKEY and GETCHAR are now synchronous. ---
 		//XX case coms.CMD_INKEY: // N=0, OR MISUSES N
-			//XX log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
+		//XX log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
 		case coms.CMD_DATA: // Sort of a core dump?
 			{
@@ -509,7 +509,7 @@ func Serve(conn net.Conn) {
 	conn.SetReadDeadline(time.Now().Add(timeoutDuration))
 	hellos := GetHellos(conn)
 	// You pass the test.  No more time limits.
-	var noMoreDeadline time.Time  // the "zero" value.
+	var noMoreDeadline time.Time // the "zero" value.
 	conn.SetReadDeadline(noMoreDeadline)
 
 	// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
@@ -524,7 +524,7 @@ func Serve(conn net.Conn) {
 	}
 
 	if *SCAN_KEYBOARD {
-        	keybits := ScanKeyboard(conn)
+		keybits := ScanKeyboard(conn)
 		log.Printf("Keybits: % 03x", keybits)
 	}
 

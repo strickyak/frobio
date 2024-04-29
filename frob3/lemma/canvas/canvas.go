@@ -101,21 +101,21 @@ func (can *Canvas) Verify(conn net.Conn) {
 			case API.CMD_DATA:
 				break HDR
 			// case API.CMD_REV:
-				// log.Printf("CMD: %d", hdr[0])
-				// {
-					// paylen := (uint(hdr[1]) << 8) | uint(hdr[2])
-					// pay := make([]byte, paylen)
-					// cc, err = conn.Read(pay)
-					// if err != nil {
-						// panic("read pay")
-					// }
-					// if uint(cc) != paylen {
-						// log.Panicf("short read payload: got %d, want %d", cc, paylen)
-					// }
-					// log.Printf("DATA: %d %q", hdr[0], pay)
-				// }
+			// log.Printf("CMD: %d", hdr[0])
+			// {
+			// paylen := (uint(hdr[1]) << 8) | uint(hdr[2])
+			// pay := make([]byte, paylen)
+			// cc, err = conn.Read(pay)
+			// if err != nil {
+			// panic("read pay")
+			// }
+			// if uint(cc) != paylen {
+			// log.Panicf("short read payload: got %d, want %d", cc, paylen)
+			// }
+			// log.Printf("DATA: %d %q", hdr[0], pay)
+			// }
 			// case API.CMD_SP_PC:
-				// log.Printf("SP_PC: %v", hdr)
+			// log.Printf("SP_PC: %v", hdr)
 
 			default:
 				log.Fatalf("expecting CMD_DATA, got %d", hdr[0])
