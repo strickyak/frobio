@@ -1,4 +1,4 @@
-package menu
+package lemma
 
 type MenuGroup struct {
 	Name     string

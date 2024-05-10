@@ -9,10 +9,10 @@ import (
 	"os"
 	PFP "path/filepath"
 	"strings"
-	//"time"
+	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
-	"github.com/strickyak/frobio/frob3/lemma/finder"
+	//"github.com/strickyak/frobio/frob3/lemma/finder"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -24,7 +24,7 @@ type HdbDosSession struct {
 	Ses      *Session
 	NumReads int64 // When 1, send injections.
 
-	DriveSession *finder.DriveSession
+	DriveSession *DriveSession
 }
 
 func UndoAlterTask0(ses *Session, saved byte) {
@@ -160,30 +160,37 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 }
 
 func CreateHomeIfNeeded(ses *Session) (string, string) {
-	root := *finder.FlagNavRoot
+	root := *FlagNavRoot
 	homes := "HOMES"
 	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
-	retain := PFP.Join(home, finder.RETAIN_10_DAYS)
+	retain := PFP.Join(home, RETAIN_10_DAYS)
 
-	os.Mkdir(root, finder.DirPerm)
-	os.Mkdir(PFP.Join(root, homes), finder.DirPerm)
-	os.Mkdir(PFP.Join(root, home), finder.DirPerm)
-	os.Mkdir(PFP.Join(root, retain), finder.DirPerm)
+	os.Mkdir(root, DirPerm)
+	os.Mkdir(PFP.Join(root, homes), DirPerm)
+	os.Mkdir(PFP.Join(root, home), DirPerm)
+	os.Mkdir(PFP.Join(root, retain), DirPerm)
 	Log("CreateHomeIfNeeded: home = %q", home)
 	return home, retain
 }
 
 // Entry from waiter.go for a Hijack.
 func HdbDosHijack(ses *Session, payload []byte) {
+	log.Printf("ZXC HdbDosHijack BEGIN")
 	com := coms.Wrap(ses.Conn)
 
 	OnText40At2000Run(ses, payload, func() {
+		log.Printf("ZXC OnText40At2000Run(TCS)")
 		// time.Sleep(1 * time.Second)
 		TextChooserShell(com, ses.HdbDos.DriveSession)
 	})
 
+	log.Printf("ZXC HdbDosHijack END")
 	// We tell coco that this is the END of the HIJACK.
 	com.WriteQuint(coms.CMD_HDBDOS_HIJACK, 0, []byte{})
+}
+
+func NewDriveTempName(drive uint) string {
+	return Format("new-rs%02d.dsk", drive) // temporary name
 }
 
 // Entry from waiter.go for a Sector.
@@ -193,7 +200,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
-			DriveSession: finder.NewDriveSession(
+			DriveSession: NewDriveSession(
 				coms.Wrap(ses.Conn),
 				home, retain),
 		}
@@ -220,33 +227,34 @@ func HdbDosSector(ses *Session, payload []byte) {
 
 	// Create the drive record, if needed.  Call it d.
 	ds := h.DriveSession
-	d := ds.CreateDriveIfNeeded(byte(drive))
+	d := ds.CreateEmptyDriveImageAtIfNeeded(byte(drive))
 
 	// Open the drive, if needed.
 	// Has it been mounted?
-	if d.Path == "" {
-		// No mount, so make it an empty disk.
-		d.Path = Format("new-rs%02d.dsk", drive) // temporary name
-		Log("HdbDosSector: d.Path empty, creating path %q, empty dskini", d.Path)
-		d.Image = EmptyDecbInitializedDiskImage()
-		d.Dirty = false
-		d.CreationTimestamp = finder.Timestamp()
-		log.Printf("@@@@@@@@@@ made empty DriveImage name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
-	}
 	if d.Image == nil {
-		Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
-		unixfile := PFP.Join(*finder.FlagNavRoot, d.Path)
-		bb, err := os.ReadFile(unixfile)
-		if err != nil {
-			log.Panicf("HdbDosSector ReadFile failed %q: %q: %v", d.Path, unixfile, err)
+		if d.Path == "" {
+			// No mount, so make it an empty disk.
+			//<< d.Path = Format("new-rs%02d.dsk", drive) // temporary name
+			Log("HdbDosSector: d.Path empty, creating path %q, empty dskini", d.Path)
+			d.Image = EmptyDecbInitializedDiskImage()
+			d.Dirty = false
+			d.CreationTimestamp = Timestamp()
+			log.Printf("@@@@@@@@@@ made empty DriveImage name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
+		} else {
+			Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
+			unixfile := PFP.Join(*FlagNavRoot, d.Path)
+			bb, err := os.ReadFile(unixfile)
+			if err != nil {
+				log.Panicf("HdbDosSector ReadFile failed %q: %q: %v", d.Path, unixfile, err)
+			}
+			if !In(int64(len(bb)), FloppySizes) {
+				log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
+			}
+			d.Image = bb
+			d.Dirty = false
+			d.CreationTimestamp = Timestamp()
+			log.Printf("@@@@@@@@@@ HdbDosSector: opend file %q DriveImage number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 		}
-		if !In(int64(len(bb)), finder.FloppySizes) {
-			log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
-		}
-		d.Image = bb
-		d.Dirty = false
-		d.CreationTimestamp = finder.Timestamp()
-		log.Printf("@@@@@@@@@@ HdbDosSector: opend file %q DriveImage number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 	}
 
 	switch cmd {
@@ -268,6 +276,9 @@ func HdbDosSector(ses *Session, payload []byte) {
 		com.WriteQuint(coms.CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
+		if d.Path == "" {
+			d.Path = NewDriveTempName(drive) // Assign name when dirtied.
+		}
 		copy(d.Image[front:back], payload[5:])
 		d.Dirty = true
 		log.Printf("HDB WRITE lsn=%d.: %02x", lsn, payload[5:])
@@ -362,4 +373,147 @@ func EmptyDecbInitializedDiskImage() []byte {
 		bb[i] = 0xFF
 	}
 	return bb
+}
+
+//////////////////////////////////////////////
+
+/*
+package finder
+
+import (
+	"flag"
+	"log"
+	"os"
+	PFP "path/filepath"
+	"time"
+
+	"github.com/strickyak/frobio/frob3/lemma/coms"
+	. "github.com/strickyak/frobio/frob3/lemma/util"
+)
+*/
+
+const RETAIN_10_DAYS = "RETAIN-10-DAYS"
+
+const NumDrives = 10
+const DirPerm = 0775
+const FilePerm = 0664
+
+var FlagNavRoot = flag.String("nav_root", "", "top of navigable tree on native filesystem")
+
+type DriveImage struct {
+	Path              string
+	Image             []byte
+	Dirty             bool
+	CreationTimestamp string
+}
+
+func (di *DriveImage) String() string {
+	return Format("{DriveImage p=%q len=%d dirt=%v ts=%q}",
+		di.Path, len(di.Image), di.Dirty, di.CreationTimestamp)
+}
+func (di *DriveImage) GoString() string {
+	return Format("{gs:DriveImage p=%q len=%d dirt=%v ts=%q}",
+		di.Path, len(di.Image), di.Dirty, di.CreationTimestamp)
+}
+
+type DriveSession struct {
+	com    *coms.Comm
+	drives [NumDrives]*DriveImage
+	home   string
+	retain string
+}
+
+func (di *DriveSession) String() string {
+	return Format("{DriveSession: %v home=%q}", di.drives, di.home)
+}
+
+func NewDriveSession(com *coms.Comm, home string, retain string) *DriveSession {
+	return &DriveSession{
+		com:    com,
+		home:   home,
+		retain: retain,
+	}
+}
+
+func (ds *DriveSession) CreateEmptyDriveImageAtIfNeeded(nth byte) *DriveImage {
+	if ds.drives[nth] == nil {
+		ds.drives[nth] = &DriveImage{}
+	}
+	return ds.drives[nth]
+}
+
+func (ds *DriveSession) IsModelMounted(c Model) (drive byte, ok bool) {
+	Log("Is Model Mounted? %q", c.Path())
+	cPath := c.Path()
+	for i, e := range ds.drives {
+		if e != nil {
+			Log("........... %d: %q", i, e.Path)
+		}
+		if e != nil && e.Path == cPath {
+			if ok {
+				// oops.. got mounted twice!
+				log.Panicf("IsModelMounted: MOUNTED TWICE! %q at %d and %d", cPath, drive, i)
+			}
+			drive, ok = byte(i), true
+		}
+	}
+	return drive, ok
+}
+
+func (ds *DriveSession) SetDrive(nth byte, c Model) {
+	log.Printf("SetDrive: %d %v", nth, c)
+	if mounted, ok := ds.IsModelMounted(c); ok {
+		if nth == mounted {
+			Log("@@@ Already mounted on the correct mount: %q on %d", c.Path(), nth)
+			return // Already mounted on correct mount.
+		}
+		ds.HdbDosCleanupOneDrive(mounted) // Save if dirty.
+		ds.drives[mounted] = nil          // Unmount.
+	}
+
+	d := ds.drives[nth]
+	if d != nil {
+		ds.HdbDosCleanupOneDrive(nth) // Save if dirty.
+		ds.drives[nth] = nil          // Unmount.
+	}
+	d = ds.CreateEmptyDriveImageAtIfNeeded(nth)
+	Log("==========> %d: %q", nth, d.Path)
+
+	base, ok := c.(*BaseModel)
+	Log("@@@@@@@@@@@@@@ base, ok c: %v %v %v", base, ok, c)
+	if ok && !base.isDir {
+
+		Log("@@@@@@@@@@@@@@ base.size, FloppySizes: %v %v", base.Size(), FloppySizes)
+		if In(base.Size(), FloppySizes) {
+			Log("@@@@@@@@@@@@@@ IN")
+			d.Path = c.Path()
+			d.Image = nil
+			d.Dirty = false
+		}
+	}
+	Log("@@@@@@@@@@@@@@ SetDrive final: %#v", d)
+}
+
+func (ds *DriveSession) HdbDosCleanupOneDrive(driveNum byte) {
+	drive := ds.drives[driveNum]
+	if drive == nil || !drive.Dirty {
+		return
+	}
+	// if dirty:
+	dest := PFP.Join(*FlagNavRoot, ds.retain, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
+	err := os.WriteFile(dest, drive.Image, FilePerm)
+	if err != nil {
+		log.Printf("BAD: HdbDosCleanup: Error saving dirty file %d bytes %q as %q: %v", len(drive.Image), drive.Path, dest, err)
+	} else {
+		log.Printf("HdbDosCleanup: Saved dirty file %d bytes %q as %q", len(drive.Image), drive.Path, dest)
+	}
+	ds.drives[driveNum] = nil // Delete the drive record.
+}
+func Timestamp() string {
+	return time.Now().UTC().Format("2006-01-02-150405Z")
+}
+func (ds *DriveSession) HdbDosCleanup() {
+	for driveNum, _ := range ds.drives {
+		ds.HdbDosCleanupOneDrive(byte(driveNum))
+	}
 }

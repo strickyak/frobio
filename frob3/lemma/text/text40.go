@@ -14,15 +14,23 @@ import (
 // Struct
 type Text40 struct {
 	Screen [2 * 40 * 24]byte
+	Com    *coms.Comm
+}
+
+func NewText40(com *coms.Comm) *Text40 {
+	return &Text40{
+		Com: com,
+	}
 }
 
 // W, H
-func (t *Text40) W() uint { return 40 }
-func (t *Text40) H() uint { return 24 }
+func (t *Text40) W() uint          { return 40 }
+func (t *Text40) H() uint          { return 24 }
+func (t *Text40) Comm() *coms.Comm { return t.Com }
 
 // Push
-func (t *Text40) Push(com *coms.Comm) {
-	com.WriteQuint(coms.CMD_POKE, 0x2000, t.Screen[:])
+func (t *Text40) Push() {
+	t.Com.WriteQuint(coms.CMD_POKE, 0x2000, t.Screen[:])
 }
 
 // InvertChar
@@ -47,11 +55,3 @@ func (t *Text40) Get(x, y uint) (ascii byte, fl TextFlags) {
 	fl = Cond((t.Screen[y*80+2*x+1] == FgBg(SimpleYellow, SimpleBlack)), 0, InverseFlag)
 	return
 }
-
-// Render
-
-// Inkey
-
-// NavChoice
-
-// Extra...

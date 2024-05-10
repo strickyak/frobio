@@ -8,85 +8,31 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-// Struct
-type TextNav struct {
-	glass TextScreen
-	com   *coms.Comm
-}
-
-func NewTextNav(glass TextScreen, com *coms.Comm) *TextNav {
-	return &TextNav{
-		glass: glass,
-		com:   com,
-	}
-}
-
-// W, H
-func (t *TextNav) W() uint { return t.glass.W() }
-func (t *TextNav) H() uint { return t.glass.H() }
-
-// Push
-func (t *TextNav) Push() {
-	t.glass.Push(t.com)
-}
-
-// InvertChar
-func (t *TextNav) InvertChar(x, y uint) {
-	t.glass.InvertChar(x, y)
-}
-
 // InvertLine
-func (t *TextNav) InvertLine(y uint) {
-	w := t.glass.W()
+func TextScreenInvertLine(t TextScreen, y uint) {
+	w := t.W()
 	for i := uint(0); i < w; i++ {
 		t.InvertChar(i, y)
 	}
 }
 
-// Put
-
-func (t *TextNav) Put(x, y uint, ascii byte, fl TextFlags) {
-	t.glass.Put(x, y, ascii, fl)
-}
-
-// Get
-
-func (t *TextNav) Get(x, y uint) (ascii byte, fl TextFlags) {
-	ascii, fl = t.glass.Get(x, y)
-	return
-}
-
 // WriteLine
-func (t *TextNav) WriteLine(y uint, format string, args ...any) {
-	w, h := t.glass.W(), t.glass.H()
+func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
+	w, h := t.W(), t.H()
 	AssertLT(y, h)
 	s := fmt.Sprintf(format, args...)
 	if Slen(s) > w {
 		s = s[:w] // Trim to w bytes
 	}
 	for x := uint(0); x < Slen(s); x++ {
-		t.glass.Put(x, y, s[x], 0)
+		t.Put(x, y, s[x], 0)
 	}
 	for x := Slen(s); x < w; x++ {
-		t.glass.Put(x, y, ' ', 0)
+		t.Put(x, y, ' ', 0)
 	}
 }
 
 // Inkey
-
-func (t *TextNav) Inkey() byte {
-	t.com.WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
-
-	var q coms.Quint
-	t.com.ReadFull(q[:])
-	switch q.Command() {
-	case coms.CMD_GETCHAR:
-		return byte(q.P())
-	default:
-		log.Panicf("TextNav.Inkey: Unexpected quint: %02x", q)
-	}
-	panic(0)
-}
 
 type TextFlags uint
 
@@ -100,5 +46,41 @@ type TextScreen interface {
 	Put(x, y uint, ch byte, fl TextFlags)
 	Get(x, y uint) (ch byte, fl TextFlags)
 	InvertChar(x, y uint)
-	Push(com *coms.Comm)
+	Push()
+	Comm() *coms.Comm
+}
+
+// DirectKeyboard should talk to Axiom, but not to Hijack.
+func DirectKeyboard(com *coms.Comm) byte {
+	com.WriteQuint(coms.CMD_KEYBOARD, 0, nil) // request inkey
+
+	var q coms.Quint
+	com.ReadFull(q[:])
+	if q.Command() != coms.CMD_KEYBOARD {
+		log.Panicf("DirectKeyboard: Unexpected quint: % 3x", q)
+	}
+	if q.N() != 8 {
+		log.Panicf("DirectKeyboard: Unexpected N: % 3x", q)
+	}
+
+	var keybits [8]byte
+	com.ReadFull(keybits[:])
+
+	log.Printf("DIRECT KEYBOARD: % 3x", keybits[:])
+	return 0
+}
+
+func GetCharFromKeyboard(com *coms.Comm) byte {
+	log.Printf("ZXC Calling GetCharFromKeyboard... send quint GETCHAR....")
+	com.WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
+
+	var q coms.Quint
+	com.ReadFull(q[:])
+	log.Printf("ZXC Got response: %v", q)
+
+	if q.Command() != coms.CMD_GETCHAR {
+		log.Panicf("DirectKeyboard: Unexpected quint: % 3x", q)
+	}
+
+	return byte(q.P())
 }

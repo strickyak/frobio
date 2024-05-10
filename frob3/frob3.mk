@@ -479,7 +479,7 @@ lemma-eou.tar.bz2: _FORCE_
 #   You can hit ^C to kill it.  `make` will then print an error message
 #   that you can ignore.
 ###lemma-waiter: lemma-waiter.go all-without-gccretro
-lemma-waiter: lemma-waiter.go
+lemma-waiter: lemma-waiter.go $(wildcard $F/lemma/*.go $F/lemma/*/*.go)
 	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/lemma-waiter -x lemma-waiter.go
 	ln -fv lemma-waiter ../bin
 ###broadcast-burn: broadcast-burn.go all-without-gccretro
