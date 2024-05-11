@@ -147,33 +147,6 @@ type Screener interface {
 type GimeScreen struct {
 }
 
-////////////////////////////////
-
-//import (
-//"log"
-//"os"
-
-//"github.com/strickyak/frobio/frob3/lemma/menu"
-//. "github.com/strickyak/frobio/frob3/lemma/util"
-//)
-
-/*
-type Region int
-const (
-	KidsRegion = iota
-	MenusRegion
-	MenuRegion
-	HelpRegion
-	InfoRegion
-)
-
-type Focus struct {
-	Region Region
-	Major uint
-	Minor uint
-}
-*/
-
 type Model interface {
 	Order() int
 	Path() string
