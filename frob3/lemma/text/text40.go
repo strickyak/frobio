@@ -28,8 +28,8 @@ func (t *Text40) W() uint          { return 40 }
 func (t *Text40) H() uint          { return 24 }
 func (t *Text40) Comm() *coms.Comm { return t.Com }
 
-// Push
-func (t *Text40) Push() {
+// Flush
+func (t *Text40) Flush() {
 	t.Com.WriteQuint(coms.CMD_POKE, 0x2000, t.Screen[:])
 }
 

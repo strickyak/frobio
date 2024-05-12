@@ -128,6 +128,6 @@ func (o *Comm) PeekRam(addr uint, n uint) []byte {
 	cmd, p, bb := o.ReadQuintAndPayload()
 	AssertEQ(cmd, CMD_DATA)
 	AssertEQ(p, addr)
-	AssertEQ(Len(bb), n)
+	AssertEQ(LenSlice(bb), n)
 	return bb
 }

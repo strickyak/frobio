@@ -59,7 +59,7 @@ package lemma
 //X		c.Kids()
 //X		Log("NavStep: gonna Render: %v ( %v , %v )", nav, c, focus)
 //X		nav.Render(c, focus)
-//X		t.Push()
+//X		t.Flush()
 //X		b := t.Inkey()
 //X		log.Printf("NavStep: GOT INKEY %d.", b)
 //X		switch b {

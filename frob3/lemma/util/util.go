@@ -148,17 +148,17 @@ func BytesFormat(format string, args ...any) []byte {
 	return []byte(Format(format, args...))
 }
 
-// Len is for slices; it returns uint.
-func Len[T any](x []T) uint {
+// LenSlice is for slices; it returns uint.
+func LenSlice[T any](x []T) uint {
 	return uint(len(x))
 }
 
-// Slen is for strings; it returns uint.
-func Slen(s string) uint { // returns unsigned
+// LenStr is for strings; it returns uint.
+func LenStr(s string) uint { // returns unsigned
 	return uint(len(s))
 }
 
-func In[T comparable_](x T, slice []T) bool {
+func InSlice[T comparable_](x T, slice []T) bool {
 	for _, e := range slice {
 		if e == x {
 			return true
@@ -169,5 +169,26 @@ func In[T comparable_](x T, slice []T) bool {
 
 // Until Go 1.20:
 type comparable_ interface {
-	~byte | ~rune | ~int | ~uint | int64 | ~string
+	~int8 | ~uint8 | ~int16 | ~uint16 | ~int32 | ~uint32 | ~int | ~uint | ~int64 | ~uint64 | ~string
+}
+
+func NonBlockingReadChan[T any](c <-chan *T) (*T, bool) {
+	select {
+	case p, ok := <-c:
+		if !ok {
+			log.Panicf("Read on bad channel of type %T", p)
+		}
+		return p, true
+	default:
+		return nil, false
+	}
+}
+
+func NonBlockingWriteChan[T any](c chan<- *T, p *T) (ok bool) {
+	select {
+	case c <- p:
+		return true
+	default:
+		return false
+	}
 }

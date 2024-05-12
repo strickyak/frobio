@@ -46,7 +46,7 @@ type IScreen interface {
 	Clear()
 	PutChar(ch byte)
 	PutStr(s string)
-	Push()
+	Flush()
 	//Width() int
 	//Height() int
 }
@@ -56,7 +56,7 @@ type AxScreen struct {
 	Ses *Session
 }
 
-func (ax *AxScreen) Push() {
+func (ax *AxScreen) Flush() {
 }
 
 func (ax *AxScreen) Clear() {
@@ -113,7 +113,7 @@ func (ax *XTextScreen) PutStr(s string) {
 		ax.PutChar(byte(r))
 	}
 }
-func (t *XTextScreen) Push() {
+func (t *XTextScreen) Flush() {
 	AssertEQ(len(t.B), 512)
 	AssertEQ(t.Addr, 0x0400)
 	coms.Wrap(t.Ses.Conn).WriteQuint(coms.CMD_POKE, uint(t.Addr), t.B)
@@ -192,21 +192,21 @@ func (lb *LineBuf) GetLine() string {
 			switch ch {
 			case 10, 13:
 				lb.Ses.IScreen.PutChar(ch)
-				lb.Ses.IScreen.Push()
+				lb.Ses.IScreen.Flush()
 				log.Printf("NANDO @@@ Pushed (10, 13)")
 				return string(buf)
 			case 8:
 				if len(buf) > 0 {
 					buf = buf[:len(buf)-1] // trim last
 					lb.Ses.IScreen.PutChar(ch)
-					lb.Ses.IScreen.Push()
+					lb.Ses.IScreen.Flush()
 					log.Printf("NANDO @@@ Pushed (8)")
 				}
 			default:
 				if ' ' <= ch && ch <= '~' {
 					buf = append(buf, ch)
 					lb.Ses.IScreen.PutChar(ch)
-					lb.Ses.IScreen.Push()
+					lb.Ses.IScreen.Flush()
 					log.Printf("NANDO @@@ Pushed $d.", ch)
 				} else {
 					log.Printf("LineBuf: weird char: %d", ch)
@@ -362,7 +362,7 @@ func Run(ses *Session) {
 		r := recover()
 		if r != nil {
 			ses.IScreen.PutStr(fmt.Sprintf("\n\n(session Run) FATAL ERROR: %v\n", r))
-			ses.IScreen.Push()
+			ses.IScreen.Flush()
 			panic(r)
 		}
 	}()
@@ -404,7 +404,7 @@ CARD:
 			ses.IScreen.PutStr(ns.Str)
 		}
 		ses.IScreen.PutStr("> ")
-		ses.IScreen.Push()
+		ses.IScreen.Flush()
 
 		line := "@"
 		if *ForcePage == 0 {
@@ -464,7 +464,7 @@ CARD:
 		}
 		continue CARD
 	DELAY:
-		ses.IScreen.Push()
+		ses.IScreen.Flush()
 		time.Sleep(3 * time.Second)
 	}
 }

@@ -21,13 +21,13 @@ func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
 	w, h := t.W(), t.H()
 	AssertLT(y, h)
 	s := fmt.Sprintf(format, args...)
-	if Slen(s) > w {
+	if LenStr(s) > w {
 		s = s[:w] // Trim to w bytes
 	}
-	for x := uint(0); x < Slen(s); x++ {
+	for x := uint(0); x < LenStr(s); x++ {
 		t.Put(x, y, s[x], 0)
 	}
-	for x := Slen(s); x < w; x++ {
+	for x := LenStr(s); x < w; x++ {
 		t.Put(x, y, ' ', 0)
 	}
 }
@@ -46,7 +46,7 @@ type TextScreen interface {
 	Put(x, y uint, ch byte, fl TextFlags)
 	Get(x, y uint) (ch byte, fl TextFlags)
 	InvertChar(x, y uint)
-	Push()
+	Flush()
 	Comm() *coms.Comm
 }
 

@@ -20,8 +20,8 @@ type TextVDG struct {
 func (t *TextVDG) W() uint { return 32 }
 func (t *TextVDG) H() uint { return 16 }
 
-// Push
-func (t *TextVDG) Push(com *coms.Comm) {
+// Flush
+func (t *TextVDG) Flush(com *coms.Comm) {
 	com.WriteQuint(coms.CMD_POKE, 0x400, t.Screen[:])
 }
 

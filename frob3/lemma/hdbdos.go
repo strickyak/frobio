@@ -138,7 +138,7 @@ type VideoSettings struct {
 	Minor [8]byte
 }
 
-func (vs *VideoSettings) Push(ses *Session) {
+func (vs *VideoSettings) Flush(ses *Session) {
 	PokeRam(ses.Conn, 0xFF90, []byte{vs.Major})
 	PokeRam(ses.Conn, 0xFF98, vs.Minor[:])
 }
@@ -151,11 +151,11 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 	// Restore COCO VDG text mode. TODO use modes.
 	switch hrwidth {
 	case 0: // VDG Text 32
-		VdgText32Video.Push(ses)
+		VdgText32Video.Flush(ses)
 	case 1: // Gime Text 40
-		GimeText40Video.Push(ses)
+		GimeText40Video.Flush(ses)
 	case 2: // Gime Text 80
-		GimeText80Video.Push(ses)
+		GimeText80Video.Flush(ses)
 	}
 }
 
@@ -222,6 +222,16 @@ func HdbDosSector(ses *Session, payload []byte) {
 	front := 256 * lsn
 	back := front + 256
 
+	/* TODO -- XXX -- BUG -- The calculation of LSN based on 630
+	is assuming that all drives are 35 track.  But we see lots of
+	40 and 80 track drives in the Big Tree.
+	So how should big LSNs be calculated?
+	Normalize everything to 80 tracks, perhaps, and change HDB-DOS.
+	*/
+	if drive > 9 {
+		log.Panicf("HDB-DOS Drive number too big: drive %d for LSN_BIG %d LSN %d", drive, lsnBig, lsn)
+	}
+
 	log.Printf("HdbDos cmd=%x drive=%x lsn=%x paylen=%d.", cmd, drive, lsn, len(payload))
 	DumpHexLines("payload", 0, payload)
 
@@ -247,7 +257,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 			if err != nil {
 				log.Panicf("HdbDosSector ReadFile failed %q: %q: %v", d.Path, unixfile, err)
 			}
-			if !In(int64(len(bb)), FloppySizes) {
+			if !InSlice(int64(len(bb)), FloppySizes) {
 				log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
 			}
 			d.Image = bb
@@ -484,7 +494,7 @@ func (ds *DriveSession) SetDrive(nth byte, c Model) {
 	if ok && !base.isDir {
 
 		Log("@@@@@@@@@@@@@@ base.size, FloppySizes: %v %v", base.Size(), FloppySizes)
-		if In(base.Size(), FloppySizes) {
+		if InSlice(base.Size(), FloppySizes) {
 			Log("@@@@@@@@@@@@@@ IN")
 			d.Path = c.Path()
 			d.Image = nil
