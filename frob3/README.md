@@ -1,69 +1,35 @@
-First you should run these make commands in the $NITROS9DIR:
-```
-$ cd $NITROS9DIR
-$ make PORTS=coco3  dsk
-$ make PORTS=coco3_6309  dsk
-```
+To build, please use https://github.com/strickyak/coco-shelf
 
-Then these should be in your $PATH:
-*  `cmoc`
-*  `lwasm`
-*  `lwlink`
-*  `m6809-unknown-gcc` (version 4.6.4 (gcc6809lw pl9))
-*  `os9`
-*  `decb`
-*  `go` (version 1.18 or later)
+The README there tells you how to set up an Ubuntu machine
+for building frobio and all its dependant packages.
 
-Then build the frobio tools, starting from this frob3 directory:
+What coco-shelf actually does:
 
-```
-$ cd .../frobio/frob3
-$ mkdir build
-$ cd build
-$ ../configure --nitros9=$NITROS9DIR
-$ make
-```
+This frob3 directory is designed to be built in a peer directory
+(usually named `build-frobio`) to the `frobio` directory.
+That is, `build-frobio/` and `frobio/` both have `coco-shelf/`
+as their parent directory.
 
-The results will be in `build/results/CMDS` and `build/results/MODULES`.
-Instead of `build`, you can use any directory, anywhere, as long as you
-change directory to it, and then run the configure program that is in
-this frob3 directory.
+After you make that `build-frobio/` directory and `cd` into it,
+run `../frobio/frob3/configure` which will build a small Makefile,
+which largely depends on rules in `../frobio/frob3/frob3.mk` .
 
-To add the results to a disk image, do this, defining DISK to be
-where your disk image is, or will be:
+Then `make all` will do the job.
+
+To run a Lemma waiter on your LAN, `make run-lemma LAN=10.23.23.23 DHCP=1`
+
+Put the IP address of your server, if it is not 10.23.23.23.
+Put `DHCP` if the coco should get its address from DHCP,
+or leave that out, if the coco should get its address from
+the LAN Waiter.
+
+You probably have to unblock TCP port number 2321
+and UDP port number 12114 in your server's filewall:
 
 ```
-$ make install-to-disk DISK=/tmp/disk.image
+$ sudo ufw allow 2321
+$ sudo ufw allow 12114
 ```
-
-TODO: Build Lemma files for distros.
-
-## Running your own waiter
-
-NOTE: If your server has a firewall, you may have to disable blocks
-on TCP port 2319.  For instance, with the "uncomplicated firewall",
-you would say "sudo ufw allow 2319".
-
-If you run your own waiter on the piece of ethernet connected directly
-(or though a simple hub) to the CocoIO card, staticly configure the IPv4
-settings for that network interface to one of the following:
-
-```
-   (Class A)  10.23.23.23   (netmask 255.255.255.0)
-or (Class B)  176.23.23.23  (netmask 255.255.255.0)
-or (Class C)  192.168.23.23 (netmask 255.255.255.0)
-```
-
-When you boot the Coco with the Axiom bootrom, use the Axiom command "A",
-"B", or "C" to tell the bootrom which of those three your server is on.
-
-If your ethernet needs to be configured to something else, you can use
-the Axiom "I" command to set a different IP address and netmask and router
-for the CocoIO card, and the "W" command to set the IP address to use
-for the waiter.
-
-After any of those commands, you can use "S" to confirm what settings the
-Axiom bootrom will use.
 
 ### Using an alternate waiter.
 
