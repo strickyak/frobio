@@ -79,3 +79,43 @@ Personally, I've never had this procedure fail in such a way to leave the
 CocoIOr unbootable.  But if (say) the power went out during the middle of
 booting, or you shook the connector in such a way that the coco freezes,
 it could be unbootable.
+
+## DIY:  Burning your CocoIOr EEPROM with `netcat` and `burn-rom-fast.lem`
+
+Here's a third way you can upgrade.  If you don't have access to the internet,
+or your DHCP is broken, you can statically configure the wired Ethernet interface
+on your Linux laptop, and run an Ethernet cable directly from your laptop
+to the CocoIOr cartridge.  I recommend statically configuring for IP
+address 10.23.23.23 with a "/24" or "255.255.255.0" netmask and no Gateway.
+
+Follow the "With some risk, how to upgrade a CocoIOr to Axiom 41C using itself"
+instructions, but when you boot with Axiom, hit the SPACE bar as soon as
+it starts the countdown.
+
+Use the `A <Enter>` command to put your Coco on Axiom's default Class A
+network (which will be a random IP address in `10.23.23.*`).
+Use the command `W 10.23.23.23:1234 <Enter>` to set the IP address
+and port number that the laptop will be listening on (your "Waiter").
+Verify these with the Show command: `S <Enter>`.
+
+On your Ubuntu Laptop, tell the firewall to allow access to port 1234,
+and run the `netcat` command `nc` to serve port 1234,
+with standard input redirected from the file `burn-rom-fast.lem`:
+
+```
+$ sudo ufw allow 1234
+
+$ nc -l 1234 < burn-rom-fast.lem >/dev/null
+```
+
+Now tell Axiom to launch `@ <Enter>` and instead of connectiong to a
+Lemma server, it connects directly to the `nc` command, which feeds
+it the `burn-rom-fast.lem` file.   That `nc` command is only
+good for one TCP connection.   Hit ^C and re-run the command
+for another connection.
+
+(You can use this technique to have the Coco load and run any
+"DECB Binary" file (one that uses the `00` five-byte header
+and `FF` five-byte trailer).  If there is more data after the
+five-byte trailer, your binary can read it from WizNet socket 1
+which is already Opened and running.)
