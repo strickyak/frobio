@@ -1,11 +1,11 @@
 # Frobio
 
-Frobio is software written for Computer Conect's `CocoIO*` series
+Frobio is software written for Computer Conect's `CocoIOr` series
 of ethernet cartridges (
 https://computerconect.com/products/cocoio-prom?variant=42556416196788 
 ) for the Radio Shack (Tandy) color computers
 (affectionately called "coco"s).  The primary goal is to make the
-`CocoIO*` cartridges as useful as possible for the Coco community.
+`CocoIOr` cartridges as useful as possible for the Coco community.
 
 The current frobio sources are all in the `frob3` directory.
 
