@@ -185,3 +185,17 @@ This is just for debugging.
 
 The above programs do not read any configuration files.
 All parameters are on the command line.
+
+## WIFI EXTENDER
+
+You don't have wired Ethernet at the location of your Coco?
+
+This "extender" will connect to your Wifi network (2.4 GHz only)
+and make it available on a wired ethernet port.
+(It also puts out more Wifi, which might be useful, but is not why I recommend it.)
+This is $16 on Amazon and is quite easy to set up with a cell phone web browser.
+(You do not need the App or to make an account, even if they encourage it.)
+
+https://www.amazon.com/gp/product/B08DHLCLCY/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1
+
+TP-Link N300 WiFi Extender(RE105), Wall Plug Design, 2.4Ghz only
