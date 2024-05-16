@@ -809,8 +809,8 @@ void TcpEstablish(PARAM_JUST_SOCK) {
 //   PART-LAN-WAITER
 ////////////////////////////////////////
 
-#define LAN_CLIENT_PORT 12113  // L=12 A=1 M=3
-#define LAN_SERVER_PORT 12114  // L=12 A=1 N=4
+#define LAN_CLIENT_PORT 12113  // L=12 A=1 M=13
+#define LAN_SERVER_PORT 12114  // L=12 A=1 N=14
 
 // Bit definitions for lan_reserved[0]
 #define LAN_RES0_H6309 0x01  // if H6309 CPU
