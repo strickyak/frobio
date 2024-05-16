@@ -31,7 +31,10 @@ func (cf *Os9ConfigForLemma) SlurpBoots() (b1 []byte, b2 []byte) {
 	var track []byte
 	var base1 map[string][]byte
 	if cf.Boot1Base != "" {
-		path1 := filepath.Join(*shelfFlag, cf.Boot1Base)
+		path1 := cf.Boot1Base
+		if path1[0] != '/' {
+			path1 = filepath.Join(*shelfFlag, cf.Boot1Base)
+		}
 		track = GetBootTrackOf(path1)
 		base1 = splitModules(track)
 		log.Printf("Boot1 Base %q len=$%x=%d.", path1, len(track), len(track))
@@ -63,7 +66,10 @@ func (cf *Os9ConfigForLemma) SlurpBoots() (b1 []byte, b2 []byte) {
 
 	var base2 map[string][]byte
 	if cf.Boot2Base != "" {
-		path2 := filepath.Join(*shelfFlag, cf.Boot2Base)
+		path2 := cf.Boot2Base
+		if path2[0] != '/' {
+			path2 = filepath.Join(*shelfFlag, cf.Boot2Base)
+		}
 		track := getOs9BootOf(path2)
 		base2 = splitModules(track)
 		log.Printf("Boot2 Base %q len=$%x=%d.", path2, len(track), len(track))
