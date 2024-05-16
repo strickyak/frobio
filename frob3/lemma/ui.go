@@ -25,8 +25,17 @@ const CocoRight = 9
 
 const CocoClear = 12
 const CocoEnter = 13
+const CocoBreak = 3
 
 ////////////////// NAV
+
+type Location struct {
+	// TODO: use this, so Menu can find stuff.
+	// Or just give menu the path?
+	Path  string
+	Page  int
+	Focus int
+}
 
 type Navigator struct {
 	t   T.TextScreen
@@ -46,58 +55,74 @@ func (nav *Navigator) ClearScreen() {
 }
 func (nav *Navigator) Render(mod Model, focus uint) {
 	t := nav.t
-	_, h := t.W(), t.H()
+	w, h := t.W(), t.H()
 
 	navLines := h - HeaderSize - FooterSize
 
+	up := mod.Parent()
+	kids := mod.Kids()
+	nk := LenSlice(kids)
+	limit := nk + 2 // 2 = 1 parent + 1 this
+
+	var chosen Model
 	var page, slot uint
-	if focus > 1 {
+	if focus == 0 {
+		// parent dir
+		page, slot = 0, focus
+		chosen = up
+		if chosen == nil {
+			chosen = mod
+		}
+	} else if focus == 1 {
+		// this dir
+		page, slot = 0, focus
+		chosen = mod
+	} else {
 		page = (focus - 2) / (navLines - 2)
 		slot = 2 + (focus-2)%(navLines-2)
-	} else {
-		page, slot = 0, focus
+		chosen = kids[focus-2]
 	}
 
 	nav.ClearScreen()
 
-	path := mod.Path()
-	T.TextScreenWriteLine(t, 1, "[ %s ]", Cond(path == ".", "(TOP)", path))
+	nav.t.SetColor(T.SimpleBlue)
+	what := chosen.Path()
+	if LenStr(what) > w {
+		what = what[LenStr(what)-w:]
+	}
+	T.TextScreenWriteLine(t, 1, "%s", Cond(chosen.Name() == ".", "/", what))
 
-	up := mod.Parent()
-	nk := uint(len(mod.Kids()))
-	limit := nk + 2 // 2 = 1 parent + 1 this
-
+	nav.t.SetColor(T.SimpleYellow)
 	for j := uint(0); j < navLines; j++ {
 		switch j {
 		case 0:
 			if up != nil {
-				T.TextScreenWriteLine(t, 2, "PARENT DIR (..)")
-				// T.TextScreenWriteLine(t, 2, "% 4s% 4s  %s", "UP", "..", up.Path())
+				T.TextScreenWriteLine(t, 2, "Parent Dir (%s)", up.Name())
 			}
 		case 1:
-			T.TextScreenWriteLine(t, 3, "THIS DIR (.)")
-			// T.TextScreenWriteLine(t, 3, "% 4s% 4s  %s", "THIS", ".", Cond(up==nil, "(TOP)", mod.Path()))
+			T.TextScreenWriteLine(t, 3, "This Dir (%s)", mod.Name())
 
 		default:
 			at := j + (page * (navLines - 2))
 			if at < limit {
 				kid := mod.KidAtFocus(at)
 				kid.Kids()
-				// T.TextScreenWriteLine(t, j+HeaderSize, "% 4s% 4s  %s", Format("K%d", at), kid.Decoration(nav.ds), kid.Name())
 				T.TextScreenWriteLine(t, j+HeaderSize, "% 4s  %s", kid.Decoration(nav.ds), kid.Name())
 			}
 		}
 	}
 	T.TextScreenInvertLine(t, slot+HeaderSize)
 
-	bar := "VIEW EDIT TOOL MOUNT"
-	inv := "I....I....I....I...."
-	T.TextScreenWriteLine(t, 0, bar)
-	for i, c := range inv {
-		if c == 'I' {
-			t.InvertChar(uint(i), 0)
-		}
-	}
+	RecolorMenu(nav.t, Menus, nil) // turns White
+	nav.t.SetColor(T.SimpleYellow)
+	// bar := "VIEW EDIT QUIK MOUNT PREF BOOK GOTO ?"
+	// inv := "I... I... I... I.... I... I... I... I"
+	// T.TextScreenWriteLine(t, 0, bar)
+	//for i, c := range inv {
+	//if c == 'I' {
+	//t.InvertChar(uint(i), 0)
+	//}
+	//}
 }
 
 // NavStep
@@ -113,7 +138,7 @@ func (nav *Navigator) NavStep(c Model) Model {
 		Log("NavStep: gonna Render: nav=%v ( c=%v , f=%v )", nav, c, focus)
 		nav.Render(c, focus)
 		t.Flush()
-		b := T.GetCharFromKeyboard(t.Comm())
+		b := Up(T.GetCharFromKeyboard(t.Comm()))
 		log.Printf("ZXC NavStep: GOT INKEY %d.", b)
 		switch b {
 		case CocoShiftUp:
@@ -123,18 +148,19 @@ func (nav *Navigator) NavStep(c Model) Model {
 			focus += shiftSkip
 			focus = Cond(focus >= limit, limit-1, focus)
 
-		case 'W', 'w', 'K', 'k', CocoUp:
+		// Support WASD and HJKL as well as arrows.
+		case 'W', 'K', CocoUp:
 			focus -= 1
 			focus = Cond(focus < 0, 0, focus)
-		case 'S', 's', 'J', 'j', CocoDown:
+		case 'S', 'J', CocoDown:
 			focus += 1
 			focus = Cond(focus >= limit, limit-1, focus)
-		case 'A', 'a', 'H', 'h', CocoLeft:
+		case 'A', 'H', CocoLeft:
 			if c.Parent != nil {
 				return c.Parent()
 			} // else do nothing if we are at the top.
 
-		case 'D', 'd', 'L', 'l', CocoRight, CocoEnter:
+		case 'D', 'L', CocoRight, CocoEnter:
 			kid := c.KidAtFocus(focus) // KidAtFocus understands 0->parent; 1->this; 2..->kids.
 			kid.Kids()
 			return kid
@@ -143,14 +169,131 @@ func (nav *Navigator) NavStep(c Model) Model {
 			return nil
 
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			// Currently these mean mount -- but in the future, that will be
+			// under the 'M' menu, and these will jump quickly to choice lines.
 			driveNum := b - '0' // MAX 10 DRIVES
 			kid := c.KidAtFocus(focus)
 			kid.Kids()
 			Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, driveNum, kid)
 			nav.ds.SetDrive(driveNum, kid) // mounter.go
+
 		default:
-			// fn := nav.FindMenuGroup(b)
+			item := nav.TryMenu(c, focus, b)
+			println(item)
 		}
+	}
+}
+
+func Up(x byte) byte {
+	if 'a' <= x && x <= 'z' {
+		return x - 32
+	}
+	return x
+}
+func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) *MenuItem {
+	saved := nav.t.Save()
+	defer nav.t.Restore(saved)
+
+	var menu *Menu
+	for _, m := range Menus {
+		if Up(m.Name[0]) == Up(ch) {
+			menu = m
+			break
+		}
+	}
+	if menu == nil {
+		return nil // did not accept the char
+	}
+
+	// We chose this menu menu.
+	Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, menu.Name)
+
+	RecolorMenu(nav.t, Menus, menu)
+	nav.t.SetColor(T.SimpleCyan)
+	lines := menu.Lines()
+	DrawBoxed(nav.t, 4, 2, lines, true)
+	nav.t.Flush()
+
+	ch2 := Up(T.GetCharFromKeyboard(nav.t.Comm()))
+	log.Printf("ZXC TryMenu: GOT CHAR %d.", ch2)
+
+	if ch2 == CocoBreak {
+		return nil
+	}
+
+	var item *MenuItem
+	for _, it := range menu.Items {
+		if Up(it.Shortcut) == ch2 {
+			item = it
+			break
+		}
+	}
+	if item == nil {
+		ErrorAlert(nav.t, []string{
+			Format("'%c' is not a menu option.", ch2),
+		})
+	}
+
+	return item
+}
+
+func ErrorAlert(t T.TextScreen, lines []string) {
+	t.SetColor(T.SimpleMagenta)
+	lines = CatSlices(
+		[]string{""},
+		lines,
+		[]string{
+			"",
+			"Hit BREAK to close.",
+			"",
+		},
+	)
+	DrawBoxed(t, 6, 6, lines, false)
+	t.Flush()
+	WaitForBreak(t)
+}
+
+// WaitForBreak also allows SPACE.
+func WaitForBreak(t T.TextScreen) {
+	for {
+		ch3 := Up(T.GetCharFromKeyboard(t.Comm()))
+		if ch3 == CocoBreak || ch3 == ' ' {
+			break
+		}
+	}
+}
+
+func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
+	// W := t.W()
+	wid, hei := uint(0), LenSlice(lines)
+	for _, s := range lines {
+		if LenStr(s) > wid {
+			wid = LenStr(s)
+		}
+	}
+	for i := uint(0); i < wid+4; i++ {
+		t.Put(x+i, y, BorderChar, T.InverseFlag)
+		t.Put(x+i, y+1+hei, BorderChar, T.InverseFlag)
+	}
+	for i := uint(0); i < hei; i++ {
+		n := LenStr(lines[i])
+		for j := uint(0); j < wid+3; j++ {
+			if j < n {
+				t.Put(x+j+2, y+i+1, lines[i][j], 0)
+			} else {
+				t.Put(x+j+2, y+i+1, ' ', 0)
+			}
+		}
+	}
+
+	for i := uint(0); i < hei; i++ {
+		t.Put(x+0, y+i+1, BorderChar, 0)
+		t.Put(x+1, y+i+1, ' ', 0)
+		if invertHeadChar {
+			t.InvertChar(x+2, y+i+1)
+		}
+		t.Put(x+2+wid, y+i+1, ' ', 0)
+		t.Put(x+3+wid, y+i+1, BorderChar, 0)
 	}
 }
 
@@ -215,7 +358,7 @@ type Model interface {
 	Parent() Model
 	Decoration(ds *DriveSession) string
 	KidAtFocus(focus uint) Model
-	ShowMenuGroups() []*MenuGroup
+	ShowMenus() []*Menu
 	Hot() bool // turn ENTER or -> into Action.
 	Size() int64
 }
@@ -239,8 +382,8 @@ func (mod *BaseModel) String() string {
 	return Format("{mod(%s)%d}", mod.name, len(mod.kids))
 }
 
-func (mod *BaseModel) ShowMenuGroups() []*MenuGroup {
-	return MenuGroups
+func (mod *BaseModel) ShowMenus() []*Menu {
+	return Menus
 }
 
 func (mod *BaseModel) Hot() bool   { return false }

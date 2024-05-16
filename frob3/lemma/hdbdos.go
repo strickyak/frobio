@@ -96,33 +96,18 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 	com := coms.Wrap(ses.Conn)
 
 	savedPage0 := payload[:256]
-	// _ = payload[256 : 256+16] // savedMMU
 	savedPalette := payload[256+16 : 256+32]
 	hrmode, hrwidth, pmode := VideoModes(savedPage0)
 	strV, _ := DescribeVideoModes(savedPage0)
 
 	log.Printf("Incoming Video Modes: %s", strV)
 
+	blackness := make([]byte, 40*2*24)
+	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
+	PokeRam(ses.Conn, 0x2000, blackness)
+	T.SetSimplePalette(com)
 	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 0)
 	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
-	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
-
-	T.SetSimplePalette(com)
-
-	/*
-		// Demo the palette
-		for row := byte(0); row < 24; row++ {
-			bb := TestCharRow40(row)
-			for i := byte(0); i < 40; i++ { // invert some bg/fg
-				if uint(row+i)%13 == 9 { // choose which ones
-					x := bb[i+i+1]
-					x = (x >> 3) | (T.SimpleBlack << 3) // the inversion, assuming bg is T.SimpleBlack.
-					bb[i+i+1] = x
-				}
-			}
-			PokeRam(ses.Conn, 0x2000+40*2*uint(row), Cond(row == 0, bytV, bb))
-		}
-	*/
 
 	defer func() {
 		SetVideoMode(ses, hrmode, hrwidth, pmode)

@@ -34,7 +34,7 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
-	Add(25, 0, "COCOIO Network Games", &Card{})
+	Add(25, 0, "Featured Games", &Card{})
 	Add(251, 25, "spacewario for COCOIO", &Card{
 		Text: `
 Uses broadcast UDP/IP on a LAN.
@@ -42,6 +42,15 @@ You must be on the same LAN to play multi-user.
 `,
 		Launch: ".spacewario.bin",
 	})
+	/*
+	Add(252, 25, "Rogue for Coco3/512K (Experimental)", &Card{
+		Text: `
+(Experimental)
+`,
+		Launch: ".Rogue512.lem",
+		Block0: ".Rogue512.dsk",
+	})
+	*/
 
 	Add(30, 0, "OS: Nitros-9", &Card{})
 

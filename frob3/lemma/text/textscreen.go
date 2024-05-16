@@ -8,6 +8,27 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
+type TextFlags uint
+
+const (
+	InverseFlag TextFlags = 1 << iota
+)
+
+type TextScreen interface {
+	W() uint
+	H() uint
+	Put(x, y uint, ch byte, fl TextFlags)
+	Get(x, y uint) (ch byte, fl TextFlags)
+	InvertChar(x, y uint)
+	Flush()
+	Comm() *coms.Comm
+
+	SetColor(byte) byte // might be ignored, if mono.
+
+	Save() any
+	Restore(any)
+}
+
 // InvertLine
 func TextScreenInvertLine(t TextScreen, y uint) {
 	w := t.W()
@@ -33,22 +54,6 @@ func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
 }
 
 // Inkey
-
-type TextFlags uint
-
-const (
-	InverseFlag TextFlags = 1 << iota
-)
-
-type TextScreen interface {
-	W() uint
-	H() uint
-	Put(x, y uint, ch byte, fl TextFlags)
-	Get(x, y uint) (ch byte, fl TextFlags)
-	InvertChar(x, y uint)
-	Flush()
-	Comm() *coms.Comm
-}
 
 // DirectKeyboard should talk to Axiom, but not to Hijack.
 func DirectKeyboard(com *coms.Comm) byte {
