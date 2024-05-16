@@ -69,7 +69,7 @@ type Number interface {
 }
 
 func Assert(b bool, args ...any) {
-	if b {
+	if !b {
 		s := "Assert Fails"
 		for _, x := range args {
 			s += fmt.Sprintf(" ; %v", x)
