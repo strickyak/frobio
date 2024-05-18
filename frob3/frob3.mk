@@ -489,7 +489,7 @@ broadcast-burn: broadcast-burn.go
 run-server: run-lemma-waiter  # Alias.
 run-lemma: run-lemma-waiter   # Alias.
 run-lemma-waiter: lemma-waiter
-	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $F/../../../shelving/nav-root/ $(FORCE)
+	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $(SHELF)/../shelving/nav-root/ --web_static $(SHELF)/../shelving/web-static/ $(FORCE)
 
 ##############################
 # Disable RCS & SCCS patterns.

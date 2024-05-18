@@ -43,13 +43,13 @@ You must be on the same LAN to play multi-user.
 		Launch: ".spacewario.bin",
 	})
 	/*
-	Add(252, 25, "Rogue for Coco3/512K (Experimental)", &Card{
-		Text: `
-(Experimental)
-`,
-		Launch: ".Rogue512.lem",
-		Block0: ".Rogue512.dsk",
-	})
+		Add(252, 25, "Rogue for Coco3/512K (Experimental)", &Card{
+			Text: `
+	(Experimental)
+	`,
+			Launch: ".Rogue512.lem",
+			Block0: ".Rogue512.dsk",
+		})
 	*/
 
 	Add(30, 0, "OS: Nitros-9", &Card{})

@@ -660,6 +660,7 @@ func InitDemos() {
 
 func Listen() {
 	InitDemos()
+	go RunWeb()
 
 	if *LAN != "" {
 		go ListenForLan(*LAN)

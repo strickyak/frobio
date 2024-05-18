@@ -146,7 +146,7 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 
 func CreateHomeIfNeeded(ses *Session) (string, string) {
 	root := *FlagNavRoot
-	homes := "HOMES"
+	homes := "Homes"
 	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
 	retain := PFP.Join(home, RETAIN_10_DAYS)
 
