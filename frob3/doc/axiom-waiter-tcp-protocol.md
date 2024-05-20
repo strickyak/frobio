@@ -281,4 +281,16 @@ Lemma does understand some extra protocols, including these:
 But Axiom does not know those protocols.  The Client protocols are
 in those operating systems.
 
+## Trivial Write-Only Waiter
+
+The simplest waiter is a TCP server that sends one DECB Binary to
+every connection.  It does not have to read the HELLO packets.
+
+For instance, this is a waiter (good for only one connection)
+using the unix NETCAT utility:
+
+```
+$  nc -l 2321 <frobio/built/wip-2023-03-29-netboot2/demo-nyancat.coco3.loadm >/dev/null
+```
+
 ## END
