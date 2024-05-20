@@ -1,16 +1,22 @@
 # The Axiom/Waiter TCP Protocol
 
-Version 41C -- Cocofest 2024
+**Version 41C -- Cocofest 2024**
 
-Axiom and Waiter are the client and the server designed
-for network boot of Cocos using the CocoIOr cartridges
-by Computer Conect and software from the Frobio repository.
+**Henry Strickland -- strick@yak.net -- May 2024**
 
-Axiom is software burned into the EEPROM in the Cartridge.i
+Axiom and Waiter are the client and the server designed for network boot of
+[Cocos](https://www.google.com/search?q=Radio+Shack+Tandy+Color+Computers)
+using the
+[CocoIOr cartridges by Computer Conect](https://computerconect.com/products/cocoio-prom?variant=42556416196788)
+and software from the
+[Frobio](https://github.com/strickyak/frobio)
+repository.
 
-A waiter is the server that Axiom connects to.  
+**Axiom** is software burned into the EEPROM in the Cartridge.
 
-In Frobio, the primary waiter is one named Lemma.
+A **waiter** is the server that Axiom connects to.
+
+In Frobio, the primary waiter is one named **Lemma**.
 But Axiom doesn't require that you use the Lemma
 waiter.  This document describes the protocol
 supported by Axiom, if you wanted to write your
@@ -25,11 +31,11 @@ That will be in another document.
 
 ## Quintuples and Commands.
 
-If you are familiar with Radio Shack's DECB (Disk Extended Color Basic)
-protocol for binary programs, you know that a 5-byte header format
-is used.   Axiom supports the same DECB binary format and
-extends it.   Axiom is based on similar 5-byte headers,
-which we call Quintuples.
+If you are familiar with Radio Shack's
+[DECB (Disk Extended Color Basic) protocol for binary programs](http://www.lwtools.ca/manual/x27.html),
+you know that a 5-byte header format is used.
+Axiom supports the same DECB binary format and extends it.
+Axiom is based on similar 5-byte headers, which we call **Quintuples**.
 
 ```
 +----------+----------+----------+----------+----------+
@@ -129,7 +135,7 @@ quintuple begins with the command.  Whether a payload
 is also sent depends on the command.  Whether there
 is a reply depends on the command.
 
-### GETCHAR
+### GETCHAR (blocking)
 
 ```
 Waiter to Axiom  ...   Axiom to Waiter
@@ -142,11 +148,11 @@ Command quintuple:  GETCHAR n=0 p=0
 The coco waits for someone to hit a character
 on the keyboard (using the BASIC ROM routine POLCAT).
 When this happens, the client sends back a quintuple
-with the ASCII code (or special Coco code) of the character:
+with the ASCII code (or special Coco code) of the character
+in the P slot.
 
-GETCHAR n=0 p=AsciiCode
 
-### INKEY
+### INKEY (nonblocking)
 
 ```
 Waiter to Axiom  ...   Axiom to Waiter
@@ -157,7 +163,7 @@ INKEY n=0 p=0  ...  INKEY n=0 p=AsciiCode.
 INKEY is just like GETCHAR except the coco does not wait.
 If no key is sent, then P=0 is returned.
 
-### KEYBOARD
+### KEYBOARD (nonblocking)
 
 ```
 Waiter to Axiom  ...   Axiom to Waiter
@@ -245,10 +251,12 @@ TCP connection for other application-dependant communications
 with the waiter, it will have to provide some other way to
 tell the waiter that it is finished.
 
-## WizNet S5100 Socket 1
+## WizNet W5100S Socket 1
 
 The TCP connection between the waiter and Axiom is on
-Socket 1 in the WizNet S5100 chip on the CocoIOr board.
+Socket 1 in the
+[WizNet W5100S](https://docs.wiznet.io/Product/iEthernet/W5100S/overview)
+chip on the CocoIOr board.
 This is the socket with control registers starting at
 WizNet register $0500.
 
