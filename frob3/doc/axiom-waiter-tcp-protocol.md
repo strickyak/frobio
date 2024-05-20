@@ -200,6 +200,10 @@ POKE n=SIZE p=ADDRESS, SIZE-byte payload ...  (no reply)
 The payload, which has N bytes, is poked to the Coco's memory space
 starting at ADDRESS.
 
+Notice that POKEs are not limited to program code.
+The waiter may also poke bytes onto text or graphics screens,
+poke video modes, poke MMU maps, etc.
+
 ### PEEK
 
 ```
@@ -209,7 +213,7 @@ PEEK n=SIZE p=ADDRESS  ...   DATA n=SIZE p=ADDRESS, SIZE-byte payload.
 ```
 
 The waiter is requesting Axiom to return bytes from the Coco's
-memory.
+memory space.
 
 
 ### SUM
@@ -265,5 +269,16 @@ that TCP socket for more communications with the waiter,
 if the waiter understands these extra protocols.
 The socket is already open, and it probably should not
 be closed, or communiation with the waiter will be lost.
+
+Lemma does understand some extra protocols, including these:
+
+*   BOOTing initial modules into RAM for Nitros-9
+
+*   Block device for remote drives in Nitros-9, using RBLemma driver.
+
+*   Block device protocl for HDB-DOS.
+
+But Axiom does not know those protocols.  The Client protocols are
+in those operating systems.
 
 ## END
