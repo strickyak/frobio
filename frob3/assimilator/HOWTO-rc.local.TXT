@@ -1,0 +1,55 @@
+(* Thanks to https://www.lw92.me/index.php/archives/550
+   LW's Blog
+*)
+
+
+Create rc.local in Ubuntu 22
+
+Published December 12, 2023
+
+While technically you can create an rc.local script for Ubuntu 22, it’s not the recommended approach. Ubuntu 22 uses systemd for managing startup services, and rc.local is no longer directly utilized.
+
+However, if you’re set on creating an rc.local for specific reasons, here’s how you can do it:
+
+1. Create the rc.local file:
+
+sudo nano /etc/rc.local
+2. Add your commands:
+
+Within the file, add the commands you want to run automatically at boot.
+3. Make the script executable:
+
+sudo chmod +x /etc/rc.local
+4. Create a systemd service file to run the script:
+
+sudo nano /etc/systemd/system/rc-local.service
+5. Add the following content to the service file:
+
+[Unit]
+Description=Local Startup Script
+
+[Service]
+Type=simple
+ExecStart=/etc/rc.local
+
+[Install]
+WantedBy=multi-user.target
+6. Make the service executable:
+
+sudo chmod 644 /etc/systemd/system/rc-local.service
+7. Enable and start the service:
+
+sudo systemctl enable rc-local.service
+sudo systemctl start rc-local.service
+8. Verify the script is running:
+
+sudo systemctl status rc-local.service
+Important notes:
+
+This method is not officially recommended for Ubuntu 22 and may cause compatibility issues in the future.
+Systemd services offer better control and flexibility compared to rc.local.
+Make sure your rc.local script is properly formatted and contains valid commands.
+Consider using systemd service files for long-term solutions.
+If you’re unsure about using rc.local, it’s best to consult the official Ubuntu documentation and resources on systemd services for safer and recommended approaches.
+
+Published in Linux
