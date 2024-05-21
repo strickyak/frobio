@@ -14,7 +14,18 @@ import (
 // Struct
 type TextVDG struct {
 	Screen [32 * 16]byte
+	Com    *coms.Comm
 }
+
+func NewTextVDG(com *coms.Comm) *Text40 {
+	return &Text40{
+		Color: SimpleYellow,
+		Com:   com,
+	}
+}
+
+// SetColor cannot really be supported.
+func (t *TextVDG) SetColor(byte) byte { return 0 }
 
 // W, H
 func (t *TextVDG) W() uint { return 32 }
@@ -47,14 +58,17 @@ func (t *TextVDG) Get(x, y uint) (ascii byte, fl TextFlags) {
 	return
 }
 
-// Render
+// Save, Restore.
+func (t *TextVDG) Save() any {
+	return *t
+}
 
-// Inkey
+func (t *TextVDG) Restore(a any) {
+	*t = a.(TextVDG)
+}
 
-// NavChoice
-
-// Extra...
-
+const VDGYellowBox = 0x9F
+const VDGWhiteBox = 0xCF
 const VDGMagentaBox = 0xEF
 const VDGOrangeBox = 0xFF
 
