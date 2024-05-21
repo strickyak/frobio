@@ -166,7 +166,7 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	OnText40At2000Run(ses, payload, func() {
 		log.Printf("ZXC OnText40At2000Run(TCS)")
 		// time.Sleep(1 * time.Second)
-		TextChooserShell(com, ses.HdbDos.DriveSession)
+		TextChooserShell(com, ses.HdbDos.DriveSession, T.NewText40(com))
 	})
 
 	log.Printf("ZXC HdbDosHijack END")

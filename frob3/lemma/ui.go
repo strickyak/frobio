@@ -113,7 +113,7 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	}
 	T.TextScreenInvertLine(t, slot+HeaderSize)
 
-	RecolorMenu(nav.t, Menus, nil) // turns White
+	RecolorMenu(nav.t, TopMenu, nil) // turns White
 	nav.t.SetColor(T.SimpleYellow)
 	// bar := "VIEW EDIT QUIK MOUNT PREF BOOK GOTO ?"
 	// inv := "I... I... I... I.... I... I... I... I"
@@ -178,8 +178,10 @@ func (nav *Navigator) NavStep(c Model) Model {
 			nav.ds.SetDrive(driveNum, kid) // mounter.go
 
 		default:
-			item := nav.TryMenu(c, focus, b)
-			println(item)
+			ok := nav.TryMenu(c, focus, b)
+			if !ok {
+				log.Printf("keystroke rejected: %d.", b)
+			}
 		}
 	}
 }
@@ -190,25 +192,25 @@ func Up(x byte) byte {
 	}
 	return x
 }
-func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) *MenuItem {
+func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) bool {
 	saved := nav.t.Save()
 	defer nav.t.Restore(saved)
 
 	var menu *Menu
-	for _, m := range Menus {
+	for _, m := range TopMenu.Items {
 		if Up(m.Name[0]) == Up(ch) {
 			menu = m
 			break
 		}
 	}
 	if menu == nil {
-		return nil // did not accept the char
+		return false // did not accept the char
 	}
 
 	// We chose this menu menu.
 	Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, menu.Name)
 
-	RecolorMenu(nav.t, Menus, menu)
+	RecolorMenu(nav.t, TopMenu, menu)
 	nav.t.SetColor(T.SimpleCyan)
 	lines := menu.Lines()
 	DrawBoxed(nav.t, 4, 2, lines, true)
@@ -218,12 +220,12 @@ func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) *MenuItem {
 	log.Printf("ZXC TryMenu: GOT CHAR %d.", ch2)
 
 	if ch2 == CocoBreak {
-		return nil
+		return true // Cancelling is one way of handling.
 	}
 
-	var item *MenuItem
+	var item *Menu
 	for _, it := range menu.Items {
-		if Up(it.Shortcut) == ch2 {
+		if it.Shortcut() == ch2 {
 			item = it
 			break
 		}
@@ -234,7 +236,7 @@ func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) *MenuItem {
 		})
 	}
 
-	return item
+	return (item != nil)
 }
 
 func ErrorAlert(t T.TextScreen, lines []string) {
@@ -311,10 +313,10 @@ func (t *Navigator) Loop() {
 }
 
 // called by hdbdos HdbDosHijack
-func TextChooserShell(com *coms.Comm, ds *DriveSession) {
+func TextChooserShell(com *coms.Comm, ds *DriveSession, t T.TextScreen) {
 	log.Printf("ZXC TextChooserShell")
 	nav := &Navigator{
-		t:   T.NewText40(com),
+		t:   t,
 		com: com,
 		ds:  ds,
 	}
@@ -358,7 +360,7 @@ type Model interface {
 	Parent() Model
 	Decoration(ds *DriveSession) string
 	KidAtFocus(focus uint) Model
-	ShowMenus() []*Menu
+	ShowMenus() *Menu
 	Hot() bool // turn ENTER or -> into Action.
 	Size() int64
 }
@@ -382,8 +384,8 @@ func (mod *BaseModel) String() string {
 	return Format("{mod(%s)%d}", mod.name, len(mod.kids))
 }
 
-func (mod *BaseModel) ShowMenus() []*Menu {
-	return Menus
+func (mod *BaseModel) ShowMenus() *Menu {
+	return TopMenu
 }
 
 func (mod *BaseModel) Hot() bool   { return false }

@@ -5,15 +5,23 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-type Menu struct {
-	Name  string // first char is shortcut
-	Items []*MenuItem
+var TopMenu = &Menu{
+	Name: "", // Top level has empty name.
+	Items: []*Menu{
+		View_Menu,
+		Edit_Menu,
+		Quik_Menu,
+		Pref_Menu,
+		Mount_Menu,
+		Book_Menu,
+		Go_Menu,
+	},
 }
 
-type MenuItem struct {
-	Name     string
-	Shortcut byte
-	Action   MenuAction
+type Menu struct {
+	Name   string // first char is shortcut
+	Items  []*Menu
+	Action MenuAction
 }
 
 type MenuAction interface {
@@ -37,29 +45,23 @@ type MenuActionHistory struct {
 	History []*MenuAction
 }
 
-var Menus = []*Menu{
-	View_Menu,
-	Edit_Menu,
-	Quik_Menu,
-	Pref_Menu,
-	Mount_Menu,
-	Book_Menu,
-	Go_Menu,
+func (m *Menu) Shortcut() byte {
+	return Up(m.Name[0])
 }
 
 func (m *Menu) Lines() (lines []string) {
 	for _, it := range m.Items {
-		lines = append(lines, Format("%c %s", it.Shortcut, it.Name))
+		lines = append(lines, it.Name)
 	}
 	return
 }
 
 const BorderChar = '#'
 
-func RecolorMenu(t T.TextScreen, menus []*Menu, menu *Menu) {
+func RecolorMenu(t T.TextScreen, group *Menu, chosen *Menu) {
 	x := uint(0)
-	for _, m := range menus {
-		if m == menu {
+	for _, m := range group.Items {
+		if m == chosen {
 			t.SetColor(T.SimpleCyan)
 		} else {
 			t.SetColor(T.SimpleWhite)
@@ -67,7 +69,7 @@ func RecolorMenu(t T.TextScreen, menus []*Menu, menu *Menu) {
 		n := LenStr(m.Name)
 		for i := uint(0); i < n; i++ {
 			t.Put(x+i, 0, m.Name[i], 0)
-			invert := (menu == nil) && (i == 0)
+			invert := (chosen == nil) && (i == 0)
 			if invert {
 				t.InvertChar(x+i, 0)
 			}
@@ -82,162 +84,140 @@ func RecolorMenu(t T.TextScreen, menus []*Menu, menu *Menu) {
 
 var View_Menu = &Menu{
 	Name: "View",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "Info",
-			Shortcut: 'I',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "Info",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Text View",
-			Shortcut: 'T',
-			Action:   nil,
+		&Menu{
+			Name:   "Text View",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Hex View",
-			Shortcut: 'H',
-			Action:   nil,
+		&Menu{
+			Name:   "Hex View",
+			Action: nil,
 		},
 	},
 }
 
 var Edit_Menu = &Menu{
 	Name: "Edit",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "Cut",
-			Shortcut: 'X',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "X  Cut",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Copy",
-			Shortcut: 'C',
-			Action:   nil,
+		&Menu{
+			Name:   "C  Copy",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Paste",
-			Shortcut: 'V',
-			Action:   nil,
+		&Menu{
+			Name:   "V  Paste",
+			Action: nil,
 		},
 	},
 }
 
 var Quik_Menu = &Menu{
 	Name: "Quik",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "Fast 1.8 MHz Poke",
-			Shortcut: 'F',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "Fast 1.8 MHz Poke",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Native 6309 Mode",
-			Shortcut: 'N',
-			Action:   nil,
+		&Menu{
+			Name:   "Native 6309 Mode",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Reboot!",
-			Shortcut: 'R',
-			Action:   nil,
+		&Menu{
+			Name:   "Reboot!",
+			Action: nil,
 		},
 	},
 }
 
 var Pref_Menu = &Menu{
 	Name: "Pref",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "User Settings",
-			Shortcut: 'U',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "User Settings",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Boot Preferences",
-			Shortcut: 'B',
-			Action:   nil,
+		&Menu{
+			Name:   "Host Settings",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Environment Variables",
-			Shortcut: 'E',
-			Action:   nil,
-		},
+		/*
+			&Menu{
+				Name:     "Environment Variables",
+				Action:   nil,
+			},
+		*/
 	},
 }
 
 var Book_Menu = &Menu{
 	Name: "Book",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "Add Bookmark",
-			Shortcut: 'A',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "Add Bookmark",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Time-sorted List",
-			Shortcut: 'T',
-			Action:   nil,
+		&Menu{
+			Name:   "Time-sorted List",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Name-sorted List",
-			Shortcut: 'N',
-			Action:   nil,
+		&Menu{
+			Name:   "Name-sorted List",
+			Action: nil,
 		},
 	},
 }
 
 var Go_Menu = &Menu{
 	Name: "Go",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "AAAAAAAAAAA",
-			Shortcut: 'a',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "AAAAAAAAAAA",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "BBBBBBBBBBBBB",
-			Shortcut: 'B',
-			Action:   nil,
+		&Menu{
+			Name:   "BBBBBBBBBBBBB",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "CCCCCCCCCCCCCC",
-			Shortcut: 'C',
-			Action:   nil,
+		&Menu{
+			Name:   "CCCCCCCCCCCCCC",
+			Action: nil,
 		},
 	},
 }
 
 var Mount_Menu = &Menu{
 	Name: "Mount",
-	Items: []*MenuItem{
-		&MenuItem{
-			Name:     "0",
-			Shortcut: '0',
-			Action:   nil,
+	Items: []*Menu{
+		&Menu{
+			Name:   "0",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "1",
-			Shortcut: '1',
-			Action:   nil,
+		&Menu{
+			Name:   "1",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "2",
-			Shortcut: '2',
-			Action:   nil,
+		&Menu{
+			Name:   "2",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "3",
-			Shortcut: '3',
-			Action:   nil,
+		&Menu{
+			Name:   "3",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "4",
-			Shortcut: '4',
-			Action:   nil,
+		&Menu{
+			Name:   "4",
+			Action: nil,
 		},
-		&MenuItem{
-			Name:     "Unmount All",
-			Shortcut: 'U',
-			Action:   nil,
+		&Menu{
+			Name:   "Unmount All",
+			Action: nil,
 		},
 	},
 }

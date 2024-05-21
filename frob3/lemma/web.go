@@ -146,8 +146,8 @@ func toHashSlice(s []byte) []byte {
 //    Code snippets are MIT licensed
 
 var PublicExceptions = map[string]bool{
-	"/":      true,
-	"/pizga": true,
+	"/":            true,
+	"/pizga":       true,
 	"/pizga/Homes": true,
 }
 
