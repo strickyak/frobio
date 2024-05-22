@@ -90,5 +90,10 @@ func GetCharFromKeyboard(com *coms.Comm) byte {
 		log.Panicf("DirectKeyboard: Unexpected quint: % 3x", q)
 	}
 
-	return byte(q.P())
+	z := byte(q.P())
+	switch z {
+		case 27: // Escape
+			z = 3 // becomes BREAK
+	}
+	return z
 }

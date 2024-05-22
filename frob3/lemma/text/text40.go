@@ -64,6 +64,9 @@ func (t *Text40) InvertChar(x, y uint) {
 // Put
 
 func (t *Text40) Put(x, y uint, ascii byte, fl TextFlags) {
+	if 40 <= x || 24 <= y {
+		return
+	}
 	t.Screen[y*80+2*x] = ascii
 	t.Screen[y*80+2*x+1] = FgBg(t.Color, SimpleBlack)
 }
@@ -71,6 +74,9 @@ func (t *Text40) Put(x, y uint, ascii byte, fl TextFlags) {
 // Get
 
 func (t *Text40) Get(x, y uint) (ascii byte, fl TextFlags) {
+	if 40 <= x || 24 <= y {
+		return ' ', 0
+	}
 	ascii = t.Screen[y*80+2*x]
 	fl = Cond((t.Screen[y*80+2*x+1] == FgBg(t.Color, SimpleBlack)), 0, InverseFlag)
 	return

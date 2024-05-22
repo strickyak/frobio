@@ -2,6 +2,7 @@ package lemma
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	PFP "path/filepath"
@@ -199,8 +200,9 @@ func (nav *Navigator) NavStep(c Model) Model {
 			nav.ds.SetDrive(driveNum, kid) // mounter.go
 
 		default:
-			ok := nav.TryMenu(c, focus, b)
-			if !ok {
+			if 'A' <= b && b <= 'Z' || b=='?' {
+				nav.TryMenu(TopMenu, c, focus, b)
+			} else {
 				log.Printf("keystroke rejected: %d.", b)
 			}
 		}
@@ -213,52 +215,152 @@ func Up(x byte) byte {
 	}
 	return x
 }
-func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) bool {
-	saved := nav.t.Save()
-	defer nav.t.Restore(saved)
 
-	var menu *Menu
-	for _, m := range TopMenu.Items {
-		if Up(m.Name[0]) == Up(ch) {
-			menu = m
+func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uint) {
+	action := chosen.Action // TODO: Should make a copy, or pass nav & path.
+	action.Set(nav, c.KidAtFocus(focus).Path())
+
+	confirmation := []string{
+		"",
+		Format("Action: %q", action.String()),
+		"",
+		"Hit ENTER to confirm,",
+		"or BREAK to cancel.",
+		"",
+	}	
+
+	DrawBoxed(nav.t, boxX, boxY, confirmation, false)
+	nav.t.Flush()
+	for {
+		ch := Up(T.GetCharFromKeyboard(nav.t.Comm()))
+		switch ch {
+			case 'N', 3, 32: return
+			case 'Y', 10, 13: 
+				// TODO: call action
+				action.Do()
+		}
+	}
+}
+
+// Returns true if the input char ch is consumed.
+// If returns false, you can look elsewhere for a handler.
+func (nav *Navigator) TryMenu(menu *Menu, c Model, focus uint, ch byte) {
+	var boxX, boxY uint = 2, 2 // for walking submenus
+
+	saved := nav.t.Save()
+	defer nav.t.Restore(saved) // How necessary is this?  Won't we redraw anyway?
+
+for {
+	var chosen *Menu
+	for _, it := range menu.Items {
+		if Up(it.Name[0]) == Up(ch) {
+			chosen = it
 			break
 		}
 	}
-	if menu == nil {
-		return false // did not accept the char
+	if chosen == nil {
+		ErrorAlert(nav.t, []string{
+			Format("'%c' is not a menu option.", ch),
+		})
+		return
 	}
 
-	// We chose this menu menu.
-	Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, menu.Name)
+	Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, chosen.Name)
+	RecolorMenuBar(nav.t, TopMenu, chosen)
 
-	RecolorMenuBar(nav.t, TopMenu, menu)
+	if chosen.Action != nil {
+		nav.DoAction(chosen, c, focus, boxX, boxY)
+		return
+	}
+
+	// No Action, so make sure there is a next menu.
+	if chosen.Items == nil {
+		ErrorAlert(nav.t, []string{
+			"Dead End",
+			"",
+			"  (should not happen)",
+		})
+		return
+	}
+
+	// Draw the next menu
 	nav.t.SetColor(T.SimpleCyan)
-	lines := menu.Lines()
-	DrawBoxed(nav.t, 4, 2, lines, true)
+	lines := chosen.Lines()
+	DrawBoxed(nav.t, boxX, boxY, lines, true)
 	nav.t.Flush()
 
-	ch2 := Up(T.GetCharFromKeyboard(nav.t.Comm()))
-	log.Printf("ZXC TryMenu: GOT CHAR %d.", ch2)
-
+	ch = Up(T.GetCharFromKeyboard(nav.t.Comm()))
+	log.Printf("ZXC TryMenu: GOT CHAR %d.", ch)
 	// Space cancels, like Break does.
-	if ch2 == CocoBreak || ch2 == ' ' {
-		return true // Cancelling is one way of handling.
+	if ch == CocoBreak || ch == ' ' {
+		return
 	}
 
-	var item *Menu
+	menu = chosen
+	boxX += 2
+	boxY += 2
+
+/*
+	var chosen *Menu
 	for _, it := range menu.Items {
 		if it.Shortcut() == ch2 {
-			item = it
+			chosen = it
 			break
 		}
 	}
-	if item == nil {
+	if chosen == nil {
 		ErrorAlert(nav.t, []string{
 			Format("'%c' is not a menu option.", ch2),
 		})
+		return
 	}
+*/
 
-	return (item != nil)
+}
+	return
+}
+
+func RenderTextAsLines(t T.TextScreen, text []byte) (lines []string) {
+	var bb bytes.Buffer
+	for _, b := range text {
+		switch {
+		case b == 10 || b == 13: // newlines
+			lines = append(lines, Chop(t, bb.String())...)
+			bb.Reset()
+		case ' ' <= b && b <= '~': // printable ASCII chars
+			bb.WriteByte(b)
+		default:
+			fmt.Fprintf(&bb, "{%d}", b)
+		}
+	}
+	if bb.Len() > 0 || len(lines) == 0 {
+		lines = append(lines, Chop(t, bb.String())...)
+	}
+	return
+}
+
+func Chop(t T.TextScreen, line string) (lines []string) {
+	w := t.W() - 5  // effective width is reduced by \\ and borders.
+	for LenStr(line) > w {
+		lines = append(lines, line[:w] + "\\")
+		line = line[w:]
+	}
+	if len(line) > 0 || len(lines)==0 {
+		lines = append(lines, line)
+	}
+	return
+}
+
+func ErrorAlertChop(t T.TextScreen, line string) {
+	ErrorAlert(t, Chop(t, line))
+}
+
+func ViewBoxedText(t T.TextScreen, text []byte, color byte) {
+	t.SetColor(color)
+	lines := RenderTextAsLines(t, text)
+	DrawBoxed(t, 0, 6, lines, false)
+	t.Flush()
+	WaitForBreak(t)
 }
 
 func ErrorAlert(t T.TextScreen, lines []string) {
@@ -272,7 +374,7 @@ func ErrorAlert(t T.TextScreen, lines []string) {
 			"",
 		},
 	)
-	DrawBoxed(t, 6, 6, lines, false)
+	DrawBoxed(t, 0, 6, lines, false)
 	t.Flush()
 	WaitForBreak(t)
 }
@@ -288,18 +390,18 @@ func WaitForBreak(t T.TextScreen) {
 }
 
 func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
-	BorderChar := byte('#')
+	// BorderChar := byte('#')
 	vdg := t.IsVDG()
-
 	Blue := byte(0xA0)
-	W := Cond(vdg, Blue + 0xA, BorderChar)
-	E := Cond(vdg, Blue + 0x5, BorderChar)
-	N := Cond(vdg, Blue + 0xC, BorderChar)
-	NW := Cond(vdg, N|W, BorderChar)
-	NE := Cond(vdg, N|E, BorderChar)
-	S := Cond(vdg, Blue + 0x3, BorderChar)
-	SW := Cond(vdg, S|W, BorderChar)
-	SE := Cond(vdg, S|E, BorderChar)
+
+	W := Cond(vdg, Blue + 0xA, '|')
+	E := Cond(vdg, Blue + 0x5, '|')
+	N := Cond(vdg, Blue + 0xC, '-')
+	NW := Cond(vdg, N|W, '+')
+	NE := Cond(vdg, N|E, '+')
+	S := Cond(vdg, Blue + 0x3, '-')
+	SW := Cond(vdg, S|W, '+')
+	SE := Cond(vdg, S|E, '+')
 
 	wid, hei := uint(0), LenSlice(lines)
 	for _, s := range lines {
@@ -478,6 +580,7 @@ func (mod *BaseModel) Kids() []Model {
 	return mod.kids
 }
 
+/*
 func (mod *BaseModel) MakeChoice(kid string) Model {
 	kids := mod.Kids() // Forces filling kids.
 
@@ -490,6 +593,7 @@ func (mod *BaseModel) MakeChoice(kid string) Model {
 	log.Panicf("Kid %q not found in BaseModel %q", kid, mod.Path())
 	panic(0)
 }
+*/
 
 func (mod *BaseModel) Decoration(ds *DriveSession) string {
 	if mod.isDir {

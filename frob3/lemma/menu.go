@@ -1,6 +1,8 @@
 package lemma
 
 import (
+	"os"
+
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -95,7 +97,7 @@ var View_Menu = &Menu{
 		},
 		&Menu{
 			Name:   "Text View",
-			Action: nil,
+			Action: &ViewTextAction{},
 		},
 		&Menu{
 			Name:   "Hex View",
@@ -234,4 +236,34 @@ var Help_Menu = &Menu{
 			Action: nil,
 		},
 	},
+}
+
+/*
+type MenuAction interface {
+	Set(nav *Navigator, path string)
+	Do()
+	Undo()
+	String() string
+}
+type MenuActionBase struct {
+	nav  *Navigator
+	path string
+}
+*/
+type ViewTextAction struct {
+	MenuActionBase
+}
+func (o *ViewTextAction) Do() {
+	filename := *FlagNavRoot + "/" + o.path
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		ErrorAlertChop(o.nav.t, Format("ERROR: %q: %v", filename, err))
+	}
+	o.nav.t.SetColor(T.SimpleWhite)
+	ViewBoxedText(o.nav.t, contents, T.SimpleWhite)
+}
+func (o *ViewTextAction) Undo() {
+}
+func (o *ViewTextAction) String() string {
+	return Format("View file %q as text", o.path)
 }
