@@ -43,6 +43,7 @@ func (t *Text40) Restore(a any) {
 }
 
 // W, H
+func (t *Text40) IsVDG() bool { return false }
 func (t *Text40) W() uint          { return 40 }
 func (t *Text40) H() uint          { return 24 }
 func (t *Text40) Comm() *coms.Comm { return t.Com }

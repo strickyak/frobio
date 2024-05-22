@@ -3,7 +3,7 @@ package text
 import (
 	//"fmt"
 	//"io"
-	//"log"
+	"log"
 	//"os"
 	//PFP "path/filepath"
 
@@ -17,39 +17,54 @@ type TextVDG struct {
 	Com    *coms.Comm
 }
 
-func NewTextVDG(com *coms.Comm) *Text40 {
-	return &Text40{
-		Color: SimpleYellow,
+func NewTextVDG(com *coms.Comm) *TextVDG {
+	t := &TextVDG{
 		Com:   com,
 	}
+	for i := range t.Screen {
+		t.Screen[i] = 32 // space  (green on black)
+	}
+	return t
 }
 
 // SetColor cannot really be supported.
 func (t *TextVDG) SetColor(byte) byte { return 0 }
 
 // W, H
+func (t *TextVDG) IsVDG() bool { return true }
 func (t *TextVDG) W() uint { return 32 }
 func (t *TextVDG) H() uint { return 16 }
+func (t *TextVDG) Comm() *coms.Comm { return t.Com }
 
 // Flush
-func (t *TextVDG) Flush(com *coms.Comm) {
-	com.WriteQuint(coms.CMD_POKE, 0x400, t.Screen[:])
+func (t *TextVDG) Flush() {
+	log.Printf("Flushing % 3x", t.Screen[:])
+	t.Com.WriteQuint(coms.CMD_POKE, 0x400, t.Screen[:])
 }
 
 // InvertChar
 func (t *TextVDG) InvertChar(x, y uint) {
+	if 32 <= x || 16 <= y {
+		return
+	}
 	t.Screen[y*32+x] |= 0x40
 }
 
 // Put
 
 func (t *TextVDG) Put(x, y uint, ascii byte, fl TextFlags) {
+	if 32 <= x || 16 <= y {
+		return
+	}
 	t.Screen[y*32+x] = VDGDisplayCode(ascii)
 }
 
 // Get
 
 func (t *TextVDG) Get(x, y uint) (ascii byte, fl TextFlags) {
+	if 32 <= x || 16 <= y {
+		return 32, 0
+	}
 	ascii = t.Screen[y*32+x]
 	ascii, fl = 63&ascii, Cond((x&0x40) != 0, InverseFlag, 0)
 	if ascii < 32 {
@@ -68,6 +83,7 @@ func (t *TextVDG) Restore(a any) {
 }
 
 const VDGYellowBox = 0x9F
+const VDGBlueBox = 0xAF
 const VDGWhiteBox = 0xCF
 const VDGMagentaBox = 0xEF
 const VDGOrangeBox = 0xFF
@@ -83,7 +99,6 @@ func VDGDisplayCode(b byte) byte {
 	case b < 128:
 		return b - 96
 	default:
-		return VDGOrangeBox // Hyper-ASCII
+		return b // VDGOrangeBox // Hyper-ASCII
 	}
-	panic(0)
 }

@@ -17,6 +17,8 @@ const (
 type TextScreen interface {
 	W() uint
 	H() uint
+	IsVDG() bool
+
 	Put(x, y uint, ch byte, fl TextFlags)
 	Get(x, y uint) (ch byte, fl TextFlags)
 	InvertChar(x, y uint)
@@ -42,6 +44,7 @@ func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
 	w, h := t.W(), t.H()
 	AssertLT(y, h)
 	s := fmt.Sprintf(format, args...)
+	log.Printf("TextScreenWriteLine w,h=%d,%d. y=%d. s=%q", w, h, y, s)
 	if LenStr(s) > w {
 		s = s[:w] // Trim to w bytes
 	}

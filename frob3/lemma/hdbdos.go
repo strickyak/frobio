@@ -102,12 +102,23 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 
 	log.Printf("Incoming Video Modes: %s", strV)
 
-	blackness := make([]byte, 40*2*24)
 	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
+
+	/*
+	blackness := make([]byte, 40*2*24)
+	for i := 0;i < 256; i++ {
+		blackness[i+i] = byte(i)
+		blackness[i+i+1] = T.SimpleMagenta << 3
+	}
 	PokeRam(ses.Conn, 0x2000, blackness)
+	*/
+
 	T.SetSimplePalette(com)
 	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 0)
 	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
+	/*
+	time.Sleep(5*time.Second)
+	*/
 
 	defer func() {
 		SetVideoMode(ses, hrmode, hrwidth, pmode)
@@ -115,6 +126,33 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 		UndoAlterTask0(ses, savedMMUByte)
 	}()
 
+	runMe()
+}
+
+func OnTextVDGAt0400Run(ses *Session, payload []byte, runMe func()) {
+	savedPage0 := payload[:256]
+	hrmode, hrwidth, pmode := VideoModes(savedPage0)
+	strV, _ := DescribeVideoModes(savedPage0)
+
+	log.Printf("Incoming Video Modes $%x $%x $%x: %s", hrmode, hrwidth, pmode, strV)
+
+	savedText := Peek2Ram(ses.Conn, 0x0400, 512)
+	/*
+	blackness := make([]byte, 512)
+	for i := range blackness {
+		blackness[i] = 0xEF;  // magenta cell, for debugging.
+	}
+	PokeRam(ses.Conn, 0x0400, blackness)
+	*/
+	SetVideoMode(ses, 0, 0, 0)
+
+	defer func() {
+		SetVideoMode(ses, hrmode, hrwidth, pmode)
+		PokeRam(ses.Conn, 0x0400, savedText)
+		log.Printf("OnText...............Done.")
+	}()
+
+	log.Printf("OnTextVDGAt2000Run...")
 	runMe()
 }
 
@@ -163,11 +201,20 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	log.Printf("ZXC HdbDosHijack BEGIN")
 	com := coms.Wrap(ses.Conn)
 
-	OnText40At2000Run(ses, payload, func() {
-		log.Printf("ZXC OnText40At2000Run(TCS)")
-		// time.Sleep(1 * time.Second)
-		TextChooserShell(com, ses.HdbDos.DriveSession, T.NewText40(com))
-	})
+	if false {
+		OnTextVDGAt0400Run(ses, payload, func() {
+			log.Printf("ZXC OnTextVDGAt0400Run(TCS)")
+			//time.Sleep(1 * time.Second)
+			TextChooserShell(com, ses.HdbDos.DriveSession, T.NewTextVDG(com))
+			//time.Sleep(1 * time.Second)
+		})
+	} else {
+		OnText40At2000Run(ses, payload, func() {
+			log.Printf("ZXC OnText40At2000Run(TCS)")
+			// time.Sleep(1 * time.Second)
+			TextChooserShell(com, ses.HdbDos.DriveSession, T.NewText40(com))
+		})
+	}
 
 	log.Printf("ZXC HdbDosHijack END")
 	// We tell coco that this is the END of the HIJACK.

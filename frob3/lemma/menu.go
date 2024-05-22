@@ -15,6 +15,7 @@ var TopMenu = &Menu{
 		Mount_Menu,
 		Book_Menu,
 		Go_Menu,
+		Help_Menu,
 	},
 }
 
@@ -56,9 +57,8 @@ func (m *Menu) Lines() (lines []string) {
 	return
 }
 
-const BorderChar = '#'
-
-func RecolorMenu(t T.TextScreen, group *Menu, chosen *Menu) {
+func RecolorMenuBar(t T.TextScreen, group *Menu, chosen *Menu) {
+	w := t.W()
 	x := uint(0)
 	for _, m := range group.Items {
 		if m == chosen {
@@ -74,9 +74,13 @@ func RecolorMenu(t T.TextScreen, group *Menu, chosen *Menu) {
 				t.InvertChar(x+i, 0)
 			}
 		}
-		x += LenStr(m.Name) + 1
+		if w >= 40 {
+			t.Put(x+n, 0, ' ', 0)
+			x += LenStr(m.Name) + 1
+		} else {
+			x += LenStr(m.Name)
+		}
 	}
-	w := t.W()
 	for ; x < w; x++ {
 		t.Put(x, 0, ' ', 0)
 	}
@@ -217,6 +221,16 @@ var Mount_Menu = &Menu{
 		},
 		&Menu{
 			Name:   "Unmount All",
+			Action: nil,
+		},
+	},
+}
+
+var Help_Menu = &Menu{
+	Name: "?Help",
+	Items: []*Menu{
+		&Menu{
+			Name:   "AAAAAAAAAAA",
 			Action: nil,
 		},
 	},

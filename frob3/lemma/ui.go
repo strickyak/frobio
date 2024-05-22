@@ -1,6 +1,7 @@
 package lemma
 
 import (
+	"bytes"
 	"log"
 	"os"
 	PFP "path/filepath"
@@ -29,6 +30,7 @@ const CocoBreak = 3
 
 ////////////////// NAV
 
+/*
 type Location struct {
 	// TODO: use this, so Menu can find stuff.
 	// Or just give menu the path?
@@ -36,6 +38,7 @@ type Location struct {
 	Page  int
 	Focus int
 }
+*/
 
 type Navigator struct {
 	t   T.TextScreen
@@ -55,7 +58,8 @@ func (nav *Navigator) ClearScreen() {
 }
 func (nav *Navigator) Render(mod Model, focus uint) {
 	t := nav.t
-	w, h := t.W(), t.H()
+	w, h, vdg := t.W(), t.H(), t.IsVDG()
+	blueBar := Cond(vdg, byte(0xA3), byte(0x7F))
 
 	navLines := h - HeaderSize - FooterSize
 
@@ -86,11 +90,20 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	nav.ClearScreen()
 
 	nav.t.SetColor(T.SimpleBlue)
-	what := chosen.Path()
+	what := Format("%q", "/" + chosen.Path())
 	if LenStr(what) > w {
 		what = what[LenStr(what)-w:]
 	}
-	T.TextScreenWriteLine(t, 1, "%s", Cond(chosen.Name() == ".", "/", what))
+	pad := (w-LenStr(what)) / 2
+	var bb bytes.Buffer
+	for i:=uint(0); i<pad; i++ {
+		bb.WriteByte(blueBar)
+	}
+	bb.WriteString(what)
+	for bb.Len() < int(w) {
+		bb.WriteByte(blueBar)
+	}
+	T.TextScreenWriteLine(t, 1, "%s", bb.String())
 
 	nav.t.SetColor(T.SimpleYellow)
 	for j := uint(0); j < navLines; j++ {
@@ -113,7 +126,7 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	}
 	T.TextScreenInvertLine(t, slot+HeaderSize)
 
-	RecolorMenu(nav.t, TopMenu, nil) // turns White
+	RecolorMenuBar(nav.t, TopMenu, nil) // turns White
 	nav.t.SetColor(T.SimpleYellow)
 	// bar := "VIEW EDIT QUIK MOUNT PREF BOOK GOTO ?"
 	// inv := "I... I... I... I.... I... I... I... I"
@@ -142,19 +155,27 @@ func (nav *Navigator) NavStep(c Model) Model {
 		log.Printf("ZXC NavStep: GOT INKEY %d.", b)
 		switch b {
 		case CocoShiftUp:
-			focus -= shiftSkip
-			focus = Cond(focus < 0, 0, focus)
+			if focus > shiftSkip {
+				focus -= shiftSkip
+			} else {
+				focus = 0
+			}
 		case CocoShiftDown:
-			focus += shiftSkip
-			focus = Cond(focus >= limit, limit-1, focus)
+			if focus < limit-shiftSkip {
+				focus += shiftSkip
+			} else {
+				focus = limit-1
+			}
 
 		// Support WASD and HJKL as well as arrows.
 		case 'W', 'K', CocoUp:
-			focus -= 1
-			focus = Cond(focus < 0, 0, focus)
+			if focus > 0 {
+				focus -= 1
+			}
 		case 'S', 'J', CocoDown:
-			focus += 1
-			focus = Cond(focus >= limit, limit-1, focus)
+			if focus < limit-1 {
+				focus += 1
+			}
 		case 'A', 'H', CocoLeft:
 			if c.Parent != nil {
 				return c.Parent()
@@ -210,7 +231,7 @@ func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) bool {
 	// We chose this menu menu.
 	Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, menu.Name)
 
-	RecolorMenu(nav.t, TopMenu, menu)
+	RecolorMenuBar(nav.t, TopMenu, menu)
 	nav.t.SetColor(T.SimpleCyan)
 	lines := menu.Lines()
 	DrawBoxed(nav.t, 4, 2, lines, true)
@@ -219,7 +240,8 @@ func (nav *Navigator) TryMenu(c Model, focus uint, ch byte) bool {
 	ch2 := Up(T.GetCharFromKeyboard(nav.t.Comm()))
 	log.Printf("ZXC TryMenu: GOT CHAR %d.", ch2)
 
-	if ch2 == CocoBreak {
+	// Space cancels, like Break does.
+	if ch2 == CocoBreak || ch2 == ' ' {
 		return true // Cancelling is one way of handling.
 	}
 
@@ -266,7 +288,19 @@ func WaitForBreak(t T.TextScreen) {
 }
 
 func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
-	// W := t.W()
+	BorderChar := byte('#')
+	vdg := t.IsVDG()
+
+	Blue := byte(0xA0)
+	W := Cond(vdg, Blue + 0xA, BorderChar)
+	E := Cond(vdg, Blue + 0x5, BorderChar)
+	N := Cond(vdg, Blue + 0xC, BorderChar)
+	NW := Cond(vdg, N|W, BorderChar)
+	NE := Cond(vdg, N|E, BorderChar)
+	S := Cond(vdg, Blue + 0x3, BorderChar)
+	SW := Cond(vdg, S|W, BorderChar)
+	SE := Cond(vdg, S|E, BorderChar)
+
 	wid, hei := uint(0), LenSlice(lines)
 	for _, s := range lines {
 		if LenStr(s) > wid {
@@ -274,8 +308,17 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 		}
 	}
 	for i := uint(0); i < wid+4; i++ {
-		t.Put(x+i, y, BorderChar, T.InverseFlag)
-		t.Put(x+i, y+1+hei, BorderChar, T.InverseFlag)
+	    switch i {
+	    case 0:
+		t.Put(x+i, y, NW, T.InverseFlag)
+		t.Put(x+i, y+1+hei, SW, T.InverseFlag)
+	    case wid+3:
+		t.Put(x+i, y, NE, T.InverseFlag)
+		t.Put(x+i, y+1+hei, SE, T.InverseFlag)
+	    default:
+		t.Put(x+i, y, N, T.InverseFlag)
+		t.Put(x+i, y+1+hei, S, T.InverseFlag)
+	    }
 	}
 	for i := uint(0); i < hei; i++ {
 		n := LenStr(lines[i])
@@ -289,13 +332,13 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 	}
 
 	for i := uint(0); i < hei; i++ {
-		t.Put(x+0, y+i+1, BorderChar, 0)
+		t.Put(x+0, y+i+1, W, 0)
 		t.Put(x+1, y+i+1, ' ', 0)
 		if invertHeadChar {
 			t.InvertChar(x+2, y+i+1)
 		}
 		t.Put(x+2+wid, y+i+1, ' ', 0)
-		t.Put(x+3+wid, y+i+1, BorderChar, 0)
+		t.Put(x+3+wid, y+i+1, E, 0)
 	}
 }
 
@@ -323,34 +366,6 @@ func TextChooserShell(com *coms.Comm, ds *DriveSession, t T.TextScreen) {
 
 	nav.Loop() // Loop until we return from Hijack.
 }
-
-///////////////// VIEW
-
-/*
-type Viewer interface {
-	Nick() string
-	Name() string
-	Parent() Viewer
-	MenuGroups() []*MenuGroup
-	NumPlainLines() int
-	NumChoiceLines() int
-	PlainLine(i int) string
-	Choice(i int) string
-}
-
-type MultiView struct {
-}
-*/
-
-///////////////// SCREEN
-
-/*
-type Screener interface {
-}
-
-type GimeScreen struct {
-}
-*/
 
 type Model interface {
 	Order() int
