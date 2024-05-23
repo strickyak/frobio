@@ -1,6 +1,7 @@
 package lemma
 
 import (
+	"log"
 	"os"
 
 	T "github.com/strickyak/frobio/frob3/lemma/text"
@@ -239,25 +240,28 @@ var Help_Menu = &Menu{
 }
 
 /*
-type MenuAction interface {
-	Set(nav *Navigator, path string)
-	Do()
-	Undo()
-	String() string
-}
-type MenuActionBase struct {
-	nav  *Navigator
-	path string
-}
+	type MenuAction interface {
+		Set(nav *Navigator, path string)
+		Do()
+		Undo()
+		String() string
+	}
+
+	type MenuActionBase struct {
+		nav  *Navigator
+		path string
+	}
 */
 type ViewTextAction struct {
 	MenuActionBase
 }
+
 func (o *ViewTextAction) Do() {
 	filename := *FlagNavRoot + "/" + o.path
 	contents, err := os.ReadFile(filename)
 	if err != nil {
-		ErrorAlertChop(o.nav.t, Format("ERROR: %q: %v", filename, err))
+		log.Panicf(Format("ERROR in viewing %q: %v", o.path, err))
+		return
 	}
 	o.nav.t.SetColor(T.SimpleWhite)
 	ViewBoxedText(o.nav.t, contents, T.SimpleWhite)

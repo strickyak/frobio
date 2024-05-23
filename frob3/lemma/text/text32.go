@@ -19,7 +19,7 @@ type TextVDG struct {
 
 func NewTextVDG(com *coms.Comm) *TextVDG {
 	t := &TextVDG{
-		Com:   com,
+		Com: com,
 	}
 	for i := range t.Screen {
 		t.Screen[i] = 32 // space  (green on black)
@@ -31,9 +31,9 @@ func NewTextVDG(com *coms.Comm) *TextVDG {
 func (t *TextVDG) SetColor(byte) byte { return 0 }
 
 // W, H
-func (t *TextVDG) IsVDG() bool { return true }
-func (t *TextVDG) W() uint { return 32 }
-func (t *TextVDG) H() uint { return 16 }
+func (t *TextVDG) IsVDG() bool      { return true }
+func (t *TextVDG) W() uint          { return 32 }
+func (t *TextVDG) H() uint          { return 16 }
 func (t *TextVDG) Comm() *coms.Comm { return t.Com }
 
 // Flush

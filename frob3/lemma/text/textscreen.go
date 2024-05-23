@@ -92,8 +92,8 @@ func GetCharFromKeyboard(com *coms.Comm) byte {
 
 	z := byte(q.P())
 	switch z {
-		case 27: // Escape
-			z = 3 // becomes BREAK
+	case 27: // Escape
+		z = 3 // becomes BREAK
 	}
 	return z
 }

@@ -91,13 +91,13 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	nav.ClearScreen()
 
 	nav.t.SetColor(T.SimpleBlue)
-	what := Format("%q", "/" + chosen.Path())
+	what := Format("%q", "/"+chosen.Path())
 	if LenStr(what) > w {
 		what = what[LenStr(what)-w:]
 	}
-	pad := (w-LenStr(what)) / 2
+	pad := (w - LenStr(what)) / 2
 	var bb bytes.Buffer
-	for i:=uint(0); i<pad; i++ {
+	for i := uint(0); i < pad; i++ {
 		bb.WriteByte(blueBar)
 	}
 	bb.WriteString(what)
@@ -165,7 +165,7 @@ func (nav *Navigator) NavStep(c Model) Model {
 			if focus < limit-shiftSkip {
 				focus += shiftSkip
 			} else {
-				focus = limit-1
+				focus = limit - 1
 			}
 
 		// Support WASD and HJKL as well as arrows.
@@ -200,7 +200,7 @@ func (nav *Navigator) NavStep(c Model) Model {
 			nav.ds.SetDrive(driveNum, kid) // mounter.go
 
 		default:
-			if 'A' <= b && b <= 'Z' || b=='?' {
+			if 'A' <= b && b <= 'Z' || b == '?' {
 				nav.TryMenu(TopMenu, c, focus, b)
 			} else {
 				log.Printf("keystroke rejected: %d.", b)
@@ -220,6 +220,14 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 	action := chosen.Action // TODO: Should make a copy, or pass nav & path.
 	action.Set(nav, c.KidAtFocus(focus).Path())
 
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("Caught in Action %q: %v", action, r)
+			ErrorAlertChop(nav.t, Format("ERROR: %v", r))
+		}
+	}()
+
 	confirmation := []string{
 		"",
 		Format("Action: %q", action.String()),
@@ -227,17 +235,21 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 		"Hit ENTER to confirm,",
 		"or BREAK to cancel.",
 		"",
-	}	
+	}
 
 	DrawBoxed(nav.t, boxX, boxY, confirmation, false)
 	nav.t.Flush()
 	for {
 		ch := Up(T.GetCharFromKeyboard(nav.t.Comm()))
 		switch ch {
-			case 'N', 3, 32: return
-			case 'Y', 10, 13: 
-				// TODO: call action
-				action.Do()
+		case 'N', 3, 32:
+			return
+		case 'Y', 10, 13:
+			// TODO: call action
+			log.Printf("Starting: %q", action)
+			action.Do()
+			log.Printf("Finished: %q", action)
+			return
 		}
 	}
 }
@@ -250,73 +262,73 @@ func (nav *Navigator) TryMenu(menu *Menu, c Model, focus uint, ch byte) {
 	saved := nav.t.Save()
 	defer nav.t.Restore(saved) // How necessary is this?  Won't we redraw anyway?
 
-for {
-	var chosen *Menu
-	for _, it := range menu.Items {
-		if Up(it.Name[0]) == Up(ch) {
-			chosen = it
-			break
+	for {
+		var chosen *Menu
+		for _, it := range menu.Items {
+			if Up(it.Name[0]) == Up(ch) {
+				chosen = it
+				break
+			}
 		}
-	}
-	if chosen == nil {
-		ErrorAlert(nav.t, []string{
-			Format("'%c' is not a menu option.", ch),
-		})
-		return
-	}
-
-	Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, chosen.Name)
-	RecolorMenuBar(nav.t, TopMenu, chosen)
-
-	if chosen.Action != nil {
-		nav.DoAction(chosen, c, focus, boxX, boxY)
-		return
-	}
-
-	// No Action, so make sure there is a next menu.
-	if chosen.Items == nil {
-		ErrorAlert(nav.t, []string{
-			"Dead End",
-			"",
-			"  (should not happen)",
-		})
-		return
-	}
-
-	// Draw the next menu
-	nav.t.SetColor(T.SimpleCyan)
-	lines := chosen.Lines()
-	DrawBoxed(nav.t, boxX, boxY, lines, true)
-	nav.t.Flush()
-
-	ch = Up(T.GetCharFromKeyboard(nav.t.Comm()))
-	log.Printf("ZXC TryMenu: GOT CHAR %d.", ch)
-	// Space cancels, like Break does.
-	if ch == CocoBreak || ch == ' ' {
-		return
-	}
-
-	menu = chosen
-	boxX += 2
-	boxY += 2
-
-/*
-	var chosen *Menu
-	for _, it := range menu.Items {
-		if it.Shortcut() == ch2 {
-			chosen = it
-			break
+		if chosen == nil {
+			ErrorAlert(nav.t, []string{
+				Format("'%c' is not a menu option.", ch),
+			})
+			return
 		}
-	}
-	if chosen == nil {
-		ErrorAlert(nav.t, []string{
-			Format("'%c' is not a menu option.", ch2),
-		})
-		return
-	}
-*/
 
-}
+		Log("TryMenu: nav=%v ( c=%v , f=%v ) '%c' -> %q", nav, c, focus, ch, chosen.Name)
+		RecolorMenuBar(nav.t, TopMenu, chosen)
+
+		if chosen.Action != nil {
+			nav.DoAction(chosen, c, focus, boxX, boxY)
+			return
+		}
+
+		// No Action, so make sure there is a next menu.
+		if chosen.Items == nil {
+			ErrorAlert(nav.t, []string{
+				"Dead End",
+				"",
+				"  (should not happen)",
+			})
+			return
+		}
+
+		// Draw the next menu
+		nav.t.SetColor(T.SimpleCyan)
+		lines := chosen.Lines()
+		DrawBoxed(nav.t, boxX, boxY, lines, true)
+		nav.t.Flush()
+
+		ch = Up(T.GetCharFromKeyboard(nav.t.Comm()))
+		log.Printf("ZXC TryMenu: GOT CHAR %d.", ch)
+		// Space cancels, like Break does.
+		if ch == CocoBreak || ch == ' ' {
+			return
+		}
+
+		menu = chosen
+		boxX += 2
+		boxY += 2
+
+		/*
+			var chosen *Menu
+			for _, it := range menu.Items {
+				if it.Shortcut() == ch2 {
+					chosen = it
+					break
+				}
+			}
+			if chosen == nil {
+				ErrorAlert(nav.t, []string{
+					Format("'%c' is not a menu option.", ch2),
+				})
+				return
+			}
+		*/
+
+	}
 	return
 }
 
@@ -340,12 +352,12 @@ func RenderTextAsLines(t T.TextScreen, text []byte) (lines []string) {
 }
 
 func Chop(t T.TextScreen, line string) (lines []string) {
-	w := t.W() - 5  // effective width is reduced by \\ and borders.
+	w := t.W() - 5 // effective width is reduced by \\ and borders.
 	for LenStr(line) > w {
-		lines = append(lines, line[:w] + "\\")
+		lines = append(lines, line[:w]+"\\")
 		line = line[w:]
 	}
-	if len(line) > 0 || len(lines)==0 {
+	if len(line) > 0 || len(lines) == 0 {
 		lines = append(lines, line)
 	}
 	return
@@ -394,12 +406,12 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 	vdg := t.IsVDG()
 	Blue := byte(0xA0)
 
-	W := Cond(vdg, Blue + 0xA, '|')
-	E := Cond(vdg, Blue + 0x5, '|')
-	N := Cond(vdg, Blue + 0xC, '-')
+	W := Cond(vdg, Blue+0xA, '|')
+	E := Cond(vdg, Blue+0x5, '|')
+	N := Cond(vdg, Blue+0xC, '-')
 	NW := Cond(vdg, N|W, '+')
 	NE := Cond(vdg, N|E, '+')
-	S := Cond(vdg, Blue + 0x3, '-')
+	S := Cond(vdg, Blue+0x3, '-')
 	SW := Cond(vdg, S|W, '+')
 	SE := Cond(vdg, S|E, '+')
 
@@ -410,17 +422,17 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 		}
 	}
 	for i := uint(0); i < wid+4; i++ {
-	    switch i {
-	    case 0:
-		t.Put(x+i, y, NW, T.InverseFlag)
-		t.Put(x+i, y+1+hei, SW, T.InverseFlag)
-	    case wid+3:
-		t.Put(x+i, y, NE, T.InverseFlag)
-		t.Put(x+i, y+1+hei, SE, T.InverseFlag)
-	    default:
-		t.Put(x+i, y, N, T.InverseFlag)
-		t.Put(x+i, y+1+hei, S, T.InverseFlag)
-	    }
+		switch i {
+		case 0:
+			t.Put(x+i, y, NW, T.InverseFlag)
+			t.Put(x+i, y+1+hei, SW, T.InverseFlag)
+		case wid + 3:
+			t.Put(x+i, y, NE, T.InverseFlag)
+			t.Put(x+i, y+1+hei, SE, T.InverseFlag)
+		default:
+			t.Put(x+i, y, N, T.InverseFlag)
+			t.Put(x+i, y+1+hei, S, T.InverseFlag)
+		}
 	}
 	for i := uint(0); i < hei; i++ {
 		n := LenStr(lines[i])
