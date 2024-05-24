@@ -5,13 +5,14 @@
 LAN=127.0.0.1
 DHCP=0
 # This becomes the superdirectory in the release tarballs.
-RELEASE=lemma
+RELEASE=pizga-base/Internal
+PIZGA_BASE=pizga-base
 
 all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom41 all-hdbdos results1 results2 all-lemmings results2b results3
 	find $(RELEASE) -type f -print | LC_ALL=C sort
 	sync
 
-tarballs: all lemma-base.tar.bz2 lemma-eou.tar.bz2
+tarballs: all pizga-base.tar.bz2 pizga-eou.tar.bz2
 
 #all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 all-lemmings results3-without-gccretro tarballs
 #	find $(RELEASE) -type f -print | LC_ALL=C sort
@@ -43,8 +44,10 @@ LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importu
 ###############################################
 
 results1:
-	rm -rf ./$(RELEASE)/
-	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES $(RELEASE)/NAVROOT $(RELEASE)/NAVROOT/PUBLIC $(RELEASE)/NAVROOT/HOMES
+	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou
+	mkdir -p $(PIZGA_BASE)/Homes $(PIZGA_BASE)/Public $(PIZGA_BASE)/Community $(PIZGA_BASE)/Internal
+	mkdir -p ./pizga-eou
+	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES
 	cp -vf $F/helper/lemma-runners/*.sh $(RELEASE)/
 	set -x; for x in *.os9cmd; do cp -v $$x $(RELEASE)/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x $(RELEASE)/MODULES/$$(basename $$x .os9mod) ; done
@@ -92,6 +95,7 @@ results2b: results2 all-axiom41
 	cp -vf axiom41-c300.decb $(RELEASE)/ETC/
 	cp -vf axiom41.rom $(RELEASE)/ETC/
 	cp -vf axiom41.rom.list $(RELEASE)/ETC/
+	cp -vf primes41-c300.decb $(RELEASE)/ETC/
 	cp -vf primes41.rom $(RELEASE)/ETC/
 	cp -vf primes41.rom.list $(RELEASE)/ETC/
 	cp -vf hdbdos.rom $(RELEASE)/ETC/
@@ -119,9 +123,9 @@ clean: _FORCE_
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup *.raw *.lwraw
-	rm -f utility-* burn
-	rm -rf ./$(RELEASE)
-	rm -f broadcast-burn  done  done-without-gccretro  lemma-base.tar.bz2  lemma-eou.tar.bz2  lemma-waiter  server  SPCWARIO.BIN
+	rm -f utility-* burn generated*.h
+	rm -rf ./$(RELEASE) ./$(PIZGA_BASE)
+	rm -f broadcast-burn  done  done-without-gccretro  pizga-base.tar.bz2  pizga-eou.tar.bz2  lemma-waiter  server  SPCWARIO.BIN
 
 
 _FORCE_:
@@ -457,18 +461,21 @@ lem.os9mod: lem.asm defsfile
 all-lemmings: burn-rom-fast.lem all-net-games all-metal
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)' --results_dir='$(RELEASE)'
 	mkdir -p $(RELEASE)/LEMMINGS/
-	ln -fv *.lem $(RELEASE)/LEMMINGS/
 	ln -fv *.bin $(RELEASE)/LEMMINGS/
-	ln -fv *.dsk $(RELEASE)/LEMMINGS/
+	ln -fv $$(ls *.lem | grep -v ^EOU) $(RELEASE)/LEMMINGS/
+	ln -fv $$(ls *.dsk | grep -v ^EOU) $(RELEASE)/LEMMINGS/
+	mkdir -p pizga-eou/LEMMINGS
+	ln -fv EOU*.lem EOU*.dsk pizga-eou/LEMMINGS/
+	cd $(RELEASE)/LEMMINGS/ && ln -sfv ../../../pizga-eou/LEMMINGS/EOU* .
 
 #######################################################################################
 
-lemma-base.tar.bz2: _FORCE_
+pizga-base.tar.bz2: _FORCE_
 	rm -fv $@
-	tar -cjf $@ --exclude='EOU_*.dsk' $(RELEASE)/
-lemma-eou.tar.bz2: _FORCE_
+	tar -cjf $@ pizga-base/
+pizga-eou.tar.bz2: _FORCE_
 	rm -fv $@
-	tar -cjf $@ $(RELEASE)/LEMMINGS/EOU_*.dsk
+	tar -cjf $@ pizga-eou/
 
 #######################################################################################
 
