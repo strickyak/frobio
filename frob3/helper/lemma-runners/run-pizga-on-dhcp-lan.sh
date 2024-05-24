@@ -38,5 +38,5 @@ exec Internal/bin/lemma-waiter \
     --inkey_raw  Internal/ETC/inkey_trap.lwraw \
     --scan_keyboard=1 \
     --lan="$LAN" \
-    --dhcp=true \
+    --config_by_dhcp=true \
     ##
