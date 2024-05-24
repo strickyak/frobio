@@ -6,9 +6,8 @@ import (
 
 type Alert struct {
 	Summary string
-	Text string
-	ID int
+	Text    string
+	ID      int
 	Created time.Time
 	Expires time.Time
 }
-
