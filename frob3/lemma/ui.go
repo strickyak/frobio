@@ -91,7 +91,7 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	nav.ClearScreen()
 
 	nav.t.SetColor(T.SimpleBlue)
-	what := Format("%q", "/"+chosen.Path())
+	what := Format("%q", chosen.Path())
 	if LenStr(what) > w {
 		what = what[LenStr(what)-w:]
 	}
@@ -459,7 +459,7 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 // Extra...
 
 func (t *Navigator) Loop() {
-	var c Model = DotModel()
+	var c Model = RootModel()
 	for {
 		log.Printf("nav at %q", c.Path())
 		c = t.NavStep(c)
@@ -543,10 +543,10 @@ func (mod *BaseModel) KidAtFocus(focus uint) Model {
 	}
 }
 
-func DotModel() *BaseModel {
+func RootModel() *BaseModel {
 	return &BaseModel{
 		order: 100,
-		name:  ".",
+		name:  "/",
 	}
 }
 
@@ -558,7 +558,7 @@ func (mod *BaseModel) UnixPath() string {
 }
 func (mod *BaseModel) Path() string {
 	if mod.parent == nil {
-		return "."
+		return "/"
 	} else {
 		return PFP.Join(mod.parent.Path(), mod.name)
 	}
