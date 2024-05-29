@@ -37,9 +37,10 @@ esac
 exec Internal/bin/lemma-waiter \
     --cards=true \
     --lemmings_root Internal/LEMMINGS/ \
-    --nav_root . \
-    --sideload_raw Internal/ETC/sideload.lwraw \
-    --inkey_raw  Internal/ETC/inkey_trap.lwraw \
+    --nav_root      . \
+    --web_static    Internal/web-static \
+    --sideload_raw  Internal/ETC/sideload.lwraw \
+    --inkey_raw     Internal/ETC/inkey_trap.lwraw \
     --scan_keyboard=1 \
     --lan="$LAN" \
     --config_by_dhcp=false \

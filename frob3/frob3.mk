@@ -12,7 +12,9 @@ all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom41 all-
 	find $(RELEASE) -type f -print | LC_ALL=C sort
 	sync
 
-tarballs: all pizga-base.tar.bz2 pizga-eou.tar.bz2
+TARBALLS= pizga-base.tar.bz2 pizga-eou.tar.bz2
+tarballs: all $(TARBALLS)
+	sync
 
 #all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 all-lemmings results3-without-gccretro tarballs
 #	find $(RELEASE) -type f -print | LC_ALL=C sort
@@ -41,14 +43,22 @@ CMOCL=$F/../../share/cmoc/lib
 #LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource
 LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport
 
+STATIC_LINKING_GO = CGO_ENABLED=0 $(GO)
+
 ###############################################
 
 results1:
 	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou
-	mkdir -p $(PIZGA_BASE)/Homes $(PIZGA_BASE)/Public $(PIZGA_BASE)/Community $(PIZGA_BASE)/Internal
-	mkdir -p ./pizga-eou
+	mkdir -p $(PIZGA_BASE)/Homes $(PIZGA_BASE)/Public $(PIZGA_BASE)/Members $(PIZGA_BASE)/Internal
+	mkdir -p ./pizga-eou $(PIZGA_BASE)/Internal/web-static
 	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES
-	cp -vf $F/helper/lemma-runners/*.sh $(RELEASE)/
+	ln -svf pizga-base pizga
+	ln -svf ../pizga-media .
+	ln -svf ../pizga-sdc .
+	ln -svf ../../pizga-media/video1 $(PIZGA_BASE)/Members/video1
+	ln -svf ../../pizga-sdc/sdc-repo $(PIZGA_BASE)/Public/sdc-repo
+	cp -vf $F/web-static/*.* $(PIZGA_BASE)/Internal/web-static/
+	cp -vf $F/helper/pizga-runners/*.sh $(RELEASE)/
 	set -x; for x in *.os9cmd; do cp -v $$x $(RELEASE)/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x $(RELEASE)/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls $(RELEASE)/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
@@ -124,8 +134,8 @@ clean: _FORCE_
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup *.raw *.lwraw
 	rm -f utility-* burn generated*.h
-	rm -rf ./$(RELEASE) ./$(PIZGA_BASE)
-	rm -f broadcast-burn  done  done-without-gccretro  pizga-base.tar.bz2  pizga-eou.tar.bz2  lemma-waiter  server  SPCWARIO.BIN
+	rm -rf ./$(RELEASE) ./pizga-base ./pizga-eou
+	rm -f broadcast-burn  done  done-without-gccretro  $(TARBALLS)  lemma-waiter  server  SPCWARIO.BIN
 
 
 _FORCE_:
@@ -473,9 +483,13 @@ all-lemmings: burn-rom-fast.lem all-net-games all-metal
 pizga-base.tar.bz2: _FORCE_
 	rm -fv $@
 	tar -cjf $@ pizga-base/
+	-ln -fv $@ /tmp/  # Attempt to hard-link in /tmp/ but ignore if error.
+	chmod 444 $@
 pizga-eou.tar.bz2: _FORCE_
 	rm -fv $@
 	tar -cjf $@ pizga-eou/
+	-ln -fv $@ /tmp/  # Attempt to hard-link in /tmp/ but ignore if error.
+	chmod 444 $@
 
 #######################################################################################
 
@@ -487,16 +501,16 @@ pizga-eou.tar.bz2: _FORCE_
 #   that you can ignore.
 ###lemma-waiter: lemma-waiter.go all-without-gccretro
 lemma-waiter: lemma-waiter.go $(wildcard $F/lemma/*.go $F/lemma/*/*.go)
-	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/lemma-waiter -x lemma-waiter.go
+	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(STATIC_LINKING_GO) build -o $$P/lemma-waiter -x lemma-waiter.go
 	ln -fv lemma-waiter ../bin
 ###broadcast-burn: broadcast-burn.go all-without-gccretro
 broadcast-burn: broadcast-burn.go
-	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/broadcast-burn -x broadcast-burn.go
+	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(STATIC_LINKING_GO) build -o $$P/broadcast-burn -x broadcast-burn.go
 	ln -fv broadcast-burn ../bin
 run-server: run-lemma-waiter  # Alias.
 run-lemma: run-lemma-waiter   # Alias.
 run-lemma-waiter: lemma-waiter
-	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $(SHELF)/../shelving/nav-root/ --web_static $(SHELF)/../shelving/web-static/ $(FORCE)
+	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $(SHELF)/../shelving/nav-root/ --web_static $(RELEASE)/web-static/ $(FORCE)
 
 ##############################
 # Disable RCS & SCCS patterns.

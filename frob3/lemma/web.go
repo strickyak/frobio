@@ -18,6 +18,8 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
+var FlagWebReaderPwFlipped = flag.String("web_reader_pw_flipped", "XLXL-KVYYOVH", "magic web reader pw (optional)")
+
 var FlagWebStatic = flag.String("web_static", "", "web-static serving directory")
 
 const (
@@ -107,6 +109,53 @@ func RunWeb() {
 	log.Fatal(s.ListenAndServe())
 }
 
+func Flip13Filepath(a string) string {
+	if strings.HasSuffix(a, "---flip") {
+		trimmed := a[:len(a)-7]
+		dir, base := P.Dir(trimmed), P.Base(trimmed)
+		return P.Join(dir, Flip13(base))
+	}
+	return a
+}
+
+// tr A-Za-z ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba
+func Flip13(a string) string {
+	var bb bytes.Buffer
+	for _, c := range a {
+		if 'a' <= c && c <= 'z' {
+			letter := c - 'a';  // 0 to 25
+			newLetter := 25 - letter; // 25 to 0
+			bb.WriteRune( newLetter + 'a' )
+		} else if 'A' <= c && c <= 'Z' {
+			letter := c - 'A';  // 0 to 25
+			newLetter := 25 - letter; // 25 to 0
+			bb.WriteRune( newLetter + 'A' )
+		} else {
+			bb.WriteRune( c)
+		}
+	}
+	return bb.String()
+}
+
+// tr A-Za-z N-ZA-Mn-za-m
+func Rot13(a string) string {
+	var bb bytes.Buffer
+	for _, c := range a {
+		if 'a' <= c && c <= 'm' {
+			bb.WriteRune( c+13)
+		} else if 'n' <= c && c <= 'z' {
+			bb.WriteRune( c-13)
+		} else if 'A' <= c && c <= 'M' {
+			bb.WriteRune( c+13)
+		} else if 'N' <= c && c <= 'Z' {
+			bb.WriteRune( c-13)
+		} else {
+			bb.WriteRune( c)
+		}
+	}
+	return bb.String()
+}
+
 ////////////////////////////////////////////////////////////////////
 //
 //  Thanks to https://github.com/go-kit/kit/blob/v0.13.0/auth/basic/middleware.go
@@ -152,6 +201,8 @@ var PublicExceptions = map[string]bool{
 }
 
 func basicAuth(next http.HandlerFunc) http.HandlerFunc {
+	webReaderPwHash := sha256.Sum256([]byte(Flip13(strings.ToUpper(*FlagWebReaderPwFlipped))))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := P.Clean(r.URL.Path)
 		words := strings.Split(p, "/")
@@ -198,12 +249,19 @@ func basicAuth(next http.HandlerFunc) http.HandlerFunc {
 			// avoid leaking information.
 			usernameMatch := (subtle.ConstantTimeCompare(usernameHash[:], expectedUsernameHash[:]) == 1)
 			passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
+			readerMatch :=    (subtle.ConstantTimeCompare(passwordHash[:], webReaderPwHash[:]) == 1)
 
 			// If the username and password are correct, then call
 			// the next handler in the chain. Make sure to return
 			// afterwards, so that none of the code below is run.
 			if usernameMatch && passwordMatch {
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r)  // TODO: pass the username
+				return
+			}
+
+			meth := strings.ToUpper(r.Method)
+			if readerMatch && (meth == "GET" || meth == "HEAD") {
+				next.ServeHTTP(w, r)  // TODO: allow only readers
 				return
 			}
 		}
@@ -249,7 +307,7 @@ My name is %q and I'll be your waiter today.
 
 Visit the <a href="/pizga/">Pizga Repository</a>.
 <p>
-<a href="/web-static/mt_pisgah_pisgah_view_ranch_by_brotherwayword_d1cpxsy.jpg"><img src="/web-static/mt_pisgah_pisgah_view_ranch_by_brotherwayword_d1cpxsy-w1200.jpg" xxxxWIDTH="100%"></a>
+<img src="/web-static/mt_pisgah_pisgah_view_ranch_by_brotherwayword_d1cpxsy-w1000.jpg" alt="Picture of Mount Pisgah in the fall">
 <br>
 
 <div class=credit>Thanks to

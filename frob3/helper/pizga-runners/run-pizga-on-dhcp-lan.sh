@@ -16,7 +16,7 @@
 #
 
 set -ex
-cd "`dirname "$0"`"
+cd "`dirname "$0"`"/../
 
 case $1 in
   [0-9]*.[0-9]*.[0-9]*.*[0-9] )
@@ -30,13 +30,14 @@ case $1 in
 esac
 
 
-exec bin/lemma-waiter \
+exec Internal/bin/lemma-waiter \
     --cards=true \
-    --lemmings_root LEMMINGS/ \
-    --nav_root NAVROOT/ \
-    --sideload_raw ETC/sideload.lwraw \
-    --inkey_raw  ETC/inkey_trap.lwraw \
+    --lemmings_root Internal/LEMMINGS/ \
+    --nav_root      . \
+    --web_static    Internal/web-static \
+    --sideload_raw  Internal/ETC/sideload.lwraw \
+    --inkey_raw     Internal/ETC/inkey_trap.lwraw \
     --scan_keyboard=1 \
     --lan="$LAN" \
-    --dhcp=true \
+    --config_by_dhcp=true \
     ##
