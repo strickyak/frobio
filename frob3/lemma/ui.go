@@ -230,16 +230,16 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 		}
 	}()
 
-/*
-	confirmation := []string{
-		"",
-		Format("Action: %q", action.String(nav, kid, fpath)),
-		"",
-		"Hit ENTER to confirm,",
-		"or BREAK to cancel.",
-		"",
-	}
-*/
+	/*
+		confirmation := []string{
+			"",
+			Format("Action: %q", action.String(nav, kid, fpath)),
+			"",
+			"Hit ENTER to confirm,",
+			"or BREAK to cancel.",
+			"",
+		}
+	*/
 	confirmation := []string{""}
 
 	confirmation = append(confirmation,

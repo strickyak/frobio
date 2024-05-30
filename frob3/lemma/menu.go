@@ -366,16 +366,16 @@ type MountAction struct {
 	N byte
 }
 
-	// Do(nav *Navigator, mod Model, path string)
-	// Undo(nav *Navigator, mod Model, path string)
-	// String(nav *Navigator, mod Model, path string) string
+// Do(nav *Navigator, mod Model, path string)
+// Undo(nav *Navigator, mod Model, path string)
+// String(nav *Navigator, mod Model, path string) string
 func MakeMounter(n byte) MenuAction {
 	return &MountAction{n}
 }
 func (o *MountAction) Do(nav *Navigator, kid Model, path string) {
-			kid.Kids()
-			Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, o.N, kid)
-			nav.ds.SetDrive(o.N, kid) // mounter.go
+	kid.Kids()
+	Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, o.N, kid)
+	nav.ds.SetDrive(o.N, kid) // mounter.go
 }
 func (o *MountAction) Undo(nav *Navigator, mod Model, path string) {
 }
