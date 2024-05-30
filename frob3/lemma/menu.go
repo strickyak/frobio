@@ -31,10 +31,10 @@ type Menu struct {
 }
 
 type MenuAction interface {
-	// Set(nav *Navigator, path string)
-	Do(nav *Navigator, path string)
-	Undo(nav *Navigator, path string)
-	String(nav *Navigator, path string) string
+	// Set(nav *Navigator, mod Model, path string)
+	Do(nav *Navigator, mod Model, path string)
+	Undo(nav *Navigator, mod Model, path string)
+	String(nav *Navigator, mod Model, path string) string
 }
 
 /*
@@ -43,7 +43,7 @@ type MenuActionBase struct {
 	path string
 }
 
-func (o *MenuActionBase) Set(nav *Navigator, path string) {
+func (o *MenuActionBase) Set(nav *Navigator, mod Model, path string) {
 	o.nav = nav
 	o.path = path
 }
@@ -207,24 +207,44 @@ var Mount_Menu = &Menu{
 	Name: "Mount",
 	Items: []*Menu{
 		&Menu{
-			Name:   "0",
-			Action: nil,
+			Name:   "0 : Mount Drive 0",
+			Action: MakeMounter(0),
 		},
 		&Menu{
-			Name:   "1",
-			Action: nil,
+			Name:   "1 : Mount Drive 1",
+			Action: MakeMounter(1),
 		},
 		&Menu{
-			Name:   "2",
-			Action: nil,
+			Name:   "2 : Mount Drive 2",
+			Action: MakeMounter(2),
 		},
 		&Menu{
-			Name:   "3",
-			Action: nil,
+			Name:   "3 : Mount Drive 3",
+			Action: MakeMounter(3),
 		},
 		&Menu{
-			Name:   "4",
-			Action: nil,
+			Name:   "4 : Mount Drive 4",
+			Action: MakeMounter(4),
+		},
+		&Menu{
+			Name:   "5 : Mount Drive 5",
+			Action: MakeMounter(5),
+		},
+		&Menu{
+			Name:   "6 : Mount Drive 6",
+			Action: MakeMounter(6),
+		},
+		&Menu{
+			Name:   "7 : Mount Drive 7",
+			Action: MakeMounter(7),
+		},
+		&Menu{
+			Name:   "8 : Mount Drive 8",
+			Action: MakeMounter(8),
+		},
+		&Menu{
+			Name:   "9 : Mount Drive 9",
+			Action: MakeMounter(9),
 		},
 		&Menu{
 			Name:   "Unmount All",
@@ -245,7 +265,7 @@ var Help_Menu = &Menu{
 
 /*
 	type MenuAction interface {
-		Set(nav *Navigator, path string)
+		Set(nav *Navigator, mod Model, path string)
 		Do()
 		Undo()
 		String() string
@@ -260,7 +280,7 @@ var Help_Menu = &Menu{
 type ViewTextAction struct {
 }
 
-func (o *ViewTextAction) Do(nav *Navigator, path string) {
+func (o *ViewTextAction) Do(nav *Navigator, mod Model, path string) {
 	filename := *FlagNavRoot + "/" + path
 	contents, err := os.ReadFile(filename)
 	if err != nil {
@@ -271,16 +291,16 @@ func (o *ViewTextAction) Do(nav *Navigator, path string) {
 	// ViewBoxedText(nav.t, contents, T.SimpleWhite)
 	ViewFullScreenText(nav.t, contents, T.SimpleWhite)
 }
-func (o *ViewTextAction) Undo(nav *Navigator, path string) {
+func (o *ViewTextAction) Undo(nav *Navigator, mod Model, path string) {
 }
-func (o *ViewTextAction) String(nav *Navigator, path string) string {
+func (o *ViewTextAction) String(nav *Navigator, mod Model, path string) string {
 	return Format("View file %q as text", path)
 }
 
 type ViewHexAction struct {
 }
 
-func (o *ViewHexAction) Do(nav *Navigator, path string) {
+func (o *ViewHexAction) Do(nav *Navigator, mod Model, path string) {
 	filename := *FlagNavRoot + "/" + path
 	contents, err := os.ReadFile(filename)
 	if err != nil {
@@ -336,8 +356,29 @@ func (o *ViewHexAction) Do(nav *Navigator, path string) {
 	nav.t.SetColor(T.SimpleWhite)
 	ViewFullScreenLines(nav.t, lines, T.SimpleWhite)
 }
-func (o *ViewHexAction) Undo(nav *Navigator, path string) {
+func (o *ViewHexAction) Undo(nav *Navigator, mod Model, path string) {
 }
-func (o *ViewHexAction) String(nav *Navigator, path string) string {
+func (o *ViewHexAction) String(nav *Navigator, mod Model, path string) string {
 	return Format("View file %q as text", path)
+}
+
+type MountAction struct {
+	N byte
+}
+
+	// Do(nav *Navigator, mod Model, path string)
+	// Undo(nav *Navigator, mod Model, path string)
+	// String(nav *Navigator, mod Model, path string) string
+func MakeMounter(n byte) MenuAction {
+	return &MountAction{n}
+}
+func (o *MountAction) Do(nav *Navigator, kid Model, path string) {
+			kid.Kids()
+			Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, o.N, kid)
+			nav.ds.SetDrive(o.N, kid) // mounter.go
+}
+func (o *MountAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *MountAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("Mount file %q as drive %d", path, o.N)
 }

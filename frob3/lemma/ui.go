@@ -219,7 +219,8 @@ func Up(x byte) byte {
 func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uint) {
 	action := chosen.Action // TODO: Should make a copy, or pass nav & path.
 	// action.Set(nav, c.KidAtFocus(focus).Path())
-	fpath := c.KidAtFocus(focus).Path()
+	kid := c.KidAtFocus(focus)
+	fpath := kid.Path()
 
 	defer func() {
 		r := recover()
@@ -229,14 +230,27 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 		}
 	}()
 
+/*
 	confirmation := []string{
 		"",
-		Format("Action: %q", action.String(nav, fpath)),
+		Format("Action: %q", action.String(nav, kid, fpath)),
 		"",
 		"Hit ENTER to confirm,",
 		"or BREAK to cancel.",
 		"",
 	}
+*/
+	confirmation := []string{""}
+
+	confirmation = append(confirmation,
+		Chop(nav.t, Format("Action: %q", action.String(nav, kid, fpath)))...)
+
+	confirmation = append(confirmation,
+		"",
+		"Hit ENTER to confirm,",
+		"or BREAK to cancel.",
+		"",
+	)
 
 	DrawBoxed(nav.t, boxX, boxY, confirmation, false)
 	nav.t.Flush()
@@ -248,7 +262,7 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 		case 'Y', 10, 13:
 			// TODO: call action
 			log.Printf("Starting: %q", action)
-			action.Do(nav, fpath)
+			action.Do(nav, kid, fpath)
 			log.Printf("Finished: %q", action)
 			return
 		}
@@ -344,6 +358,10 @@ func SplitTextAsLines(text []byte) (lines []string) {
 			bb.WriteByte(b)
 		default:
 			fmt.Fprintf(&bb, "{%d}", b)
+		}
+		if bb.Len() > 150 {
+			lines = append(lines, bb.String())
+			bb.Reset()
 		}
 	}
 	if bb.Len() > 0 || len(lines) == 0 {
