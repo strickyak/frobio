@@ -123,15 +123,15 @@ func Flip13(a string) string {
 	var bb bytes.Buffer
 	for _, c := range a {
 		if 'a' <= c && c <= 'z' {
-			letter := c - 'a';  // 0 to 25
-			newLetter := 25 - letter; // 25 to 0
-			bb.WriteRune( newLetter + 'a' )
+			letter := c - 'a'        // 0 to 25
+			newLetter := 25 - letter // 25 to 0
+			bb.WriteRune(newLetter + 'a')
 		} else if 'A' <= c && c <= 'Z' {
-			letter := c - 'A';  // 0 to 25
-			newLetter := 25 - letter; // 25 to 0
-			bb.WriteRune( newLetter + 'A' )
+			letter := c - 'A'        // 0 to 25
+			newLetter := 25 - letter // 25 to 0
+			bb.WriteRune(newLetter + 'A')
 		} else {
-			bb.WriteRune( c)
+			bb.WriteRune(c)
 		}
 	}
 	return bb.String()
@@ -142,15 +142,15 @@ func Rot13(a string) string {
 	var bb bytes.Buffer
 	for _, c := range a {
 		if 'a' <= c && c <= 'm' {
-			bb.WriteRune( c+13)
+			bb.WriteRune(c + 13)
 		} else if 'n' <= c && c <= 'z' {
-			bb.WriteRune( c-13)
+			bb.WriteRune(c - 13)
 		} else if 'A' <= c && c <= 'M' {
-			bb.WriteRune( c+13)
+			bb.WriteRune(c + 13)
 		} else if 'N' <= c && c <= 'Z' {
-			bb.WriteRune( c-13)
+			bb.WriteRune(c - 13)
 		} else {
-			bb.WriteRune( c)
+			bb.WriteRune(c)
 		}
 	}
 	return bb.String()
@@ -249,19 +249,19 @@ func basicAuth(next http.HandlerFunc) http.HandlerFunc {
 			// avoid leaking information.
 			usernameMatch := (subtle.ConstantTimeCompare(usernameHash[:], expectedUsernameHash[:]) == 1)
 			passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
-			readerMatch :=    (subtle.ConstantTimeCompare(passwordHash[:], webReaderPwHash[:]) == 1)
+			readerMatch := (subtle.ConstantTimeCompare(passwordHash[:], webReaderPwHash[:]) == 1)
 
 			// If the username and password are correct, then call
 			// the next handler in the chain. Make sure to return
 			// afterwards, so that none of the code below is run.
 			if usernameMatch && passwordMatch {
-				next.ServeHTTP(w, r)  // TODO: pass the username
+				next.ServeHTTP(w, r) // TODO: pass the username
 				return
 			}
 
 			meth := strings.ToUpper(r.Method)
 			if readerMatch && (meth == "GET" || meth == "HEAD") {
-				next.ServeHTTP(w, r)  // TODO: allow only readers
+				next.ServeHTTP(w, r) // TODO: allow only readers
 				return
 			}
 		}

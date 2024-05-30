@@ -1,6 +1,8 @@
 package lemma
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"os"
 
@@ -29,12 +31,13 @@ type Menu struct {
 }
 
 type MenuAction interface {
-	Set(nav *Navigator, path string)
-	Do()
-	Undo()
-	String() string
+	// Set(nav *Navigator, path string)
+	Do(nav *Navigator, path string)
+	Undo(nav *Navigator, path string)
+	String(nav *Navigator, path string) string
 }
 
+/*
 type MenuActionBase struct {
 	nav  *Navigator
 	path string
@@ -44,6 +47,7 @@ func (o *MenuActionBase) Set(nav *Navigator, path string) {
 	o.nav = nav
 	o.path = path
 }
+*/
 
 type MenuActionHistory struct {
 	History []*MenuAction
@@ -102,7 +106,7 @@ var View_Menu = &Menu{
 		},
 		&Menu{
 			Name:   "Hex View",
-			Action: nil,
+			Action: &ViewHexAction{},
 		},
 	},
 }
@@ -252,22 +256,88 @@ var Help_Menu = &Menu{
 		path string
 	}
 */
+
 type ViewTextAction struct {
-	MenuActionBase
 }
 
-func (o *ViewTextAction) Do() {
-	filename := *FlagNavRoot + "/" + o.path
+func (o *ViewTextAction) Do(nav *Navigator, path string) {
+	filename := *FlagNavRoot + "/" + path
 	contents, err := os.ReadFile(filename)
 	if err != nil {
-		log.Panicf(Format("ERROR in viewing %q: %v", o.path, err))
+		log.Panicf(Format("ERROR in viewing %q: %v", path, err))
 		return
 	}
-	o.nav.t.SetColor(T.SimpleWhite)
-	ViewBoxedText(o.nav.t, contents, T.SimpleWhite)
+	nav.t.SetColor(T.SimpleWhite)
+	// ViewBoxedText(nav.t, contents, T.SimpleWhite)
+	ViewFullScreenText(nav.t, contents, T.SimpleWhite)
 }
-func (o *ViewTextAction) Undo() {
+func (o *ViewTextAction) Undo(nav *Navigator, path string) {
 }
-func (o *ViewTextAction) String() string {
-	return Format("View file %q as text", o.path)
+func (o *ViewTextAction) String(nav *Navigator, path string) string {
+	return Format("View file %q as text", path)
+}
+
+type ViewHexAction struct {
+}
+
+func (o *ViewHexAction) Do(nav *Navigator, path string) {
+	filename := *FlagNavRoot + "/" + path
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		log.Panicf(Format("ERROR in viewing %q: %v", path, err))
+		return
+	}
+
+	var lines []string
+	var bb, raw bytes.Buffer
+	n := len(contents)
+	up := (n + 7) & 0xFFFFFFF8 // up to next multiple of 8
+	for i := 0; i < up; i++ {
+		var c byte
+		if i < n {
+			c = contents[i]
+		} else {
+			c = 0
+		}
+		if (i & 7) == 0 {
+			fmt.Fprintf(&bb, "%04x: ", i)
+		}
+
+		if i < n {
+			fmt.Fprintf(&bb, "%02x", c)
+		} else {
+			fmt.Fprintf(&bb, "  ", c)
+		}
+
+		if i >= n {
+			// beyond the end
+			raw.WriteByte(' ')
+		} else if 32 <= c && c <= 126 {
+			// SPACE and Printable Ascii
+			raw.WriteByte(c)
+		} else {
+			// Control and Non-Ascii
+			raw.WriteByte('#')
+		}
+
+		if (i & 3) == 3 {
+			bb.WriteByte(' ')
+		}
+
+		if (i & 7) == 7 {
+			bb.WriteString(raw.String())
+			lines = append(lines, bb.String())
+			raw.Reset()
+			bb.Reset()
+		}
+	}
+	lines = append(lines, bb.String())
+
+	nav.t.SetColor(T.SimpleWhite)
+	ViewFullScreenLines(nav.t, lines, T.SimpleWhite)
+}
+func (o *ViewHexAction) Undo(nav *Navigator, path string) {
+}
+func (o *ViewHexAction) String(nav *Navigator, path string) string {
+	return Format("View file %q as text", path)
 }

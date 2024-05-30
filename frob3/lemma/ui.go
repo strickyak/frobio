@@ -111,10 +111,10 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 		switch j {
 		case 0:
 			if up != nil {
-				T.TextScreenWriteLine(t, 2, "Parent Dir (%s)", up.Name())
+				T.TextScreenWriteLine(t, 2, "Parent (%s)", up.Name())
 			}
 		case 1:
-			T.TextScreenWriteLine(t, 3, "This Dir (%s)", mod.Name())
+			T.TextScreenWriteLine(t, 3, "Self (%s)", mod.Name())
 
 		default:
 			at := j + (page * (navLines - 2))
@@ -218,7 +218,8 @@ func Up(x byte) byte {
 
 func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uint) {
 	action := chosen.Action // TODO: Should make a copy, or pass nav & path.
-	action.Set(nav, c.KidAtFocus(focus).Path())
+	// action.Set(nav, c.KidAtFocus(focus).Path())
+	fpath := c.KidAtFocus(focus).Path()
 
 	defer func() {
 		r := recover()
@@ -230,7 +231,7 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 
 	confirmation := []string{
 		"",
-		Format("Action: %q", action.String()),
+		Format("Action: %q", action.String(nav, fpath)),
 		"",
 		"Hit ENTER to confirm,",
 		"or BREAK to cancel.",
@@ -247,7 +248,7 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 		case 'Y', 10, 13:
 			// TODO: call action
 			log.Printf("Starting: %q", action)
-			action.Do()
+			action.Do(nav, fpath)
 			log.Printf("Finished: %q", action)
 			return
 		}
@@ -332,12 +333,12 @@ func (nav *Navigator) TryMenu(menu *Menu, c Model, focus uint, ch byte) {
 	return
 }
 
-func RenderTextAsLines(t T.TextScreen, text []byte) (lines []string) {
+func SplitTextAsLines(text []byte) (lines []string) {
 	var bb bytes.Buffer
 	for _, b := range text {
 		switch {
 		case b == 10 || b == 13: // newlines
-			lines = append(lines, Chop(t, bb.String())...)
+			lines = append(lines, bb.String())
 			bb.Reset()
 		case ' ' <= b && b <= '~': // printable ASCII chars
 			bb.WriteByte(b)
@@ -346,7 +347,7 @@ func RenderTextAsLines(t T.TextScreen, text []byte) (lines []string) {
 		}
 	}
 	if bb.Len() > 0 || len(lines) == 0 {
-		lines = append(lines, Chop(t, bb.String())...)
+		lines = append(lines, bb.String())
 	}
 	return
 }
@@ -368,11 +369,59 @@ func ErrorAlertChop(t T.TextScreen, line string) {
 }
 
 func ViewBoxedText(t T.TextScreen, text []byte, color byte) {
+	lines := SplitTextAsLines(text)
+	ViewBoxedLines(t, lines, color)
+}
+func ViewBoxedLines(t T.TextScreen, lines []string, color byte) {
 	t.SetColor(color)
-	lines := RenderTextAsLines(t, text)
 	DrawBoxed(t, 0, 6, lines, false)
 	t.Flush()
 	WaitForBreak(t)
+}
+
+func ViewFullScreenText(t T.TextScreen, text []byte, color byte) {
+	lines := SplitTextAsLines(text)
+	ViewFullScreenLines(t, lines, color)
+}
+func ViewFullScreenLines(t T.TextScreen, lines []string, color byte) {
+	h1 := t.H() - 1
+	lines = ContinueLongLines(t, lines)
+	/*
+		tmp := ContinueLongLines(t, lines)
+		lines = []string {
+			"-- Hit SPACE for more. --",
+			"-- Hit BREAK to abort. --",
+			"-----------------------",
+		}
+		lines = append(lines, tmp...)
+	*/
+
+	n := LenSlice(lines)
+	t.SetColor(color)
+	i := uint(0) // line index (0 based) to start with
+LOOP:
+	for {
+		title := "SPACE for more, BREAK to exit."
+		if i > 0 {
+			title = Format("=== Page %d ===", 1+i/h1)
+		}
+		DrawFullScreenLines(t, lines[i:i+h1], title)
+		t.Flush()
+
+		ch := Up(T.GetCharFromKeyboard(t.Comm()))
+		switch ch {
+		case CocoBreak, 'Q':
+			break LOOP
+		case ' ', CocoDown, 'J', 'S':
+			if i+h1 < n {
+				i += h1
+			}
+		case CocoUp, 'K', 'W':
+			if i >= h1 {
+				i -= h1
+			}
+		}
+	}
 }
 
 func ErrorAlert(t T.TextScreen, lines []string) {
@@ -397,6 +446,60 @@ func WaitForBreak(t T.TextScreen) {
 		ch3 := Up(T.GetCharFromKeyboard(t.Comm()))
 		if ch3 == CocoBreak || ch3 == ' ' {
 			break
+		}
+	}
+}
+
+func ContinueLongLines(t T.TextScreen, lines []string) (result []string) {
+	w := t.W()
+	for i, line := range lines {
+		println(LenStr(line), w, line, 888, i)
+		if LenStr(line) == 0 {
+			result = append(result, "")
+			continue
+		}
+		for LenStr(line) > w {
+			println(LenStr(line), w, line)
+			result = append(result, line[:w-1]+"\\")
+			line = line[w-1:]
+			if LenStr(line) > 0 {
+				line = "\\" + line
+			}
+		}
+		if LenStr(line) > 0 {
+			result = append(result, line)
+		}
+	}
+	return
+}
+
+func DrawFullScreenLines(t T.TextScreen, lines []string, title string) {
+	n := LenSlice(lines)
+	w, h := t.W(), t.H()
+	for y := uint(0); y < h; y++ {
+		line := ""
+		switch {
+		case y == 0:
+			line = title
+			t.SetColor(T.SimpleYellow)
+		case y-1 < n:
+			line = lines[y-1]
+			t.SetColor(T.SimpleWhite)
+		}
+
+		ll := LenStr(line)
+
+		for x := uint(0); x < w; x++ {
+			if x >= ll {
+				t.Put(x, y, ' ', 0)
+			} else {
+				c := line[x]
+				if 32 <= c && c <= 126 {
+					t.Put(x, y, c, 0)
+				} else {
+					t.Put(x, y, '#', 0)
+				}
+			}
 		}
 	}
 }

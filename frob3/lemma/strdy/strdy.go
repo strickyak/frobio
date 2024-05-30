@@ -1,18 +1,18 @@
 /*
-	strdy (pronounced "sturdy") is a database
-	for holding a string-to-string map.
-	Keys and Values should not contain ASCII
-	control characters, and particularly not
-	tabs nor newlines.
+strdy (pronounced "sturdy") is a database
+for holding a string-to-string map.
+Keys and Values should not contain ASCII
+control characters, and particularly not
+tabs nor newlines.
 
-	It is not designed for large amounts of data
-	that would not fit nicely in memory.
+It is not designed for large amounts of data
+that would not fit nicely in memory.
 
-	The in-memory data structure is a skiplist
-	in lexical order of the keys.
+The in-memory data structure is a skiplist
+in lexical order of the keys.
 
-	The database is backed by a flat textfile,
-	which is appended as records are inserted or updated.
+The database is backed by a flat textfile,
+which is appended as records are inserted or updated.
 */
 package strdy
 
@@ -111,8 +111,8 @@ func (db *DB) Set(key, value, comment string) {
 	fmt.Fprintf(db.W, "(\t%s\t%s\t%s\t)\t;%s\n", key, ts, value, comment)
 }
 
-
 const TimeFormat = "2006-0102-150405"
+
 func Timestamp() string {
 	return time.Now().UTC().Format(TimeFormat)
 }
