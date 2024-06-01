@@ -14,12 +14,16 @@ var TopMenu = &Menu{
 	Name: "", // Top level has empty name.
 	Items: []*Menu{
 		View_Menu,
-		Edit_Menu,
-		Quik_Menu,
-		Pref_Menu,
+		/*
+			Edit_Menu,
+			Quik_Menu,
+			Pref_Menu,
+		*/
 		Mount_Menu,
-		Book_Menu,
-		Go_Menu,
+		/*
+			Book_Menu,
+			Go_Menu,
+		*/
 		Help_Menu,
 	},
 }
@@ -31,23 +35,10 @@ type Menu struct {
 }
 
 type MenuAction interface {
-	// Set(nav *Navigator, mod Model, path string)
 	Do(nav *Navigator, mod Model, path string)
 	Undo(nav *Navigator, mod Model, path string)
 	String(nav *Navigator, mod Model, path string) string
 }
-
-/*
-type MenuActionBase struct {
-	nav  *Navigator
-	path string
-}
-
-func (o *MenuActionBase) Set(nav *Navigator, mod Model, path string) {
-	o.nav = nav
-	o.path = path
-}
-*/
 
 type MenuActionHistory struct {
 	History []*MenuAction
@@ -171,16 +162,97 @@ var Book_Menu = &Menu{
 	Name: "Book",
 	Items: []*Menu{
 		&Menu{
-			Name:   "Add Bookmark",
-			Action: nil,
+			Name:  "Set Bookmark",
+			Items: SetBookmark_Menu.Items,
 		},
 		&Menu{
-			Name:   "Time-sorted List",
-			Action: nil,
+			Name:   "View Bookmarks",
+			Action: &ViewBookmarksAction{},
 		},
 		&Menu{
-			Name:   "Name-sorted List",
-			Action: nil,
+			Name:   "0 : Goto Bookmark 0",
+			Action: MakeGotoBookmark(0),
+		},
+		&Menu{
+			Name:   "1 : Goto Bookmark 1",
+			Action: MakeGotoBookmark(1),
+		},
+		&Menu{
+			Name:   "2 : Goto Bookmark 2",
+			Action: MakeGotoBookmark(2),
+		},
+		&Menu{
+			Name:   "3 : Goto Bookmark 3",
+			Action: MakeGotoBookmark(3),
+		},
+		&Menu{
+			Name:   "4 : Goto Bookmark 4",
+			Action: MakeGotoBookmark(4),
+		},
+		&Menu{
+			Name:   "5 : Goto Bookmark 5",
+			Action: MakeGotoBookmark(5),
+		},
+		&Menu{
+			Name:   "6 : Goto Bookmark 6",
+			Action: MakeGotoBookmark(6),
+		},
+		&Menu{
+			Name:   "7 : Goto Bookmark 7",
+			Action: MakeGotoBookmark(7),
+		},
+		&Menu{
+			Name:   "8 : Goto Bookmark 8",
+			Action: MakeGotoBookmark(8),
+		},
+		&Menu{
+			Name:   "9 : Goto Bookmark 9",
+			Action: MakeGotoBookmark(9),
+		},
+	},
+}
+
+var SetBookmark_Menu = &Menu{
+	Items: []*Menu{
+		&Menu{
+			Name:   "0 : Set Bookmark 0",
+			Action: MakeSetBookmark(0),
+		},
+		&Menu{
+			Name:   "1 : Set Bookmark 1",
+			Action: MakeSetBookmark(1),
+		},
+		&Menu{
+			Name:   "2 : Set Bookmark 2",
+			Action: MakeSetBookmark(2),
+		},
+		&Menu{
+			Name:   "3 : Set Bookmark 3",
+			Action: MakeSetBookmark(3),
+		},
+		&Menu{
+			Name:   "4 : Set Bookmark 4",
+			Action: MakeSetBookmark(4),
+		},
+		&Menu{
+			Name:   "5 : Set Bookmark 5",
+			Action: MakeSetBookmark(5),
+		},
+		&Menu{
+			Name:   "6 : Set Bookmark 6",
+			Action: MakeSetBookmark(6),
+		},
+		&Menu{
+			Name:   "7 : Set Bookmark 7",
+			Action: MakeSetBookmark(7),
+		},
+		&Menu{
+			Name:   "8 : Set Bookmark 8",
+			Action: MakeSetBookmark(8),
+		},
+		&Menu{
+			Name:   "9 : Set Bookmark 9",
+			Action: MakeSetBookmark(9),
 		},
 	},
 }
@@ -248,34 +320,19 @@ var Mount_Menu = &Menu{
 		},
 		&Menu{
 			Name:   "Unmount All",
-			Action: nil,
+			Action: &UnmountAllAction{},
+		},
+		&Menu{
+			Name:   "View Mounts",
+			Action: &ViewMountsAction{},
 		},
 	},
 }
 
 var Help_Menu = &Menu{
-	Name: "?Help",
-	Items: []*Menu{
-		&Menu{
-			Name:   "AAAAAAAAAAA",
-			Action: nil,
-		},
-	},
+	Name:   "?Help",
+	Action: &HelpAction{},
 }
-
-/*
-	type MenuAction interface {
-		Set(nav *Navigator, mod Model, path string)
-		Do()
-		Undo()
-		String() string
-	}
-
-	type MenuActionBase struct {
-		nav  *Navigator
-		path string
-	}
-*/
 
 type ViewTextAction struct {
 }
@@ -362,23 +419,161 @@ func (o *ViewHexAction) String(nav *Navigator, mod Model, path string) string {
 	return Format("View file %q as text", path)
 }
 
+//////////////////////////////////
+
 type MountAction struct {
 	N byte
 }
 
-// Do(nav *Navigator, mod Model, path string)
-// Undo(nav *Navigator, mod Model, path string)
-// String(nav *Navigator, mod Model, path string) string
 func MakeMounter(n byte) MenuAction {
 	return &MountAction{n}
 }
-func (o *MountAction) Do(nav *Navigator, kid Model, path string) {
-	kid.Kids()
-	Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, o.N, kid)
-	nav.ds.SetDrive(o.N, kid) // mounter.go
+func (o *MountAction) Do(nav *Navigator, mod Model, path string) {
+	mod.Kids()
+	Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, o.N, mod)
+	nav.ds.SetDrive(o.N, mod) // mounter.go
 }
 func (o *MountAction) Undo(nav *Navigator, mod Model, path string) {
 }
 func (o *MountAction) String(nav *Navigator, mod Model, path string) string {
 	return Format("Mount file %q as drive %d", path, o.N)
+}
+
+//////////////////////////////////
+
+type GotoBookmarkAction struct {
+	N byte
+}
+
+func MakeGotoBookmark(n byte) MenuAction {
+	return &GotoBookmarkAction{n}
+}
+func (o *GotoBookmarkAction) Do(nav *Navigator, mod Model, path string) {
+	if nav.Bookmarks[o.N] == "" {
+		ErrorAlert(nav.t, []string{"That bookmark is not set."})
+		return
+	}
+	nav.GotoPath = nav.Bookmarks[o.N]
+}
+func (o *GotoBookmarkAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *GotoBookmarkAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("GotoBookmark %d", o.N)
+}
+
+//////////////////////////////////
+
+type SetBookmarkAction struct {
+	N byte
+}
+
+func MakeSetBookmark(n byte) MenuAction {
+	return &SetBookmarkAction{n}
+}
+func (o *SetBookmarkAction) Do(nav *Navigator, mod Model, path string) {
+	nav.Bookmarks[o.N] = path
+}
+func (o *SetBookmarkAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *SetBookmarkAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("SetBookmark %d", o.N)
+}
+
+//////////////////////////////////
+
+type UnmountAllAction struct {
+}
+
+func (o *UnmountAllAction) Do(nav *Navigator, mod Model, path string) {
+	// Currently this is the same body as ds.HdbDosCleanup.
+	// But I copied it, in case we add stuff to ds.HdbDosCleanup.
+	for driveNum, _ := range nav.ds.drives {
+		nav.ds.HdbDosCleanupOneDrive(byte(driveNum))
+		nav.ds.drives[driveNum] = nil
+	}
+}
+func (o *UnmountAllAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *UnmountAllAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("Unmount All Drives")
+}
+
+//////////////////////////////////
+
+type ViewMountsAction struct {
+}
+
+func (o *ViewMountsAction) Do(nav *Navigator, mod Model, path string) {
+	var bb bytes.Buffer
+	for num, drive := range nav.ds.drives {
+		// TODO -- if drive == nil || (drive.Path=="" && !drive.Dirty) -- TODO
+		if drive == nil {
+			fmt.Fprintf(&bb, "Drive %d: %q\n", num, "")
+			continue
+		}
+		dirty := ""
+		if drive.Dirty {
+			dirty = " [Dirty]"
+		}
+		fmt.Fprintf(&bb, "Drive %d: %q%s\n", num, drive.Path, dirty)
+	}
+	ViewFullScreenText(nav.t, bb.Bytes(), T.SimpleWhite)
+}
+func (o *ViewMountsAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *ViewMountsAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("View Mounts")
+}
+
+//////////////////////////////////
+
+type ViewBookmarksAction struct {
+}
+
+func (o *ViewBookmarksAction) Do(nav *Navigator, mod Model, path string) {
+	var bb bytes.Buffer
+	for num, bm := range nav.Bookmarks {
+		fmt.Fprintf(&bb, "Bookmark %d: %q\n", num, bm)
+	}
+	ViewFullScreenText(nav.t, bb.Bytes(), T.SimpleWhite)
+}
+func (o *ViewBookmarksAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *ViewBookmarksAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("View Bookmarks")
+}
+
+//////////////////////////////////
+
+type HelpAction struct {
+}
+
+func (o *HelpAction) Do(nav *Navigator, mod Model, path string) {
+	const HELP = `
+You are in the Pizga Net
+navigator.
+
+From the navigator, hit CLEAR
+to return to Disk Basic.
+
+In general, use BREAK to
+escape from submenus.  Use
+arrows to navigate the cloud
+filesystem.  Use highlighted
+letters for top menus bar.
+
+Mount disk images for basic
+with the 'M" menu.  If you
+change a public disk, the
+changed disk will be copied to
+the RETAIN-10-DAYS directory
+in your home.
+
+`
+	ViewFullScreenText(nav.t, []byte(HELP), T.SimpleWhite)
+}
+func (o *HelpAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *HelpAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("View Bookmarks")
 }

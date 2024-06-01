@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
+	T "github.com/strickyak/frobio/frob3/lemma/text"
 
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -238,6 +239,8 @@ type Session struct {
 
 	InitGimeRegs  []byte
 	BasicGimeRegs []byte
+
+	T T.TextScreen
 
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	P "path"
 	PFP "path/filepath"
+	"runtime/debug"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
@@ -31,20 +33,12 @@ const CocoBreak = 3
 
 ////////////////// NAV
 
-/*
-type Location struct {
-	// TODO: use this, so Menu can find stuff.
-	// Or just give menu the path?
-	Path  string
-	Page  int
-	Focus int
-}
-*/
-
 type Navigator struct {
-	t   T.TextScreen
-	ds  *DriveSession
-	com *coms.Comm
+	t         T.TextScreen
+	ds        *DriveSession
+	com       *coms.Comm
+	Bookmarks [10]string
+	GotoPath  string
 }
 
 func (nav *Navigator) ClearScreen() {
@@ -58,6 +52,8 @@ func (nav *Navigator) ClearScreen() {
 	}
 }
 func (nav *Navigator) Render(mod Model, focus uint) {
+	log.Printf("RENDERING @@@@@@ %#v ;;; %q ; %d", mod, mod.Path(), focus)
+
 	t := nav.t
 	w, h, vdg := t.W(), t.H(), t.IsVDG()
 	blueBar := Cond(vdg, byte(0xA3), byte(0x7F))
@@ -65,7 +61,7 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	navLines := h - HeaderSize - FooterSize
 
 	up := mod.Parent()
-	kids := mod.Kids()
+	kids := mod.ReKids()
 	nk := LenSlice(kids)
 	limit := nk + 2 // 2 = 1 parent + 1 this
 
@@ -85,7 +81,14 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 	} else {
 		page = (focus - 2) / (navLines - 2)
 		slot = 2 + (focus-2)%(navLines-2)
-		chosen = kids[focus-2]
+		if focus > 1 && focus-2 < LenSlice(kids) {
+			chosen = kids[focus-2]
+		} else {
+			// Reset to the mod, if the focus is bogus.
+			chosen = mod
+			focus = 1
+			kids = mod.Kids()
+		}
 	}
 
 	nav.ClearScreen()
@@ -120,7 +123,7 @@ func (nav *Navigator) Render(mod Model, focus uint) {
 			at := j + (page * (navLines - 2))
 			if at < limit {
 				kid := mod.KidAtFocus(at)
-				kid.Kids()
+				kid.ReKids()
 				T.TextScreenWriteLine(t, j+HeaderSize, "% 4s  %s", kid.Decoration(nav.ds), kid.Name())
 			}
 		}
@@ -190,18 +193,24 @@ func (nav *Navigator) NavStep(c Model) Model {
 		case CocoClear: // to exit UI
 			return nil
 
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			// Currently these mean mount -- but in the future, that will be
-			// under the 'M' menu, and these will jump quickly to choice lines.
-			driveNum := b - '0' // MAX 10 DRIVES
-			kid := c.KidAtFocus(focus)
-			kid.Kids()
-			Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, driveNum, kid)
-			nav.ds.SetDrive(driveNum, kid) // mounter.go
-
+			/*
+				case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+					// Currently these mean mount -- but in the future, that will be
+					// under the 'M' menu, and these will jump quickly to choice lines.
+					driveNum := b - '0' // MAX 10 DRIVES
+					kid := c.KidAtFocus(focus)
+					kid.Kids()
+					Log("NavStep: gonna SetDrive: %v ( %v , %v )", nav, driveNum, kid)
+					nav.ds.SetDrive(driveNum, kid) // mounter.go
+			*/
 		default:
 			if 'A' <= b && b <= 'Z' || b == '?' {
 				nav.TryMenu(TopMenu, c, focus, b)
+				if nav.GotoPath != "" {
+					c = NewModel(nav.GotoPath)
+					focus = 1 // Focus on Self
+					c.ReKids()
+				}
 			} else {
 				log.Printf("keystroke rejected: %d.", b)
 			}
@@ -226,6 +235,7 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 		r := recover()
 		if r != nil {
 			log.Printf("Caught in Action %q: %v", action, r)
+			debug.PrintStack()
 			ErrorAlertChop(nav.t, Format("ERROR: %v", r))
 		}
 	}()
@@ -254,19 +264,26 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 
 	DrawBoxed(nav.t, boxX, boxY, confirmation, false)
 	nav.t.Flush()
-	for {
-		ch := Up(T.GetCharFromKeyboard(nav.t.Comm()))
-		switch ch {
-		case 'N', 3, 32:
-			return
-		case 'Y', 10, 13:
-			// TODO: call action
-			log.Printf("Starting: %q", action)
-			action.Do(nav, kid, fpath)
-			log.Printf("Finished: %q", action)
-			return
+
+	log.Printf("Starting: %q", action)
+	nav.GotoPath = ""
+	action.Do(nav, kid, fpath)
+	log.Printf("Finished: %q", action)
+	/*
+		for {
+			ch := Up(T.GetCharFromKeyboard(nav.t.Comm()))
+			switch ch {
+			case 'N', 3, 32:
+				return
+			case 'Y', 10, 13:
+				// TODO: call action
+				log.Printf("Starting: %q", action)
+				action.Do(nav, kid, fpath)
+				log.Printf("Finished: %q", action)
+				return
+			}
 		}
-	}
+	*/
 }
 
 // Returns true if the input char ch is consumed.
@@ -423,7 +440,7 @@ LOOP:
 		if i > 0 {
 			title = Format("=== Page %d ===", 1+i/h1)
 		}
-		DrawFullScreenLines(t, lines[i:i+h1], title)
+		DrawFullScreenLines(t, lines[i:], title)
 		t.Flush()
 
 		ch := Up(T.GetCharFromKeyboard(t.Comm()))
@@ -580,7 +597,7 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 // Extra...
 
 func (t *Navigator) Loop() {
-	var c Model = RootModel()
+	var c Model = NewModel("/")
 	for {
 		log.Printf("nav at %q", c.Path())
 		c = t.NavStep(c)
@@ -603,10 +620,11 @@ func TextChooserShell(com *coms.Comm, ds *DriveSession, t T.TextScreen) {
 }
 
 type Model interface {
-	Order() int
+	//Order() int
 	Path() string
 	Name() string
 	Kids() []Model
+	ReKids() []Model
 	Parent() Model
 	Decoration(ds *DriveSession) string
 	KidAtFocus(focus uint) Model
@@ -615,12 +633,12 @@ type Model interface {
 	Size() int64
 }
 
-func (mod *BaseModel) Order() int    { return mod.order }
+// func (mod *BaseModel) Order() int    { return mod.order }
 func (mod *BaseModel) Name() string  { return mod.name }
 func (mod *BaseModel) Parent() Model { return mod.parent }
 
 type BaseModel struct {
-	order  int
+	// order  int
 	name   string
 	kids   []Model
 	parent Model
@@ -664,11 +682,23 @@ func (mod *BaseModel) KidAtFocus(focus uint) Model {
 	}
 }
 
-func RootModel() *BaseModel {
-	return &BaseModel{
-		order: 100,
-		name:  "/",
+func NewModel(path string) *BaseModel {
+	path = P.Clean("/" + path)
+
+	if path == "/" || path == "." {
+		z := &BaseModel{
+			name: path,
+		}
+		z.ReKids()
+		return z
 	}
+
+	z := &BaseModel{
+		name:   path,
+		parent: NewModel(P.Dir(path)),
+	}
+	z.ReKids()
+	return z
 }
 
 func (mod *BaseModel) UnixPath() string {
@@ -685,10 +715,16 @@ func (mod *BaseModel) Path() string {
 	}
 }
 
+func (mod *BaseModel) ReKids() []Model {
+	mod.kidsFilled = false
+	return mod.Kids()
+}
+
 func (mod *BaseModel) Kids() []Model {
 	if mod.kidsFilled {
 		return mod.kids
 	}
+	mod.kids = nil
 	uPath := mod.UnixPath()
 	stat := Value(os.Stat(uPath))
 	if stat.IsDir() {
@@ -700,7 +736,7 @@ func (mod *BaseModel) Kids() []Model {
 				continue
 			}
 			mod.kids = append(mod.kids, &BaseModel{
-				order:  100,
+				// order:  100,
 				name:   name,
 				parent: mod,
 			})
@@ -712,21 +748,6 @@ func (mod *BaseModel) Kids() []Model {
 	mod.kidsFilled = true
 	return mod.kids
 }
-
-/*
-func (mod *BaseModel) MakeChoice(kid string) Model {
-	kids := mod.Kids() // Forces filling kids.
-
-	for _, e := range kids {
-		if e.Name() == kid {
-			return e
-		}
-	}
-
-	log.Panicf("Kid %q not found in BaseModel %q", kid, mod.Path())
-	panic(0)
-}
-*/
 
 func (mod *BaseModel) Decoration(ds *DriveSession) string {
 	if mod.isDir {

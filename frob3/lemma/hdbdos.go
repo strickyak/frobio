@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	P "path"
 	PFP "path/filepath"
 	"strings"
 	"time"
@@ -182,16 +184,22 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 	}
 }
 
-func CreateHomeIfNeeded(ses *Session) (string, string) {
+func TruePath(pizgaPath string) string {
 	root := *FlagNavRoot
+	return PFP.Join(root, pizgaPath)
+}
+
+func CreateHomeIfNeeded(ses *Session) (string, string) {
 	homes := "Homes"
 	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
 	retain := PFP.Join(home, RETAIN_10_DAYS)
+	trash := PFP.Join(home, "Trash")
 
-	os.Mkdir(root, DirPerm)
-	os.Mkdir(PFP.Join(root, homes), DirPerm)
-	os.Mkdir(PFP.Join(root, home), DirPerm)
-	os.Mkdir(PFP.Join(root, retain), DirPerm)
+	os.Mkdir(TruePath("."), DirPerm)
+	os.Mkdir(TruePath(homes), DirPerm)
+	os.Mkdir(TruePath(home), DirPerm)
+	os.Mkdir(TruePath(retain), DirPerm)
+	os.Mkdir(TruePath(trash), DirPerm)
 	Log("CreateHomeIfNeeded: home = %q", home)
 	return home, retain
 }
@@ -204,15 +212,16 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	if false {
 		OnTextVDGAt0400Run(ses, payload, func() {
 			log.Printf("ZXC OnTextVDGAt0400Run(TCS)")
-			//time.Sleep(1 * time.Second)
-			TextChooserShell(com, ses.HdbDos.DriveSession, T.NewTextVDG(com))
-			//time.Sleep(1 * time.Second)
+			t := T.NewTextVDG(com)
+			ses.T = t
+			TextChooserShell(com, ses.HdbDos.DriveSession, t)
 		})
 	} else {
 		OnText40At2000Run(ses, payload, func() {
 			log.Printf("ZXC OnText40At2000Run(TCS)")
-			// time.Sleep(1 * time.Second)
-			TextChooserShell(com, ses.HdbDos.DriveSession, T.NewText40(com))
+			t := T.NewText40(com)
+			ses.T = t
+			TextChooserShell(com, ses.HdbDos.DriveSession, t)
 		})
 	}
 
@@ -233,7 +242,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
 			DriveSession: NewDriveSession(
-				coms.Wrap(ses.Conn),
+				ses, coms.Wrap(ses.Conn),
 				home, retain),
 		}
 	}
@@ -459,18 +468,70 @@ func (di *DriveImage) GoString() string {
 }
 
 type DriveSession struct {
+	ses    *Session
 	com    *coms.Comm
 	drives [NumDrives]*DriveImage
 	home   string
 	retain string
+
+	scrapSource  string // may have been cut
+	scrapCurrent string // may be a temp file
+	scrapWasCut  bool
 }
 
-func (di *DriveSession) String() string {
-	return Format("{DriveSession: %v home=%q}", di.drives, di.home)
+func (ds *DriveSession) TrashFilename(basis string) string {
+	return P.Join("/Homes", ds.ses.Hostname, "Trash", "tmp-"+ShortTimestamp()+"."+P.Base(basis))
 }
 
-func NewDriveSession(com *coms.Comm, home string, retain string) *DriveSession {
+func (ds *DriveSession) Cut(a string) {
+	ds.scrapSource = a
+	ds.scrapCurrent = ds.TrashFilename(ds.scrapSource)
+	err := os.Rename(TruePath(ds.scrapSource), TruePath(ds.scrapCurrent))
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Cut %q: %v", ds.scrapSource, err)})
+		return
+	}
+}
+func (ds *DriveSession) Copy(a string) {
+	ds.scrapSource = a
+	ds.scrapCurrent = a
+}
+func (ds *DriveSession) Paste(dest string) {
+	r, err := os.Open(TruePath(ds.scrapCurrent))
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Open %q: %v", ds.scrapSource, err)})
+		return
+	}
+	defer r.Close()
+
+	destfile := P.Join(dest, P.Base(ds.scrapSource))
+	w, err := os.Create(TruePath(destfile))
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Create %q: %v", destfile, err)})
+		return
+	}
+	defer w.Close()
+
+	n, err := io.Copy(w, r)
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Paste: %v", err)})
+		return
+	}
+
+	log.Printf("Copied %d bytes from %q to %q", n, ds.scrapSource, destfile)
+}
+
+func (ds *DriveSession) String() string {
+	return Format("{DriveSession: %v home=%q}", ds.drives, ds.home)
+}
+
+func NewDriveSession(ses *Session, com *coms.Comm, home string, retain string) *DriveSession {
 	return &DriveSession{
+		ses:    ses,
 		com:    com,
 		home:   home,
 		retain: retain,
@@ -550,6 +611,9 @@ func (ds *DriveSession) HdbDosCleanupOneDrive(driveNum byte) {
 		log.Printf("HdbDosCleanup: Saved dirty file %d bytes %q as %q", len(drive.Image), drive.Path, dest)
 	}
 	ds.drives[driveNum] = nil // Delete the drive record.
+}
+func ShortTimestamp() string {
+	return time.Now().UTC().Format("150405")
 }
 func Timestamp() string {
 	return time.Now().UTC().Format("2006-01-02-150405Z")
