@@ -89,7 +89,7 @@ var View_Menu = &Menu{
 	Items: []*Menu{
 		&Menu{
 			Name:   "Info",
-			Action: nil,
+			Action: &ViewInfoAction{},
 		},
 		&Menu{
 			Name:   "Text View",
@@ -543,6 +543,33 @@ func (o *ViewBookmarksAction) String(nav *Navigator, mod Model, path string) str
 	return Format("View Bookmarks")
 }
 
+type ViewInfoAction struct {
+}
+
+func (o *ViewInfoAction) Do(nav *Navigator, mod Model, path string) {
+	stat, err := os.Stat(TruePath(path))
+	if err != nil {
+		ViewFullScreenText(nav.t, []byte(Format("ERROR: %q: %v", path, err)), T.SimpleWhite)
+		return
+	}
+
+	const FMT = `
+Path: %q
+Name: %q
+IsDirectory: %v
+Size: %d bytes
+ModTime: %s
+`
+	s := Format(FMT, path, stat.Name(), stat.IsDir(), stat.Size(), stat.ModTime().UTC().Format("2006-01-02 15:04:05Z"))
+
+	ViewFullScreenText(nav.t, []byte(s), T.SimpleWhite)
+}
+func (o *ViewInfoAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *ViewInfoAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("View Info about %q", path)
+}
+
 //////////////////////////////////
 
 type HelpAction struct {
@@ -563,11 +590,12 @@ filesystem.  Use highlighted
 letters for top menus bar.
 
 Mount disk images for basic
-with the 'M" menu.  If you
+with the 'M' menu.  If you
 change a public disk, the
 changed disk will be copied to
 the RETAIN-10-DAYS directory
-in your home.
+in your home under /Homes/
+and your hostname.
 
 `
 	ViewFullScreenText(nav.t, []byte(HELP), T.SimpleWhite)

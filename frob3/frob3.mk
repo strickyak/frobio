@@ -48,7 +48,7 @@ STATIC_LINKING_GO = CGO_ENABLED=0 $(GO)
 ###############################################
 
 results1:
-	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou
+	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou pizga pizga-media pizga-sdc
 	mkdir -p $(PIZGA_BASE)/Homes $(PIZGA_BASE)/Public $(PIZGA_BASE)/Members $(PIZGA_BASE)/Internal
 	mkdir -p ./pizga-eou $(PIZGA_BASE)/Internal/web-static
 	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES
@@ -130,6 +130,7 @@ results3: results2b
 ###############################################
 
 clean: _FORCE_
+	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou pizga pizga-media pizga-sdc
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup *.raw *.lwraw
