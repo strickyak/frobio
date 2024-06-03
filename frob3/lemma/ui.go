@@ -207,7 +207,7 @@ func (nav *Navigator) NavStep(c Model) Model {
 			if 'A' <= b && b <= 'Z' || b == '?' {
 				nav.TryMenu(TopMenu, c, focus, b)
 				if nav.GotoPath != "" {
-					c = NewModel(nav.GotoPath)
+					c = NewModel(nav.GotoPath, "goto:"+nav.GotoPath)
 					focus = 1 // Focus on Self
 					c.ReKids()
 				}
@@ -241,29 +241,29 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 	}()
 
 	/*
-		confirmation := []string{
-			"",
-			Format("Action: %q", action.String(nav, kid, fpath)),
+			confirmation := []string{
+				"",
+				Format("Action: %q", action.String(nav, kid, fpath)),
+				"",
+				"Hit ENTER to confirm,",
+				"or BREAK to cancel.",
+				"",
+			}
+		confirmation := []string{""}
+
+		confirmation = append(confirmation,
+			Chop(nav.t, Format("Action: %q", action.String(nav, kid, fpath)))...)
+
+		confirmation = append(confirmation,
 			"",
 			"Hit ENTER to confirm,",
 			"or BREAK to cancel.",
 			"",
-		}
+		)
+
+		DrawBoxed(nav.t, boxX, boxY, confirmation, false)
+		nav.t.Flush()
 	*/
-	confirmation := []string{""}
-
-	confirmation = append(confirmation,
-		Chop(nav.t, Format("Action: %q", action.String(nav, kid, fpath)))...)
-
-	confirmation = append(confirmation,
-		"",
-		"Hit ENTER to confirm,",
-		"or BREAK to cancel.",
-		"",
-	)
-
-	DrawBoxed(nav.t, boxX, boxY, confirmation, false)
-	nav.t.Flush()
 
 	log.Printf("Starting: %q", action)
 	nav.GotoPath = ""
@@ -487,14 +487,12 @@ func WaitForBreak(t T.TextScreen) {
 
 func ContinueLongLines(t T.TextScreen, lines []string) (result []string) {
 	w := t.W()
-	for i, line := range lines {
-		println(LenStr(line), w, line, 888, i)
+	for _, line := range lines {
 		if LenStr(line) == 0 {
 			result = append(result, "")
 			continue
 		}
 		for LenStr(line) > w {
-			println(LenStr(line), w, line)
 			result = append(result, line[:w-1]+"\\")
 			line = line[w-1:]
 			if LenStr(line) > 0 {
@@ -597,7 +595,7 @@ func DrawBoxed(t T.TextScreen, x, y uint, lines []string, invertHeadChar bool) {
 // Extra...
 
 func (t *Navigator) Loop() {
-	var c Model = NewModel("/")
+	var c Model = NewModel("/", "root")
 	for {
 		log.Printf("nav at %q", c.Path())
 		c = t.NavStep(c)
@@ -682,22 +680,28 @@ func (mod *BaseModel) KidAtFocus(focus uint) Model {
 	}
 }
 
-func NewModel(path string) *BaseModel {
+func NewModel(path string, why string) *BaseModel {
+	log.Printf("*%s* NewModel (%q)", why, path)
 	path = P.Clean("/" + path)
+	// log.Printf("*%s* NewModel cleaned:%q", why, path)
 
-	if path == "/" || path == "." {
-		z := &BaseModel{
-			name: path,
+	if path == "/" {
+		log.Printf("*%s* NewModel short:%q", why, path)
+		zz := &BaseModel{
+			name: "/",
 		}
-		z.ReKids()
-		return z
+		zz.ReKids()
+		// log.Printf("*%s* NewModel short returns: %q mom=<nil>", why, zz.name)
+		return zz
 	}
 
 	z := &BaseModel{
-		name:   path,
-		parent: NewModel(P.Dir(path)),
+		name:   P.Base(path),
+		parent: NewModel(P.Dir(path), "recur:"+path),
 	}
 	z.ReKids()
+	mom := z.parent.(*BaseModel).name
+	// log.Printf("*%s* NewModel returns: %q mom=%q", why, z.name, mom)
 	return z
 }
 
@@ -705,6 +709,7 @@ func (mod *BaseModel) UnixPath() string {
 	if *FlagNavRoot == "" {
 		log.Panicf("Missing --dos_root flag on server")
 	}
+	// log.Printf("UNIXPATH: %q %q", *FlagNavRoot, mod.Path())
 	return PFP.Join(*FlagNavRoot, mod.Path())
 }
 func (mod *BaseModel) Path() string {
@@ -726,6 +731,8 @@ func (mod *BaseModel) Kids() []Model {
 	}
 	mod.kids = nil
 	uPath := mod.UnixPath()
+	tPath := TruePath(mod.Path())
+	// log.Printf("KIDS: uPath=%s tPath=%s", uPath, tPath)
 	stat := Value(os.Stat(uPath))
 	if stat.IsDir() {
 		mod.isDir = true
@@ -733,6 +740,7 @@ func (mod *BaseModel) Kids() []Model {
 		for _, e := range entries {
 			name := e.Name()
 			if name[0] == '.' {
+				// SKIP DOT-FILES
 				continue
 			}
 			mod.kids = append(mod.kids, &BaseModel{

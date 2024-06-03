@@ -20,8 +20,8 @@ var TopMenu = &Menu{
 			Pref_Menu,
 		*/
 		Mount_Menu,
+		Book_Menu,
 		/*
-			Book_Menu,
 			Go_Menu,
 		*/
 		Help_Menu,
