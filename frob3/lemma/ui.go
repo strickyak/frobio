@@ -700,7 +700,7 @@ func NewModel(path string, why string) *BaseModel {
 		parent: NewModel(P.Dir(path), "recur:"+path),
 	}
 	z.ReKids()
-	mom := z.parent.(*BaseModel).name
+	// mom := z.parent.(*BaseModel).name
 	// log.Printf("*%s* NewModel returns: %q mom=%q", why, z.name, mom)
 	return z
 }
@@ -731,7 +731,7 @@ func (mod *BaseModel) Kids() []Model {
 	}
 	mod.kids = nil
 	uPath := mod.UnixPath()
-	tPath := TruePath(mod.Path())
+	// tPath := TruePath(mod.Path())
 	// log.Printf("KIDS: uPath=%s tPath=%s", uPath, tPath)
 	stat := Value(os.Stat(uPath))
 	if stat.IsDir() {

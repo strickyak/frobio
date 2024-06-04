@@ -185,11 +185,10 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 }
 
 func TruePath(pizgaPath string) string {
-	root := *FlagNavRoot
-	return PFP.Join(root, pizgaPath)
+	return PFP.Join(*FlagNavRoot, pizgaPath)
 }
 
-func CreateHomeIfNeeded(ses *Session) (string, string) {
+func CreateHomeIfNeeded(ses *Session) (string, string, string) {
 	homes := "Homes"
 	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
 	retain := PFP.Join(home, RETAIN_10_DAYS)
@@ -201,7 +200,7 @@ func CreateHomeIfNeeded(ses *Session) (string, string) {
 	os.Mkdir(TruePath(retain), DirPerm)
 	os.Mkdir(TruePath(trash), DirPerm)
 	Log("CreateHomeIfNeeded: home = %q", home)
-	return home, retain
+	return home, retain, trash
 }
 
 // Entry from waiter.go for a Hijack.
@@ -236,14 +235,14 @@ func NewDriveTempName(drive uint) string {
 
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
-	home, retain := CreateHomeIfNeeded(ses)
+	home, retain, trash := CreateHomeIfNeeded(ses)
 	com := coms.Wrap(ses.Conn)
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
 			DriveSession: NewDriveSession(
 				ses, coms.Wrap(ses.Conn),
-				home, retain),
+				home, retain, trash),
 		}
 	}
 	ses.Cleanups = append(ses.Cleanups, func() {
@@ -293,10 +292,9 @@ func HdbDosSector(ses *Session, payload []byte) {
 			log.Printf("@@@@@@@@@@ made empty DriveImage name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 		} else {
 			Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
-			unixfile := PFP.Join(*FlagNavRoot, d.Path)
-			bb, err := os.ReadFile(unixfile)
+			bb, err := os.ReadFile(TruePath(d.Path))
 			if err != nil {
-				log.Panicf("HdbDosSector ReadFile failed %q: %q: %v", d.Path, unixfile, err)
+				log.Panicf("HdbDosSector ReadFile failed %q: %v", d.Path, err)
 			}
 			if !InSlice(int64(len(bb)), FloppySizes) {
 				log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
@@ -369,10 +367,7 @@ func AsciiToInjectBytes(s string) []byte {
 
 func SendInitialInjections(ses *Session) {
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
-	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES DISK FINDER)"))
-	// Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
-	// Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
-	// Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
+	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES NAVIGATOR.)"))
 
 	bb := Value(ioutil.ReadFile(*FlagInkeyRaw))
 
@@ -443,7 +438,7 @@ import (
 )
 */
 
-const RETAIN_10_DAYS = "RETAIN-10-DAYS"
+const RETAIN_10_DAYS = "Retain-10-Days"
 
 const NumDrives = 10
 const DirPerm = 0775
@@ -473,6 +468,7 @@ type DriveSession struct {
 	drives [NumDrives]*DriveImage
 	home   string
 	retain string
+	trash  string
 
 	scrapSource  string // may have been cut
 	scrapCurrent string // may be a temp file
@@ -529,12 +525,13 @@ func (ds *DriveSession) String() string {
 	return Format("{DriveSession: %v home=%q}", ds.drives, ds.home)
 }
 
-func NewDriveSession(ses *Session, com *coms.Comm, home string, retain string) *DriveSession {
+func NewDriveSession(ses *Session, com *coms.Comm, home, retain, trash string) *DriveSession {
 	return &DriveSession{
 		ses:    ses,
 		com:    com,
 		home:   home,
 		retain: retain,
+		trash:  trash,
 	}
 }
 
@@ -603,8 +600,8 @@ func (ds *DriveSession) HdbDosCleanupOneDrive(driveNum byte) {
 		return
 	}
 	// if dirty:
-	dest := PFP.Join(*FlagNavRoot, ds.retain, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
-	err := os.WriteFile(dest, drive.Image, FilePerm)
+	dest := PFP.Join(ds.retain, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
+	err := os.WriteFile(TruePath(dest), drive.Image, FilePerm)
 	if err != nil {
 		log.Printf("BAD: HdbDosCleanup: Error saving dirty file %d bytes %q as %q: %v", len(drive.Image), drive.Path, dest, err)
 	} else {

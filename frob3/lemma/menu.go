@@ -593,7 +593,7 @@ Mount disk images for basic
 with the 'M' menu.  If you
 change a public disk, the
 changed disk will be copied to
-the RETAIN-10-DAYS directory
+the Retain-10-Days directory
 in your home under /Homes/
 and your hostname.
 
