@@ -49,9 +49,14 @@ STATIC_LINKING_GO = CGO_ENABLED=0 $(GO)
 
 results1:
 	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou pizga pizga-media pizga-sdc
-	mkdir -p $(PIZGA_BASE)/Homes $(PIZGA_BASE)/Public $(PIZGA_BASE)/Members $(PIZGA_BASE)/Internal
+	mkdir -p $(PIZGA_BASE)/Public $(PIZGA_BASE)/Members $(PIZGA_BASE)/Internal
 	mkdir -p ./pizga-eou $(PIZGA_BASE)/Internal/web-static
 	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES
+	mkdir -p ../pizga-homes                    # (somewhat) persistent dir for Homes is in coco-shelf
+	ln -svf ../pizga-homes pizga-homes         # first link to Homes
+	ln -svf ../pizga-homes pizga-base/Homes    # double link to Homes
+	mkdir -p ../pizga-database                 # (somewhat) persistent dir for Database is in coco-shelf
+	ln -svf ../pizga-database pizga-database   # link to Database
 	ln -svf pizga-base pizga
 	ln -svf ../pizga-media .
 	ln -svf ../pizga-sdc .
