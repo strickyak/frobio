@@ -165,6 +165,17 @@ this name.
 		Launch: ".show-secrets.bin",
 	})
 
+	Add(70, 0, "Lemma Server Options", &Card{
+		Text: `
+Here are alternate servers you a connect to.
+`,
+	})
+	Add(71, 70, "Stable Fallback", &Card{ReconnectPort: 2371})
+	Add(72, 70, "Beta Server", &Card{ReconnectPort: 2372})
+	Add(73, 70, "Alpha Server", &Card{ReconnectPort: 2373})
+	Add(74, 70, "Experimental 74 Server", &Card{ReconnectPort: 2374})
+	Add(75, 70, "Experimental 75 Server", &Card{ReconnectPort: 2375})
+
 	Add(90, 0, "Empty test slots", &Card{
 		Text: `
 These probably do nothing, unless the 'LEMMINGS' directory has files test9[1-9].lem added to it for testing.

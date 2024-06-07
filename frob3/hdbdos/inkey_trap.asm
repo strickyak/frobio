@@ -64,13 +64,16 @@ SERVE_HIJACK:
   lbeq DONE_HIJACK
 
   cmpb #CMD_PEEK2
-  lbeq DO_PEEK2
+  beq DO_PEEK2
 
   cmpb #CMD_POKE
-  lbeq DO_POKE
+  beq DO_POKE
 
   cmpb #CMD_GETCHAR
   lbeq DO_GETCHAR
+
+  cmpb #CMD_CALL
+  beq DO_CALL
 
   ; otherwise
   ldx #$0400    ; splash junk on the screen, to show it.
@@ -85,7 +88,7 @@ POKE_AT:
 
 DO_PEEK2:
   ldx #CASBUF
-  ldy #4 ;;; MYBUF+1   ; N, should be 4.
+  ldy #4
   jsr [PTR_TO_TCP1READ]  ; read arguments to CASBUF
 
   ldy CASBUF    ; payload N
@@ -101,6 +104,11 @@ DO_PEEK2:
   ldy CASBUF          ; count (from payload N)
   jsr [PTR_TO_TCP1WRITE]  ; send the peeked data
 
+  lbra SERVE_HIJACK
+
+DO_CALL:
+  ldx MYBUF+3    ; P
+  jsr ,x
   lbra SERVE_HIJACK
 
 DO_GETCHAR:

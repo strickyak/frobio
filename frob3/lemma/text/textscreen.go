@@ -60,7 +60,7 @@ func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
 
 // DirectKeyboard should talk to Axiom, but not to Hijack.
 func DirectKeyboard(com *coms.Comm) byte {
-	com.WriteQuint(coms.CMD_KEYBOARD, 0, nil) // request inkey
+	com.WriteQuintAndPayload(coms.CMD_KEYBOARD, 0, nil) // request inkey
 
 	var q coms.Quint
 	com.ReadFull(q[:])
@@ -80,7 +80,7 @@ func DirectKeyboard(com *coms.Comm) byte {
 
 func GetCharFromKeyboard(com *coms.Comm) byte {
 	log.Printf("ZXC Calling GetCharFromKeyboard... send quint GETCHAR....")
-	com.WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
+	com.WriteQuintAndPayload(coms.CMD_GETCHAR, 0, nil) // request inkey
 
 	var q coms.Quint
 	com.ReadFull(q[:])

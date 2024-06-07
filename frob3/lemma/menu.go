@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/strickyak/frobio/frob3/lemma/coms"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -14,9 +15,9 @@ var TopMenu = &Menu{
 	Name: "", // Top level has empty name.
 	Items: []*Menu{
 		View_Menu,
+		Edit_Menu,
+		Quik_Menu,
 		/*
-			Edit_Menu,
-			Quik_Menu,
 			Pref_Menu,
 		*/
 		Mount_Menu,
@@ -124,16 +125,28 @@ var Quik_Menu = &Menu{
 	Name: "Quik",
 	Items: []*Menu{
 		&Menu{
-			Name:   "Fast 1.8 MHz Poke",
-			Action: nil,
+			Name: "Speed Poke",
+			Items: []*Menu{
+				&Menu{Name: "Y  Fast 1.78 MHz", Action: &ModeAction{'S', 'Y'}},
+				&Menu{Name: "N  Slow 0.9 MHz", Action: &ModeAction{'S', 'N'}},
+				&Menu{Name: "R  ROM fast, rest slow", Action: &ModeAction{'S', 'R'}},
+				&Menu{Name: "X  GimeX 2.86 MHz", Action: &ModeAction{'S', 'X'}},
+			},
 		},
 		&Menu{
-			Name:   "Native 6309 Mode",
-			Action: nil,
+			Name: "Hitachi 6309 Mode",
+			Items: []*Menu{
+				&Menu{Name: "Y  6309 Native Mode", Action: &ModeAction{'H', 'Y'}},
+				&Menu{Name: "N  6809 Compatability Mode", Action: &ModeAction{'H', 'N'}},
+			},
 		},
 		&Menu{
-			Name:   "Reboot!",
-			Action: nil,
+			Name:   "Un-hijack the CLEAR Key",
+			Action: &ModeAction{'U', 0},
+		},
+		&Menu{
+			Name:   "Reboot",
+			Action: &ModeAction{'R', 0},
 		},
 	},
 }
@@ -604,4 +617,83 @@ func (o *HelpAction) Undo(nav *Navigator, mod Model, path string) {
 }
 func (o *HelpAction) String(nav *Navigator, mod Model, path string) string {
 	return Format("View Bookmarks")
+}
+
+/*
+	Notes:
+		113D01   ldmd #1
+		39       rts
+
+	$00F3..$00FF:  13 spare bytes.
+*/
+
+func HitachiMode(com *coms.Comm, native bool) {
+	var mdValue byte
+	if native {
+		mdValue = 1
+	}
+
+	gist := []byte{0x11, 0x3D, mdValue, 0x39}
+	com.PokeRam(0x00F3, gist)
+	com.CallAddr(0x00F3)
+}
+
+// file:///home/strick/doc/CoCo%20Hardware%20Reference.pdf
+const SET_R0_ZERO = 0xFFD6
+const SET_R0_ONE = 0xFFD7
+const SET_R1_ZERO = 0xFFD8
+const SET_R1_ONE = 0xFFD9
+
+func SpeedMode(com *coms.Comm, value byte) {
+	switch value {
+	case 'X':
+		com.PokeRam(SET_R1_ONE, []byte{0xA5}) // 2.86 MHz
+		com.PokeRam(SET_R0_ZERO, []byte{0})
+	case 'Y':
+		com.PokeRam(SET_R1_ONE, []byte{0}) // 1.78 MHZ
+		com.PokeRam(SET_R0_ZERO, []byte{0})
+	case 'N':
+		com.PokeRam(SET_R1_ZERO, []byte{0}) // 0.89 MHz
+		com.PokeRam(SET_R0_ZERO, []byte{0})
+	case 'R':
+		com.PokeRam(SET_R1_ZERO, []byte{0}) // 0.89 MHz but
+		com.PokeRam(SET_R0_ZERO, []byte{1}) // 1.78 MHz for ROM
+	}
+}
+
+func UnHijack(com *coms.Comm) {
+	// See coco-shelf/toolshed/cocoroms/coco3.rom.list
+	// for what bytes were there before
+	// coco-shelf/frobio/frob3/hdbdos/inkey_trap.asm
+	// inserted the hijack.
+	com.PokeRam(0xA1CB, []byte{0x34, 0x54, 0xCE})
+}
+func Reboot(com *coms.Comm) {
+	bb := Peek2Ram(com.Unwrap(), 0xFFFE, 2)
+	addr := (uint(bb[0]) << 8) + uint(bb[1])
+	log.Printf("Rebooting by calling [0xFFFE] = $%04x", addr)
+	com.CallAddr(addr)
+}
+
+type ModeAction struct {
+	What  byte
+	Value byte
+}
+
+func (o *ModeAction) Do(nav *Navigator, mod Model, path string) {
+	switch o.What {
+	case 'H':
+		HitachiMode(nav.com, o.Value == 'Y')
+	case 'S':
+		SpeedMode(nav.com, o.Value)
+	case 'U':
+		UnHijack(nav.com)
+	case 'R':
+		Reboot(nav.com)
+	}
+}
+func (o *ModeAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *ModeAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("Mode Switch ('%c', '%v')", o.What, o.Value)
 }

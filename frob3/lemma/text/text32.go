@@ -39,7 +39,7 @@ func (t *TextVDG) Comm() *coms.Comm { return t.Com }
 // Flush
 func (t *TextVDG) Flush() {
 	log.Printf("Flushing % 3x", t.Screen[:])
-	t.Com.WriteQuint(coms.CMD_POKE, 0x400, t.Screen[:])
+	t.Com.WriteQuintAndPayload(coms.CMD_POKE, 0x400, t.Screen[:])
 }
 
 // InvertChar

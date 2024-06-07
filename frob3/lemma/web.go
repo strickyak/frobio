@@ -21,6 +21,7 @@ import (
 var FlagWebReaderPwFlipped = flag.String("web_reader_pw_flipped", "XLXL-KVYYOVH", "magic web reader pw (optional)")
 
 var FlagWebStatic = flag.String("web_static", "", "web-static serving directory")
+var FlagHttpPort = flag.Int("http_port", 0, ":port for web")
 
 const (
 	BadRequest = 400
@@ -87,8 +88,17 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func RunWeb() {
 	println("FlagNavRoot", *FlagNavRoot)
-	Assert(*FlagNavRoot != "")   // A root must be specified, so we don't serve "." unintentionally.
-	Assert(*FlagWebStatic != "") // A root must be specified, so we don't serve "." unintentionally.
+	println("FlagWebStatic", *FlagWebStatic)
+	println("FlagHttpPort", *FlagHttpPort)
+	if *FlagNavRoot == "" {
+		return
+	}
+	if *FlagWebStatic == "" {
+		return
+	}
+	if *FlagHttpPort == 0 {
+		return
+	}
 
 	lh := &LemmaHandler{
 		NavRoot: *FlagNavRoot,
@@ -100,7 +110,7 @@ func RunWeb() {
 	}
 
 	s := &http.Server{
-		Addr:           ":8080",
+		Addr:           Format(":%d", *FlagHttpPort),
 		Handler:        lh,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -292,6 +302,13 @@ body {
 .credit {
   font-size: 12px;
 }
+a {
+  color: #C0C020
+}
+a:hover {
+  color: #C020C0
+}
+
 </style>
 </head>
 

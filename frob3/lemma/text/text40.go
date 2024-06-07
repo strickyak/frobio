@@ -50,7 +50,7 @@ func (t *Text40) Comm() *coms.Comm { return t.Com }
 
 // Flush
 func (t *Text40) Flush() {
-	t.Com.WriteQuint(coms.CMD_POKE, 0x2000, t.Screen[:])
+	t.Com.WriteQuintAndPayload(coms.CMD_POKE, 0x2000, t.Screen[:])
 }
 
 // InvertChar

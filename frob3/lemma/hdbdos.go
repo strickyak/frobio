@@ -206,7 +206,7 @@ func HdbDosHijack(ses *Session, payload []byte) {
 
 	log.Printf("ZXC HdbDosHijack END")
 	// We tell coco that this is the END of the HIJACK.
-	com.WriteQuint(coms.CMD_HDBDOS_HIJACK, 0, []byte{})
+	com.WriteQuintAndPayload(coms.CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
 func NewDriveTempName(drive uint) string {
@@ -302,7 +302,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
 		DumpHexLines("REPLY", 0, buf)
-		com.WriteQuint(coms.CMD_HDBDOS_SECTOR, 0, buf)
+		com.WriteQuintAndPayload(coms.CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
 		if d.Path == "" {
@@ -333,7 +333,7 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 		buf[5+0x3B] = byte(dest)
 	}
 
-	com.WriteQuint(coms.CMD_HDBDOS_EXEC, 0, buf)
+	com.WriteQuintAndPayload(coms.CMD_HDBDOS_EXEC, 0, buf)
 	DumpHexLines("Inject: did ", dest, buf)
 }
 

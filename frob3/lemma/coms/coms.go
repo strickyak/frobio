@@ -100,7 +100,7 @@ func (o *Comm) ReadQuintAndPayload() (cmd byte, p uint, bb []byte) {
 	return
 }
 
-func (o *Comm) WriteQuint(cmd byte, p uint, bb []byte) {
+func (o *Comm) WriteQuintAndPayload(cmd byte, p uint, bb []byte) {
 	n := len(bb)
 	q := NewQuint(cmd, uint(n), p)
 	Value(o.Conn.Write(q[:]))
@@ -114,8 +114,12 @@ func (o *Comm) ReadFull(bb []byte) {
 	}
 }
 
+func (o *Comm) CallAddr(addr uint) {
+	o.WriteQuintAndPayload(CMD_CALL, addr, nil)
+}
+
 func (o *Comm) PokeRam(addr uint, bb []byte) {
-	o.WriteQuint(CMD_POKE, addr, bb)
+	o.WriteQuintAndPayload(CMD_POKE, addr, bb)
 }
 
 func (o *Comm) PeekRam(addr uint, n uint) []byte {
@@ -130,4 +134,8 @@ func (o *Comm) PeekRam(addr uint, n uint) []byte {
 	AssertEQ(p, addr)
 	AssertEQ(LenSlice(bb), n)
 	return bb
+}
+
+func (o *Comm) Unwrap() net.Conn {
+	return o.Conn
 }
