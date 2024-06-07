@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
-	//"github.com/strickyak/frobio/frob3/lemma/finder"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -106,21 +105,9 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 
 	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
 
-	/*
-		blackness := make([]byte, 40*2*24)
-		for i := 0;i < 256; i++ {
-			blackness[i+i] = byte(i)
-			blackness[i+i+1] = T.SimpleMagenta << 3
-		}
-		PokeRam(ses.Conn, 0x2000, blackness)
-	*/
-
 	T.SetSimplePalette(com)
 	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 0)
 	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
-	/*
-		time.Sleep(5*time.Second)
-	*/
 
 	defer func() {
 		SetVideoMode(ses, hrmode, hrwidth, pmode)
@@ -139,13 +126,6 @@ func OnTextVDGAt0400Run(ses *Session, payload []byte, runMe func()) {
 	log.Printf("Incoming Video Modes $%x $%x $%x: %s", hrmode, hrwidth, pmode, strV)
 
 	savedText := Peek2Ram(ses.Conn, 0x0400, 512)
-	/*
-		blackness := make([]byte, 512)
-		for i := range blackness {
-			blackness[i] = 0xEF;  // magenta cell, for debugging.
-		}
-		PokeRam(ses.Conn, 0x0400, blackness)
-	*/
 	SetVideoMode(ses, 0, 0, 0)
 
 	defer func() {
