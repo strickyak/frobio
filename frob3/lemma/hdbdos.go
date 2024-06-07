@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io"
+	// "io"
 	"io/ioutil"
 	"log"
 	"os"
-	P "path"
+	// P "path"
 	PFP "path/filepath"
 	"strings"
 	"time"
@@ -171,16 +171,16 @@ func TruePath(pizgaPath string) string {
 func CreateHomeIfNeeded(ses *Session) (string, string, string) {
 	homes := "Homes"
 	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
-	retain := PFP.Join(home, RETAIN_10_DAYS)
+	temp := PFP.Join(home, TEMP)
 	trash := PFP.Join(home, "Trash")
 
 	os.Mkdir(TruePath("."), DirPerm)
 	os.Mkdir(TruePath(homes), DirPerm)
 	os.Mkdir(TruePath(home), DirPerm)
-	os.Mkdir(TruePath(retain), DirPerm)
+	os.Mkdir(TruePath(temp), DirPerm)
 	os.Mkdir(TruePath(trash), DirPerm)
 	Log("CreateHomeIfNeeded: home = %q", home)
-	return home, retain, trash
+	return home, temp, trash
 }
 
 // Entry from waiter.go for a Hijack.
@@ -215,14 +215,14 @@ func NewDriveTempName(drive uint) string {
 
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
-	home, retain, trash := CreateHomeIfNeeded(ses)
+	home, temp, trash := CreateHomeIfNeeded(ses)
 	com := coms.Wrap(ses.Conn)
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
 			DriveSession: NewDriveSession(
 				ses, coms.Wrap(ses.Conn),
-				home, retain, trash),
+				home, temp, trash),
 		}
 	}
 	ses.Cleanups = append(ses.Cleanups, func() {
@@ -418,7 +418,7 @@ import (
 )
 */
 
-const RETAIN_10_DAYS = "Retain-10-Days"
+const TEMP = "Temp"
 
 const NumDrives = 10
 const DirPerm = 0775
@@ -455,6 +455,7 @@ type DriveSession struct {
 	scrapWasCut  bool
 }
 
+/*
 func (ds *DriveSession) TrashFilename(basis string) string {
 	return P.Join("/Homes", ds.ses.Hostname, "Trash", "tmp-"+ShortTimestamp()+"."+P.Base(basis))
 }
@@ -500,6 +501,7 @@ func (ds *DriveSession) Paste(dest string) {
 
 	log.Printf("Copied %d bytes from %q to %q", n, ds.scrapSource, destfile)
 }
+*/
 
 func (ds *DriveSession) String() string {
 	return Format("{DriveSession: %v home=%q}", ds.drives, ds.home)
@@ -593,7 +595,7 @@ func ShortTimestamp() string {
 	return time.Now().UTC().Format("150405")
 }
 func Timestamp() string {
-	return time.Now().UTC().Format("2006-01-02-150405Z")
+	return time.Now().UTC().Format("0102-150405")
 }
 func (ds *DriveSession) HdbDosCleanup() {
 	for driveNum, _ := range ds.drives {

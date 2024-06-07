@@ -3,8 +3,10 @@ package lemma
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	P "path"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
@@ -107,16 +109,16 @@ var Edit_Menu = &Menu{
 	Name: "Edit",
 	Items: []*Menu{
 		&Menu{
-			Name:   "X  Cut",
-			Action: nil,
+			Name:   "X : Cut",
+			Action: &EditAction{'X'},
 		},
 		&Menu{
-			Name:   "C  Copy",
-			Action: nil,
+			Name:   "C : Copy",
+			Action: &EditAction{'C'},
 		},
 		&Menu{
-			Name:   "V  Paste",
-			Action: nil,
+			Name:   "V : Paste",
+			Action: &EditAction{'V'},
 		},
 	},
 }
@@ -127,17 +129,17 @@ var Quik_Menu = &Menu{
 		&Menu{
 			Name: "Speed Poke",
 			Items: []*Menu{
-				&Menu{Name: "Y  Fast 1.78 MHz", Action: &ModeAction{'S', 'Y'}},
-				&Menu{Name: "N  Slow 0.9 MHz", Action: &ModeAction{'S', 'N'}},
-				&Menu{Name: "R  ROM fast, rest slow", Action: &ModeAction{'S', 'R'}},
-				&Menu{Name: "X  GimeX 2.86 MHz", Action: &ModeAction{'S', 'X'}},
+				&Menu{Name: "Y : Fast 1.78 MHz", Action: &ModeAction{'S', 'Y'}},
+				&Menu{Name: "N : Slow 0.9 MHz", Action: &ModeAction{'S', 'N'}},
+				&Menu{Name: "R : ROM fast, rest slow", Action: &ModeAction{'S', 'R'}},
+				&Menu{Name: "X : GimeX 2.86 MHz", Action: &ModeAction{'S', 'X'}},
 			},
 		},
 		&Menu{
 			Name: "Hitachi 6309 Mode",
 			Items: []*Menu{
-				&Menu{Name: "Y  6309 Native Mode", Action: &ModeAction{'H', 'Y'}},
-				&Menu{Name: "N  6809 Compatability Mode", Action: &ModeAction{'H', 'N'}},
+				&Menu{Name: "Y : 6309 Native Mode", Action: &ModeAction{'H', 'Y'}},
+				&Menu{Name: "N : 6809 Compatability Mode", Action: &ModeAction{'H', 'N'}},
 			},
 		},
 		&Menu{
@@ -296,39 +298,39 @@ var Mount_Menu = &Menu{
 			Action: MakeMounter(0),
 		},
 		&Menu{
-			Name:   "1 : Mount Drive 1",
+			Name:   "1 : Mount on Drive 1",
 			Action: MakeMounter(1),
 		},
 		&Menu{
-			Name:   "2 : Mount Drive 2",
+			Name:   "2 : Mount on Drive 2",
 			Action: MakeMounter(2),
 		},
 		&Menu{
-			Name:   "3 : Mount Drive 3",
+			Name:   "3 : Mount on Drive 3",
 			Action: MakeMounter(3),
 		},
 		&Menu{
-			Name:   "4 : Mount Drive 4",
+			Name:   "4 : Mount on Drive 4",
 			Action: MakeMounter(4),
 		},
 		&Menu{
-			Name:   "5 : Mount Drive 5",
+			Name:   "5 : Mount on Drive 5",
 			Action: MakeMounter(5),
 		},
 		&Menu{
-			Name:   "6 : Mount Drive 6",
+			Name:   "6 : Mount on Drive 6",
 			Action: MakeMounter(6),
 		},
 		&Menu{
-			Name:   "7 : Mount Drive 7",
+			Name:   "7 : Mount on Drive 7",
 			Action: MakeMounter(7),
 		},
 		&Menu{
-			Name:   "8 : Mount Drive 8",
+			Name:   "8 : Mount on Drive 8",
 			Action: MakeMounter(8),
 		},
 		&Menu{
-			Name:   "9 : Mount Drive 9",
+			Name:   "9 : Mount on Drive 9",
 			Action: MakeMounter(9),
 		},
 		&Menu{
@@ -463,7 +465,7 @@ func MakeGotoBookmark(n byte) MenuAction {
 }
 func (o *GotoBookmarkAction) Do(nav *Navigator, mod Model, path string) {
 	if nav.Bookmarks[o.N] == "" {
-		ErrorAlert(nav.t, []string{"That bookmark is not set."})
+		ErrorAlertChop(nav.t, "That bookmark is not set.")
 		return
 	}
 	nav.GotoPath = nav.Bookmarks[o.N]
@@ -605,10 +607,10 @@ letters for top menus bar.
 Mount disk images for basic
 with the 'M' menu.  If you
 change a public disk, the
-changed disk will be copied to
-the Retain-10-Days directory
-in your home under /Homes/
-and your hostname.
+changed disk will be copied
+to the Temp directory in your
+home directory (under /Homes/
+and your hostname).
 
 `
 	ViewFullScreenText(nav.t, []byte(HELP), T.SimpleWhite)
@@ -696,4 +698,116 @@ func (o *ModeAction) Undo(nav *Navigator, mod Model, path string) {
 }
 func (o *ModeAction) String(nav *Navigator, mod Model, path string) string {
 	return Format("Mode Switch ('%c', '%v')", o.What, o.Value)
+}
+
+type EditAction struct {
+	What byte
+}
+
+func (o *EditAction) Do(nav *Navigator, mod Model, path string) {
+	principals := []string{nav.ds.ses.Hostname}
+
+	if !CanAccess(principals, path, false) {
+		ErrorAlertChop(nav.t, Format("User %q does not have permission to read %q", principals[0], path))
+		return
+	}
+
+	switch o.What {
+	case 'X': // X : Cut
+		nav.CutPath = path
+		ts := Timestamp()
+		nav.HoldingPath = P.Join(nav.ds.trash, ts+"-"+P.Base(path))
+
+		err := os.Rename(TruePath(path), TruePath(nav.HoldingPath))
+		if err != nil {
+			ErrorAlertChop(nav.ds.ses.T, Format("Cannot Cut %q: %v", path, err))
+			return
+		}
+
+		if CanAccess(principals, path, true) {
+			os.Remove(TruePath(path))
+		} else {
+			ErrorAlertChop(nav.t, Format("User %q does not have permission to delete %q but your copy was made.", principals[0], path))
+		}
+
+	case 'C': // C : Copy
+		nav.CutPath = path
+		ts := Timestamp()
+		nav.HoldingPath = P.Join(nav.ds.trash, ts+"-"+P.Base(path))
+
+		err := CopyFile(TruePath(path), TruePath(nav.HoldingPath))
+		if err != nil {
+			ErrorAlertChop(nav.ds.ses.T, Format("Cannot Copy %q: %v", path, err))
+			return
+		}
+
+	case 'V': // V : Paste
+		var dest string // tentative
+
+		if len(nav.HoldingPath) < 2 {
+			ErrorAlertChop(nav.t, "There is nothing to paste.")
+			return
+		}
+
+		stat, _ := os.Stat(TruePath(path))
+		switch {
+		case stat == nil: // rare, but ok.
+			dest = path
+		case stat.IsDir():
+			dest = P.Join(path, P.Base(nav.CutPath))
+		default:
+			dest = path
+		}
+
+		if !CanAccess(principals, dest, true) {
+			ErrorAlertChop(nav.ds.ses.T, Format("User %q does not have permission to write file %q", principals[0], dest))
+			return
+		}
+
+		var yes bool
+		dstat, _ := os.Stat(TruePath(dest))
+		switch {
+		case dstat == nil: // nothing there, feel free to write.
+			yes = true
+		case dstat.IsDir():
+			log.Panic("how did it become a directory?")
+		default:
+			yes = nav.Confirm(Format(`
+Do you want to overwrite file %q ?
+`, dest))
+		}
+
+		if yes {
+			err := CopyFile(TruePath(nav.HoldingPath), TruePath(dest))
+			if err != nil {
+				ErrorAlertChop(nav.ds.ses.T, Format("Cannot Paste %q: %v", dest, err))
+				return
+			}
+		}
+
+	case 'R': // R : Rename
+		panic("TODO")
+	}
+}
+func (o *EditAction) Undo(nav *Navigator, mod Model, path string) {
+}
+func (o *EditAction) String(nav *Navigator, mod Model, path string) string {
+	return Format("Edit ('%c')", o.What)
+}
+
+func CopyFile(src, dest string) error {
+	r, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	w, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	_, err = io.Copy(w, r)
+	return err
 }

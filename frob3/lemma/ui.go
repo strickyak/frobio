@@ -39,6 +39,9 @@ type Navigator struct {
 	com       *coms.Comm
 	Bookmarks [10]string
 	GotoPath  string
+
+	CutPath     string
+	HoldingPath string
 }
 
 func (nav *Navigator) ClearScreen() {
@@ -284,6 +287,26 @@ func (nav *Navigator) DoAction(chosen *Menu, c Model, focus uint, boxX, boxY uin
 			}
 		}
 	*/
+}
+
+func (nav *Navigator) Confirm(s string) bool {
+	s += `
+Y or N
+`
+	ViewBoxedText(nav.t, []byte(s), T.SimpleMagenta)
+	nav.t.Flush()
+
+	for {
+		ch := Up(T.GetCharFromKeyboard(nav.t.Comm()))
+		switch ch {
+		case 'N', 3:
+			log.Printf("Confirmed=No: %q", s)
+			return false
+		case 'Y', 10, 13:
+			log.Printf("Confirmed=Yes: %q", s)
+			return true
+		}
+	}
 }
 
 // Returns true if the input char ch is consumed.
