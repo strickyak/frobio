@@ -1,0 +1,48 @@
+= Frobio BUG list
+
+== Wed May 29 03:24:02 PM PDT 2024
+
+* The directory named `#` is not opening in Web (?)
+* Web sometimes not following a symbolic link/ (?)
+
+== Fri Jun  7 12:04:02 AM PDT 2024
+
+* Movies did not link into LEMMINGS directory.
+* Movies might not work when "--flip"ped.
+* trivial Web auth
+* 70's menu, thread dies and closes immediately.
+* Daily Reboots
+* Apt Updates
+* Backups
+
+== Features Request
+
+* CACHE Server (accelerator card?)
+* Easier burning menu, for three-part EEPROM.
+* Hostname/Username/Groupname scheme.
+* Fujinet
+* Drivewire
+* Update HDBDOS (survey broken BASIC files)
+* Launch Basic, Binary, or OS from Nav
+* Boot into Nav
+* Web upload and download
+* Session-specific logging
+* Give uses their logs
+* Too much NANDO
+* Edit/Rename
+* Alerts for TEMP files
+* Chat / Mail / BBS / Wall
+* Dirty OS9
+* Volume Diffing for OS9
+* View RSDOS
+* View OS9
+* View Basic
+* Save logs on reboot
+* Edit/Mkdir
+* Automatic bookmarks: 0=home 1=repo
+
+== Test Setup
+
+* Relay on RESET might suffice
+* Image with Rasp Pi
+* After fixing 70's passthru, have alpha and beta.
