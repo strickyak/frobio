@@ -1,0 +1,52 @@
++ RAN=0
++ rm -rfv /tmp/for-hasty-20240420-225537
++ mkdir -p /tmp/for-hasty-20240420-225537
++ cd /home/coco/coco-shelf/gomar
++ go build --tags=coco3,level2,vdg,cocoio,gime, -o /tmp/for-hasty-20240420-225537/gomar.coco3.level2.vdg gomar.go
++ cd ../frobio/frob3/lemma/
++ GOBIN=/home/strick/two/coco-shelf/bin
++ GOPATH=/home/strick/two/coco-shelf
++ /usr/bin/go build -o /tmp/for-hasty-20240420-225537/waiter -x server.go
+WORK=/tmp/go-build2467044352
+no required module provides package server.go; to add it:
+	go get server.go
+make: *** [Makefile:71: whippets/done] Error 1
+
+real	4m40.251s
+user	3m22.195s
+sys	1m26.829s
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+rm -rf ./pizga-base/Internal/ ./pizga-base/ ./pizga-eou pizga pizga-media pizga-sdc
+mkdir -p pizga-base/Public pizga-base/Members pizga-base/Internal
+mkdir -p ./pizga-eou pizga-base/Internal/web-static
+mkdir -p pizga-base/Internal/CMDS pizga-base/Internal/MODULES
+mkdir -p ../pizga-homes                    # (somewhat) persistent dir for Homes is in coco-shelf
+ln -svf ../pizga-homes pizga-homes         # first link to Homes
+'pizga-homes' -> '../pizga-homes'
+ln -svf ../pizga-homes pizga-base/Homes    # double link to Homes
+'pizga-base/Homes' -> '../pizga-homes'
+mkdir -p ../pizga-database                 # (somewhat) persistent dir for Database is in coco-shelf
+ln -svf ../pizga-database pizga-database   # link to Database
+'pizga-database' -> '../pizga-database'
+ln -svf pizga-base pizga
+'pizga' -> 'pizga-base'
+ln -svf ../pizga-media .
+'./pizga-media' -> '../pizga-media'
+ln -svf ../pizga-sdc .
+'./pizga-sdc' -> '../pizga-sdc'
+ln -svf ../../pizga-media/video1 pizga-base/Members/video1
+'pizga-base/Members/video1' -> '../../pizga-media/video1'
+ln -svf ../../pizga-sdc/sdc-repo pizga-base/Public/sdc-repo
+'pizga-base/Public/sdc-repo' -> '../../pizga-sdc/sdc-repo'
+cp -vf ../frobio/frob3/web-static/*.* pizga-base/Internal/web-static/
+cp: cannot stat '../frobio/frob3/web-static/*.*': No such file or directory
+make[1]: *** [../frobio/frob3/frob3.mk:65: results1] Error 1
+make[1]: Leaving directory '/home/coco/coco-shelf/build-frobio'
+make: *** [Makefile:89: build-frobio/done] Error 2
+
+real	13m32.428s
+user	10m49.820s
+sys	1m52.320s
+
