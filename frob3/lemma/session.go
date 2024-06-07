@@ -12,10 +12,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
+	T "github.com/strickyak/frobio/frob3/lemma/text"
 
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -116,7 +118,7 @@ func (ax *XTextScreen) PutStr(s string) {
 func (t *XTextScreen) Flush() {
 	AssertEQ(len(t.B), 512)
 	AssertEQ(t.Addr, 0x0400)
-	coms.Wrap(t.Ses.Conn).WriteQuint(coms.CMD_POKE, uint(t.Addr), t.B)
+	coms.Wrap(t.Ses.Conn).WriteQuintAndPayload(coms.CMD_POKE, uint(t.Addr), t.B)
 }
 func (t *XTextScreen) Clear() {
 	t.B = make([]byte, t.W*t.H)
@@ -176,7 +178,7 @@ func (lb *LineBuf) GetLine() string {
 	var buf []byte
 	for {
 		log.Printf("NANDO @@@ askchar")
-		coms.Wrap(lb.Ses.Conn).WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
+		coms.Wrap(lb.Ses.Conn).WriteQuintAndPayload(coms.CMD_GETCHAR, 0, nil) // request inkey
 		log.Printf("NANDO @@@ read q")
 
 		var q coms.Quint
@@ -219,13 +221,14 @@ func (lb *LineBuf) GetLine() string {
 }
 
 type Session struct {
-	ID        string
+	ID        int
 	Conn      net.Conn
 	IScreen   IScreen
 	LineBuf   *LineBuf
 	Hostname  string
 	RomID     []byte
 	AxiomVars []byte
+	Hellos    map[uint][]byte
 
 	Block0 *os.File
 	Block1 *os.File
@@ -239,21 +242,33 @@ type Session struct {
 	InitGimeRegs  []byte
 	BasicGimeRegs []byte
 
+	T T.TextScreen
+
 	// Env     map[string]string // for whatever
 	// User    *User             // logged in user
 	// Card *Card // Current card.
 }
 
 func (ses *Session) String() string {
-	return ses.ID
+	return Format("Session(%d)", ses.ID)
 }
 
-// Run() is called with "go" to manage a connection session.
-var nextID int = 1001
+// RunCards() is called with "go" to manage a connection session.
+var nextSerial int = 1000
+var nextSerialMutex sync.Mutex
+
+func GetSerial() int {
+	nextSerialMutex.Lock()
+	defer nextSerialMutex.Unlock()
+	nextSerial++
+	return nextSerial
+}
 
 func NewSession(conn net.Conn, hostname string) *Session {
+	id := GetSerial()
+
 	ses := &Session{
-		ID:       fmt.Sprintf("s%d_%s", nextID, hostname),
+		ID:       id,
 		Conn:     conn,
 		Procs:    make(map[uint]*Proc), // mux.go
 		Hostname: hostname,
@@ -261,7 +276,6 @@ func NewSession(conn net.Conn, hostname string) *Session {
 	// ses.IScreen = &AxScreen{ses}
 	ses.IScreen = NewTextScreen(ses, 32, 16, 0x0400)
 	ses.LineBuf = &LineBuf{ses}
-	nextID++
 
 	return ses
 }
@@ -277,9 +291,10 @@ type Card struct {
 	Text     string
 	Template *template.Template
 
-	Launch string
-	Block0 string
-	Block1 string
+	ReconnectPort int
+	Launch        string
+	Block0        string
+	Block1        string
 }
 
 func Add(num int, parent int, name string, tc *Card) {
@@ -357,11 +372,11 @@ func (o NumStrSlice) Len() int           { return len(o) }
 func (o NumStrSlice) Less(i, j int) bool { return o[i].Num < o[j].Num }
 func (o NumStrSlice) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 
-func Run(ses *Session) {
+func RunCards(ses *Session) (notice string) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			ses.IScreen.PutStr(fmt.Sprintf("\n\n(session Run) FATAL ERROR: %v\n", r))
+			ses.IScreen.PutStr(fmt.Sprintf("\n\n(session RunCards) FATAL ERROR: %v\n", r))
 			ses.IScreen.Flush()
 			panic(r)
 		}
@@ -424,6 +439,10 @@ CARD:
 				goto DELAY
 			}
 		} else if line == "@" {
+			if current.ReconnectPort != 0 {
+				ReconnectPort(ses, current.ReconnectPort)
+				return "Left two goroutines copying"
+			}
 
 			if current.Launch == "" {
 				ses.IScreen.PutStr("There is no \"@\" command on this page.")
@@ -449,14 +468,14 @@ CARD:
 					goto DELAY
 				}
 				demo(ses.Conn)
-				return
+				return "Demo finished"
 			}
 
 			tail := strings.TrimPrefix(current.Launch, ".")
 			log.Printf("Upload: %q", tail)
 			UploadProgram(ses.Conn, *LEMMINGS_ROOT+"/"+tail)
 			ReadFiveLoop(ses.Conn, ses)
-			return
+			return "Launch finished"
 		} else {
 			// It was something else.
 			ses.IScreen.PutStr(fmt.Sprintf("\nError: Not a number: %q", line))
@@ -467,4 +486,51 @@ CARD:
 		ses.IScreen.Flush()
 		time.Sleep(3 * time.Second)
 	}
+	return "RunCards Finish"
+}
+
+func ReconnectPort(ses *Session, port int) {
+	reconn, err := net.Dial("tcp", Format("127.0.0.1:%d", port))
+	if err != nil {
+		log.Panicf("ReconnectPort: Cannot net.dial TCP 127.0.0.1:%d", port)
+	}
+
+	for p, payload := range ses.Hellos {
+		WriteFive(reconn, coms.CMD_HELLO, LenSlice(payload), p)
+		_, err := reconn.Write(payload)
+		if err != nil {
+			log.Panicf("ReconnectPort: error sending hello payload: %v", err)
+		}
+	}
+	WriteFive(reconn, coms.CMD_HELLO, 0, 0)
+
+	// fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
+	// status, err := bufio.NewReader(conn).ReadString('\n')
+
+	onFinish := make(chan bool, 2)
+	go CopyTcp(onFinish, reconn, ses.Conn, "reconn to ses.Conn")
+	go CopyTcp(onFinish, ses.Conn, reconn, "ses.Conn to reconn")
+	<-onFinish
+	<-onFinish
+}
+
+func CopyTcp(onFinish chan bool, r, w net.Conn, what string) {
+COPY:
+	for {
+		// Start with 1 byte buffer.  TODO more.
+		one := make([]byte, 1)
+		n, err := r.Read(one)
+		if n == 1 {
+			n2, err2 := w.Write(one)
+			if n2 != 1 {
+				log.Printf("STOP CopyTcp %q on write: %v", what, err2)
+				break COPY
+			}
+			continue COPY
+		}
+
+		log.Printf("STOP CopyTcp %q on read: %v", what, err)
+		break COPY
+	}
+	onFinish <- true
 }

@@ -22,7 +22,7 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-var SCAN_KEYBOARD = flag.Bool("scan_keyboard", false, "flag flip for CMD_KEYBOARD (to detect SHIFT, etc)")
+var SCAN_KEYBOARD = flag.Bool("scan_keyboard", true, "flag flip for CMD_KEYBOARD (to detect SHIFT, etc)")
 
 var PRINT_VERSION = flag.Bool("version", false, "Just print protocol version")
 var PORT = flag.Int("port", 2321, "Listen on this TCP port (V41)")
@@ -34,6 +34,7 @@ var LEMMINGS_ROOT = flag.String("lemmings_root", "LEMMINGS/", "read only resourc
 var LEVEL0 = flag.String("level0", "", "[experimental Level0 mode] level0.bin (decb) to upload")
 var LAN = flag.String("lan", "", "Local IP address of interface for LAN Discovery Response.")
 var TESTHOST = flag.String("testhost", "", "Host that runs tests")
+var FLAVOR = flag.String("flavor", "", "what flavor the server (e.g. alpha, beta, prod)")
 
 var Block0 *os.File
 
@@ -153,15 +154,15 @@ func ScanKeyboard(conn net.Conn) (keybits [8]byte) {
 	peekHeader := ReadN(conn, 5)
 	log.Printf("peekHeader: %#v", peekHeader)
 	if peekHeader[0] != coms.CMD_KEYBOARD {
-		log.Panicf("Expected KEYBOARD, got $%2x", peekHeader)
+		log.Panicf("Expected KEYBOARD, got $% 3x", peekHeader)
 	}
 
 	if peekHeader[1] != 0 && peekHeader[2] != 8 {
-		log.Panicf("Expected KEYBOARD n=8, got $%2x", peekHeader)
+		log.Panicf("Expected KEYBOARD n=8, got $% 3x", peekHeader)
 	}
 
 	z := ReadN(conn, 8)
-	log.Printf("scan keyboard: $ % 3x", z)
+	log.Printf("scan keyboard keybits: $% 3x", z)
 	copy(keybits[:], z)
 	return
 }
@@ -525,7 +526,7 @@ func Serve(conn net.Conn) {
 
 	if *SCAN_KEYBOARD {
 		keybits := ScanKeyboard(conn)
-		log.Printf("Keybits: % 03x", keybits)
+		log.Printf("Scan Keyboard: Keybits: $% 3x", keybits)
 	}
 
 	// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
@@ -617,9 +618,10 @@ func Serve(conn net.Conn) {
 		ses := NewSession(conn, hostName)
 		ses.RomID = romID
 		ses.AxiomVars = axiomVars
+		ses.Hellos = hellos
 		ses.IScreen.PutStr(Format("host '%q' connected.\n", hostName))
-		Run(ses)
-		log.Panicf("Run Cards: quit")
+		notice := RunCards(ses)
+		log.Panicf("Run Cards: quit: %q", notice)
 	}
 	log.Printf("~~~~~~~~~~~~~~ g  ")
 
@@ -660,6 +662,7 @@ func InitDemos() {
 
 func Listen() {
 	InitDemos()
+	go RunWeb()
 
 	if *LAN != "" {
 		go ListenForLan(*LAN)

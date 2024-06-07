@@ -8,6 +8,29 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
+type TextFlags uint
+
+const (
+	InverseFlag TextFlags = 1 << iota
+)
+
+type TextScreen interface {
+	W() uint
+	H() uint
+	IsVDG() bool
+
+	Put(x, y uint, ch byte, fl TextFlags)
+	Get(x, y uint) (ch byte, fl TextFlags)
+	InvertChar(x, y uint)
+	Flush()
+	Comm() *coms.Comm
+
+	SetColor(byte) byte // might be ignored, if mono.
+
+	Save() any
+	Restore(any)
+}
+
 // InvertLine
 func TextScreenInvertLine(t TextScreen, y uint) {
 	w := t.W()
@@ -21,6 +44,7 @@ func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
 	w, h := t.W(), t.H()
 	AssertLT(y, h)
 	s := fmt.Sprintf(format, args...)
+	log.Printf("TextScreenWriteLine w,h=%d,%d. y=%d. s=%q", w, h, y, s)
 	if LenStr(s) > w {
 		s = s[:w] // Trim to w bytes
 	}
@@ -34,25 +58,9 @@ func TextScreenWriteLine(t TextScreen, y uint, format string, args ...any) {
 
 // Inkey
 
-type TextFlags uint
-
-const (
-	InverseFlag TextFlags = 1 << iota
-)
-
-type TextScreen interface {
-	W() uint
-	H() uint
-	Put(x, y uint, ch byte, fl TextFlags)
-	Get(x, y uint) (ch byte, fl TextFlags)
-	InvertChar(x, y uint)
-	Flush()
-	Comm() *coms.Comm
-}
-
 // DirectKeyboard should talk to Axiom, but not to Hijack.
 func DirectKeyboard(com *coms.Comm) byte {
-	com.WriteQuint(coms.CMD_KEYBOARD, 0, nil) // request inkey
+	com.WriteQuintAndPayload(coms.CMD_KEYBOARD, 0, nil) // request inkey
 
 	var q coms.Quint
 	com.ReadFull(q[:])
@@ -72,7 +80,7 @@ func DirectKeyboard(com *coms.Comm) byte {
 
 func GetCharFromKeyboard(com *coms.Comm) byte {
 	log.Printf("ZXC Calling GetCharFromKeyboard... send quint GETCHAR....")
-	com.WriteQuint(coms.CMD_GETCHAR, 0, nil) // request inkey
+	com.WriteQuintAndPayload(coms.CMD_GETCHAR, 0, nil) // request inkey
 
 	var q coms.Quint
 	com.ReadFull(q[:])
@@ -82,5 +90,10 @@ func GetCharFromKeyboard(com *coms.Comm) byte {
 		log.Panicf("DirectKeyboard: Unexpected quint: % 3x", q)
 	}
 
-	return byte(q.P())
+	z := byte(q.P())
+	switch z {
+	case 27: // Escape
+		z = 3 // becomes BREAK
+	}
+	return z
 }

@@ -53,6 +53,13 @@ func Max[T Number](b T, c T) T {
 	return c
 }
 
+func CatSlices[T any](args ...[]T) (result []T) {
+	for _, a := range args {
+		result = append(result, a...)
+	}
+	return
+}
+
 func Errorf(f string, args ...any) error {
 	return errors.New(fmt.Sprintf(f, args...))
 }
@@ -62,7 +69,7 @@ type Number interface {
 }
 
 func Assert(b bool, args ...any) {
-	if b {
+	if !b {
 		s := "Assert Fails"
 		for _, x := range args {
 			s += fmt.Sprintf(" ; %v", x)

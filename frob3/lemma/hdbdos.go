@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	// "io"
 	"io/ioutil"
 	"log"
 	"os"
+	// P "path"
 	PFP "path/filepath"
 	"strings"
 	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
-	//"github.com/strickyak/frobio/frob3/lemma/finder"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -96,33 +97,17 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 	com := coms.Wrap(ses.Conn)
 
 	savedPage0 := payload[:256]
-	// _ = payload[256 : 256+16] // savedMMU
 	savedPalette := payload[256+16 : 256+32]
 	hrmode, hrwidth, pmode := VideoModes(savedPage0)
 	strV, _ := DescribeVideoModes(savedPage0)
 
 	log.Printf("Incoming Video Modes: %s", strV)
 
-	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 0)
-	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
 	savedMMUByte := AlterTask0Map37To2000ReturnSaved(ses, payload)
 
 	T.SetSimplePalette(com)
-
-	/*
-		// Demo the palette
-		for row := byte(0); row < 24; row++ {
-			bb := TestCharRow40(row)
-			for i := byte(0); i < 40; i++ { // invert some bg/fg
-				if uint(row+i)%13 == 9 { // choose which ones
-					x := bb[i+i+1]
-					x = (x >> 3) | (T.SimpleBlack << 3) // the inversion, assuming bg is T.SimpleBlack.
-					bb[i+i+1] = x
-				}
-			}
-			PokeRam(ses.Conn, 0x2000+40*2*uint(row), Cond(row == 0, bytV, bb))
-		}
-	*/
+	numRows := GimeText40x24_OnPage37_ReturnNumRows(ses, payload, 0)
+	log.Printf("OnText40At2000Run: %d. complete rows", numRows)
 
 	defer func() {
 		SetVideoMode(ses, hrmode, hrwidth, pmode)
@@ -130,6 +115,26 @@ func OnText40At2000Run(ses *Session, payload []byte, runMe func()) {
 		UndoAlterTask0(ses, savedMMUByte)
 	}()
 
+	runMe()
+}
+
+func OnTextVDGAt0400Run(ses *Session, payload []byte, runMe func()) {
+	savedPage0 := payload[:256]
+	hrmode, hrwidth, pmode := VideoModes(savedPage0)
+	strV, _ := DescribeVideoModes(savedPage0)
+
+	log.Printf("Incoming Video Modes $%x $%x $%x: %s", hrmode, hrwidth, pmode, strV)
+
+	savedText := Peek2Ram(ses.Conn, 0x0400, 512)
+	SetVideoMode(ses, 0, 0, 0)
+
+	defer func() {
+		SetVideoMode(ses, hrmode, hrwidth, pmode)
+		PokeRam(ses.Conn, 0x0400, savedText)
+		log.Printf("OnText...............Done.")
+	}()
+
+	log.Printf("OnTextVDGAt2000Run...")
 	runMe()
 }
 
@@ -159,18 +164,23 @@ func SetVideoMode(ses *Session, hrmode, hrwidth, pmode byte) {
 	}
 }
 
-func CreateHomeIfNeeded(ses *Session) (string, string) {
-	root := *FlagNavRoot
-	homes := "HOMES"
-	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
-	retain := PFP.Join(home, RETAIN_10_DAYS)
+func TruePath(pizgaPath string) string {
+	return PFP.Join(*FlagNavRoot, pizgaPath)
+}
 
-	os.Mkdir(root, DirPerm)
-	os.Mkdir(PFP.Join(root, homes), DirPerm)
-	os.Mkdir(PFP.Join(root, home), DirPerm)
-	os.Mkdir(PFP.Join(root, retain), DirPerm)
+func CreateHomeIfNeeded(ses *Session) (string, string, string) {
+	homes := "Homes"
+	home := PFP.Join(homes, strings.ToUpper(ses.Hostname))
+	temp := PFP.Join(home, TEMP)
+	trash := PFP.Join(home, "Trash")
+
+	os.Mkdir(TruePath("."), DirPerm)
+	os.Mkdir(TruePath(homes), DirPerm)
+	os.Mkdir(TruePath(home), DirPerm)
+	os.Mkdir(TruePath(temp), DirPerm)
+	os.Mkdir(TruePath(trash), DirPerm)
 	Log("CreateHomeIfNeeded: home = %q", home)
-	return home, retain
+	return home, temp, trash
 }
 
 // Entry from waiter.go for a Hijack.
@@ -178,15 +188,25 @@ func HdbDosHijack(ses *Session, payload []byte) {
 	log.Printf("ZXC HdbDosHijack BEGIN")
 	com := coms.Wrap(ses.Conn)
 
-	OnText40At2000Run(ses, payload, func() {
-		log.Printf("ZXC OnText40At2000Run(TCS)")
-		// time.Sleep(1 * time.Second)
-		TextChooserShell(com, ses.HdbDos.DriveSession)
-	})
+	if false {
+		OnTextVDGAt0400Run(ses, payload, func() {
+			log.Printf("ZXC OnTextVDGAt0400Run(TCS)")
+			t := T.NewTextVDG(com)
+			ses.T = t
+			TextChooserShell(com, ses.HdbDos.DriveSession, t)
+		})
+	} else {
+		OnText40At2000Run(ses, payload, func() {
+			log.Printf("ZXC OnText40At2000Run(TCS)")
+			t := T.NewText40(com)
+			ses.T = t
+			TextChooserShell(com, ses.HdbDos.DriveSession, t)
+		})
+	}
 
 	log.Printf("ZXC HdbDosHijack END")
 	// We tell coco that this is the END of the HIJACK.
-	com.WriteQuint(coms.CMD_HDBDOS_HIJACK, 0, []byte{})
+	com.WriteQuintAndPayload(coms.CMD_HDBDOS_HIJACK, 0, []byte{})
 }
 
 func NewDriveTempName(drive uint) string {
@@ -195,14 +215,14 @@ func NewDriveTempName(drive uint) string {
 
 // Entry from waiter.go for a Sector.
 func HdbDosSector(ses *Session, payload []byte) {
-	home, retain := CreateHomeIfNeeded(ses)
+	home, temp, trash := CreateHomeIfNeeded(ses)
 	com := coms.Wrap(ses.Conn)
 	if ses.HdbDos == nil {
 		ses.HdbDos = &HdbDosSession{
 			Ses: ses,
 			DriveSession: NewDriveSession(
-				coms.Wrap(ses.Conn),
-				home, retain),
+				ses, coms.Wrap(ses.Conn),
+				home, temp, trash),
 		}
 	}
 	ses.Cleanups = append(ses.Cleanups, func() {
@@ -252,10 +272,9 @@ func HdbDosSector(ses *Session, payload []byte) {
 			log.Printf("@@@@@@@@@@ made empty DriveImage name %q number %d. TS %q", d.Path, drive, d.CreationTimestamp)
 		} else {
 			Log("HdbDosSector: d.Image empty, reading path %q, empty dskini", d.Path)
-			unixfile := PFP.Join(*FlagNavRoot, d.Path)
-			bb, err := os.ReadFile(unixfile)
+			bb, err := os.ReadFile(TruePath(d.Path))
 			if err != nil {
-				log.Panicf("HdbDosSector ReadFile failed %q: %q: %v", d.Path, unixfile, err)
+				log.Panicf("HdbDosSector ReadFile failed %q: %v", d.Path, err)
 			}
 			if !InSlice(int64(len(bb)), FloppySizes) {
 				log.Panicf("HdbDosSector ReadFile got %d bytes, wanted 161280", len(bb))
@@ -283,7 +302,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
 		DumpHexLines("REPLY", 0, buf)
-		com.WriteQuint(coms.CMD_HDBDOS_SECTOR, 0, buf)
+		com.WriteQuintAndPayload(coms.CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
 		if d.Path == "" {
@@ -314,7 +333,7 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 		buf[5+0x3B] = byte(dest)
 	}
 
-	com.WriteQuint(coms.CMD_HDBDOS_EXEC, 0, buf)
+	com.WriteQuintAndPayload(coms.CMD_HDBDOS_EXEC, 0, buf)
 	DumpHexLines("Inject: did ", dest, buf)
 }
 
@@ -328,10 +347,7 @@ func AsciiToInjectBytes(s string) []byte {
 
 func SendInitialInjections(ses *Session) {
 	sideload := Value(ioutil.ReadFile(*FlagSideloadRaw))
-	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES DISK FINDER)"))
-	// Inject(ses, sideload, 0x05A0 /* on text screen*/, false, AsciiToInjectBytes("  USE ARROW KEYS TO NAVIGATE."))
-	// Inject(ses, sideload, 0x05C0 /* on text screen*/, false, AsciiToInjectBytes("  HIT 0 TO MOUNT DRIVE 0,"))
-	// Inject(ses, sideload, 0x05E0 /* on text screen*/, false, AsciiToInjectBytes("  1 FOR 1, ... THROUGH 9."))
+	Inject(ses, sideload, 0x04A0 /* on text screen*/, false, AsciiToInjectBytes("(CLEAR KEY TOGGLES NAVIGATOR.)"))
 
 	bb := Value(ioutil.ReadFile(*FlagInkeyRaw))
 
@@ -402,7 +418,7 @@ import (
 )
 */
 
-const RETAIN_10_DAYS = "RETAIN-10-DAYS"
+const TEMP = "Temp"
 
 const NumDrives = 10
 const DirPerm = 0775
@@ -427,21 +443,77 @@ func (di *DriveImage) GoString() string {
 }
 
 type DriveSession struct {
+	ses    *Session
 	com    *coms.Comm
 	drives [NumDrives]*DriveImage
 	home   string
 	retain string
+	trash  string
+
+	scrapSource  string // may have been cut
+	scrapCurrent string // may be a temp file
+	scrapWasCut  bool
 }
 
-func (di *DriveSession) String() string {
-	return Format("{DriveSession: %v home=%q}", di.drives, di.home)
+/*
+func (ds *DriveSession) TrashFilename(basis string) string {
+	return P.Join("/Homes", ds.ses.Hostname, "Trash", "tmp-"+ShortTimestamp()+"."+P.Base(basis))
 }
 
-func NewDriveSession(com *coms.Comm, home string, retain string) *DriveSession {
+func (ds *DriveSession) Cut(a string) {
+	ds.scrapSource = a
+	ds.scrapCurrent = ds.TrashFilename(ds.scrapSource)
+	err := os.Rename(TruePath(ds.scrapSource), TruePath(ds.scrapCurrent))
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Cut %q: %v", ds.scrapSource, err)})
+		return
+	}
+}
+func (ds *DriveSession) Copy(a string) {
+	ds.scrapSource = a
+	ds.scrapCurrent = a
+}
+func (ds *DriveSession) Paste(dest string) {
+	r, err := os.Open(TruePath(ds.scrapCurrent))
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Open %q: %v", ds.scrapSource, err)})
+		return
+	}
+	defer r.Close()
+
+	destfile := P.Join(dest, P.Base(ds.scrapSource))
+	w, err := os.Create(TruePath(destfile))
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Create %q: %v", destfile, err)})
+		return
+	}
+	defer w.Close()
+
+	n, err := io.Copy(w, r)
+	if err != nil {
+		ErrorAlert(ds.ses.T, []string{
+			Format("Cannot Paste: %v", err)})
+		return
+	}
+
+	log.Printf("Copied %d bytes from %q to %q", n, ds.scrapSource, destfile)
+}
+*/
+
+func (ds *DriveSession) String() string {
+	return Format("{DriveSession: %v home=%q}", ds.drives, ds.home)
+}
+
+func NewDriveSession(ses *Session, com *coms.Comm, home, retain, trash string) *DriveSession {
 	return &DriveSession{
+		ses:    ses,
 		com:    com,
 		home:   home,
 		retain: retain,
+		trash:  trash,
 	}
 }
 
@@ -510,8 +582,8 @@ func (ds *DriveSession) HdbDosCleanupOneDrive(driveNum byte) {
 		return
 	}
 	// if dirty:
-	dest := PFP.Join(*FlagNavRoot, ds.retain, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
-	err := os.WriteFile(dest, drive.Image, FilePerm)
+	dest := PFP.Join(ds.retain, drive.CreationTimestamp+"-"+PFP.Base(drive.Path))
+	err := os.WriteFile(TruePath(dest), drive.Image, FilePerm)
 	if err != nil {
 		log.Printf("BAD: HdbDosCleanup: Error saving dirty file %d bytes %q as %q: %v", len(drive.Image), drive.Path, dest, err)
 	} else {
@@ -519,8 +591,11 @@ func (ds *DriveSession) HdbDosCleanupOneDrive(driveNum byte) {
 	}
 	ds.drives[driveNum] = nil // Delete the drive record.
 }
+func ShortTimestamp() string {
+	return time.Now().UTC().Format("150405")
+}
 func Timestamp() string {
-	return time.Now().UTC().Format("2006-01-02-150405Z")
+	return time.Now().UTC().Format("0102-150405")
 }
 func (ds *DriveSession) HdbDosCleanup() {
 	for driveNum, _ := range ds.drives {

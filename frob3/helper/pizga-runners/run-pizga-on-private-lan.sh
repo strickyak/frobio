@@ -16,11 +16,11 @@
 # in whici the lemma-waiter server 
 #
 #    Usage:
-#        sh run-lemma-on-private-lan.sh 10.23.23.23       # Change to whatever our IP address is.
+#        sh run-lemma-on-private-lan.sh 10.23.23.23       # Change to whatever your IP address is.
 #
 
 set -ex
-cd "`dirname "$0"`"
+cd "`dirname "$0"`"/../
 
 case $1 in
   [0-9]*.[0-9]*.[0-9]*.*[0-9] )
@@ -34,13 +34,14 @@ case $1 in
 esac
 
 
-exec bin/lemma-waiter \
+exec Internal/bin/lemma-waiter \
     --cards=true \
-    --lemmings_root LEMMINGS/ \
-    --nav_root NAVROOT/ \
-    --sideload_raw ETC/sideload.lwraw \
-    --inkey_raw  ETC/inkey_trap.lwraw \
+    --lemmings_root Internal/LEMMINGS/ \
+    --nav_root      . \
+    --web_static    Internal/web-static \
+    --sideload_raw  Internal/ETC/sideload.lwraw \
+    --inkey_raw     Internal/ETC/inkey_trap.lwraw \
     --scan_keyboard=1 \
     --lan="$LAN" \
-    --dhcp=false \
+    --config_by_dhcp=false \
     ##

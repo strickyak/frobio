@@ -34,7 +34,7 @@ to stress your CocoIO Card.
 		Launch: ".demo-dgnpeppr.coco1.loadm",
 	})
 
-	Add(25, 0, "COCOIO Network Games", &Card{})
+	Add(25, 0, "Featured Games", &Card{})
 	Add(251, 25, "spacewario for COCOIO", &Card{
 		Text: `
 Uses broadcast UDP/IP on a LAN.
@@ -42,6 +42,15 @@ You must be on the same LAN to play multi-user.
 `,
 		Launch: ".spacewario.bin",
 	})
+	/*
+			Add(252, 25, "Rogue for Coco3/512K (Experimental)", &Card{
+				Text: `
+		(Experimental)
+		`,
+				Launch: ".Rogue512.lem",
+				Block0: ".Rogue512.dsk",
+			})
+	*/
 
 	Add(30, 0, "OS: Nitros-9", &Card{})
 
@@ -155,6 +164,18 @@ this name.
 	Add(49, 40, "show rom config & secrets", &Card{
 		Launch: ".show-secrets.bin",
 	})
+
+	Add(70, 0, "Lemma Versions", &Card{
+		Text: `
+Here are alternate servers you may be able to connect to.
+`,
+	})
+	Add(71, 70, "Stable Fallback", &Card{ReconnectPort: 2371})
+	Add(72, 70, "Beta Server", &Card{ReconnectPort: 2372})
+	Add(73, 70, "Alpha Server", &Card{ReconnectPort: 2373})
+	Add(74, 70, "Experimental Server", &Card{ReconnectPort: 2374})
+	Add(75, 70, "Experimental Server", &Card{ReconnectPort: 2375})
+	Add(79, 70, "Default Server", &Card{ReconnectPort: 2321})
 
 	Add(90, 0, "Empty test slots", &Card{
 		Text: `

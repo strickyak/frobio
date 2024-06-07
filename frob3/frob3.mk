@@ -5,13 +5,16 @@
 LAN=127.0.0.1
 DHCP=0
 # This becomes the superdirectory in the release tarballs.
-RELEASE=lemma
+RELEASE=pizga-base/Internal
+PIZGA_BASE=pizga-base
 
 all: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers all-axiom41 all-hdbdos results1 results2 all-lemmings results2b results3
 	find $(RELEASE) -type f -print | LC_ALL=C sort
 	sync
 
-tarballs: all lemma-base.tar.bz2 lemma-eou.tar.bz2
+TARBALLS= pizga-base.tar.bz2 pizga-eou.tar.bz2
+tarballs: all $(TARBALLS)
+	sync
 
 #all-without-gccretro: all-net-cmds all-fuse-modules all-fuse-daemons all-drivers results1 all-lemmings results3-without-gccretro tarballs
 #	find $(RELEASE) -type f -print | LC_ALL=C sort
@@ -40,12 +43,27 @@ CMOCL=$F/../../share/cmoc/lib
 #LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport --pragma=newsource
 LWASM_C = $(LWASM) --obj --pragma=undefextern --pragma=cescapes --pragma=importundefexport
 
+STATIC_LINKING_GO = CGO_ENABLED=0 $(GO)
+
 ###############################################
 
 results1:
-	rm -rf ./$(RELEASE)/
-	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES $(RELEASE)/NAVROOT $(RELEASE)/NAVROOT/PUBLIC $(RELEASE)/NAVROOT/HOMES
-	cp -vf $F/helper/lemma-runners/*.sh $(RELEASE)/
+	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou pizga pizga-media pizga-sdc
+	mkdir -p $(PIZGA_BASE)/Public $(PIZGA_BASE)/Members $(PIZGA_BASE)/Internal
+	mkdir -p ./pizga-eou $(PIZGA_BASE)/Internal/web-static
+	mkdir -p $(RELEASE)/CMDS $(RELEASE)/MODULES
+	mkdir -p ../pizga-homes                    # (somewhat) persistent dir for Homes is in coco-shelf
+	ln -svf ../pizga-homes pizga-homes         # first link to Homes
+	ln -svf ../pizga-homes pizga-base/Homes    # double link to Homes
+	mkdir -p ../pizga-database                 # (somewhat) persistent dir for Database is in coco-shelf
+	ln -svf ../pizga-database pizga-database   # link to Database
+	ln -svf pizga-base pizga
+	ln -svf ../pizga-media .
+	ln -svf ../pizga-sdc .
+	ln -svf ../../pizga-media/video1 $(PIZGA_BASE)/Members/video1
+	ln -svf ../../pizga-sdc/sdc-repo $(PIZGA_BASE)/Public/sdc-repo
+	cp -vf $F/web-static/*.* $(PIZGA_BASE)/Internal/web-static/
+	cp -vf $F/helper/pizga-runners/*.sh $(RELEASE)/
 	set -x; for x in *.os9cmd; do cp -v $$x $(RELEASE)/CMDS/$$(basename $$x .os9cmd) ; done
 	set -x; for x in *.os9mod; do cp -v $$x $(RELEASE)/MODULES/$$(basename $$x .os9mod) ; done
 	n=$$(ls $(RELEASE)/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
@@ -92,6 +110,7 @@ results2b: results2 all-axiom41
 	cp -vf axiom41-c300.decb $(RELEASE)/ETC/
 	cp -vf axiom41.rom $(RELEASE)/ETC/
 	cp -vf axiom41.rom.list $(RELEASE)/ETC/
+	cp -vf primes41-c300.decb $(RELEASE)/ETC/
 	cp -vf primes41.rom $(RELEASE)/ETC/
 	cp -vf primes41.rom.list $(RELEASE)/ETC/
 	cp -vf hdbdos.rom $(RELEASE)/ETC/
@@ -116,12 +135,13 @@ results3: results2b
 ###############################################
 
 clean: _FORCE_
+	rm -rf ./$(RELEASE)/ ./$(PIZGA_BASE)/ ./pizga-eou pizga pizga-media pizga-sdc
 	rm -f *.o *.map *.lst *.link *.os9 *.s *.os9cmd *.os9mod _*
 	rm -f *.list *.loadm *.script *.decb *.rom *.l3k
 	rm -f *.dsk *.lem *.a *.sym *.asmap *.bin *.bigdup *.raw *.lwraw
-	rm -f utility-* burn
-	rm -rf ./$(RELEASE)
-	rm -f broadcast-burn  done  done-without-gccretro  lemma-base.tar.bz2  lemma-eou.tar.bz2  lemma-waiter  server  SPCWARIO.BIN
+	rm -f utility-* burn generated*.h
+	rm -rf ./$(RELEASE) ./pizga-base ./pizga-eou
+	rm -f broadcast-burn  done  done-without-gccretro  $(TARBALLS)  lemma-waiter  server  SPCWARIO.BIN
 
 
 _FORCE_:
@@ -457,18 +477,25 @@ lem.os9mod: lem.asm defsfile
 all-lemmings: burn-rom-fast.lem all-net-games all-metal
 	$(GO) run $A/lemmings/*.go --nitros9dir='$(NITROS9)' --shelf='$(SHELF)' --results_dir='$(RELEASE)'
 	mkdir -p $(RELEASE)/LEMMINGS/
-	ln -fv *.lem $(RELEASE)/LEMMINGS/
 	ln -fv *.bin $(RELEASE)/LEMMINGS/
-	ln -fv *.dsk $(RELEASE)/LEMMINGS/
+	ln -fv $$(ls *.lem | grep -v ^EOU) $(RELEASE)/LEMMINGS/
+	ln -fv $$(ls *.dsk | grep -v ^EOU) $(RELEASE)/LEMMINGS/
+	mkdir -p pizga-eou/LEMMINGS
+	ln -fv EOU*.lem EOU*.dsk pizga-eou/LEMMINGS/
+	cd $(RELEASE)/LEMMINGS/ && ln -sfv ../../../pizga-eou/LEMMINGS/EOU* .
 
 #######################################################################################
 
-lemma-base.tar.bz2: _FORCE_
+pizga-base.tar.bz2: _FORCE_
 	rm -fv $@
-	tar -cjf $@ --exclude='EOU_*.dsk' $(RELEASE)/
-lemma-eou.tar.bz2: _FORCE_
+	tar -cjf $@ pizga-base/
+	-ln -fv $@ /tmp/  # Attempt to hard-link in /tmp/ but ignore if error.
+	chmod 444 $@
+pizga-eou.tar.bz2: _FORCE_
 	rm -fv $@
-	tar -cjf $@ $(RELEASE)/LEMMINGS/EOU_*.dsk
+	tar -cjf $@ pizga-eou/
+	-ln -fv $@ /tmp/  # Attempt to hard-link in /tmp/ but ignore if error.
+	chmod 444 $@
 
 #######################################################################################
 
@@ -480,16 +507,16 @@ lemma-eou.tar.bz2: _FORCE_
 #   that you can ignore.
 ###lemma-waiter: lemma-waiter.go all-without-gccretro
 lemma-waiter: lemma-waiter.go $(wildcard $F/lemma/*.go $F/lemma/*/*.go)
-	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/lemma-waiter -x lemma-waiter.go
+	P=`pwd` && cd $A/lemma/waiter/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(STATIC_LINKING_GO) build -o $$P/lemma-waiter -x lemma-waiter.go
 	ln -fv lemma-waiter ../bin
 ###broadcast-burn: broadcast-burn.go all-without-gccretro
 broadcast-burn: broadcast-burn.go
-	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(GO) build -o $$P/broadcast-burn -x broadcast-burn.go
+	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(STATIC_LINKING_GO) build -o $$P/broadcast-burn -x broadcast-burn.go
 	ln -fv broadcast-burn ../bin
 run-server: run-lemma-waiter  # Alias.
 run-lemma: run-lemma-waiter   # Alias.
 run-lemma-waiter: lemma-waiter
-	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root $F/../../../shelving/nav-root/ $(FORCE)
+	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root pizga --web_static $(RELEASE)/web-static/ $(FORCE)
 
 ##############################
 # Disable RCS & SCCS patterns.
