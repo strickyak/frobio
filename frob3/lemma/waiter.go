@@ -19,6 +19,8 @@ import (
 
 	"github.com/strickyak/frobio/frob3/lemma/canvas"
 	"github.com/strickyak/frobio/frob3/lemma/coms"
+	"github.com/strickyak/frobio/frob3/lemma/lan"
+
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
@@ -32,7 +34,6 @@ var DEMO = flag.String("demo", "", "[demo mode] run a demo")
 var CARDS = flag.Bool("cards", false, "Preferred mode: Present numbered pages to choose what to boot.")
 var LEMMINGS_ROOT = flag.String("lemmings_root", "LEMMINGS/", "read only resource directory, for -cards mode.")
 var LEVEL0 = flag.String("level0", "", "[experimental Level0 mode] level0.bin (decb) to upload")
-var LAN = flag.String("lan", "", "Local IP address of interface for LAN Discovery Response.")
 var TESTHOST = flag.String("testhost", "", "Host that runs tests")
 var FLAVOR = flag.String("flavor", "", "what flavor the server (e.g. alpha, beta, prod)")
 
@@ -664,9 +665,7 @@ func Listen() {
 	InitDemos()
 	go RunWeb()
 
-	if *LAN != "" {
-		go ListenForLan(*LAN)
-	}
+	go lan.ListenForLan()
 
 	l, err := net.Listen("tcp", Format(":%d", *PORT))
 	if err != nil {

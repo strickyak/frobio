@@ -1,4 +1,4 @@
-package lemma
+package lan
 
 import (
 	"flag"
@@ -10,14 +10,19 @@ import (
 )
 
 var FlagConfigByDHCP = flag.Bool("config_by_dhcp", false, "Client gets IP and Gateway via dhcp")
+var LAN = flag.String("lan", "", "Local IP address of interface for LAN Discovery Response.")
 
 const LAN_CLIENT_PORT = 12113 // L=12 A=1 M=13
 const LAN_SERVER_PORT = 12114 // L=12 A=1 N=14
 
 var NextIP = byte(31)
 
-func ListenForLan(lan string) {
-	localBind := fmt.Sprintf("%s:%d", lan, LAN_CLIENT_PORT)
+func ListenForLan() {
+	if *LAN == "" {
+		return  // Lan listener not wanted.
+	}
+
+	localBind := fmt.Sprintf("%s:%d", *LAN, LAN_CLIENT_PORT)
 
 	local, err := net.ResolveUDPAddr("udp4", localBind)
 	if err != nil {
@@ -61,9 +66,9 @@ func ListenForLan(lan string) {
 
 			var command string
 			if *FlagConfigByDHCP {
-				command = fmt.Sprintf("D ; W %s ; @", lan)
+				command = fmt.Sprintf("D ; W %s ; @", *LAN)
 			} else {
-				command = fmt.Sprintf("I %d.%d.%d.%d/24 ; W %s ; @", local4[0], local4[1], local4[2], NextIP, lan)
+				command = fmt.Sprintf("I %d.%d.%d.%d/24 ; W %s ; @", local4[0], local4[1], local4[2], NextIP, *LAN)
 				NextIP++
 				if NextIP > 250 {
 					NextIP = 31 // start over
