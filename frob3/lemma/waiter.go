@@ -19,6 +19,7 @@ import (
 
 	"github.com/strickyak/frobio/frob3/lemma/canvas"
 	"github.com/strickyak/frobio/frob3/lemma/coms"
+	"github.com/strickyak/frobio/frob3/lemma/hex"
 	"github.com/strickyak/frobio/frob3/lemma/lan"
 
 	. "github.com/strickyak/frobio/frob3/lemma/util"
@@ -262,7 +263,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 					for i := uint(0); i < n; i++ {
 						LogicalRamImage[p+i] = data[i]
 					}
-					DumpHexLines("M", p, data)
+					hex.DumpHexLines("M", p, data)
 				}
 			}
 
@@ -305,7 +306,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				for i := uint(0); i < n; i++ {
 					LogicalRamImage[p+i] = data[i]
 				}
-				DumpHexLines("M", p, data)
+				hex.DumpHexLines("M", p, data)
 			}
 
 		case coms.CMD_BLOCK_READ: // Nitros9 RBLemma devices
@@ -325,7 +326,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 						log.Panicf("BLOCK_READ: Short Read Block device 0 from LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 					}
 				}
-				WriteFive(conn, coms.CMD_BLOCK_OKAY, 0, 0)
+				WriteFive(conn, coms.CMD_BLOCK_OKAY, 256, 0) // BUG: was n=0, p=0
 
 				cc, err = conn.Write(buf) // == WriteFull
 				if err != nil {
@@ -376,7 +377,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				log.Printf("@@@@@@@@@@ LemMan %d = %q :: n=$%x p=$%x :: %q :: %02x", buf[0], LemManCommandName(buf[0]), n, p, RegsString(buf[1:13]), buf)
 				const headerLen = 15
 				if len(buf) > headerLen {
-					DumpHexLines("@@@@@@@@@@PAYLOAD", 0, buf[headerLen:])
+					hex.DumpHexLines("@@@@@@@@@@PAYLOAD", 0, buf[headerLen:])
 				}
 
 				reply := DoLemMan(conn, buf, p)
@@ -548,8 +549,8 @@ func Serve(conn net.Conn) {
 	hostRaw := romID[0xE0:0xE8]
 	hostName := UpperCleanName(hostRaw, 8)
 
-	DumpHexLines("romID", 0xDF00, romID)
-	DumpHexLines("axiomVars", 0, axiomVars)
+	hex.DumpHexLines("romID", 0xDF00, romID)
+	hex.DumpHexLines("axiomVars", 0, axiomVars)
 
 	log.Printf("hostRaw = % 3x | %q", hostRaw, hostRaw)
 	log.Printf("hostName = %q", hostName)

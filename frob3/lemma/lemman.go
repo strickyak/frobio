@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/strickyak/frobio/frob3/lemma/hex"
 	"github.com/strickyak/frobio/frob3/lemma/sym"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -503,7 +504,7 @@ func DoLemMan(conn net.Conn, in []byte, pd uint) []byte {
 	z.WriteByte(byte(len(payload_out)))
 
 	if payload_out != nil {
-		DumpHexLines("REPLY PAYLOAD", 0, payload_out)
+		hex.DumpHexLines("REPLY PAYLOAD", 0, payload_out)
 		z.Write(payload_out)
 	}
 

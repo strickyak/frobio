@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/strickyak/frobio/frob3/lemma/coms"
+	"github.com/strickyak/frobio/frob3/lemma/hex"
 	T "github.com/strickyak/frobio/frob3/lemma/text"
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
@@ -253,7 +254,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 	}
 
 	log.Printf("HdbDos cmd=%x drive=%x lsn=%x paylen=%d.", cmd, drive, lsn, len(payload))
-	DumpHexLines("payload", 0, payload)
+	hex.DumpHexLines("payload", 0, payload)
 
 	// Create the drive record, if needed.  Call it d.
 	ds := h.DriveSession
@@ -301,7 +302,7 @@ func HdbDosSector(ses *Session, payload []byte) {
 		log.Printf("HDB READ lsn=%d.: %02x", lsn, buf[5:])
 
 		log.Printf("HdbDos Reply Packet: quint + %d.", len(buf))
-		DumpHexLines("REPLY", 0, buf)
+		hex.DumpHexLines("REPLY", 0, buf)
 		com.WriteQuintAndPayload(coms.CMD_HDBDOS_SECTOR, 0, buf)
 
 	case 3: // Write
@@ -334,7 +335,7 @@ func Inject(ses *Session, sideload []byte, dest uint, exec bool, payload []byte)
 	}
 
 	com.WriteQuintAndPayload(coms.CMD_HDBDOS_EXEC, 0, buf)
-	DumpHexLines("Inject: did ", dest, buf)
+	hex.DumpHexLines("Inject: did ", dest, buf)
 }
 
 func AsciiToInjectBytes(s string) []byte {

@@ -49,6 +49,52 @@ const (
 	CMD_HDBDOS_HIJACK = 221 // CLEAR key hijacks the machine from BASIC.
 )
 
+var CmdNameMap = map[byte]string{
+	0:   "CMD_POKE",
+	1:   "CMD_HELLO",
+	255: "CMD_CALL",
+
+	192: "CMD_GETCHAR",
+	193: "CMD_KEYBOARD",
+	194: "CMD_SUM",
+	195: "CMD_PEEK2",
+	196: "CMD_BEGIN_MUX",
+	197: "CMD_MID_MUX",
+	198: "CMD_END_MUX",
+
+	199: "CMD_LEVEL0",
+
+	200: "CMD_LOG",
+	201: "CMD_INKEY",
+	202: "CMD_PUTCHAR",
+	203: "CMD_PEEK",
+	204: "CMD_DATA",
+
+	207: "CMD_BLOCK_READ",
+	208: "CMD_BLOCK_WRITE",
+	209: "CMD_BLOCK_ERROR",
+	210: "CMD_BLOCK_OKAY",
+	211: "CMD_BOOT_BEGIN",
+	212: "CMD_BOOT_CHUNK",
+	213: "CMD_BOOT_END",
+	214: "CMD_LEMMAN_REQUEST",
+	215: "CMD_LEMMAN_REPLY",
+
+	216: "CMD_RTI",
+	217: "CMD_ECHO",
+	218: "CMD_DW",
+	219: "CMD_HDBDOS_SECTOR",
+	220: "CMD_HDBDOS_EXEC",
+	221: "CMD_HDBDOS_HIJACK",
+}
+
+func CmdName(cmd byte) string {
+	if name, ok := CmdNameMap[cmd]; ok {
+		return name
+	}
+	return Format("CMD_%d", cmd)
+}
+
 type Comm struct {
 	Conn net.Conn
 }

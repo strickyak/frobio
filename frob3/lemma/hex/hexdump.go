@@ -1,4 +1,4 @@
-package lemma
+package hex
 
 import (
 	"bytes"
@@ -29,6 +29,9 @@ func DumpHexLine(label string, bb []byte) {
 		c := b & 127
 		if ' ' <= c && c <= '~' {
 			buf.WriteByte(c)
+		} else if 0 <= c && c <= 31 {
+			// Humoring the VDG
+			buf.WriteByte(c + 64)
 		} else {
 			buf.WriteByte('.')
 		}

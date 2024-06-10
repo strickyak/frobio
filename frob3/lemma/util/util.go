@@ -165,6 +165,7 @@ func LenStr(s string) uint { // returns unsigned
 	return uint(len(s))
 }
 
+// InSlice tells whether x is in slice.
 func InSlice[T comparable_](x T, slice []T) bool {
 	for _, e := range slice {
 		if e == x {
