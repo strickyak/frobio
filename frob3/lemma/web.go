@@ -20,8 +20,11 @@ import (
 
 var FlagWebReaderPwFlipped = flag.String("web_reader_pw_flipped", "XLXL-KVYYOVH", "magic web reader pw (optional)")
 
+var FlagTemp = flag.String("temp", "/home/pizga/public-temp/", "for whatever")
+var FlagInputs = flag.String("inputs", "/home/pizga/public-inputs/", "serving directory for inputs to coco-shelf")
+var FlagReleases = flag.String("releases", "/home/pizga/public-releases/", "serving directory for built releases")
 var FlagWebStatic = flag.String("web_static", "", "web-static serving directory")
-var FlagHttpPort = flag.Int("http_port", 0, ":port for web")
+var FlagHttpPort = flag.Int("http_port", 8080, ":port for web")
 
 const (
 	BadRequest = 400
@@ -31,11 +34,18 @@ const (
 type SlashHandler struct {
 }
 
+var SlashPage []byte
+
 func (sh *SlashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	fmt.Fprintf(w, HomePageHtml, r.Host)
+	if SlashPage == nil {
+		qHost := Format("%q", r.Host)
+		customized := strings.Replace(HomePageHtml, "{HOST}", qHost, 1)
+		SlashPage = []byte(customized)
+	}
+	w.Write(SlashPage)
 }
 
 type LemmaHandler struct {
@@ -87,16 +97,34 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func RunWeb() {
-	println("FlagNavRoot", *FlagNavRoot)
-	println("FlagWebStatic", *FlagWebStatic)
-	println("FlagHttpPort", *FlagHttpPort)
+	println("FlagNavRoot:", *FlagNavRoot)
+	println("FlagHttpPort:", *FlagHttpPort)
+	println("FlagWebStatic:", *FlagWebStatic)
+	println("FlagInputs:", *FlagInputs)
+	println("FlagReleases:", *FlagReleases)
+	println("FlagTemp:", *FlagTemp)
 	if *FlagNavRoot == "" {
-		return
-	}
-	if *FlagWebStatic == "" {
+		log.Printf("NOT SERVING WEB because *FlagNavRoot is empty")
 		return
 	}
 	if *FlagHttpPort == 0 {
+		log.Printf("NOT SERVING WEB because *FlagHttPort is zero")
+		return
+	}
+	if *FlagWebStatic == "" {
+		log.Printf("NOT SERVING WEB because *FlagWebStatic is empty")
+		return
+	}
+	if *FlagInputs == "" {
+		log.Printf("NOT SERVING WEB because *FlagInputs is empty")
+		return
+	}
+	if *FlagReleases == "" {
+		log.Printf("NOT SERVING WEB because *FlagReleases is empty")
+		return
+	}
+	if *FlagTemp == "" {
+		log.Printf("NOT SERVING WEB because *FlagTemp is empty")
 		return
 	}
 
@@ -106,6 +134,10 @@ func RunWeb() {
 			"/":           &SlashHandler{},
 			"/pizga":      basicAuth(http.StripPrefix("/pizga", http.FileServer(http.Dir(*FlagNavRoot))).(http.HandlerFunc)),
 			"/web-static": http.StripPrefix("/web-static", http.FileServer(http.Dir(*FlagWebStatic))).(http.HandlerFunc),
+
+			"/inputs":   http.StripPrefix("/inputs", http.FileServer(http.Dir(*FlagInputs))).(http.HandlerFunc),
+			"/releases": http.StripPrefix("/releases", http.FileServer(http.Dir(*FlagReleases))).(http.HandlerFunc),
+			"/temp":     http.StripPrefix("/temp", http.FileServer(http.Dir(*FlagTemp))).(http.HandlerFunc),
 		},
 	}
 
@@ -294,13 +326,17 @@ const HomePageHtml = `<html>
 <head>
 <style>
 body {
-  font-family: courier, serif;
-  font-size: 42px;
+  font-family: "Trebuchet Ms", Verdana, sans-serif;
+  font-size: large;
   color: #00BB00;
   background-color: #002200;
+  margin-left: 2%;
+  margin-right: 2%;
+  margin-top: 2%;
+  margin-bottom: 2%;
 }
 .credit {
-  font-size: 12px;
+  font-size: small;
 }
 a {
   color: #C0C020
@@ -319,18 +355,24 @@ Welcome to Pizga, your Home in the Clouds
 <br>with the <a href="https://computerconect.com/products/cocoio-prom?variant=42556416196788">CocoIOr cartridge</a>.
 <p>
 
-My name is %q and I'll be your waiter today.
+My name is {HOST} and I'll be your waiter today.
 <p>
 
-Visit the <a href="/pizga/">Pizga Repository</a>.
+<ul>
+  <li>The <a href="/pizga/">Pizga Repository</a>.
+  <li>The <a href="/inputs/">inputs</a> directory.
+  <li>The <a href="/releases/">releases</a> directory.
+  <li>The <a href="/temp/">temp</a> directory.
+</ul>
 <p>
-<img src="/web-static/mt_pisgah_pisgah_view_ranch_by_brotherwayword_d1cpxsy-w1000.jpg" alt="Picture of Mount Pisgah in the fall">
+
 <br>
-
+  <img src="/web-static/mt_pisgah_pisgah_view_ranch_by_brotherwayword_d1cpxsy-w1000.jpg" alt="Picture of Mount Pisgah in the fall">
+<br>
 <div class=credit>Thanks to
-<a href="https://www.deviantart.com/brotherwayword/art/Mt-Pisgah-Pisgah-View-Ranch-81831778">brotherwayword</a>
-for this painting of "Mt. Pisgah -- Pisgah View Ranch"
-(<a href="https://creativecommons.org/licenses/by-nc-nd/3.0/">License</a>).
+  <a href="https://www.deviantart.com/brotherwayword/art/Mt-Pisgah-Pisgah-View-Ranch-81831778">brotherwayword</a>
+  for this painting of "<a href='https://www.google.com/search?q=Mount+Pisgah%2C+North+Carolina'>Mt. Pisgah</a> -- Pisgah View Ranch"
+  (<a href="https://creativecommons.org/licenses/by-nc-nd/3.0/">License</a>).
 </div>
 <p>
 

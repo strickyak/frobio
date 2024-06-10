@@ -66,7 +66,7 @@ func Serve(client net.Conn) {
 	go ConduitCopyBytes(client, upstream, done)
 	go ConduitCopyBytes(upstream, client, done)
 
-	<-done  // Wait for either to finish.
+	<-done // Wait for either to finish.
 
 	if client != nil {
 		client.Close()

@@ -19,7 +19,7 @@ var NextIP = byte(31)
 
 func ListenForLan() {
 	if *LAN == "" {
-		return  // Lan listener not wanted.
+		return // Lan listener not wanted.
 	}
 
 	localBind := fmt.Sprintf("%s:%d", *LAN, LAN_CLIENT_PORT)
