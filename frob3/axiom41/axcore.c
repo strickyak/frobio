@@ -1688,12 +1688,12 @@ errnum LemmaClientS1() {  // old style does not loop.
         case CMD_KEYBOARD:
           {
               ScanKeyboard(buf8);
-	      if false {
-             	// BUG IN 41c:
-	      	*(word*)(quint+2) = 8;  // WRONG: new length
-	      } else {
-              	*(word*)(quint+1) = 8;  // CORRECTED: new length
-	      }
+#if 1
+              *(word*)(quint+1) = 8;  // CORRECTED: new length
+#else
+             	// BUG IN 41c: offset should be +1
+	      *(word*)(quint+2) = 8;  // WRONG: new length
+#endif
               e = WizSendChunk(SOCK1_AND &TcpProto, quint, 5);
               e = WizSendChunk(SOCK1_AND &TcpProto, buf8, 8);
           }
