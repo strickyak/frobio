@@ -19,12 +19,25 @@ import (
 	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
-var LISTEN = flag.Int("listen", 2321, "listen for connetions here")
+var LISTEN = flag.Int("listen", 2321, "listen for connections on this port")
 var DIAL = flag.String("dial", "pizga.net:2321", "dial upstream TCP server")
-var CACHE_BLOCKS = flag.Int("cache_blocks", 0, "how many extra blocks to cache")
+var CACHE_BLOCKS = flag.Int("cache_blocks", 7, "how many extra blocks to cache")
+var Q = flag.Bool("q", false, "be extra quiet")
+var V = flag.Bool("v", false, "be extra verbose (show packets)")
 
 func main() {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Fatalf("Conduit FATAL: %v", r)
+		}
+	}()
+
 	flag.Parse()
+	if *V {
+		*Q = false // can't be quiet, if being verbose.
+	}
+
 	go lan.ListenForLan()
 	Listen()
 }
@@ -97,28 +110,6 @@ func ShowConn(c net.Conn) string {
 	return Format("(%s--%s)", c.LocalAddr().String(), c.RemoteAddr().String())
 }
 
-/*
-func ConduitCopyBytes(to, from net.Conn, done chan<- bool) {
-	defer func() {
-		done <- true
-	}()
-
-	log.Printf("Started copying %s to %s", ShowConn(from), ShowConn(to))
-
-	// bb = make([]byte, 1)
-	for {
-		n, err := io.Copy(to, from)
-		if n == 0 {
-			break
-		}
-		if err != nil {
-			break
-		}
-	}
-	log.Printf("Finished copying %s to %s", ShowConn(to), ShowConn(from))
-}
-*/
-
 type Conduit struct {
 	blockCache map[uint32]*[256]byte
 	done       chan bool
@@ -156,63 +147,45 @@ func CopyFromServer(client, server net.Conn, conduit *Conduit) {
 
 	log.Printf("Started copying server %s to client %s", ShowConn(server), ShowConn(client))
 	for {
-		// log.Printf("CFS: 2222*")
 		var q C.Quint
-		log.Printf("CFS: nando: going to read full 5")
 		Value(io.ReadFull(server, q[:]))
-		// log.Printf("CFS: nando: Did read full 5: %v", q[:])
 
 		cmd, n, p := q.Command(), q.N(), q.P()
-		log.Printf("<< %s (n=%d p=%d)", C.CmdName(cmd), n, p)
-		// log.Printf("CFS: 11111")
+		Say("<< %s (n=%d p=%d)", C.CmdName(cmd), n, p)
 		if cmd != C.CMD_CACHE_OKAY {
-			// log.Printf("CFS: 11112")
 			Value(client.Write(q[:]))
-			// log.Printf("CFS: 11113")
-			log.Printf("CFS: nando: Did write to client: %v", q[:])
 		}
-		// log.Printf("CFS: 11114")
 
 		count := n
 		if cmd == C.CMD_BLOCK_OKAY || cmd == C.CMD_CACHE_OKAY {
 			count = 256
-			// log.Printf("CFS: 11114a")
 		}
 		if n == 0xFFFF && p == 0xFFFF { // Special case for WRITE confirmation.
 			count = 0
 		}
-		// log.Printf("CFS: 11114b  count=%d", count)
 
 		var payload []byte
-		// log.Printf("CFS: 11115")
 		if count > 0 && !InSlice(cmd, CommandsFromServerWithNoPayload) {
 			payload = make([]byte, count)
-			// log.Printf("CFS: 11116 count=%d", count)
 			Value(io.ReadFull(server, payload))
-			// log.Printf("CFS: 11117")
 			if cmd == C.CMD_CACHE_OKAY {
-				// log.Printf("CFS: 11118")
-				hex.DumpHexLines("..<<", 0, payload)
+				VerboseDumpHexLines("..<<", 0, payload)
 				key := (uint32(n) << 16) | uint32(p)
 				var tmp [256]byte
 				copy(tmp[:], payload)
 				conduit.PutCache(key, &tmp)
 			} else if cmd == C.CMD_BLOCK_OKAY {
-				// log.Printf("CFS: 11119")
-				hex.DumpHexLines("<<<<", 0, payload)
+				VerboseDumpHexLines("<<<<", 0, payload)
 				key := (uint32(n) << 16) | uint32(p)
 				var tmp [256]byte
 				copy(tmp[:], payload)
 				conduit.PutCache(key, &tmp)
 				Value(client.Write(payload))
 			} else {
-				// log.Printf("CFS: 1111*")
-				hex.DumpHexLines("<<<<", 0, payload)
+				VerboseDumpHexLines("<<<<", 0, payload)
 				Value(client.Write(payload))
 			}
-			// log.Printf("CFS: 22222")
 		}
-		// log.Printf("CFS: 22223")
 	}
 }
 
@@ -233,13 +206,13 @@ func CopyFromClient(server, client net.Conn, conduit *Conduit) {
 	log.Printf("Started copying client %s to server %s", ShowConn(client), ShowConn(server))
 LOOP:
 	for {
-		log.Printf("CFC: nando: going to read full 5")
+		Verbose("CFC: nando: going to read full 5")
 		var q C.Quint
 		Value(io.ReadFull(client, q[:]))
-		log.Printf("CFC: nando: Did read full 5: %v", q[:])
+		Verbose("CFC: nando: Did read full 5: %v", q[:])
 
 		cmd, n, p := q.Command(), q.N(), q.P()
-		log.Printf(">> %s (n=%d p=%d)", C.CmdName(cmd), n, p)
+		Say(">> %s (n=%d p=%d)", C.CmdName(cmd), n, p)
 
 		if cmd == C.CMD_BLOCK_READ {
 			key := (uint32(n) << 16) | uint32(p)
@@ -247,19 +220,18 @@ LOOP:
 				q2 := C.NewQuint(C.CMD_BLOCK_OKAY, n, p)
 				client.Write(q2[:])
 				client.Write(tmp[:])
-				log.Printf("<. %s (n=%d p=%d)", C.CmdName(q2.Command()), n, p)
-				hex.DumpHexLines("<<..", 0, tmp[:])
+				Say("<. %s (n=%d p=%d)", C.CmdName(q2.Command()), n, p)
+				VerboseDumpHexLines("<<..", 0, tmp[:])
 				continue LOOP
 			}
 		}
 
-		log.Printf("CFC: nando: Copy to server: %v", q[:])
 		Value(server.Write(q[:]))
 
 		// Work around Axiom 41C bug:
 		if cmd == C.CMD_KEYBOARD {
 			n, p = 8, 0 // Instead they might have been (n=0 p=2048).
-			log.Printf("Corrected >> %s (n=%d p=%d)", C.CmdName(cmd), n, p)
+			Say("Corrected >> %s (n=%d p=%d)", C.CmdName(cmd), n, p)
 		}
 
 		var payload []byte
@@ -270,9 +242,8 @@ LOOP:
 		if count > 0 && !InSlice(cmd, CommandsFromClientWithNoPayload) {
 			payload = make([]byte, count)
 			Value(io.ReadFull(client, payload))
-			hex.DumpHexLines(">>>>", 0, payload)
+			VerboseDumpHexLines(">>>>", 0, payload)
 			Value(server.Write(payload))
-			log.Printf("CFC: nando: Copy to server: %v", payload)
 		}
 
 		// Writes must update cache.
@@ -302,5 +273,26 @@ LOOP:
 				}
 			}
 		}
+	}
+}
+
+// VerboseDumpHexLines: Dump Hex if Verbose.
+func VerboseDumpHexLines(label string, offset uint, bb []byte) {
+	if *V {
+		hex.DumpHexLines(label, offset, bb)
+	}
+}
+
+// Verbose: Log if Verbose
+func Verbose(format string, args ...any) {
+	if *V {
+		log.Printf(format, args...)
+	}
+}
+
+// Say: Log unless Quiet.
+func Say(format string, args ...any) {
+	if !*Q {
+		log.Printf(format, args...)
 	}
 }
