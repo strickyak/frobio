@@ -29,8 +29,8 @@ func DumpHexLine(label string, bb []byte) {
 		c := b & 127
 		if ' ' <= c && c <= '~' {
 			buf.WriteByte(c)
-		} else if 0 <= c && c <= 31 {
-			// Humoring the VDG
+		} else if 1 <= c && c <= 26 {
+			// Humoring the VDG for alpha
 			buf.WriteByte(c + 64)
 		} else {
 			buf.WriteByte('.')

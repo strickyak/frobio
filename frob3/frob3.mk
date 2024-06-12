@@ -27,7 +27,7 @@ NUM_MODULES = 14
 
 ###############################################
 
-VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter $F/net-games $F/metal
+VPATH = $F $F/axiom41 $F/froblib $F/drivers $F/fuse-modules $F/fuse-daemons $F/net-cmds $F/hdbdos $F/burning $F/lemma/waiter $F/lemma/conduit $F/net-games $F/metal
 
 FROBLIB_C = $F/froblib/buf.c $F/froblib/flag.c $F/froblib/format.c $F/froblib/malloc.c $F/froblib/nylib.c $F/froblib/nystdio.c $F/froblib/std.c
 WIZ_C = $F/wiz/wiz5100s.c
@@ -69,10 +69,11 @@ results1:
 	n=$$(ls $(RELEASE)/CMDS/* | wc -l) ; set -x; test $(NUM_CMDS) -eq $$n
 	n=$$(ls $(RELEASE)/MODULES/* | wc -l) ; set -x; test $(NUM_MODULES) -eq $$n
 
-results2: results1 os9disks lemma-waiter broadcast-burn
+results2: results1 os9disks lemma-waiter broadcast-burn conduit
 	mkdir -p $(RELEASE)/OS9DISKS $(RELEASE)/LEMMINGS $(RELEASE)/BOOTING $(RELEASE)/bin
 	ln -fv lemma-waiter $(RELEASE)/bin
 	ln -fv broadcast-burn $(RELEASE)/bin
+	ln -fv conduit $(RELEASE)/bin
 
 NOS9_6809_L1_coco1_80d.bigdup : ../nitros9/level1/coco1/NOS9_6809_L1_coco1_80d.dsk
 	bash ../frobio/frob3/helper/make-hard-drive.sh $< $@
@@ -513,10 +514,15 @@ lemma-waiter: lemma-waiter.go $(wildcard $F/lemma/*.go $F/lemma/*/*.go)
 broadcast-burn: broadcast-burn.go
 	P=`pwd` && cd $A/burning/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(STATIC_LINKING_GO) build -o $$P/broadcast-burn -x broadcast-burn.go
 	ln -fv broadcast-burn ../bin
+conduit: conduit.go
+	P=`pwd` && cd $A/lemma/conduit/ && GOBIN=$(SHELF)/bin GOPATH=$(SHELF) $(STATIC_LINKING_GO) build -o $$P/conduit -x conduit.go
+	ln -fv conduit ../bin
 run-server: run-lemma-waiter  # Alias.
 run-lemma: run-lemma-waiter   # Alias.
 run-lemma-waiter: lemma-waiter
 	./lemma-waiter  -cards -lemmings_root $(RELEASE)/LEMMINGS -lan=$(LAN) -config_by_dhcp=$(DHCP) --nav_root pizga --web_static $(RELEASE)/web-static/ $(FORCE)
+run-lemma-for-conduit: lemma-waiter   # Alias.
+	./lemma-waiter  -cards -lemmings_root pizga-base/Internal/LEMMINGS -config_by_dhcp=0 --nav_root pizga --web_static pizga-base/Internal/web-static/ --port=12345
 
 ##############################
 # Disable RCS & SCCS patterns.

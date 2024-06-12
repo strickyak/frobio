@@ -28,13 +28,15 @@ const (
 	CMD_PUTCHAR = 202
 	CMD_PEEK    = 203
 	CMD_DATA    = 204
-	// CMD_SP_PC   = 205
-	// CMD_REV     = 206
 
-	CMD_BLOCK_READ     = 207 // block device
-	CMD_BLOCK_WRITE    = 208 // block device
-	CMD_BLOCK_ERROR    = 209 // nack
-	CMD_BLOCK_OKAY     = 210 // ack
+	CMD_CACHE_READ = 205
+	CMD_CACHE_OKAY = 206
+
+	CMD_BLOCK_READ  = 207 // block device
+	CMD_BLOCK_WRITE = 208 // block device
+	CMD_BLOCK_ERROR = 209 // nack
+	CMD_BLOCK_OKAY  = 210 // ack
+
 	CMD_BOOT_BEGIN     = 211 // boot_lemma
 	CMD_BOOT_CHUNK     = 212 // boot_lemma
 	CMD_BOOT_END       = 213 // boot_lemma
@@ -69,6 +71,9 @@ var CmdNameMap = map[byte]string{
 	202: "CMD_PUTCHAR",
 	203: "CMD_PEEK",
 	204: "CMD_DATA",
+
+	205: "CMD_CACHE_READ",
+	206: "CMD_CACHE_OKAY",
 
 	207: "CMD_BLOCK_READ",
 	208: "CMD_BLOCK_WRITE",
