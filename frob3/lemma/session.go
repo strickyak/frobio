@@ -373,6 +373,8 @@ func (o NumStrSlice) Less(i, j int) bool { return o[i].Num < o[j].Num }
 func (o NumStrSlice) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 
 func RunCards(ses *Session) (notice string) {
+	f := Flip13AfterFlipMark
+
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -389,10 +391,10 @@ func RunCards(ses *Session) (notice string) {
 
 CARD:
 	for {
-		log.Printf("== %d == %q ==", current.Num, current.Name)
+		log.Printf("== %d == %q ==", current.Num, f(current.Name))
 		log.Printf("%#v", *current)
 		ses.IScreen.Clear()
-		ses.IScreen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(current.Name)))
+		ses.IScreen.PutStr(fmt.Sprintf("== %s == %s ==\n", BoldInt(current.Num), Bold(f(current.Name))))
 
 		// ses.IScreen.PutStr("(*" + current.Text + "*)\n")
 
@@ -402,7 +404,7 @@ CARD:
 			log.Printf("Template Error p%d: %v", current.Num, err)
 			ses.IScreen.PutStr("Template Error: " + Str(err))
 		} else {
-			ses.IScreen.PutStr(buf.String())
+			ses.IScreen.PutStr(f(buf.String()))
 		}
 
 		if current.Launch != "" {
@@ -412,7 +414,7 @@ CARD:
 		// Sort kids and show them.
 		var vec NumStrSlice
 		for num, kid := range current.Kids {
-			vec = append(vec, NumStr{num, fmt.Sprintf("[%d] %s\n", num, kid.Name)})
+			vec = append(vec, NumStr{num, fmt.Sprintf("[%d] %s\n", num, f(kid.Name))})
 		}
 		sort.Sort(vec)
 		for _, ns := range vec {
@@ -469,6 +471,16 @@ CARD:
 				}
 				demo(ses.Conn)
 				return "Demo finished"
+			}
+
+			if strings.HasPrefix(current.Launch, "%1.") {
+				// media/video1: Must flip.
+				log.Printf("Before flip: %q", Flip13(current.Launch))
+				flipped := strings.TrimPrefix(current.Launch, "%1.") + "---flip"
+				log.Printf("Upload: %q", flipped)
+				UploadProgram(ses.Conn, *LEMMINGS_ROOT+"/../../../pizga-media/video1/"+flipped)
+				ReadFiveLoop(ses.Conn, ses)
+				return "Launch finished"
 			}
 
 			tail := strings.TrimPrefix(current.Launch, ".")

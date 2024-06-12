@@ -211,135 +211,131 @@ These probably do nothing, unless the 'LEMMINGS' directory has files test9[1-9].
 	})
 
 	Add(80, 0, "Video Player for coco3", &Card{})
-	Add(801, 80, "1986-Radio-Shack-Color-C", &Card{
-		Launch: ".1986-Radio-Shack-Color-Computer-2--A-family-pleaser--TV-Commercial-Kq72zmqsJ3M.mp4.lemma",
-		Text:   "coco3 Video player:\n  1986-Radio-Shack-Color-Computer-2--A-family-pleaser--TV-Commercial-Kq72zmqsJ3M.mp4",
+	Add(801, 80, "flip---1986-Izwrl-Hszxp-Xloli-X", &Card{
+		Launch: "%1.1986-Izwrl-Hszxp-Xloli-Xlnkfgvi-2--Z-uznrob-kovzhvi--GE-Xlnnvixrzo-Pj72anjhQ3N.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---1986-Izwrl-Hszxp-Xloli-Xlnkfgvi-2--Z-uznrob-kovzhvi--GE-Xlnnvixrzo-Pj72anjhQ3N.nk4",
 	})
-	Add(802, 80, "2001---A-Space-Odyssey--", &Card{
-		Launch: ".2001---A-Space-Odyssey--1968-----The-Blue-Danube---waltz--scene--1080p--0ZoSYsNADtY.mkv.lemma",
-		Text:   "coco3 Video player:\n  2001---A-Space-Odyssey--1968-----The-Blue-Danube---waltz--scene--1080p--0ZoSYsNADtY.mkv",
+	Add(802, 80, "flip---2001---Z-Hkzxv-Lwbhhvb--", &Card{
+		Launch: "%1.2001---Z-Hkzxv-Lwbhhvb--1968-----Gsv-Yofv-Wzmfyv---dzoga--hxvmv--1080k--0AlHBhMZWgB.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---2001---Z-Hkzxv-Lwbhhvb--1968-----Gsv-Yofv-Wzmfyv---dzoga--hxvmv--1080k--0AlHBhMZWgB.npe",
 	})
-	Add(803, 80, "20-Games-That-Defined-th", &Card{
-		Launch: ".20-Games-That-Defined-the-Tandy-TRS-80-Color-Computer--CoCo--H2QlXXU0waw.mkv.lemma",
-		Text:   "coco3 Video player:\n  20-Games-That-Defined-the-Tandy-TRS-80-Color-Computer--CoCo--H2QlXXU0waw.mkv",
+	Add(803, 80, "flip---20-Tznvh-Gszg-Wvurmvw-gs", &Card{
+		Launch: "%1.20-Tznvh-Gszg-Wvurmvw-gsv-Gzmwb-GIH-80-Xloli-Xlnkfgvi--XlXl--S2JoCCF0dzd.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---20-Tznvh-Gszg-Wvurmvw-gsv-Gzmwb-GIH-80-Xloli-Xlnkfgvi--XlXl--S2JoCCF0dzd.npe",
 	})
-	Add(804, 80, "a-ha---Take-On-Me---AKAI", &Card{
-		Launch: ".a-ha---Take-On-Me---AKAI-MPK-MINI-MK3-COVER-K3yjSSj1w7w.mkv.lemma",
-		Text:   "coco3 Video player:\n  a-ha---Take-On-Me---AKAI-MPK-MINI-MK3-COVER-K3yjSSj1w7w.mkv",
+	Add(804, 80, "flip---z-sz---Gzpv-Lm-Nv---ZPZR", &Card{
+		Launch: "%1.z-sz---Gzpv-Lm-Nv---ZPZR-NKP-NRMR-NP3-XLEVI-P3bqHHq1d7d.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---z-sz---Gzpv-Lm-Nv---ZPZR-NKP-NRMR-NP3-XLEVI-P3bqHHq1d7d.npe",
 	})
-	Add(805, 80, "Bach---Little-Fugue-in-G", &Card{
-		Launch: ".Bach---Little-Fugue-in-G-Minor-wYqki8SbS-c.mkv.lemma",
-		Text:   "coco3 Video player:\n  Bach---Little-Fugue-in-G-Minor-wYqki8SbS-c.mkv",
+	Add(805, 80, "flip---Yzxs---Orggov-Uftfv-rm-T", &Card{
+		Launch: "%1.Yzxs---Orggov-Uftfv-rm-T-Nrmli-dBjpr8HyH-x.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Yzxs---Orggov-Uftfv-rm-T-Nrmli-dBjpr8HyH-x.npe",
 	})
-	Add(806, 80, "Best-Movie-Scenes----RIS", &Card{
-		Launch: ".Best-Movie-Scenes----RISKY-BUSINESS---Underwear-Dance-UuQZfwWyTWY.webm.lemma",
-		Text:   "coco3 Video player:\n  Best-Movie-Scenes----RISKY-BUSINESS---Underwear-Dance-UuQZfwWyTWY.webm",
+	Add(806, 80, "flip---Yvhg-Nlerv-Hxvmvh----IRH", &Card{
+		Launch: "%1.Yvhg-Nlerv-Hxvmvh----IRHPB-YFHRMVHH---Fmwvidvzi-Wzmxv-FfJAudDbGDB.dvyn.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Yvhg-Nlerv-Hxvmvh----IRHPB-YFHRMVHH---Fmwvidvzi-Wzmxv-FfJAudDbGDB.dvyn",
 	})
-	Add(807, 80, "CoCoTALK--episode-218---", &Card{
-		Launch: ".CoCoTALK--episode-218---Test-Stream-Ema1w4IXC34.mp4.lemma",
-		Text:   "coco3 Video player:\n  CoCoTALK--episode-218---Test-Stream-Ema1w4IXC34.mp4",
+	Add(807, 80, "flip---XlXlGZOP--vkrhlwv-218---", &Card{
+		Launch: "%1.XlXlGZOP--vkrhlwv-218---Gvhg-Hgivzn-Vnz1d4RCX34.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---XlXlGZOP--vkrhlwv-218---Gvhg-Hgivzn-Vnz1d4RCX34.nk4",
 	})
-	Add(808, 80, "Come-Sail-Away-with-Me--", &Card{
-		Launch: ".Come-Sail-Away-with-Me---SOUTH-PARK-5Xm2ab3qfZY.mkv.lemma",
-		Text:   "coco3 Video player:\n  Come-Sail-Away-with-Me---SOUTH-PARK-5Xm2ab3qfZY.mkv",
+	Add(808, 80, "flip---Xlnv-Hzro-Zdzb-drgs-Nv--", &Card{
+		Launch: "%1.Xlnv-Hzro-Zdzb-drgs-Nv---HLFGS-KZIP-5Cn2zy3juAB.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Xlnv-Hzro-Zdzb-drgs-Nv---HLFGS-KZIP-5Cn2zy3juAB.npe",
 	})
-	Add(809, 80, "Complete-History-Of-The-", &Card{
-		Launch: ".Complete-History-Of-The-Soviet-Union--Arranged-To-The-Melody-Of-Tetris-hWTFG3J1CP8.mp4.lemma",
-		Text:   "coco3 Video player:\n  Complete-History-Of-The-Soviet-Union--Arranged-To-The-Melody-Of-Tetris-hWTFG3J1CP8.mp4",
+	Add(809, 80, "flip---Xlnkovgv-Srhglib-Lu-Gsv-", &Card{
+		Launch: "%1.Xlnkovgv-Srhglib-Lu-Gsv-Hlervg-Fmrlm--Ziizmtvw-Gl-Gsv-Nvolwb-Lu-Gvgirh-sDGUT3Q1XK8.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Xlnkovgv-Srhglib-Lu-Gsv-Hlervg-Fmrlm--Ziizmtvw-Gl-Gsv-Nvolwb-Lu-Gvgirh-sDGUT3Q1XK8.nk4",
 	})
 	Add(81, 80, "MORE", &Card{})
 	Add(811, 81, "C-W--McCall---Convoy-Sd5", &Card{
-		Launch: ".C-W--McCall---Convoy-Sd5ZLJWQmss.mkv.lemma",
-		Text:   "coco3 Video player:\n  C-W--McCall---Convoy-Sd5ZLJWQmss.mkv",
+		Launch: "%1.X-D--NxXzoo---Xlmelb-Hw5AOQDJnhh.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---X-D--NxXzoo---Xlmelb-Hw5AOQDJnhh.npe",
 	})
-	Add(812, 81, "Daft-Punk---Harder--Bett", &Card{
-		Launch: ".Daft-Punk---Harder--Better--Faster--Stronger--Official-Video--gAjR4-CbPpQ.mkv.lemma",
-		Text:   "coco3 Video player:\n  Daft-Punk---Harder--Better--Faster--Stronger--Official-Video--gAjR4-CbPpQ.mkv",
+	Add(812, 81, "flip---Wzug-Kfmp---Sziwvi--Yvgg", &Card{
+		Launch: "%1.Wzug-Kfmp---Sziwvi--Yvggvi--Uzhgvi--Hgilmtvi--Luurxrzo-Erwvl--tZqI4-XyKkJ.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Wzug-Kfmp---Sziwvi--Yvggvi--Uzhgvi--Hgilmtvi--Luurxrzo-Erwvl--tZqI4-XyKkJ.npe",
 	})
-	Add(813, 81, "Devo---Whip-It--Official", &Card{
-		Launch: ".Devo---Whip-It--Official-Music-Video----Warner-Vault-j-QLzthSkfM.webm.lemma",
-		Text:   "coco3 Video player:\n  Devo---Whip-It--Official-Music-Video----Warner-Vault-j-QLzthSkfM.webm",
+	Add(813, 81, "flip---Wvel---Dsrk-Rg--Luurxrzo", &Card{
+		Launch: "%1.Wvel---Dsrk-Rg--Luurxrzo-Nfhrx-Erwvl----Dzimvi-Ezfog-q-JOagsHpuN.dvyn.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Wvel---Dsrk-Rg--Luurxrzo-Nfhrx-Erwvl----Dzimvi-Ezfog-q-JOagsHpuN.dvyn",
 	})
-	Add(814, 81, "Dr--Strangelove--1964--T", &Card{
-		Launch: ".Dr--Strangelove--1964--Trailer--1---Movieclips-Classic-Trailers-jPU1AYTxwg4.mp4.lemma",
-		Text:   "coco3 Video player:\n  Dr--Strangelove--1964--Trailer--1---Movieclips-Classic-Trailers-jPU1AYTxwg4.mp4",
+	Add(814, 81, "flip---Wi--Hgizmtvolev--1964--G", &Card{
+		Launch: "%1.Wi--Hgizmtvolev--1964--Gizrovi--1---Nlervxorkh-Xozhhrx-Gizrovih-qKF1ZBGcdt4.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Wi--Hgizmtvolev--1964--Gizrovi--1---Nlervxorkh-Xozhhrx-Gizrovih-qKF1ZBGcdt4.nk4",
 	})
-	Add(815, 81, "Elmer-Fudd---Kill-the-Wa", &Card{
-		Launch: ".Elmer-Fudd---Kill-the-Wabbit--Official-Video--ft--Bugs-Bunny-KZTE9MDoaLs.mp4.lemma",
-		Text:   "coco3 Video player:\n  Elmer-Fudd---Kill-the-Wabbit--Official-Video--ft--Bugs-Bunny-KZTE9MDoaLs.mp4",
+	Add(815, 81, "flip---Vonvi-Ufww---Proo-gsv-Dz", &Card{
+		Launch: "%1.Vonvi-Ufww---Proo-gsv-Dzyyrg--Luurxrzo-Erwvl--ug--Yfth-Yfmmb-PAGV9NWlzOh.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Vonvi-Ufww---Proo-gsv-Dzyyrg--Luurxrzo-Erwvl--ug--Yfth-Yfmmb-PAGV9NWlzOh.nk4",
 	})
-	Add(816, 81, "Eric-Cartman-sings-Come-", &Card{
-		Launch: ".Eric-Cartman-sings-Come-Sail-Away-gWMyo62MWoA.mp4.lemma",
-		Text:   "coco3 Video player:\n  Eric-Cartman-sings-Come-Sail-Away-gWMyo62MWoA.mp4",
+	Add(816, 81, "flip---Virx-Xzignzm-hrmth-Xlnv-", &Card{
+		Launch: "%1.Virx-Xzignzm-hrmth-Xlnv-Hzro-Zdzb-tDNbl62NDlZ.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Virx-Xzignzm-hrmth-Xlnv-Hzro-Zdzb-tDNbl62NDlZ.nk4",
 	})
-	Add(817, 81, "Good-Morning-Sunshine---", &Card{
-		Launch: ".Good-Morning-Sunshine---Original-Song-W7q1bHK8te0.mp4.lemma",
-		Text:   "coco3 Video player:\n  Good-Morning-Sunshine---Original-Song-W7q1bHK8te0.mp4",
+	Add(817, 81, "flip---Tllw-Nlimrmt-Hfmhsrmv---", &Card{
+		Launch: "%1.Tllw-Nlimrmt-Hfmhsrmv---Lirtrmzo-Hlmt-D7j1ySP8gv0.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Tllw-Nlimrmt-Hfmhsrmv---Lirtrmzo-Hlmt-D7j1ySP8gv0.nk4",
 	})
-	Add(818, 81, "HANDEL---ZADOK-THE-PRIES", &Card{
-		Launch: ".HANDEL---ZADOK-THE-PRIEST--CORONATION-ANTHEM----PIPE-ORGAN-SOLO---JONATHAN-SCOTT-CPtFJ1-qZgQ.mkv.lemma",
-		Text:   "coco3 Video player:\n  HANDEL---ZADOK-THE-PRIEST--CORONATION-ANTHEM----PIPE-ORGAN-SOLO---JONATHAN-SCOTT-CPtFJ1-qZgQ.mkv",
+	Add(818, 81, "flip---SZMWVO---AZWLP-GSV-KIRVH", &Card{
+		Launch: "%1.SZMWVO---AZWLP-GSV-KIRVHG--XLILMZGRLM-ZMGSVN----KRKV-LITZM-HLOL---QLMZGSZM-HXLGG-XKgUQ1-jAtJ.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---SZMWVO---AZWLP-GSV-KIRVHG--XLILMZGRLM-ZMGSVN----KRKV-LITZM-HLOL---QLMZGSZM-HXLGG-XKgUQ1-jAtJ.npe",
 	})
-	Add(819, 81, "Harry-Potter---Hedwig-s-", &Card{
-		Launch: ".Harry-Potter---Hedwig-s-Theme--Piano-Version--jTPXwbDtIpA.mkv.lemma",
-		Text:   "coco3 Video player:\n  Harry-Potter---Hedwig-s-Theme--Piano-Version--jTPXwbDtIpA.mkv",
+	Add(819, 81, "flip---Sziib-Klggvi---Svwdrt-h-", &Card{
+		Launch: "%1.Sziib-Klggvi---Svwdrt-h-Gsvnv--Krzml-Evihrlm--qGKCdyWgRkZ.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Sziib-Klggvi---Svwdrt-h-Gsvnv--Krzml-Evihrlm--qGKCdyWgRkZ.npe",
 	})
 	Add(82, 81, "MORE", &Card{})
-	Add(821, 82, "HEYYEYAAEYAAAEYAEYAA-ZZ5", &Card{
-		Launch: ".HEYYEYAAEYAAAEYAEYAA-ZZ5LpwO-An4.mkv.lemma",
-		Text:   "coco3 Video player:\n  HEYYEYAAEYAAAEYAEYAA-ZZ5LpwO-An4.mkv",
+	Add(821, 82, "flip---SVBBVBZZVBZZZVBZVBZZ-AA5", &Card{
+		Launch: "%1.SVBBVBZZVBZZZVBZVBZZ-AA5OkdL-Zm4.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---SVBBVBZZVBZZZVBZVBZZ-AA5OkdL-Zm4.npe",
 	})
-	Add(822, 82, "J-S-Bach--Musette-in-D-m", &Card{
-		Launch: ".J-S-Bach--Musette-in-D-major-detGsRQ7QW8.mkv.lemma",
-		Text:   "coco3 Video player:\n  J-S-Bach--Musette-in-D-major-detGsRQ7QW8.mkv",
+	Add(822, 82, "flip---Q-H-Yzxs--Nfhvggv-rm-W-n", &Card{
+		Launch: "%1.Q-H-Yzxs--Nfhvggv-rm-W-nzqli-wvgThIJ7JD8.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Q-H-Yzxs--Nfhvggv-rm-W-nzqli-wvgThIJ7JD8.npe",
 	})
-	Add(823, 82, "Kraftwerk---The-Robots--", &Card{
-		Launch: ".Kraftwerk---The-Robots--Official-Video--D-8Pma1vHmw.mkv.lemma",
-		Text:   "coco3 Video player:\n  Kraftwerk---The-Robots--Official-Video--D-8Pma1vHmw.mkv",
+	Add(823, 82, "flip---Pizugdvip---Gsv-Ilylgh--", &Card{
+		Launch: "%1.Pizugdvip---Gsv-Ilylgh--Luurxrzo-Erwvl--W-8Knz1eSnd.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Pizugdvip---Gsv-Ilylgh--Luurxrzo-Erwvl--W-8Knz1eSnd.npe",
 	})
-	Add(824, 82, "Lazy-Sunday---SNL-Digita", &Card{
-		Launch: ".Lazy-Sunday---SNL-Digital-Short-sRhTeaa-B98.mp4.lemma",
-		Text:   "coco3 Video player:\n  Lazy-Sunday---SNL-Digital-Short-sRhTeaa-B98.mp4",
+	Add(824, 82, "flip---Ozab-Hfmwzb---HMO-Wrtrgz", &Card{
+		Launch: "%1.Ozab-Hfmwzb---HMO-Wrtrgzo-Hslig-hIsGvzz-Y98.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Ozab-Hfmwzb---HMO-Wrtrgzo-Hslig-hIsGvzz-Y98.nk4",
 	})
-	Add(825, 82, "Metropolis--1927--Traile", &Card{
-		Launch: ".Metropolis--1927--Trailer--1---Movieclips-Classic-Trailers-gdtZv3XROnc.mp4.lemma",
-		Text:   "coco3 Video player:\n  Metropolis--1927--Trailer--1---Movieclips-Classic-Trailers-gdtZv3XROnc.mp4",
+	Add(825, 82, "flip---Nvgilklorh--1927--Gizrov", &Card{
+		Launch: "%1.Nvgilklorh--1927--Gizrovi--1---Nlervxorkh-Xozhhrx-Gizrovih-twgAe3CILmx.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Nvgilklorh--1927--Gizrovi--1---Nlervxorkh-Xozhhrx-Gizrovih-twgAe3CILmx.nk4",
 	})
-	Add(826, 82, "Rush-E---Impossible-Pian", &Card{
-		Launch: ".Rush-E---Impossible-Piano-Remix---Black-MIDI-uRZAQRhPHuE.mkv.lemma",
-		Text:   "coco3 Video player:\n  Rush-E---Impossible-Piano-Remix---Black-MIDI-uRZAQRhPHuE.mkv",
+	Add(826, 82, "flip---Ifhs-V---Rnklhhryov-Krzm", &Card{
+		Launch: "%1.Ifhs-V---Rnklhhryov-Krzml-Ivnrc---Yozxp-NRWR-fIAZJIsKSfV.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Ifhs-V---Rnklhhryov-Krzml-Ivnrc---Yozxp-NRWR-fIAZJIsKSfV.npe",
 	})
-	Add(827, 82, "Sesame-Street---Number-9", &Card{
-		Launch: ".Sesame-Street---Number-9-Martian-Beauty-AZ5Y3TizswY.mkv.lemma",
-		Text:   "coco3 Video player:\n  Sesame-Street---Number-9-Martian-Beauty-AZ5Y3TizswY.mkv",
+	Add(827, 82, "flip---Hvhznv-Hgivvg---Mfnyvi-9", &Card{
+		Launch: "%1.Hvhznv-Hgivvg---Mfnyvi-9-Nzigrzm-Yvzfgb-ZA5B3GrahdB.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Hvhznv-Hgivvg---Mfnyvi-9-Nzigrzm-Yvzfgb-ZA5B3GrahdB.npe",
 	})
-	Add(828, 82, "Teletubbies-say--Eh-oh--", &Card{
-		Launch: ".Teletubbies-say--Eh-oh--------Music-Video------DIDAUViRnAU.mkv.lemma",
-		Text:   "coco3 Video player:\n  Teletubbies-say--Eh-oh--------Music-Video------DIDAUViRnAU.mkv",
+	Add(828, 82, "flip---Gvovgfyyrvh-hzb--Vs-ls--", &Card{
+		Launch: "%1.Gvovgfyyrvh-hzb--Vs-ls--------Nfhrx-Erwvl------WRWZFErImZF.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Gvovgfyyrvh-hzb--Vs-ls--------Nfhrx-Erwvl------WRWZFErImZF.npe",
 	})
-	Add(829, 82, "The-Beatles---Yellow-Sub", &Card{
-		Launch: ".The-Beatles---Yellow-Submarine-m2uTFF-3MaA.mp4.lemma",
-		Text:   "coco3 Video player:\n  The-Beatles---Yellow-Submarine-m2uTFF-3MaA.mp4",
+	Add(829, 82, "flip---Gsv-Yvzgovh---Bvoold-Hfy", &Card{
+		Launch: "%1.Gsv-Yvzgovh---Bvoold-Hfynzirmv-n2fGUU-3NzZ.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Gsv-Yvzgovh---Bvoold-Hfynzirmv-n2fGUU-3NzZ.nk4",
 	})
 	Add(83, 82, "MORE", &Card{})
-	Add(831, 83, "Tron-Legacy-Lightbike-Sc", &Card{
-		Launch: ".Tron-Legacy-Lightbike-Scene--4K--SqSuRdkglxM.mkv.lemma",
-		Text:   "coco3 Video player:\n  Tron-Legacy-Lightbike-Scene--4K--SqSuRdkglxM.mkv",
+	Add(831, 83, "flip---Gilm-Ovtzxb-Ortsgyrpv-Hx", &Card{
+		Launch: "%1.Gilm-Ovtzxb-Ortsgyrpv-Hxvmv--4P--HjHfIwptocN.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Gilm-Ovtzxb-Ortsgyrpv-Hxvmv--4P--HjHfIwptocN.npe",
 	})
-	Add(832, 83, "Tron-Lightbike-Scene--3O", &Card{
-		Launch: ".Tron-Lightbike-Scene--3ODe9mqoDE.mp4.lemma",
-		Text:   "coco3 Video player:\n  Tron-Lightbike-Scene--3ODe9mqoDE.mp4",
+	Add(832, 83, "flip---Gilm-Ortsgyrpv-Hxvmv--3L", &Card{
+		Launch: "%1.Gilm-Ortsgyrpv-Hxvmv--3LWv9njlWV.nk4.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Gilm-Ortsgyrpv-Hxvmv--3LWv9njlWV.nk4",
 	})
-	Add(833, 83, "Wall-Of-Voodoo---Mexican", &Card{
-		Launch: ".Wall-Of-Voodoo---Mexican-Radio--Official-Video--eyCEexG9xjw.mkv.lemma",
-		Text:   "coco3 Video player:\n  Wall-Of-Voodoo---Mexican-Radio--Official-Video--eyCEexG9xjw.mkv",
+	Add(833, 83, "flip---Dzoo-Lu-Ellwll---Nvcrxzm", &Card{
+		Launch: "%1.Dzoo-Lu-Ellwll---Nvcrxzm-Izwrl--Luurxrzo-Erwvl--vbXVvcT9cqd.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Dzoo-Lu-Ellwll---Nvcrxzm-Izwrl--Luurxrzo-Erwvl--vbXVvcT9cqd.npe",
 	})
-	Add(834, 83, "Willy-Wonka-1971-Oompa-L", &Card{
-		Launch: ".Willy-Wonka-1971-Oompa-Loompa-Song-QkC8wPSmcPg.mkv.lemma",
-		Text:   "coco3 Video player:\n  Willy-Wonka-1971-Oompa-Loompa-Song-QkC8wPSmcPg.mkv",
-	})
-	Add(888, 83, "BIG VIDEO", &Card{
-		Launch: ".big.lemma",
-		Text:   "coco3 Video player:\n  Big Video .mkv",
+	Add(834, 83, "flip---Droob-Dlmpz-1971-Llnkz-O", &Card{
+		Launch: "%1.Droob-Dlmpz-1971-Llnkz-Ollnkz-Hlmt-JpX8dKHnxKt.npe.ovnnz",
+		Text:   "coco3 Video player:\n  flip---Droob-Dlmpz-1971-Llnkz-Ollnkz-Hlmt-JpX8dKHnxKt.npe",
 	})
 }

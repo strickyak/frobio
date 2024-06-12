@@ -151,6 +151,13 @@ func RunWeb() {
 	log.Fatal(s.ListenAndServe())
 }
 
+func Flip13AfterFlipMark(a string) string {
+	i := strings.Index(a, "flip---")
+	if i < 0 {
+		return a
+	}
+	return a[:i] + Flip13(a[i+7:])
+}
 func Flip13Filepath(a string) string {
 	if strings.HasSuffix(a, "---flip") {
 		trimmed := a[:len(a)-7]
