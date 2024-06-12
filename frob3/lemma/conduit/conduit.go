@@ -197,11 +197,6 @@ LOOP:
 		cmd, n, p := q.Command(), q.N(), q.P()
 		log.Printf(">> %s (n=%d p=%d)", C.CmdName(cmd), n, p)
 
-		// TODO Writes must invalidate or update cache TODO
-		if cmd == C.CMD_BLOCK_WRITE {
-			panic("TODO")
-		}
-
 		if cmd == C.CMD_BLOCK_READ {
 			key := (uint32(n) << 16) | uint32(p)
 			if tmp, ok := conduit.blockCache[key]; ok {
@@ -228,6 +223,14 @@ LOOP:
 			Value(io.ReadFull(client, payload))
 			hex.DumpHexLines(">>>>", 0, payload)
 			Value(server.Write(payload))
+		}
+
+		// Writes must update cache.
+		if cmd == C.CMD_BLOCK_WRITE {
+			key := (uint32(n) << 16) | uint32(p)
+			var tmp [256]byte
+			copy(tmp[:], payload)
+			conduit.blockCache[key] = &tmp
 		}
 
 		if *CACHE_BLOCKS > 0 {
