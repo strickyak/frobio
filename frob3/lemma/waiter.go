@@ -182,9 +182,9 @@ func GetBlockDevice(ses *Session) *os.File { // Nitros9 RBLemma devices
 		log.Printf("GBD: returning %v", Block0)
 		return Block0
 	}
-	log.Printf("GBD: not global BLOCK0")
-	log.Printf("GBD: session %v", ses)
-	log.Printf("GBD: session.Block0 %v", ses.Block0)
+	// log.Printf("GBD: not global BLOCK0")
+	// log.Printf("GBD: session %v", ses)
+	// log.Printf("GBD: session.Block0 %v", ses.Block0)
 	log.Printf("GBD: session.Block0.Name(): %q", ses.Block0.Name())
 	return ses.Block0
 }
@@ -192,7 +192,7 @@ func GetBlockDevice(ses *Session) *os.File { // Nitros9 RBLemma devices
 func SeekSectorReturnLSN(block *os.File, n uint, p uint) int64 {
 	var err error
 	lsn := (int64(n&255) << 16) | int64(p)
-	log.Printf("block READ LSN %d. =$%x (%q)", lsn, lsn, block.Name())
+	log.Printf("block Seek LSN %d. =$%x (%q)", lsn, lsn, block.Name())
 
 	_, err = block.Seek(256*lsn, 0)
 	if err != nil {
@@ -267,10 +267,6 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				}
 			}
 
-		// case C.CMD_SP_PC: // MISUSES N
-		// log.Printf("DEPRECATED: CMD_SP_PC should not be used any more.")
-		// log.Printf("ReadFive: sp=%x pc=%x", n, p)
-
 		case C.CMD_LOG:
 			{
 				data := make([]byte, n)
@@ -280,20 +276,6 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				}
 				log.Printf("ReadFive: LOG %q", data)
 			}
-
-		// case C.CMD_REV:
-		// {
-		// data := make([]byte, n)
-		// _, err := io.ReadFull(conn, data)
-		// if err != nil {
-		// log.Panicf("ReadFive: DATA: stopping due to error: %v", err)
-		// }
-		// log.Printf("ReadFive: REV %q", data)
-		// }
-
-		//XX --- INKEY and GETCHAR are now synchronous. ---
-		//XX case C.CMD_INKEY: // N=0, OR MISUSES N
-		//XX log.Printf("ReadFive: inkey $%02x %q", quint[4], quint[4:])
 
 		case C.CMD_DATA: // Sort of a core dump?
 			{
@@ -342,6 +324,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				var err error
 
 				buf := make([]byte, 256)
+				// log.Printf("C.CMD_BLOCK_WRITE nando Going to read 256")
 				cc, err := io.ReadFull(conn, buf)
 				if err != nil {
 					log.Panicf("BLOCK_WRITE: error reading 256 from conn: %v", err)
@@ -349,6 +332,7 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				if cc != 256 {
 					log.Panicf("BLOCK_WRITE: short read, got %d, want 256 from conn: %v", cc, err)
 				}
+				// log.Printf("C.CMD_BLOCK_WRITE nando Did read 256: %v", buf)
 
 				cc, err = block0.Write(buf)
 				if err != nil {
@@ -357,7 +341,9 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 				if cc != 256 {
 					log.Panicf("BLOCK_WRITE: Short Write Block device 0 at LSN %d: %q: only %d bytes", lsn, block0.Name(), cc)
 				}
-				WriteFive(conn, C.CMD_BLOCK_OKAY, 0, 0)
+				// log.Printf("C.CMD_BLOCK_WRITE nando Going to write C.CMD_BLOCK_OKAY")
+				WriteFive(conn, C.CMD_BLOCK_OKAY, ^uint(0), ^uint(0))
+				// log.Printf("C.CMD_BLOCK_WRITE nando Wrote C.CMD_BLOCK_OKAY")
 
 			}
 		case C.CMD_LEMMAN_REQUEST:

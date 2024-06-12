@@ -1,10 +1,17 @@
 package main
 
+// Debugging Hints
+//
+// ./lemma-waiter  -cards -lemmings_root pizga-base/Internal/LEMMINGS -config_by_dhcp=0 --nav_root pizga --web_static pizga-base/Internal/web-static/ --port=12345
+//
+// - pizga-base/Internal/bin/conduit --lan=10.23.23.23 -dial=127.0.0.1:12345 --cache_blocks=8
+
 import (
 	"flag"
 	"io"
 	"log"
 	"net"
+	"sync"
 
 	C "github.com/strickyak/frobio/frob3/lemma/coms"
 	"github.com/strickyak/frobio/frob3/lemma/hex"
@@ -115,6 +122,20 @@ func ConduitCopyBytes(to, from net.Conn, done chan<- bool) {
 type Conduit struct {
 	blockCache map[uint32]*[256]byte
 	done       chan bool
+	mutex      sync.Mutex
+}
+
+func (o *Conduit) GetCache(key uint32) (block *[256]byte, ok bool) {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+	block, ok = o.blockCache[key]
+	return
+}
+
+func (o *Conduit) PutCache(key uint32, block *[256]byte) {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+	o.blockCache[key] = block
 }
 
 var CommandsFromServerWithNoPayload = []byte{
@@ -135,42 +156,63 @@ func CopyFromServer(client, server net.Conn, conduit *Conduit) {
 
 	log.Printf("Started copying server %s to client %s", ShowConn(server), ShowConn(client))
 	for {
+		// log.Printf("CFS: 2222*")
 		var q C.Quint
+		log.Printf("CFS: nando: going to read full 5")
 		Value(io.ReadFull(server, q[:]))
+		// log.Printf("CFS: nando: Did read full 5: %v", q[:])
 
 		cmd, n, p := q.Command(), q.N(), q.P()
 		log.Printf("<< %s (n=%d p=%d)", C.CmdName(cmd), n, p)
+		// log.Printf("CFS: 11111")
 		if cmd != C.CMD_CACHE_OKAY {
+			// log.Printf("CFS: 11112")
 			Value(client.Write(q[:]))
+			// log.Printf("CFS: 11113")
+			log.Printf("CFS: nando: Did write to client: %v", q[:])
 		}
+		// log.Printf("CFS: 11114")
 
 		count := n
 		if cmd == C.CMD_BLOCK_OKAY || cmd == C.CMD_CACHE_OKAY {
 			count = 256
+			// log.Printf("CFS: 11114a")
 		}
+		if n == 0xFFFF && p == 0xFFFF { // Special case for WRITE confirmation.
+			count = 0
+		}
+		// log.Printf("CFS: 11114b  count=%d", count)
 
 		var payload []byte
+		// log.Printf("CFS: 11115")
 		if count > 0 && !InSlice(cmd, CommandsFromServerWithNoPayload) {
 			payload = make([]byte, count)
+			// log.Printf("CFS: 11116 count=%d", count)
 			Value(io.ReadFull(server, payload))
+			// log.Printf("CFS: 11117")
 			if cmd == C.CMD_CACHE_OKAY {
+				// log.Printf("CFS: 11118")
 				hex.DumpHexLines("..<<", 0, payload)
 				key := (uint32(n) << 16) | uint32(p)
 				var tmp [256]byte
 				copy(tmp[:], payload)
-				conduit.blockCache[key] = &tmp
+				conduit.PutCache(key, &tmp)
 			} else if cmd == C.CMD_BLOCK_OKAY {
+				// log.Printf("CFS: 11119")
 				hex.DumpHexLines("<<<<", 0, payload)
 				key := (uint32(n) << 16) | uint32(p)
 				var tmp [256]byte
 				copy(tmp[:], payload)
-				conduit.blockCache[key] = &tmp
+				conduit.PutCache(key, &tmp)
 				Value(client.Write(payload))
 			} else {
+				// log.Printf("CFS: 1111*")
 				hex.DumpHexLines("<<<<", 0, payload)
 				Value(client.Write(payload))
 			}
+			// log.Printf("CFS: 22222")
 		}
+		// log.Printf("CFS: 22223")
 	}
 }
 
@@ -191,15 +233,17 @@ func CopyFromClient(server, client net.Conn, conduit *Conduit) {
 	log.Printf("Started copying client %s to server %s", ShowConn(client), ShowConn(server))
 LOOP:
 	for {
+		log.Printf("CFC: nando: going to read full 5")
 		var q C.Quint
 		Value(io.ReadFull(client, q[:]))
+		log.Printf("CFC: nando: Did read full 5: %v", q[:])
 
 		cmd, n, p := q.Command(), q.N(), q.P()
 		log.Printf(">> %s (n=%d p=%d)", C.CmdName(cmd), n, p)
 
 		if cmd == C.CMD_BLOCK_READ {
 			key := (uint32(n) << 16) | uint32(p)
-			if tmp, ok := conduit.blockCache[key]; ok {
+			if tmp, ok := conduit.GetCache(key); ok {
 				q2 := C.NewQuint(C.CMD_BLOCK_OKAY, n, p)
 				client.Write(q2[:])
 				client.Write(tmp[:])
@@ -209,6 +253,7 @@ LOOP:
 			}
 		}
 
+		log.Printf("CFC: nando: Copy to server: %v", q[:])
 		Value(server.Write(q[:]))
 
 		// Work around Axiom 41C bug:
@@ -218,11 +263,16 @@ LOOP:
 		}
 
 		var payload []byte
-		if n > 0 && !InSlice(cmd, CommandsFromClientWithNoPayload) {
-			payload = make([]byte, n)
+		count := n
+		if cmd == C.CMD_BLOCK_WRITE {
+			count = 256
+		}
+		if count > 0 && !InSlice(cmd, CommandsFromClientWithNoPayload) {
+			payload = make([]byte, count)
 			Value(io.ReadFull(client, payload))
 			hex.DumpHexLines(">>>>", 0, payload)
 			Value(server.Write(payload))
+			log.Printf("CFC: nando: Copy to server: %v", payload)
 		}
 
 		// Writes must update cache.
@@ -230,7 +280,7 @@ LOOP:
 			key := (uint32(n) << 16) | uint32(p)
 			var tmp [256]byte
 			copy(tmp[:], payload)
-			conduit.blockCache[key] = &tmp
+			conduit.PutCache(key, &tmp)
 		}
 
 		if *CACHE_BLOCKS > 0 {
@@ -244,7 +294,7 @@ LOOP:
 						n2++
 					}
 					key := (uint32(n) << 16) | uint32(p)
-					if _, ok := conduit.blockCache[key]; ok {
+					if _, ok := conduit.GetCache(key); ok {
 						continue CACHE_REQUESTS // we already have it cached.
 					}
 					q2 := C.NewQuint(C.CMD_CACHE_READ, n2, p2)
