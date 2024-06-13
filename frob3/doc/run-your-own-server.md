@@ -240,3 +240,10 @@ Running #343 from a Linux server on a private lan, the same thing takes
 
 So you can see that it's fastest to run your own Lemma server,
 but you can get a lot of the speedup by just running Conduit.
+
+### Conduit Bug
+
+Conduit does not understand the "trailer data" which is the audio/video
+content of movies.  Perhaps the JSR record could be considered the
+end of the Lemma protocol.  But it would be better to create a new
+end marker, with a new quintuple command byte.
