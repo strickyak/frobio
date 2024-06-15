@@ -174,7 +174,7 @@ enum Commands {
   CMD_DATA = 204,
   // CMD_SP_PC = 205, // deprecate
   // CMD_REV = 206, // deprecate
-  CMD_RTI = 214,  // experimental
+  // CMD_RTI = 214,  // experimental
   CMD_JSR = 255,
 };
 
@@ -1638,22 +1638,10 @@ errnum ClientSaysHello() {
   return e;
 }
 
-errnum LemmaClientS1() {  // old style does not loop.
-  char quint[5];
-  char buf8[8];  // extra 8 for small payload
-  errnum e;  // was bool e, but that was a mistake.
-
-#if 0
---- we want PolCat to by synchronous now ---
-    char inkey = PolCat();
-    if (inkey) {
-      memset(quint, 0, sizeof quint);
-      quint[0] = CMD_INKEY;
-      quint[4] = inkey;
-      e = WizSendChunk(SOCK1_AND &TcpProto,  quint, sizeof quint);
-      if (e) return e;
-    }
-#endif
+errnum LemmaClientS1() {
+    char quint[5];
+    char buf8[8];  // extra 8 for small payload
+    errnum e;  // was bool e, but that was a mistake.
 
     e = WizRecvChunkTry(SOCK1_AND quint, sizeof quint);
     if (e == OKAY) {
