@@ -259,7 +259,7 @@ primes41-c300.decb: primes41.rom
 
 ###############################################
 
-NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd r.os9cmd gomar.os9cmd
+NET_CMDS =  f.arp.os9cmd f.config.os9cmd f.dhcp.os9cmd f.dig.os9cmd f.dump.os9cmd f.ntp.os9cmd f.ping.os9cmd f.recv.os9cmd f.send.os9cmd f.telnetd0.os9cmd f.tget.os9cmd f.wget.os9cmd f.ticks.os9cmd f.say.os9cmd r.os9cmd f.hyper.os9cmd
 all-net-cmds: $(NET_CMDS)
 
 CDEFS = -DFOR_LEVEL2=1 -DBY_CMOC=1 -DMAX_VERBOSE=9
@@ -358,7 +358,7 @@ f.wget.os9cmd: $F/net-cmds/f-wget.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 f.ticks.os9cmd: $F/net-cmds/f-ticks.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
-gomar.os9cmd: $F/net-cmds/gomar.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
+f.hyper.os9cmd: $F/net-cmds/f-hyper.c $(O_FILES_FOR_NET_CMDS) $(CHOPPED_LIB)
 	$(COMPILE_NET_CMD)
 
 all-fuse-daemons: fuse.n.os9cmd fuse.ramfile.os9cmd fuse.tftp.os9cmd
