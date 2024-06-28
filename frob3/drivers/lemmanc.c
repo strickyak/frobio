@@ -30,20 +30,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// typedef unsigned char bool;
-// typedef unsigned char byte;
-// typedef unsigned char errnum;
-// typedef unsigned int word;
-// typedef unsigned int size_t;
-
 #include "frob3/drivers/lemmanc.h"
 
 #include "frob3/os9/os9defs.h"
-
-// #define OKAY 0
-// #define TRUE 1
-// #define FALSE 0
-// #define NULL ((void*)0)
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -115,7 +104,7 @@ struct PathDesc {
   // offset 10 = PD.FST
 
   bool is_poisoned;  // TODO: error handling and path poisoning.
-};                   // Must be 32 bytes or under in size.
+};                   // PathDesc must be 32 bytes or under in size.
 
 // "Lem_UNKNOWN_ZERO", // 0
 // "Lem_Create",       // 1
@@ -164,21 +153,26 @@ HyperCoreDump() {
 #endif
 }
 
-#if 0
-#define PrintHH(FMT, ...)  // nothing
-#else
 void PrintHH(const char* format, ...) {
-#if 1  // __CMOC__
   const char** fmt_ptr = &format;
+#ifdef __GNUC__
+  asm volatile(
+      "  ldx %0\n"
+      "  nop\n"
+      "  fcb 33\n"
+      "  fcb 100"
+      : /*out*/
+      : /*in*/ "m" (fmt_ptr)
+      : /*clobbers*/ "x");
+#else
   asm {
-      ldx fmt_ptr
+      ldx :fmt_ptr
       nop
       fcb 33   // BRN opcode.
       fcb 111  // PrintH2 in emu/hyper.go
   }
 #endif
 }
-#endif
 
 #else  // HYPER_GOMAR
 
@@ -557,7 +551,7 @@ struct reply {
 ///
 ///  GENERIC "C" FUNCTIONS: could be Daemon or Client.
 
-#define MAX_PATH_LEN 64
+#define MAX_PATH_LEN 255
 
 errnum Bridge2(word fileman_op, word unused_x, struct PathDesc* pd,
                struct Regs* regs) {

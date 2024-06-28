@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -18,7 +19,7 @@ import (
 )
 
 var LEMMAN_FS = flag.String(
-	"lemman_fs", "results", "directory to use as LemMan filesystem")
+	"lemman_fs", "lemman_fs", "directory to use as LemMan filesystem")
 
 var Inodes [1024]*LMPath // Index excess 1024
 
@@ -325,6 +326,17 @@ func LMClose(pd uint, regs *LMRegs) (status byte) {
 }
 
 func LMOpen(pd uint, regs *LMRegs, mode byte, name string, create bool) (status byte) {
+	exec.Command("/bin/pwd").Run()
+	exec.Command("/bin/ls").Run()
+
+	Log("PWD")
+	c1 := &exec.Cmd{Path:"/bin/pwd",Stdout:os.Stdout,Stderr:os.Stderr}
+	c1.Run()
+	//Log("LS")
+	//c2 := &exec.Cmd{Path:"/bin/ls",Stdout:os.Stdout,Stderr:os.Stderr}
+	//c2.Run()
+	//Log("NANDO")
+
 	clean := filepath.Clean(name)
 	if len(clean) > 0 && clean[0] == '/' {
 		clean = clean[1:]

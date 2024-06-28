@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	. "github.com/strickyak/frobio/frob3/lemma/util"
 )
 
 const TODO_shelf = "../"
@@ -21,6 +23,7 @@ type Os9ConfigForLemma struct {
 	Level       string
 	Port        string
 	DefaultDisk string
+	Os9Startup  string
 	Boot1Base   string
 	Boot1Mods   []string
 	Boot2Base   string
@@ -198,7 +201,20 @@ func BuildConfig(cf *Os9ConfigForLemma) {
 		// in := filepath.Join(*shelfFlag, cf.DefaultDisk)
 		in := cf.DefaultDisk
 		out := cf.Name + ".dsk"
+Log("sarku dd in=%q out=%q", in, out)
 		Run("dd", "conv=sparse", "bs=4096", "if="+in, "of="+out)
+		// TODO -- do we actually use the in or the out, at runtime?
+
+		if cf.Os9Startup != "" {
+			// TODO -- this has no effect?
+			tf := Value(ioutil.TempFile("", "startup.*.tmp"))
+Log("sarku STARTUP: %q", cf.Os9Startup)
+			tf.Write([]byte(cf.Os9Startup))
+Log("sarku os9 copy -l -r %q %q", tf.Name(), out + ",STARTUP")
+			Run("os9", "copy", "-l", "-r", tf.Name(), out + ",STARTUP")
+			os.Remove(tf.Name())
+			tf.Close()
+		}
 	}
 }
 

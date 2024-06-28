@@ -6,8 +6,6 @@
 
 #define WIZ_PORT  0xFF68   // Hardware port.
 
-#define printk PrintH
-
 // Conventional types and constants for Frobio
 typedef unsigned char bool;
 typedef unsigned char byte;

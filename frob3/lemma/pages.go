@@ -77,6 +77,14 @@ You must be on the same LAN to play multi-user.
 		Launch: ".Nitros9_Coco3_M6809_Level2_40col.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
+	Add(3271, 32, "L2 3.3.0 for M6809 (40 + fuse)", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2_40col_fuse.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2_40col_fuse.dsk",
+	})
+	Add(3272, 32, "L2 3.3.0 for M6809 (40 + lem)", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2_40col_lem.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2_40col_lem.dsk",
+	})
 	Add(328, 32, "L2 3.3.0 for M6809 (80 col)", &Card{
 		Launch: ".Nitros9_Coco3_M6809_Level2.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
