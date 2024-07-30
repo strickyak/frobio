@@ -22,28 +22,6 @@ BIN=$(dirname $0)
 rm -f "$D"
 os9 format "$D" $FORMAT_OPTS
 
-function deep_copy () {
-  local src="$1"
-  local dst="$2"
-  local path="$3"
-  local read name attrs
-
-  bash $BIN/os9-dir.sh -d $src $path | while read name attrs
-  do
-    : name $name :: attrs $attrs
-    os9 makdir $dst,$path/$name
-    # os9 attr $dst,$path/$name $attrs # does not work on directories
-    deep_copy $src $dst $path/$name
-  done
-
-  bash $BIN/os9-dir.sh -f $src $path | while read name attrs
-  do
-    : : name = $name : : attrs = $attrs
-    os9 copy -r $src,$path/$name $dst,$path/$name
-    os9 attr $dst,$path/$name $attrs
-  done
-}
-
 function deep_copy_dirs () {
   local src="$1"
   local dst="$2"
@@ -52,7 +30,7 @@ function deep_copy_dirs () {
 
   bash $BIN/os9-dir.sh -d $src $path | while read name attrs
   do
-    : name $name :: attrs $attrs
+    # : name $name :: attrs $attrs
     os9 makdir $dst,$path/$name
     # os9 attr $dst,$path/$name $attrs # does not work on directories
     deep_copy_dirs $src $dst $path/$name
@@ -67,7 +45,7 @@ function deep_copy_files () {
 
   bash $BIN/os9-dir.sh -f $src $path | while read name attrs
   do
-    : : name = $name : : attrs = $attrs
+    # : name = $name : : attrs = $attrs
     os9 copy -r $src,$path/$name $dst,$path/$name
     os9 attr $dst,$path/$name $attrs
   done
@@ -79,6 +57,5 @@ function deep_copy_files () {
 
 }
 
-: deep_copy $S $D /
 deep_copy_dirs $S $D /
 deep_copy_files $S $D /
