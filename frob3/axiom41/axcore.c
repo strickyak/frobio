@@ -1,6 +1,6 @@
-////////////////////////////////////////
-//   PART--BEGIN-HEADER--
-////////////////////////////////////////
+#ifndef FOR_COPICO
+#define FOR_COPICO 0
+#endif
 
 // Conventional types and constants for Frobio
 
@@ -8,6 +8,7 @@
 #define false (bool)0
 #define OKAY (errnum)0
 #define NOTYET (errnum)1
+#define NULL ((void*)0)
 
 typedef unsigned char bool;
 typedef unsigned char byte;
@@ -648,6 +649,7 @@ void Beep(byte n, byte f) {
 }
 #endif
 
+#if !FOR_COPICO
 byte WizGet1(word reg) {
   WIZ->addr = reg;
   return WIZ->data;
@@ -1026,6 +1028,7 @@ errnum RecvDhcpReply(const struct sock* sockp, word plen, bool second) {
   }
   return 5;
 }
+#endif // !FOR_COPICO
 
 
 ////////////////////////////////////////
@@ -1145,6 +1148,7 @@ byte Mod200(word x) {
 	return (byte) x;
 }
 
+#if !FOR_COPICO
 errnum DoNetwork(byte a, byte b) {
   byte tail;
   if (!GetNum1Byte(&tail)) {
@@ -1294,6 +1298,7 @@ END:
     PrintF("*** error %d\n", e);
   }
 }
+#endif // !FOR_COPICO
 
 ////////////////////////////////////////
 //   PART-MAIN
@@ -1332,6 +1337,7 @@ byte IsThisGomar() {
 
 ////////////////////////////////////////////////
 
+#if !FOR_COPICO
 // Only called for TCP Client.
 // Can probably be skipped.
 errnum WizCheck(PARAM_JUST_SOCK) {
@@ -1477,6 +1483,83 @@ void WizClose(PARAM_JUST_SOCK) {
   WizPut1(B+SK_MR, 0x00/*Protocol: Socket Closed*/);
   WizPut1(B+0x0002/*_IR*/, 0x1F); // Clear all interrupts.
 }
+#else // !FOR_COPICO
+// THIS IS THE VERSION FOR COPICO
+
+#define N4_CHUNK_SIZE 100
+
+#define N4_CONTROL 0xFF78
+#define N4_STATUS 0xFF79
+#define N4_TX 0xFF7A
+#define N4_RX 0xFF7B
+#define N4_MID_TX_BIAS N4_CHUNK_SIZE
+#define N4_MID_RX_BIAS 0
+#define N4_STATUS_GOOD 2
+
+#define WAIT_ON_STATUS_REG()  { byte status; do { status = PEEK1(N4_STATUS); } while (status == 0); if (status != N4_STATUS_GOOD) return status; }
+
+// N4 mid-level functions.
+errnum N4PutMid(char* buf, word n) {
+    AssertLE(1, n);
+    AssertLE(n, N4_CHUNK_SIZE);
+
+    POKE1(N4_CONTROL, n+N4_MID_RX_BIAS);
+    WAIT_ON_STATUS_REG();  // After control.
+
+    for (word i=0; i<n; i++) {
+        POKE1(N4_RX, buf[i]);
+        WAIT_ON_STATUS_REG();  // After Rx.
+    }
+    return OKAY;
+}
+
+errnum N4GetMid(char* buf, word n) {
+    AssertLE(1, n);
+    AssertLE(n, N4_CHUNK_SIZE);
+
+    POKE1(N4_CONTROL, n+N4_MID_TX_BIAS);
+    WAIT_ON_STATUS_REG();  // After control.
+
+    for (word i=0; i<n; i++) {
+        WAIT_ON_STATUS_REG(); // Before Tx.
+        buf[i] = PEEK1(N4_TX);
+    }
+    return OKAY;
+}
+
+// Tcp Send and Recv based on N4 mid-level.
+errnum TcpSend(const struct sock* sockp, char* p, size_t n) {
+  while (n) {
+    word chunk = (n < N4_CHUNK_SIZE) ? n : N4_CHUNK_SIZE;
+    errnum e = N4PutMid(p, chunk);
+    if (e) return e;
+    n -= chunk;
+    p += chunk;
+  }
+  return OKAY;
+}
+
+errnum TcpRecv(const struct sock* sockp, char* p, size_t n) {
+  while (n) {
+    word chunk = (n < N4_CHUNK_SIZE) ? n : N4_CHUNK_SIZE;
+    errnum e = N4GetMid(p, chunk);
+    if (e) return e;
+    n -= chunk;
+    p += chunk;
+  }
+  return OKAY;
+}
+
+// copici
+errnum WizSendChunk(PARAM_SOCK_AND  const struct proto* proto, char* data, size_t n) {
+    return TcpSend(NULL, data, n);
+}
+errnum WizRecvChunkTry(PARAM_SOCK_AND char* buf, size_t n) {
+    // There is no Try.  -- Yoda
+    return TcpRecv(NULL, buf, n);  // Do.
+}
+
+#endif // !FOR_COPICO
 
 //////////////////////////////
 
@@ -1496,6 +1579,7 @@ word CheckSum16(word begin, word end) {
 
 // --main--
 
+#if !FOR_COPICO
 void OpenDiscoverySockets() {
   WizOpen(SOCK1_AND &BroadcastUdpProto, DHCP_CLIENT_PORT);
   UdpDial(SOCK1_AND  &BroadcastUdpProto,
@@ -1594,12 +1678,15 @@ char CountdownOrInitialChar() {
   PrintF("0.\n");
   return '\0';
 }
+#endif // !FOR_COPICO
 
 void ScanKeyboard(char* out) {
+#if !FOR_COPICO
   for (byte bit = 0x80; bit; bit >>= 1) {
     POKE1(0xFF02, ~bit);  // Set probe bit (inverted)
     *out++ = (char) ~ PEEK1(0xFF00);  // Read sense (inverted)
   }
+#endif // !FOR_COPICO
 }
 
 void ComputeRomSums() {
@@ -1758,8 +1845,9 @@ void AxiomMain() {
     Vars->vdg_end = VDG_END;
 
     memset((byte*)VDG_RAM, ' ', VDG_END-VDG_RAM);
-    strcpy((char*)VDG_RAM+22, "AXIOM\150\164\161C\151"); // "AXIOM(41C)"
 
+#if !FOR_COPICO
+    strcpy((char*)VDG_RAM+22, "AXIOM\150\164\161C\151"); // "AXIOM(41C)"
     if (ValidateWizPort((struct wiz_port*)0xFF68)==OKAY) {
         Vars->wiz_port = (struct wiz_port*)0xFF68;
     } else if (ValidateWizPort((struct wiz_port*)0xFF78)==OKAY) {
@@ -1774,6 +1862,9 @@ void AxiomMain() {
 
     memcpy(Vars->transaction_id, Rom->rom_mac_tail+1, 4);
     POKE2(&Vars->transaction_id, PEEK2(&Vars->transaction_id) + Vars->rand_word);
+#else
+    strcpy((char*)VDG_RAM+22, "CIPOC\150\164\161C\151"); // "AXIOM(41C)"
+#endif
 
     if (0) PrintF("?=%x V=%x M=%x:%x:%x\n",
         Vars->rand_word,
@@ -1797,6 +1888,7 @@ void AxiomMain() {
       PrintF("MOTOROLA ");
     }
 
+#if !FOR_COPICO
     PrintF("NAME=\"");
     for (byte i = 0; i<8; i++) {
         char ch = Vars->hostname[i];
@@ -1870,6 +1962,10 @@ void AxiomMain() {
     TcpEstablish(JUST_SOCK1);
     PrintF(" CONN; ");
     Delay(1000);
+#else // !FOR_COPICO
+    PrintF(" CONN; ");
+    Delay(10000);
+#endif // !FOR_COPICO
     SetGreenScreen();
 
     e = ClientSaysHello();

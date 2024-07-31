@@ -23,7 +23,7 @@ tarballs: all $(TARBALLS)
 # Quick assertion that we have the right number of things.
 # Change these when you add more things.
 NUM_CMDS = 19
-NUM_MODULES = 14
+NUM_MODULES = 15
 
 ###############################################
 
@@ -236,7 +236,7 @@ axiom41.l3k: axiom41.rom
 
 ### axiom41 is the newest axiom.
 axiom41.rom: _FORCE_  primes41.rom
-	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/axcore.c 
+	gcc6809 $(COPICO) -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/axcore.c
 	sed -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^_main:/,/^$$/d' < axcore.s > _axcore.s
 	gcc6809 -S --std=gnu99 -Os -fomit-frame-pointer -fwhole-program -I$F/.. $F/axiom41/rescue.c 
 	sed -e 's/jmp/lbra/' -e 's/jsr/lbsr/' -e 's/\<_[A-Za-z0-9_]*\>/R&/' -e 's/\<L[0-9]*\>/R&/' -e 's/[.]area/;area/' -e 's/[.]globl/;globl/' -e '/^R_main:/,$$d' < rescue.s > _rescue.s
@@ -456,6 +456,16 @@ n.fuse.os9mod : n_fuse.asm
 	$(LWASM_FOR_DRIVER)
 boot.lemma.os9mod : boot_lemma.asm
 	$(LWASM_FOR_DRIVER)
+
+boot.lemma_copico.os9mod : boot_lemma_copico.asm copicoio_raw.s
+	$(LWASM_FOR_DRIVER)
+
+#lwasm --format=os9 --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax -I../nitros9/level1/coco1  -I../nitros9/defs  $< --output=$@ --map=$@.map --list=$@.list
+
+copicoio_raw.s: copicoio.s
+	sed -e '/[.]module/d' -e '/[.]area/d' -e '/[.]globl/d' < $< > $@
+copicoio.s: copicoio.c
+	gcc6809 --std=gnu99 -S -Os -fomit-frame-pointer $<
 
 all-lemman: lemman.os9mod lemmer.os9mod lem.os9mod
 	echo '*** WARNING *** UNTESTED ***'
