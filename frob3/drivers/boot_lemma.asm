@@ -205,37 +205,7 @@ Tcp1Read
   sty 8,u  ; exptectd bytes => len
 LoopW
 
-	;; ldd 6,u     ; rsize
-	;; std <Value
-	;; ldd #$8020
-	;; std <Ptr
-	;; lbsr ShowHex
 
-	;; ldd 8,u      ; len
-	;; std <Value
-	;; ldd #$8026
-	;; std <Ptr
-	;; lbsr ShowHex
-
-	;; ldd ,u      ; temp
-	;; std <Value
-	;; ldd #$802C
-	;; std <Ptr
-	;; lbsr ShowHex
-
-	;; ldd 4,u      ; roffset
-	;; std <Value
-	;; ldd #$8040
-	;; std <Ptr
-	;; lbsr ShowHex
-
-	;; ldd 2,u      ; rptr
-	;; std <Value
-	;; ldd #$8046
-	;; std <Ptr
-	;; lbsr ShowHex
-
-  ;; inc   $8002
   ldd #S1_RX_RSR0
   std CIO0ADDR
   lda CIO0DATA
