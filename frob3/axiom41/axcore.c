@@ -1,6 +1,9 @@
 #ifndef FOR_COPICO
 #define FOR_COPICO 0
 #endif
+#ifndef NETIO_PROTO
+#define NETIO_PROTO 4
+#endif
 
 // Conventional types and constants for Frobio
 
@@ -1496,7 +1499,11 @@ void WizClose(PARAM_JUST_SOCK) {
 #define N4_MID_RX_BIAS 0
 #define N4_STATUS_GOOD 2
 
+#if NETIO_PROTO == 5
 #define WAIT_ON_STATUS_REG()  { byte status; do { status = PEEK1(N4_STATUS); } while (status == 0); if (status != N4_STATUS_GOOD) return status; }
+#else
+#define WAIT_ON_STATUS_REG()  { byte status; do { status = PEEK1(N4_STATUS); } while (status == 0); }
+#endif
 
 // N4 mid-level functions.
 errnum N4PutMid(char* buf, word n) {
@@ -1514,16 +1521,40 @@ errnum N4PutMid(char* buf, word n) {
 }
 
 errnum N4GetMid(char* buf, word n) {
+POKE1(0x0400, 1 + PEEK1(0x0400) );
     AssertLE(1, n);
     AssertLE(n, N4_CHUNK_SIZE);
+POKE1(0x0401, '0'+n);
 
     POKE1(N4_CONTROL, n+N4_MID_TX_BIAS);
     WAIT_ON_STATUS_REG();  // After control.
+POKE1(0x0402, 'B');
 
+#if NETIO_PROTO == 5
+    for (word i=0; i<n; i++) {
+        buf[i] = PEEK1(N4_TX);  // Uses DMA, therefore fast.
+POKE1(0x0403, '0'+i);
+    }
+POKE1(0x0404, 'C');
+    Delay(900);
+POKE1(0x0404, 'D');
+    Delay(900);
+POKE1(0x0404, 'E');
+    POKE1(N4_CONTROL, 0);  // We are done with DMA.
+    Delay(900);
+POKE1(0x0404, 'F');
+    WAIT_ON_STATUS_REG();
+POKE1(0x0401, '-');
+POKE1(0x0402, '-');
+POKE1(0x0403, '-');
+POKE1(0x0404, '-');
+#else
+    ---------------------------------------
     for (word i=0; i<n; i++) {
         WAIT_ON_STATUS_REG(); // Before Tx.
         buf[i] = PEEK1(N4_TX);
     }
+#endif
     return OKAY;
 }
 
