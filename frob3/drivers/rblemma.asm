@@ -64,7 +64,7 @@ name     fcs   /RBLemma/
 * Since MESS now offers second vhd drive, EmuDsk will support it. RG
 **************************************************************************
 
-INIT     ldd   #($FF+N.Drives)  ; 'Invalid' value & # of drives
+INIT     ldd   #($FF00+N.Drives)  ; 'Invalid' value & # of drives
          stb   V.NDRV,u      ; Tell RBF how many drives
          leax  DRVBEG,u      ; Point to start of drive tables
 init2    sta   DD.TOT+2,x    ; Set media size to bogus value $FF0000
