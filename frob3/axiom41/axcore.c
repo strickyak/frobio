@@ -1520,36 +1520,43 @@ errnum N4PutMid(char* buf, word n) {
     return OKAY;
 }
 
+#if NETIO_PROTO == 5
+#define PO(a,x) POKE1(a,x)
+#define PE(a) PEEK1(a)
+#else
+#define PO(a,x) 
+#define PE(a)  0
+#endif
+
 errnum N4GetMid(char* buf, word n) {
-POKE1(0x0400, 1 + PEEK1(0x0400) );
+PO(0x0400, 1 + PE(0x0400) );
     AssertLE(1, n);
     AssertLE(n, N4_CHUNK_SIZE);
-POKE1(0x0401, '0'+n);
+PO(0x0401, '0'+n);
 
     POKE1(N4_CONTROL, n+N4_MID_TX_BIAS);
     WAIT_ON_STATUS_REG();  // After control.
-POKE1(0x0402, 'B');
+PO(0x0402, 'B');
 
 #if NETIO_PROTO == 5
     for (word i=0; i<n; i++) {
         buf[i] = PEEK1(N4_TX);  // Uses DMA, therefore fast.
-POKE1(0x0403, '0'+i);
+PO(0x0403, '0'+i);
     }
-POKE1(0x0404, 'C');
+PO(0x0404, 'C');
     Delay(900);
-POKE1(0x0404, 'D');
+PO(0x0404, 'D');
     Delay(900);
-POKE1(0x0404, 'E');
+PO(0x0404, 'E');
     POKE1(N4_CONTROL, 0);  // We are done with DMA.
     Delay(900);
-POKE1(0x0404, 'F');
+PO(0x0404, 'F');
     WAIT_ON_STATUS_REG();
-POKE1(0x0401, '-');
-POKE1(0x0402, '-');
-POKE1(0x0403, '-');
-POKE1(0x0404, '-');
+PO(0x0401, '-');
+PO(0x0402, '-');
+PO(0x0403, '-');
+PO(0x0404, '-');
 #else
-    ---------------------------------------
     for (word i=0; i<n; i++) {
         WAIT_ON_STATUS_REG(); // Before Tx.
         buf[i] = PEEK1(N4_TX);

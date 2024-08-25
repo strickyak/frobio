@@ -55,6 +55,7 @@ func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
 	quint := make([]byte, 5)
 	log.Printf("===================================")
 	_, err := io.ReadFull(conn, quint)
+	// err := MyReadFull(conn, quint)
 	if err != nil {
 		log.Panicf("ReadFive: stopping due to error: %v", err)
 	}
@@ -65,10 +66,26 @@ func ReadFive(conn net.Conn) (cmd byte, n uint, p uint) {
 	return
 }
 
+/*
+func MyReadFull(conn net.Conn, bb []byte) error {
+    n := len(bb)
+    done := 0
+    for done < n {
+        cc, err := conn.Read(bb[done:])
+        if err != nil {
+            return err
+        }
+        done += cc
+    }
+    return nil
+}
+*/
+
 func ReadN(conn net.Conn, n uint) []byte {
 	bb := make([]byte, n)
 	log.Printf("ReadN...")
 	_, err := io.ReadFull(conn, bb)
+	// err := MyReadFull(conn, bb)
 	if err != nil {
 		log.Panicf("ReadN=%d.: stopping due to error: %v", n, err)
 	}
@@ -495,13 +512,14 @@ func Serve(conn net.Conn) {
 		conn.Close()
 	}()
 
-	// You have 10 seconds to say Hello.
-	timeoutDuration := 10 * time.Second
-	conn.SetReadDeadline(time.Now().Add(timeoutDuration))
+	// // You have 10 seconds to say Hello.
+	// timeoutDuration := 10 * time.Second
+	// conn.SetReadDeadline(time.Now().Add(timeoutDuration))
 	hellos := GetHellos(conn)
-	// You pass the test.  No more time limits.
-	var noMoreDeadline time.Time // the "zero" value.
-	conn.SetReadDeadline(noMoreDeadline)
+	// // You pass the test.  No more time limits.
+	// var noMoreDeadline time.Time // the "zero" value.
+	// conn.SetReadDeadline(noMoreDeadline)
+
 
 	// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
 	romID, ok := hellos[0xDF00]

@@ -34,78 +34,6 @@ SOFTWARE.
 
 #include "frob3/os9/os9defs.h"
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-#define assert(C)                                                \
-  {                                                              \
-    if (!(C)) {                                                  \
-      PrintHH(" *ASSERT* %s:%d *FAILED*\n", __FILE__, __LINE__); \
-      HyperCoreDump();                                           \
-      GameOver();                                                \
-    }                                                            \
-  }
-
-enum Commands {
-  CMD_POKE = 0,
-  CMD_LOG = 200,
-  CMD_INKEY = 201,
-  CMD_PUTCHARS = 202,
-  CMD_PEEK = 203,
-  CMD_DATA = 204,
-  CMD_SP_PC = 205,
-  CMD_REV = 206,
-  CMD_BLOCK_READ = 207,   // block device
-  CMD_BLOCK_WRITE = 208,  // block device
-  CMD_BLOCK_ERROR = 209,  // nack
-  CMD_BLOCK_OKAY = 210,   // ack
-  CMD_BOOT_BEGIN = 211,   // boot_lemma
-  CMD_BOOT_CHUNK = 212,   // boot_lemma
-  CMD_BOOT_END = 213,     // boot_lemma
-  CMD_LEMMAN_REQUEST = 214,
-  CMD_LEMMAN_REPLY = 215,
-  CMD_JSR = 255,
-};
-
-struct DeviceTableEntry {
-  word dt_device_driver_module;       // F$DRIV
-  struct DeviceVars* dt_device_vars;  // F$STAT
-  word dt_device_desc;                // F$DESC
-  word dt_fileman;                    // V$FMGR
-  byte dt_num_users;                  // V$USRS
-  word dt_drivex;                     // V$DRIVX
-  word dt_fmgrex;                     // V$FMGREX
-};
-
-struct DeviceVars {
-  // Pre-Defined: 6 bytes.
-  byte v_page;  // extended port addr
-  word v_port;  // base port addr // REUSE FOR ALL64 BASE ADDR
-  byte v_lprc;  // Last Active Process Id (not used?)
-  byte v_busy;  // Active process ID (0 == not busy)
-  byte v_wake;  // Process ID to wake after command completed
-  // Actually a full page of 256 bytes will be alloc'ed.
-  // So feel free to add more fields here.
-};
-
-struct Regs {  // n.b. 6809 not 6309 !?
-  byte rcc, ra, rb, rdp;
-  word rx, ry, ru, rpc;
-};  // size 12
-#define REGS_D(regs) (*(word*)(&(regs)->ra))
-
-struct PathDesc {
-  byte path_num;                                // PD.PD = 0
-  byte mode;                                    // PD.MOD = 1
-  byte link_count;                              // PD.CNT = 2
-  struct DeviceTableEntry* device_table_entry;  // PD.DEV = 3
-  byte current_process_id;                      // PD.CPR = 5
-  struct Regs* regs;                            // PD.RGS = 6
-  word buffer;                                  // PD.BUF = 8
-  // offset 10 = PD.FST
-
-  bool is_poisoned;  // TODO: error handling and path poisoning.
-};                   // PathDesc must be 32 bytes or under in size.
-
 // "Lem_UNKNOWN_ZERO", // 0
 // "Lem_Create",       // 1
 // "Lem_Open",         // 2
@@ -123,7 +51,7 @@ struct PathDesc {
 
 // Three chars per name.
 const char NAMES[] =
-    "ZZZ\0Cre\0Ope\0Mkd\0Cgd\0Del\0Sek\0Rea\0Wri\0RLn\0WLn\0Get\0Set\0Clo";
+    "???\0Cre\0Ope\0Mkd\0Cgd\0Del\0Sek\0Rea\0Wri\0RLn\0WLn\0Get\0Set\0Clo";
 
 /////////////////  Hypervisor Debugging Support
 
@@ -181,7 +109,6 @@ void PrintHH(const char* format, ...) {
     while (1) {         \
     }                   \
   }
-// #define PrintH(format, ...) {}
 
 #endif  // HYPER_GOMAR
 
@@ -216,6 +143,7 @@ void* memcpy(void* dest, const void* src, word len) {
   return dest;
 }
 
+#if 0
 asm IrqDisable() {
   asm {
     orcc #IntMasks
@@ -229,6 +157,7 @@ asm IrqEnable() {
     rts
   }
 }
+#endif
 
 errnum Os9SRqMem(word size, word* size_out, word* addr_out) {
   errnum err = OKAY;
@@ -553,20 +482,24 @@ struct reply {
 
 #define MAX_PATH_LEN 255
 
-errnum Bridge2(word fileman_op, word unused_x, struct PathDesc* pd,
+errnum Bridge2(word fileman_op, struct PathDesc* pd,
                struct Regs* regs) {
   // pd->device_table_entry->dt_num_users = 16; // ARTIFICIALLY KEEP THIS OPEN.
   assert(pd->regs == regs);
 
   {
-    word i = fileman_op << 2;
+    word op_name_index = fileman_op << 2; // Each name takes 4 bytes.
 
     PrintHH(
-        "<><><> FILEMAN_OP=%s=%d, proc=%d pd=%x (count=%x pid=%x) dte=%x #u=%x "
+        "<><><> FILEMAN_OP=%s=%d, proc=%d pd=%x#%x (links=%x pid=%x) dte=%x num_users=%x "
         "(pg=%x po=%x l=%x bu=%x wk=%x) a=%x b=%x",
 
-        NAMES + i, fileman_op, **(byte**)(0x50 /* D.Proc */), pd,
-        pd->link_count, pd->current_process_id, pd->device_table_entry,
+        NAMES + op_name_index, fileman_op,
+	**(byte**)(0x50 /* D.Proc */), pd, pd->path_num,
+
+        pd->link_count, pd->current_process_id,
+
+	pd->device_table_entry,
         pd->device_table_entry->dt_num_users,
         pd->device_table_entry->dt_device_vars->v_page,
         pd->device_table_entry->dt_device_vars->v_port,
@@ -588,6 +521,8 @@ errnum Bridge2(word fileman_op, word unused_x, struct PathDesc* pd,
   byte sys_task = Os9SystemTask();
 
   switch (req.fileman_op) {
+    // This group of operations all have regs->rx pointing to a filepath.
+    // TODO:  must advance regs->rx beyond the filepath.
     case 1:  // Create
     case 2:  // Open
     case 3:  // MakDir
@@ -603,8 +538,9 @@ errnum Bridge2(word fileman_op, word unused_x, struct PathDesc* pd,
         if (!pd->buffer) return E_NORAM;
       }
 
+      // TODO -- why not find exact path length?
       req.payload_size = MAX_PATH_LEN;
-      assert(orig_rx < 0xFE80U);  // dont allow overflow into IO page $FF
+
       {
         errnum e =
             Os9Move(MAX_PATH_LEN, orig_rx, user_task, pd->buffer, sys_task);
@@ -739,7 +675,8 @@ errnum Bridge2(word fileman_op, word unused_x, struct PathDesc* pd,
 }
 errnum Bridge(word fileman_op, word unused_x, struct PathDesc* pd,
               struct Regs* regs) {
-  errnum status = Bridge2(fileman_op, unused_x, pd, regs);
-  PrintHH("<><><> == status == %x", status);
+  errnum status = Bridge2(fileman_op, pd, regs);
+  PrintHH("<><><> == status == %x %s", status, (status?"error":""));
+  PrintHH("<>");
   return status;
 }

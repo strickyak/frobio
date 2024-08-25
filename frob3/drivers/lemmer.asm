@@ -1,5 +1,5 @@
 ********************************************************************
-* Lemmer - FUSE device driver
+* Lemmer -- Device Driver Stub for LemMan, the Lemma Remote File Mananger.
 *
 * Modified from piper.asm by Henry Strickland (github.com/strickyak)
 
@@ -10,16 +10,18 @@
          use   defsfile
          endc
 
-tylg     set   Drivr+Objct
-atrv     set   ReEnt+rev
 rev      set   $00
 edition  set   1
 
-         mod   eom,name,tylg,atrv,start,static_ram_sz
+tylg     set   Drivr+Objct
+atrv     set   ReEnt+rev
 
+         org 0
 PreDeviceVars  rmb 6   ; 6 bytes of predefined struct DeviceVars.
 base_of_ram64  rmb 2   ; base page of 64-byte allocs.
 static_ram_sz  equ .   ; will be rounded up to 256 anyway.
+
+         mod   eom,name,tylg,atrv,start,static_ram_sz
 
          fcb   READ.+WRITE.+DIR.
 
@@ -31,7 +33,7 @@ start    equ   *
 * Dispatch Relays
 Init     clrb
          rts
-         nop
+         daa
 Read     clrb  ; never called.
          comb
          rts
@@ -46,7 +48,7 @@ SetStat  clrb  ; never called.
          rts
 Term     clrb
          rts
-				 nop
+	 daa
 
          emod
 eom      equ   *

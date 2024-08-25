@@ -1,54 +1,14 @@
 package main
 
-const STARTUP = `
-t
-echo HELLO
-`
-
-/*
-const STARTUP = `
-t ;* type commands executed
-load load
-load link
-link shell
-load dir
-load echo
-load f.hyper
-load list
-
-echo Nando
--x ;* dont stop on errors
-cd /b1
-list /lem/motd
-cd /lem
-list motd
-f.hyper EXIT
-`
-*/
-
-/*
-		Os9Startup: `
-* setime 2024/02/02 01:00:00
-* mdir
-* echo a1b2c3d4
-* load f.hyper
-* f.hyper SAY a1b2c3d4
-dir /dd
-dir /b1
-* f.hyper EXIT
-`,
-*/
-
 func init() {
 	Os9(&Os9ConfigForLemma{
-		Name:  "Nitros9_Coco3_M6809_Level2_40col_lem",
+		Name:  "Nitros9_Coco3_M6809_Level2_40col_Copico",
 		Level: "level2",
 		Port:  "coco3",
 		// DefaultDisk: "nitros9/level2/coco3/NOS9_6809_L2_cocosdc.dsk",
 		DefaultDisk: "NOS9_6809_L2_coco3_80d.dsk",
-		Os9Startup: STARTUP,
 		Boot1Mods: []string{
-			"rel_80", "./boot.lemma", "krn",
+			"rel_80", "./boot.lemma_copico", "krn",
 		},
 		Boot2Mods: []string{
 			"krnp2",
@@ -85,15 +45,12 @@ func init() {
 			// "sd0_cocosdc.dd",
 			// "sd1_cocosdc.dd",
 
-			"./lemman",
-			"./lemmer",
-			"./lem",
+			// "./fuseman",
+			// "./fuser",
+			// "./fuse",
 
-			"./rblemma",
-			"./dd.b0",
-			"./b1",
-			"./b2",
-			"./b3",
+			// "./rblemma",
+			// "./dd.b0",
 		},
 	})
 }

@@ -58,6 +58,10 @@ You must be on the same LAN to play multi-user.
 		Launch: ".Nitros9_Coco1_M6809_Level1.lem",
 		Block0: ".Nitros9_Coco1_M6809_Level1.dsk",
 	})
+	Add(317, 30, "L1 3.3.0 for M6809 for Copico", &Card{
+		Launch: ".Nitros9_Coco1_M6809_Level1_Copico.lem",
+		Block0: ".Nitros9_Coco1_M6809_Level1_Copico.dsk",
+	})
 
 	Add(32, 30, "Nitros9 Level2", &Card{})
 	Add(323, 32, "L2 3.3.0 for HITACHI 6309", &Card{
@@ -84,6 +88,10 @@ You must be on the same LAN to play multi-user.
 	Add(3272, 32, "L2 3.3.0 for M6809 (40 + lem)", &Card{
 		Launch: ".Nitros9_Coco3_M6809_Level2_40col_lem.lem",
 		Block0: ".Nitros9_Coco3_M6809_Level2_40col_lem.dsk",
+	})
+	Add(3277, 32, "L2 3.3.0 for M6809 (40 col)", &Card{
+		Launch: ".Nitros9_Coco3_M6809_Level2_40col_Copico.lem",
+		Block0: ".Nitros9_Coco3_M6809_Level2.dsk",
 	})
 	Add(328, 32, "L2 3.3.0 for M6809 (80 col)", &Card{
 		Launch: ".Nitros9_Coco3_M6809_Level2.lem",

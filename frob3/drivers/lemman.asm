@@ -36,15 +36,16 @@
          endc  
 
 rev      set   $01
-ty       set   FlMgr
-         IFNE  H6309
-lg       set   Obj6309
-         ELSE
-lg       set   Objct
-         ENDC
-tylg     set   ty+lg
-atrv     set   ReEnt+rev
 edition  set   1
+
+         IFNE  H6309
+lang       set   Obj6309
+         ELSE
+lang       set   Objct
+         ENDC
+
+tylg     set   FlMgr+lang
+atrv     set   ReEnt+rev
 
          org   $00
 size     equ   .
@@ -117,20 +118,20 @@ Lem_CloseA
         ; fallthrough
 
 Lem_bridge
-    clra          ; D holds the op number.
+    clra          ; D holds the op number
     pshs u,y,x,d  ; match args to Bridge
-    ldu #0        ; start new Frame Pointer.
+    ldu #0        ; start new Frame Pointer
 
-    orcc #IntMasks
-    lbsr _Bridge  ; call C function Bridge()
-    andcc #^IntMasks
+    orcc #IntMasks    ; very conservative for now
+    lbsr _Bridge      ; call C function Bridge() in lemmanc.c
+    andcc #^IntMasks  ; very conservative for now
 
-    CLRA     ; clear the carry bit.
-    TSTB     ; we want to set carry if B nonzero.
-    BEQ SkipComA  ; skip the COMA
-    COMA     ; sets the carry bit.
+    CLRA          ; clear the carry bit
+    TSTB          ; test for error
+    BEQ SkipComA  ; skip the COMA if no error
+    COMA          ; sets the carry bit
 SkipComA
-    LEAS 2,S ; drop old D from stack.
+    LEAS 2,S      ; drop old D from stack
     PULS x,y,u,PC
 
 * Include compiled "lemmanc.c"

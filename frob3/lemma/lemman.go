@@ -3,12 +3,12 @@ package lemma
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
+	// "regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -43,13 +43,22 @@ const LemmaErrorMax = 99
 var PrevLemmaError byte = LemmaErrorMin - 1
 
 func LemmaError(format string, args ...any) byte {
-	log.Printf("@LEMMA_ERROR@ "+format, args...)
 	PrevLemmaError++
 	if PrevLemmaError > LemmaErrorMax {
 		PrevLemmaError = LemmaErrorMin
 	}
-	return PrevLemmaError
+	errnum := PrevLemmaError
+
+	pre := fmt.Sprintf("@LEMMA_ERROR@ $%x=%d. :: ", errnum, errnum)
+	log.Printf(pre+format, args...)
+
+	return errnum
 }
+
+var OpNames = []string{
+"???", "Cre", "Ope", "Mkd", "Cgd", "Del", "Sek", "Rea", "Wri", "RLn", "WLn", "Get", "Set", "Clo",
+}
+
 
 type LMPath struct {
 	PathName   string
@@ -102,8 +111,6 @@ func (r LMRegs) WriteBytes(to *bytes.Buffer) {
 	to.WriteByte(byte(r.rpc >> 8))
 	to.WriteByte(byte(r.rpc))
 }
-
-var NiceFilenamePattern = regexp.MustCompile(`^[/]?[A-Za-z0-9][-A-Za-z0-9_.%@]*$`)
 
 func TimeVector(t time.Time) []byte {
 	y, m, d := t.Date()
@@ -326,41 +333,37 @@ func LMClose(pd uint, regs *LMRegs) (status byte) {
 }
 
 func LMOpen(pd uint, regs *LMRegs, mode byte, name string, create bool) (status byte) {
-	exec.Command("/bin/pwd").Run()
-	exec.Command("/bin/ls").Run()
-
-	Log("PWD")
-	c1 := &exec.Cmd{Path:"/bin/pwd",Stdout:os.Stdout,Stderr:os.Stderr}
-	c1.Run()
-	//Log("LS")
-	//c2 := &exec.Cmd{Path:"/bin/ls",Stdout:os.Stdout,Stderr:os.Stderr}
-	//c2.Run()
-	//Log("NANDO")
-
 	clean := filepath.Clean(name)
-	if len(clean) > 0 && clean[0] == '/' {
-		clean = clean[1:]
-	}
-	words := strings.Split(clean, "/")
-	for _, w := range words {
+	clean = strings.TrimPrefix(clean, "/")  // not an absolute path
+	splitWords := strings.Split(clean, "/")
+	log.Printf("LMOpen: name: %q clean: %q splitWords: %#v", name, clean, splitWords)
+
+	var words []string  // we clean splitWords even more, to get words.
+	for _, w := range splitWords {
+		if w == ".." {
+			return LemmaError("Bad word %q in filepath %q", w, clean)
+			// log.Panicf("why did a `..` survive cleaning? %q %#v", clean, splitWords)
+		}
 		if w == "" || w == "." || w == ".." {
 			continue
 		}
-		if !NiceFilenamePattern.MatchString(w) {
-			return LemmaError("Bad word %q in filepath %q", w, clean)
+		if strings.HasPrefix(w, ".") {
+			return LemmaError("Bad dotted word %q in filepath %q", w, clean)
 		}
+		words = append(words, w)
 	}
 
-	jname := filepath.Join(*LEMMAN_FS, clean)
+	jname := *LEMMAN_FS + "/" + filepath.Join(words...)
+	log.Printf("LMOpen: name: %q jname: %q", name, jname)
 
 	if create {
 		if mode != 2 {
-			return LemmaError("LMCreate requires mode 2 (for now): %q", clean)
+			return LemmaError("LMCreate requires mode 2 (for now): %q %q", jname, name)
 		}
 
 		osFile, err := os.Create(jname) // TODO: write mode
 		if err != nil {
-			return LemmaError("LMCreate cannot Create %q: %v", clean, err)
+			return LemmaError("LMCreate cannot Create %q %q: %v", jname, name, err)
 		}
 
 		LMPaths[pd] = &LMPath{
@@ -470,7 +473,7 @@ func DoLemMan(conn net.Conn, in []byte, pd uint) []byte {
 	var status byte
 	var name string
 
-	log.Printf("DoLemMan:::: op=%d paylen=%d len(in)=%d", op, paylen, len(in))
+	log.Printf("DoLemMan:::: op=%q=%d paylen=%d len(in)=%d", OpNames[op], op, paylen, len(in))
 
 	if 1 <= op && op <= 5 {
 		name = ExtractName(in[headerLen:headerLen+paylen], 0, "LemMan")
