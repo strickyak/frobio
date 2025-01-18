@@ -161,7 +161,7 @@ Tcp1Read
     pshs x,y,u
     pshs y
     ; now with buffer in X and count on the Stack
-    bsr _N4Recv
+    lbsr _N4Recv
 
     leas 2,s
     puls x,y,u,pc
