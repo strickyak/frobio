@@ -1,6 +1,6 @@
 package main
 
-type call struct {
+type Call struct {
 	name                   string
 	desc                   string
 	number                 byte
@@ -11,7 +11,185 @@ type call struct {
 	ra_off, rb_off, rd_off, rx_off, ry_off, ru_off int
 }
 
-var Calls = []*call{
+var Calls = []*Call{
+	{
+		name:   "F$LDABY",
+		desc:   "Load A from 0,X in task B",
+		number: 0x49,
+        b: "b",
+        x: "x",
+        y: "dat_image_addr",
+        ra: "result",
+	},
+	{
+		name:   "F$LDDDXY",
+		desc:   "Get two bytes (Load D [D+X,[Y]])",
+		number: 0x48,
+        d: "d",
+        x: "x",
+        y: "dat_image_addr",
+        rd: "result",
+	},
+	{
+		name:   "F$DelTsk",
+		desc:   "De-alloc process task number",
+		number: 0x40,
+        x: "proc_desc_addr",
+	},
+	{
+		name:   "F$AllTsk",
+		desc:   "Alloc process task number",
+		number: 0x3f,
+        x: "proc_desc_addr",
+	},
+	{
+		name:   "F$AllImg",
+		desc:   "Alloc RAM blocks for process DAT image",
+		number: 0x3a,
+        a: "starting_block",
+        b: "num_blocks",
+        x: "proc_desc_addr",
+	},
+	{
+		name:   "F$Move",
+		desc:   "Move data across addr spaces",
+		number: 0x38,
+        a: "src_task",
+        b: "dest_task",
+        x: "src_ptr",
+        y: "byte_count",
+        u: "dest_ptr",
+	},
+	{
+		name:   "F$GProcP",
+		desc:   "Get Process Desc Ptr",
+		number: 0x37,
+        a: "proc_id",
+        y: "proc_desc_addr",
+	},
+	{
+		name:   "F$Boot",
+		desc:   "Bootstrap system",
+		number: 0x35,
+	},
+	{
+		name:   "F$SLink",
+		desc:   "System Link",
+		number: 0x34,
+        a: "module_type",
+        x: "module_name",
+        y: "name_string_DAT_image_ptr",
+	},
+	{
+		name:   "F$SSvc",
+		desc:   "Service Request Table init",
+		number: 0x32,
+        y: "init_table_addr",
+	},
+	{
+		name:   "F$All64",
+		desc:   "Alloc 64 byte block",
+		number: 0x30,
+        x: "base_addr",
+        ra: "block_number",
+        rx: "base_addr_out",
+        ry: "address_of_block",
+	},
+	{
+		name:   "F$Find64",
+		desc:   "Find 64 byte block",
+		number: 0x2f,
+        a: "block_number",
+        x: "base_addr",
+        ry: "address_of_block",
+	},
+	{
+		name:   "F$VModul",
+		desc:   "Validate Module",
+		number: 0x2e,
+        d: "DAT_image_ptr",
+        x: "new_module_block_offset",
+        ru: "module_directory_entry_addr",
+	},
+	{
+		name:   "F$NProc",
+		desc:   "Start next process",
+		number: 0x2d,
+	},
+	{
+		name:   "F$AProc",
+		desc:   "Enter active process queue",
+		number: 0x2c,
+        x: "addr_of_process_desc",
+	},
+	{
+		name:   "F$IRQ",
+		desc:   "Insert to IRQ Polling Table",
+		number: 0x2a,
+        d: "polling_addr",
+        x: "packet_addr",
+        y: "service_routine",
+        u: "memory_area",
+	},
+	{
+		name:   "F$SRtMem",
+		desc:   "System Return Memory",
+		number: 0x29,
+        d: "byte_count",
+        u: "starting_addr",
+	},
+	{
+		name:   "F$SRqMem",
+		desc:   "System Request Memory",
+		number: 0x28,
+        d: "byte_count",
+        rd: "actual_size",
+        ru: "starting_addr",
+	},
+	{
+		name:   "F$GPrDsc",
+		desc:   "Get Process Descriptor",
+		number: 0x18,
+        a: "process_id",
+        x: "buffer_512",
+	},
+	{
+		name:   "F$STime",
+		desc:   "Set Time",
+		number: 0x16,
+        x: "time_packet_ptr",
+	},
+	{
+		name:   "F$PrsNam",
+		desc:   "Parse Name",
+		number: 0x10,
+        x: "name",
+        ra: "trailing_byte",
+        rb: "name_length",
+        rx: "last_slash_plus1",
+        ry: "last_char_plus1",
+	},
+	{
+		name:   "F$SPrior",
+		desc:   "Set Process Priority",
+		number: 0x0d,
+        ra: "process_id",
+        ru: "priority",
+	},
+	{
+		name:   "F$ID",
+		desc:   "Get Process ID and User ID",
+		number: 0x0c,
+        ra: "proc_id",
+        ru: "user_id",
+	},
+	{
+		name:   "F$Icpt",
+		desc:   "Set signal intercept",
+		number: 0x09,
+        x: "func_address",
+        u: "start_memory_area",
+	},
 	{
 		name:   "F$Link",
 		desc:   "Link a memory module",
@@ -25,6 +203,16 @@ var Calls = []*call{
 		ru:     "absolute_header_addr",
 	},
 	{
+		name:   "F$Fork",
+		desc:   "Create a child process",
+		number: 0x03,
+		a:      "lang_and_type",
+		x:      "module_name_ptr",
+		y:      "size_of_param_area",
+		u:      "start_of_param_area",
+        ra:     "new_process_io_number", // ?
+	},
+	{
 		name:   "F$Load",
 		desc:   "Load a module from a file",
 		number: 0x01,
@@ -35,6 +223,12 @@ var Calls = []*call{
 		rx:     "after_module_name",
 		ry:     "absolute_entry_addr",
 		ru:     "absolute_header_addr",
+	},
+	{
+		name:   "F$UnLink",
+		desc:   "Unlink a memory module",
+		number: 0x02,
+        u:      "module_hdr_ptr",
 	},
 	{
 		name:   "F$MapBlk",
@@ -105,6 +299,14 @@ var Calls = []*call{
 		ra:     "new_path",
 	},
 	{
+		name:   "I$ChgDir",
+		desc:   "Change working directory",
+		number: 0x86,
+		a:      "mode",
+		x:      "pathname",
+		rx:     "after_pathname",
+	},
+	{
 		name:   "I$MakDir",
 		desc:   "Create a directory",
 		number: 0x85,
@@ -119,6 +321,21 @@ var Calls = []*call{
 		b:      "num_bytes_to_change",
 		x:      "module_name",
 		u:      "offset_and_data_byte_pairs",
+	},
+	{
+		name:   "I$Attach",
+		desc:   "Attach a device",
+		number: 0x80,
+		a:      "access_mode",
+		x:      "pathname",
+		rx:     "after_pathname",
+		ru:     "device_table_entry_addr",
+	},
+	{
+		name:   "I$Detach",
+		desc:   "Detach a device",
+		number: 0x80,
+		u:      "device_table_entry_addr",
 	},
 	{
 		name:   "I$Open",

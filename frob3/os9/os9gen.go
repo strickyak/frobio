@@ -13,7 +13,7 @@ func main() {
 }
 
 // assumes all args are on stack.
-func (c *call) FormatArgsForCmoc() string {
+func (c *Call) FormatArgsForCmoc() string {
 	var bb bytes.Buffer
 	off := 0
 	if c.a != "" {
@@ -84,7 +84,7 @@ func (c *call) FormatArgsForCmoc() string {
 	return s
 }
 
-func PrintAsmForCmoc(c *call, w io.Writer) {
+func PrintAsmForCmoc(c *Call, w io.Writer) {
 	P := func(format string, args ...any) {
 		Fprintf(w, format+"\n", args...)
 	}
