@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/strickyak/nekot-coco-microkernel/mcp"
+
 	"github.com/strickyak/frobio/frob3/lemma/canvas"
 	C "github.com/strickyak/frobio/frob3/lemma/coms"
 	"github.com/strickyak/frobio/frob3/lemma/hex"
@@ -260,7 +262,6 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 	}()
 
 	var block0 *os.File
-	//XX quint := make([]byte, 5)
 
 	for {
 		cmd, n, p := ReadFive(conn)
@@ -412,15 +413,12 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			pay := ReadN(conn, n)
 			EndMux(ses, p, pay)
 
-		case C.CMD_ECHO: // echos back data with high bit toggled.
-			pay := ReadN(conn, 4)
-			WriteFive(conn, C.CMD_DATA, 4, p)
-			for i, e := range pay {
-				pay[i] = 128 ^ e // toggle high bits in payload.
-			}
+		case C.CMD_ECHO: // echos back payload with CMD_DATA
+			pay := ReadN(conn, n)
+			WriteFive(conn, C.CMD_DATA, n, p)
 			conn.Write(pay)
 
-		case C.CMD_DW: // echos back data with high bit toggled.
+		case C.CMD_DW:
 			log.Printf("DW [n=%d. p=%d.]", n, p)
 			panic("TODO")
 
@@ -433,6 +431,17 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			log.Printf("HDBDOS [n=%d. p=%d.]", n, p)
 			pay := ReadN(conn, n)
 			HdbDosHijack(ses, pay)
+
+		case C.CMD_HELLO_NEKOT:
+			pay := make([]byte, n)
+			_, err := io.ReadFull(conn, pay)
+			if err != nil {
+				log.Panicf("ReadFive: pay: stopping due to error: %v", err)
+			}
+
+			// For CocoIOr to request Nekot:
+			log.Printf("CMD_HELLO_NEKOT %d: %q", p, pay)
+			mcp.MCP(conn, p, pay, ses.Hellos)
 
 		default:
 			log.Panicf("ReadFive: BAD COMMAND $%x=%d.", cmd, cmd)
@@ -490,12 +499,16 @@ func GetHellos(conn net.Conn) map[uint][]byte {
 		if cmd != C.CMD_HELLO {
 			log.Panicf("Expected CMD_HELLO, got $%x $%x $%x", cmd, n, p)
 		}
-		if n == 0 && p == 0 {
+
+		var payload []byte
+		if n > 0 {
+			payload = ReadN(conn, n)
+		}
+		dict[p] = payload
+
+		if p == 0 {
 			return dict
 		}
-
-		payload := ReadN(conn, n)
-		dict[p] = payload
 	}
 }
 
@@ -512,85 +525,72 @@ func Serve(conn net.Conn) {
 		conn.Close()
 	}()
 
-	// // You have 10 seconds to say Hello.
-	// timeoutDuration := 10 * time.Second
-	// conn.SetReadDeadline(time.Now().Add(timeoutDuration))
+	// You have 10 seconds to say Hello.
+	timeoutDuration := 10 * time.Second
+	conn.SetReadDeadline(time.Now().Add(timeoutDuration))
 	hellos := GetHellos(conn)
-	// // You pass the test.  No more time limits.
-	// var noMoreDeadline time.Time // the "zero" value.
-	// conn.SetReadDeadline(noMoreDeadline)
+	// You pass the test.  No more time limits.
+	var noMoreDeadline time.Time // the "zero" value.
+	conn.SetReadDeadline(noMoreDeadline)
 
-
-	// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
-	romID, ok := hellos[0xDF00]
+	greeting, ok := hellos[0]
 	if !ok {
-		log.Panicf("Missing HELLO for 0xDF00")
+		log.Panicf("Missing HELLO for 0")
 	}
 
-	axiomVars, ok := hellos[0x01DA]
-	if !ok {
-		log.Panicf("Missing HELLO for 0x01DA")
+	if string(greeting) == "bonobo-nekot1" {
+		// For Bonobo to request Nekot:
+		log.Printf("GREETING Bonobo %d: %q", 0, greeting)
+		mcp.MCP(conn, 0, nil, hellos)
+		return
 	}
 
-	if *SCAN_KEYBOARD {
-		keybits := ScanKeyboard(conn)
-		log.Printf("Scan Keyboard: Keybits: $% 3x", keybits)
-	}
-
-	// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
-	// axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
-
-	// sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
-	// sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
-	// sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
-	// sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
-	stack := HiLoBy(axiomVars[0:2])
-	main := HiLoBy(axiomVars[2:4])
-	sum8 := HiLoBy(axiomVars[4:6])   // CheckSum16Ram(conn, 0x8000, 0x2000)
-	sumA := HiLoBy(axiomVars[6:8])   // CheckSum16Ram(conn, 0xA000, 0x2000)
-	sumC := HiLoBy(axiomVars[8:10])  // CheckSum16Ram(conn, 0xC100, 0x0700)
-	sumE := HiLoBy(axiomVars[10:12]) // CheckSum16Ram(conn, 0xE000, 0xF000)
-	log.Printf("CheckSum16s: %04x %04x %04x %04x stack=%04x main=%04x", sum8, sumA, sumC, sumE, stack, main)
-
-	hostRaw := romID[0xE0:0xE8]
-	hostName := UpperCleanName(hostRaw, 8)
-
-	hex.DumpHexLines("romID", 0xDF00, romID)
-	hex.DumpHexLines("axiomVars", 0, axiomVars)
-
-	log.Printf("hostRaw = % 3x | %q", hostRaw, hostRaw)
-	log.Printf("hostName = %q", hostName)
-	log.Printf("*TESTHOST = %q", *TESTHOST)
-
-	log.Printf("~~~~~~~~~~~~~~ a  ")
-	if false && hostName == *TESTHOST {
-		log.Printf("~~~~~~~~~~~~~~ b  ")
-		ses := NewSession(conn, hostName)
-		ses.IScreen.PutStr(Format("TEST MODE for host '%q'\n", hostName))
-		test_card := Cards[328] // Nitros9 Level 2 for M6809
-
-		dur, _ := time.ParseDuration("5s")
-		time.Sleep(dur)
-
-		// From session.go, cards, if current.Block0 != "":
-		{
-			tail := strings.TrimPrefix(test_card.Block0, ".")
-			log.Printf("TEST Block0: %q", tail)
-			ses.IScreen.PutStr(Format("TEST Block0: %q", tail))
-			ses.Block0 = DuplicateFileToTemp(
-				*LEMMINGS_ROOT+"/"+tail,
-				"f.say STARTUP OKAY")
+		// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
+		romID, ok := hellos[0xDF00]
+		if !ok {
+			log.Panicf("Missing HELLO for 0xDF00")
 		}
 
-		{
-			tail := strings.TrimPrefix(test_card.Launch, ".")
-			log.Printf("Upload: %q", tail)
-			UploadProgram(ses.Conn, *LEMMINGS_ROOT+"/"+tail)
-			ReadFiveLoop(ses.Conn, ses)
-			return
+		axiomVars, ok := hellos[0x01DA]
+		if !ok {
+			log.Panicf("Missing HELLO for 0x01DA")
 		}
 
-	} else if *DEMO != "" {
+	if string(greeting) != "nekot1" {
+		if *SCAN_KEYBOARD {
+			keybits := ScanKeyboard(conn)
+			log.Printf("Scan Keyboard: Keybits: $% 3x", keybits)
+		}
+	}
+
+		// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
+		// axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
+
+		// sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
+		// sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
+		// sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
+		// sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
+		stack := HiLoBy(axiomVars[0:2])
+		main := HiLoBy(axiomVars[2:4])
+		sum8 := HiLoBy(axiomVars[4:6])   // CheckSum16Ram(conn, 0x8000, 0x2000)
+		sumA := HiLoBy(axiomVars[6:8])   // CheckSum16Ram(conn, 0xA000, 0x2000)
+		sumC := HiLoBy(axiomVars[8:10])  // CheckSum16Ram(conn, 0xC100, 0x0700)
+		sumE := HiLoBy(axiomVars[10:12]) // CheckSum16Ram(conn, 0xE000, 0xF000)
+		log.Printf("CheckSum16s: %04x %04x %04x %04x stack=%04x main=%04x", sum8, sumA, sumC, sumE, stack, main)
+
+		hostRaw := romID[0xE0:0xE8]
+		hostName := UpperCleanName(hostRaw, 8)
+
+		hex.DumpHexLines("romID", 0xDF00, romID)
+		hex.DumpHexLines("axiomVars", 0, axiomVars)
+
+		log.Printf("hostRaw = % 3x | %q", hostRaw, hostRaw)
+		log.Printf("hostName = %q", hostName)
+		log.Printf("*TESTHOST = %q", *TESTHOST)
+
+
+		log.Printf("~~~~~~~~~~~~~~ a  ")
+	if *DEMO != "" {
 		log.Printf("~~~~~~~~~~~~~~ c  ")
 
 		demo, ok := Demos[*DEMO]

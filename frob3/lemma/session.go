@@ -454,7 +454,7 @@ CARD:
 			if current.Block0 != "" {
 				tail := strings.TrimPrefix(current.Block0, ".")
 				// tail := strings.TrimPrefix(current.Block0 + ".dsk", ".")
-				diskname := *LEMMINGS_ROOT+"/"+tail
+				diskname := *LEMMINGS_ROOT + "/" + tail
 				log.Printf("Block0: %q Name: %q tail: %q diskname: %q", current.Block0, current.Name, tail, diskname)
 				ses.IScreen.PutStr(fmt.Sprintf("Block0: %q", tail))
 				ses.Block0 = DuplicateFileToTemp(diskname, "")

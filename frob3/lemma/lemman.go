@@ -56,9 +56,8 @@ func LemmaError(format string, args ...any) byte {
 }
 
 var OpNames = []string{
-"???", "Cre", "Ope", "Mkd", "Cgd", "Del", "Sek", "Rea", "Wri", "RLn", "WLn", "Get", "Set", "Clo",
+	"???", "Cre", "Ope", "Mkd", "Cgd", "Del", "Sek", "Rea", "Wri", "RLn", "WLn", "Get", "Set", "Clo",
 }
-
 
 type LMPath struct {
 	PathName   string
@@ -334,11 +333,11 @@ func LMClose(pd uint, regs *LMRegs) (status byte) {
 
 func LMOpen(pd uint, regs *LMRegs, mode byte, name string, create bool) (status byte) {
 	clean := filepath.Clean(name)
-	clean = strings.TrimPrefix(clean, "/")  // not an absolute path
+	clean = strings.TrimPrefix(clean, "/") // not an absolute path
 	splitWords := strings.Split(clean, "/")
 	log.Printf("LMOpen: name: %q clean: %q splitWords: %#v", name, clean, splitWords)
 
-	var words []string  // we clean splitWords even more, to get words.
+	var words []string // we clean splitWords even more, to get words.
 	for _, w := range splitWords {
 		if w == ".." {
 			return LemmaError("Bad word %q in filepath %q", w, clean)
