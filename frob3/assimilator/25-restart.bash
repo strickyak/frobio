@@ -13,7 +13,7 @@ export GOPATH="$shelf_home"
 H=`cat /tmp/temp.droplet.ip`
 ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -n root@$H '
 	set -euxo pipefail
-	( sleep 1 ; reboot ) &
+	( sync; sleep 1; sync; sync; sleep 1 ; reboot ) &
 	exit
 '
 echo $0 OKAY >&2
