@@ -1,0 +1,32 @@
+[Google] AI Overview
+
+To run a Go web server on port 80 without root privileges, several approaches can be used:
+
+;;;;;;;;;;
+
+Using setcap:
+
+This method grants the binary the capability to bind to privileged ports without full root access.
+
+Code
+
+    sudo setcap 'cap_net_bind_service=+ep' /path/to/your/binary
+
+This command adds the cap_net_bind_service capability to the executable, allowing it to bind to ports below 1024, including port 80.
+
+;;;;;;;;;;
+
+Using authbind:
+
+This utility allows specific users or groups to bind to specific ports.
+
+Code
+
+    sudo apt-get install authbind
+    sudo touch /etc/authbind/byport/80
+    sudo chmod 777 /etc/authbind/byport/80
+    authbind --deep /path/to/your/binary
+
+These commands install authbind, configure it to allow any user to bind to port 80, and then run the binary using authbind.
+
+;;;;;;;;;;
