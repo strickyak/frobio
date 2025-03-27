@@ -14,7 +14,7 @@ cd "`dirname "$0"`"/../
 
 # Defaults:
 waiterPort=2321
-httpPort=8001
+httpPort=80
 
 # Examine our Current Working Directory
 # for a piece with a name like serve-alpha-w2373-h8003
