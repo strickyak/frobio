@@ -135,7 +135,7 @@ Hit 0 to mount drive 0,
 	})
 
 	Add(39, 0, "NekotOS Gaming OS", &Card{
-		Launch: ".nekotos-cocoior.lem",
+		Launch: ".nekotos-cocoio.lem",
         Text: `
 Experimental.
 See the #nekot-game-os
