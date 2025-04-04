@@ -498,7 +498,7 @@ C) 192.168/16
 
 Proposal:
 Try the following boots in sequence, then repeat the sequence:
-1. DHCP + (DHCP-provided resolver or 8.8.8.8) + nekot.yak.net
+1. DHCP + (DHCP-provided resolver or 8.8.8.8) + nekotOS.yak.net
 2. 10.68.9.99/8    talking to .11 as gateway, resolver, and waiter.
 3. 172.16.89.99/12 talking to .11 as gateway, resolver, and waiter.
 4. 192.168.9.99/16 talking to .11 as gateway, resolver, and waiter.
@@ -506,7 +506,7 @@ Then things work on either a public internet or on any of 3 private nets,
 hoping at least one of them doesn't conflict with other private nets
 you are on (VPN or Home Wifi Masquarade).
 
-If it jumps on Nekot too soon, no big deal, use Nekot to go elsewhere.
+If it jumps on NekotOS too soon, no big deal, use NekotOS to go elsewhere.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

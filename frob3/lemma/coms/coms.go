@@ -13,7 +13,7 @@ const (
 	CMD_HELLO = 1 // Similar to Peek Data.
 	CMD_CALL  = 255
 
-	CMD_HELLO_NEKOT = 64
+	CMD_HELLO_NEKOTOS = 64
 
 	CMD_GETCHAR   = 192 // Blocking. request with n=0.  reply with n=0, p is char.
 	CMD_KEYBOARD  = 193 // request with n=0.  reply with n=8.

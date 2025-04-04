@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/strickyak/nekot-coco-microkernel/mcp"
+	"github.com/strickyak/nekotos/mcp"
 
 	"github.com/strickyak/frobio/frob3/lemma/canvas"
 	C "github.com/strickyak/frobio/frob3/lemma/coms"
@@ -432,15 +432,15 @@ func ReadFiveLoop(conn net.Conn, ses *Session) {
 			pay := ReadN(conn, n)
 			HdbDosHijack(ses, pay)
 
-		case C.CMD_HELLO_NEKOT:
+		case C.CMD_HELLO_NEKOTOS:
 			pay := make([]byte, n)
 			_, err := io.ReadFull(conn, pay)
 			if err != nil {
 				log.Panicf("ReadFive: pay: stopping due to error: %v", err)
 			}
 
-			// For CocoIOr to request Nekot:
-			log.Printf("CMD_HELLO_NEKOT %d: %q", p, pay)
+			// For CocoIOr to request NekotOS:
+			log.Printf("CMD_HELLO_NEKOTOS %d: %q", p, pay)
 			mcp.MCP(conn, p, pay, ses.Hellos)
 
 		default:
@@ -538,8 +538,8 @@ func Serve(conn net.Conn) {
 		log.Panicf("Missing HELLO for 0")
 	}
 
-	if string(greeting) == "bonobo-nekot1" {
-		// For Bonobo to request Nekot:
+	if string(greeting) == "bonobo-nekotos" {
+		// For Bonobo to request NekotOS:
 		log.Printf("GREETING Bonobo %d: %q", 0, greeting)
 		mcp.MCP(conn, 0, nil, hellos)
 		return
@@ -556,7 +556,7 @@ func Serve(conn net.Conn) {
 			log.Panicf("Missing HELLO for 0x01DA")
 		}
 
-	if string(greeting) != "nekot1" {
+	if string(greeting) != "nekotos" {
 		if *SCAN_KEYBOARD {
 			keybits := ScanKeyboard(conn)
 			log.Printf("Scan Keyboard: Keybits: $% 3x", keybits)
