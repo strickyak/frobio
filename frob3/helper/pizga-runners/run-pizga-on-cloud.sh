@@ -40,6 +40,8 @@ exec Internal/bin/lemma-waiter \
     --port=$waiterPort \
     --http_port=$httpPort \
     --web_static Internal/web-static/ \
+    --games_dir Internal/GAMES/ \
+    --zone America/Chicago \
     ##
 
 # TODO -- needs a "flavor" flag.
