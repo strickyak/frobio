@@ -545,16 +545,16 @@ func Serve(conn net.Conn) {
 		return
 	}
 
-		// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
-		romID, ok := hellos[0xDF00]
-		if !ok {
-			log.Panicf("Missing HELLO for 0xDF00")
-		}
+	// hellos[0xDF00] = append(make([]byte, 128), hellos[0xDF80]...)
+	romID, ok := hellos[0xDF00]
+	if !ok {
+		log.Panicf("Missing HELLO for 0xDF00")
+	}
 
-		axiomVars, ok := hellos[0x01DA]
-		if !ok {
-			log.Panicf("Missing HELLO for 0x01DA")
-		}
+	axiomVars, ok := hellos[0x01DA]
+	if !ok {
+		log.Panicf("Missing HELLO for 0x01DA")
+	}
 
 	if string(greeting) != "nekotos" {
 		if *SCAN_KEYBOARD {
@@ -563,33 +563,32 @@ func Serve(conn net.Conn) {
 		}
 	}
 
-		// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
-		// axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
+	// romID := PeekRam(conn, 0xDF00, 256-12)  // Identity Last Half Sector, less 12 bytes of secret.
+	// axiomVars := PeekRam(conn, 0x01DA, 128) // CASBUF contains Axiom's struct axiom4_vars
 
-		// sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
-		// sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
-		// sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
-		// sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
-		stack := HiLoBy(axiomVars[0:2])
-		main := HiLoBy(axiomVars[2:4])
-		sum8 := HiLoBy(axiomVars[4:6])   // CheckSum16Ram(conn, 0x8000, 0x2000)
-		sumA := HiLoBy(axiomVars[6:8])   // CheckSum16Ram(conn, 0xA000, 0x2000)
-		sumC := HiLoBy(axiomVars[8:10])  // CheckSum16Ram(conn, 0xC100, 0x0700)
-		sumE := HiLoBy(axiomVars[10:12]) // CheckSum16Ram(conn, 0xE000, 0xF000)
-		log.Printf("CheckSum16s: %04x %04x %04x %04x stack=%04x main=%04x", sum8, sumA, sumC, sumE, stack, main)
+	// sum8 := CheckSum16Ram(conn, 0x8000, 0x2000)
+	// sumA := CheckSum16Ram(conn, 0xA000, 0x2000)
+	// sumC := CheckSum16Ram(conn, 0xC100, 0x0700)
+	// sumE := CheckSum16Ram(conn, 0xE000, 0xF000)
+	stack := HiLoBy(axiomVars[0:2])
+	main := HiLoBy(axiomVars[2:4])
+	sum8 := HiLoBy(axiomVars[4:6])   // CheckSum16Ram(conn, 0x8000, 0x2000)
+	sumA := HiLoBy(axiomVars[6:8])   // CheckSum16Ram(conn, 0xA000, 0x2000)
+	sumC := HiLoBy(axiomVars[8:10])  // CheckSum16Ram(conn, 0xC100, 0x0700)
+	sumE := HiLoBy(axiomVars[10:12]) // CheckSum16Ram(conn, 0xE000, 0xF000)
+	log.Printf("CheckSum16s: %04x %04x %04x %04x stack=%04x main=%04x", sum8, sumA, sumC, sumE, stack, main)
 
-		hostRaw := romID[0xE0:0xE8]
-		hostName := UpperCleanName(hostRaw, 8)
+	hostRaw := romID[0xE0:0xE8]
+	hostName := UpperCleanName(hostRaw, 8)
 
-		hex.DumpHexLines("romID", 0xDF00, romID)
-		hex.DumpHexLines("axiomVars", 0, axiomVars)
+	hex.DumpHexLines("romID", 0xDF00, romID)
+	hex.DumpHexLines("axiomVars", 0, axiomVars)
 
-		log.Printf("hostRaw = % 3x | %q", hostRaw, hostRaw)
-		log.Printf("hostName = %q", hostName)
-		log.Printf("*TESTHOST = %q", *TESTHOST)
+	log.Printf("hostRaw = % 3x | %q", hostRaw, hostRaw)
+	log.Printf("hostName = %q", hostName)
+	log.Printf("*TESTHOST = %q", *TESTHOST)
 
-
-		log.Printf("~~~~~~~~~~~~~~ a  ")
+	log.Printf("~~~~~~~~~~~~~~ a  ")
 	if *DEMO != "" {
 		log.Printf("~~~~~~~~~~~~~~ c  ")
 
