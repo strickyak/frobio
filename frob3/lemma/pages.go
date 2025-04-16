@@ -136,13 +136,13 @@ Hit 0 to mount drive 0,
 
 	Add(39, 0, "NekotOS Gaming OS", &Card{
 		Launch: ".nekotos-cocoio.lem",
-        Text: `
+		Text: `
 Experimental.
 See the #nekot-game-os
 channel under Networking
 on the Coco Discord.
 `,
-    })
+	})
 
 	Add(40, 0, "Utilities", &Card{})
 
