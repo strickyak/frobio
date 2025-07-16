@@ -53,6 +53,8 @@ type LemmaHandler struct {
 	Handlers map[string]http.Handler
 }
 
+var MatchPathTilde = regexp.MustCompile("^/[~]([-a-z0-9]+)$")
+
 var MatchPathFront = regexp.MustCompile("^(/[-a-z]*)")
 
 func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +78,13 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p = "/web-static/favicon.ico"
 		r.URL.Path = p
 	}
+
+    // Tilde names become /web-static/links/...
+	mtilde := MatchPathTilde.FindStringSubmatch(p)
+	if mtilde != nil {
+        p = "/web-static/links/" + strings.ToLower(p[2:])
+        r.URL.Path = p
+    }
 
 	m := MatchPathFront.FindStringSubmatch(p)
 	if m == nil || len(m) != 2 {
@@ -134,7 +143,6 @@ func RunWeb() {
 			"/":           &SlashHandler{},
 			"/pizga":      basicAuth(http.StripPrefix("/pizga", http.FileServer(http.Dir(*FlagNavRoot))).(http.HandlerFunc)),
 			"/web-static": http.StripPrefix("/web-static", http.FileServer(http.Dir(*FlagWebStatic))).(http.HandlerFunc),
-
 			"/inputs":   http.StripPrefix("/inputs", http.FileServer(http.Dir(*FlagInputs))).(http.HandlerFunc),
 			"/releases": http.StripPrefix("/releases", http.FileServer(http.Dir(*FlagReleases))).(http.HandlerFunc),
 			"/temp":     http.StripPrefix("/temp", http.FileServer(http.Dir(*FlagTemp))).(http.HandlerFunc),
@@ -144,8 +152,8 @@ func RunWeb() {
 	s := &http.Server{
 		Addr:           Format(":%d", *FlagHttpPort),
 		Handler:        lh,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:    300 * time.Second,
+		WriteTimeout:   300 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 	log.Fatal(s.ListenAndServe())
