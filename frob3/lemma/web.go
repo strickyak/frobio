@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
 	P "path"
 	"regexp"
@@ -58,6 +59,12 @@ var MatchPathTilde = regexp.MustCompile("^/[~]([-a-z0-9]+)$")
 var MatchPathFront = regexp.MustCompile("^(/[-a-z]*)")
 
 func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Register .tsx with an appropriate MIME type
+	err := mime.AddExtensionType(".tsx", "text/typescript")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	defer func() {
 		caught := recover()
 		if caught != nil {
@@ -79,12 +86,12 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = p
 	}
 
-    // Tilde names become /web-static/links/...
+	// Tilde names become /web-static/links/...
 	mtilde := MatchPathTilde.FindStringSubmatch(p)
 	if mtilde != nil {
-        p = "/web-static/links/" + strings.ToLower(p[2:])
-        r.URL.Path = p
-    }
+		p = "/web-static/links/" + strings.ToLower(p[2:])
+		r.URL.Path = p
+	}
 
 	m := MatchPathFront.FindStringSubmatch(p)
 	if m == nil || len(m) != 2 {
@@ -143,9 +150,9 @@ func RunWeb() {
 			"/":           &SlashHandler{},
 			"/pizga":      basicAuth(http.StripPrefix("/pizga", http.FileServer(http.Dir(*FlagNavRoot))).(http.HandlerFunc)),
 			"/web-static": http.StripPrefix("/web-static", http.FileServer(http.Dir(*FlagWebStatic))).(http.HandlerFunc),
-			"/inputs":   http.StripPrefix("/inputs", http.FileServer(http.Dir(*FlagInputs))).(http.HandlerFunc),
-			"/releases": http.StripPrefix("/releases", http.FileServer(http.Dir(*FlagReleases))).(http.HandlerFunc),
-			"/temp":     http.StripPrefix("/temp", http.FileServer(http.Dir(*FlagTemp))).(http.HandlerFunc),
+			"/inputs":     http.StripPrefix("/inputs", http.FileServer(http.Dir(*FlagInputs))).(http.HandlerFunc),
+			"/releases":   http.StripPrefix("/releases", http.FileServer(http.Dir(*FlagReleases))).(http.HandlerFunc),
+			"/temp":       http.StripPrefix("/temp", http.FileServer(http.Dir(*FlagTemp))).(http.HandlerFunc),
 		},
 	}
 
