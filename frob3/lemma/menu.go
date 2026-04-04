@@ -383,7 +383,7 @@ func (o *ViewHexAction) Do(nav *Navigator, mod Model, path string) {
 	var lines []string
 	var bb, raw bytes.Buffer
 	n := len(contents)
-	up := (n + 7) & 0xFFFFFFF8 // up to next multiple of 8
+	up := (n + 7) &^ 7 // up to next multiple of 8
 	for i := 0; i < up; i++ {
 		var c byte
 		if i < n {
