@@ -25,7 +25,12 @@ var FlagTemp = flag.String("temp", "/home/pizga/public-temp/", "for whatever")
 var FlagInputs = flag.String("inputs", "/home/pizga/public-inputs/", "serving directory for inputs to coco-shelf")
 var FlagReleases = flag.String("releases", "/home/pizga/public-releases/", "serving directory for built releases")
 var FlagWebStatic = flag.String("web_static", "", "web-static serving directory")
+var FlagWellKnown = flag.String("well_known", "/home/pizga/public-well-known/", "/.well-known/ serving directory")
 var FlagHttpPort = flag.Int("http_port", 8080, ":port for web")
+
+var FlagHttpsPort = flag.Int("https_port", 0, ":port for https")
+var FlagHttpsCert = flag.String("https_cert", "", "filename with certificate");
+var FlagHttpsKey = flag.String("https_key", "", "filename with private key");
 
 const (
 	BadRequest = 400
@@ -78,6 +83,14 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := P.Clean(r.URL.Path)
 	log.Printf("ServeHTTP %q (%q)", r.URL.Path, p)
 
+    // Remove the forbidden dot from this one prefix.
+    const WK = "/.well-known"
+    if strings.HasPrefix(p, WK) {
+        p = "/well-known" + p[len(WK):]
+        r.URL.Path = p
+    }
+	log.Printf("ServeHTTP [2] %q (%q)", r.URL.Path, p)
+
 	headers := w.Header()
 	headers.Add("Server", "Lemma")
 
@@ -94,11 +107,11 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m := MatchPathFront.FindStringSubmatch(p)
-	if m == nil || len(m) != 2 {
-		w.WriteHeader(ImATeapot)
-		fmt.Fprintf(w, "Bad Path: %q\n", p)
-		return
-	}
+    if m == nil {
+        w.WriteHeader(ImATeapot)
+        fmt.Fprintf(w, "Bad Path: %q\n", p)
+        return
+    }
 
 	front := m[1] // The front word; may be empty.
 	handler, ok := lh.Handlers[front]
@@ -107,6 +120,7 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "No Handler: %q :: %q\n", front, p)
 		return
 	}
+	log.Printf("ServeHTTP [front=%q ok=%v] %q (%q)", front, ok, r.URL.Path, p)
 
 	handler.ServeHTTP(w, r)
 	// fmt.Fprintf(w, "\n<P><BR>(* %q :: %q *)\n", r.URL.Path, p)
@@ -115,9 +129,13 @@ func (lh *LemmaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func RunWeb() {
 	println("FlagNavRoot:", *FlagNavRoot)
 	println("FlagHttpPort:", *FlagHttpPort)
+	println("FlagHttpsPort:", *FlagHttpsPort)
+	println("FlagHttpsCert:", *FlagHttpsCert)
+	println("FlagHttpsKey:", *FlagHttpsKey)
 	println("FlagWebStatic:", *FlagWebStatic)
 	println("FlagInputs:", *FlagInputs)
 	println("FlagReleases:", *FlagReleases)
+	println("FlagWellKnown:", *FlagWellKnown)
 	println("FlagTemp:", *FlagTemp)
 	if *FlagNavRoot == "" {
 		log.Printf("NOT SERVING WEB because *FlagNavRoot is empty")
@@ -139,6 +157,10 @@ func RunWeb() {
 		log.Printf("NOT SERVING WEB because *FlagReleases is empty")
 		return
 	}
+	if *FlagWellKnown == "" {
+		log.Printf("NOT SERVING WEB because *FlagWellKnown is empty")
+		return
+	}
 	if *FlagTemp == "" {
 		log.Printf("NOT SERVING WEB because *FlagTemp is empty")
 		return
@@ -152,6 +174,7 @@ func RunWeb() {
 			"/web-static": http.StripPrefix("/web-static", http.FileServer(http.Dir(*FlagWebStatic))).(http.HandlerFunc),
 			"/inputs":     http.StripPrefix("/inputs", http.FileServer(http.Dir(*FlagInputs))).(http.HandlerFunc),
 			"/releases":   http.StripPrefix("/releases", http.FileServer(http.Dir(*FlagReleases))).(http.HandlerFunc),
+			"/well-known":   http.StripPrefix("/well-known", http.FileServer(http.Dir(*FlagWellKnown))).(http.HandlerFunc),
 			"/temp":       http.StripPrefix("/temp", http.FileServer(http.Dir(*FlagTemp))).(http.HandlerFunc),
 		},
 	}
@@ -163,6 +186,20 @@ func RunWeb() {
 		WriteTimeout:   300 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+	s2 := &http.Server{
+		Addr:           Format(":%d", *FlagHttpsPort),
+		Handler:        lh,
+		ReadTimeout:    300 * time.Second,
+		WriteTimeout:   300 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+
+    if *FlagHttpsPort != 0 && *FlagHttpsCert != "" && *FlagHttpsKey != "" {
+        go func() {
+            log.Fatal(s2.ListenAndServeTLS(*FlagHttpsCert, *FlagHttpsKey))
+        }()
+    }
+
 	log.Fatal(s.ListenAndServe())
 }
 
@@ -384,6 +421,7 @@ My name is {HOST} and I'll be your waiter today.
   <li>The <a href="/pizga/">Pizga Repository</a>.
   <li>The <a href="/inputs/">inputs</a> directory.
   <li>The <a href="/releases/">releases</a> directory.
+  <li>The <a href="https://pmode1-retro-editor-v1-769054935145.us-west1.run.app/"><TT><B>PMODE1 Editor</B></TT></a> web app.
   <li>The <a href="/temp/">temp</a> directory.
 </ul>
 <p>
