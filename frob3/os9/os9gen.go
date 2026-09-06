@@ -3,13 +3,22 @@ package main
 import (
 	"bytes"
 	. "fmt"
+    "flag"
 	"io"
 	"io/ioutil"
 	"log"
 )
 
+var GCC = flag.Bool("gcc", false, "generate code for gcc, if true")
+
 func main() {
-	PrintCalls()
+    flag.Parse()
+
+    if *GCC {
+	    PrintCallsForGcc()
+    } else {
+	    PrintCallsForCmoc()
+    }
 }
 
 // assumes all args are on stack.
@@ -152,7 +161,7 @@ func PrintAsmForCmoc(c *Call, w io.Writer) {
 	P("    puls Y,U,PC")
 }
 
-func PrintCalls() {
+func PrintCallsForCmoc() {
 	var gen_hdr bytes.Buffer
 	Fprintf(&gen_hdr, "#ifndef _GEN_HDR_FOR_CMOC_\n")
 	Fprintf(&gen_hdr, "#define _GEN_HDR_FOR_CMOC_\n")
