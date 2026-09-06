@@ -44,4 +44,5 @@ exec Internal/bin/lemma-waiter \
     --scan_keyboard=1 \
     --lan="$LAN" \
     --config_by_dhcp=false \
-    ##
+    --games_dir Internal/NEKOTOS \
+    "$@"
